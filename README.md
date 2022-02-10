@@ -12,22 +12,12 @@ npm install
 npm run build
 ```
 
-3. Create application executable
+3. Create the application installer
 
 ```sh
-npm run make:all
-```
-
-At this point, you should have a folder in your `out/` directory named `mkeditor-x64/`.
-
-You can now open `mkeditor.exe` to run the application.
-
-4. (optional - for Windows) Create Windows installer
-
-```sh
-node package/installer.js
+npm run make:installer
 ```
 
 This will create a new folder named `windows-installer` in the `out/` directory.
 
-You can now open `mkeditor_setup.exe` to run the installer and install MKEditor.
+You can now open `mkeditor-setup-x64.exe` to run the installer and install MKEditor.
