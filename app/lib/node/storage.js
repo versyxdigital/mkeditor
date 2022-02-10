@@ -15,7 +15,7 @@ module.exports = {
         }
 
         const setActiveFile = (win, filepath) => {
-            filename = filepath.split('\\').slice(-1).pop()
+            const filename = filepath.split('\\').slice(-1).pop()
             const content = fs.readFileSync(filepath, { encoding: 'utf-8' })
 
             win.send('from:request:open', {
@@ -85,7 +85,7 @@ module.exports = {
     },
 
     async open(win) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             dialog.showOpenDialog({
                 filters: [
                     { name: 'Text Files', extensions: ['html', 'md', 'txt'] },
