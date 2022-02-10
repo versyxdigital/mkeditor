@@ -1,0 +1,10 @@
+#preview {
+  overflow-y: auto;
+  flex: 1 50%;
+  padding-bottom: 44px;
+  background-color: #fff;
+
+  ul li, ol li {
+    position: relative;
+  }
+}

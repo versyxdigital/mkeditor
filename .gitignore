@@ -1,0 +1,6 @@
+node_modules
+dist/*
+!dist/index.html
+out/
+.idea
+export/

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <title>MKEditor</title>
+    <link rel="stylesheet" href="./mkeditor.bundle.css">
+
+    <style>
+        /* .split {
+            display: flex;
+            flex-direction: row;
+        }
+
+        .gutter {
+            background-color: #eee;
+            background-repeat: no-repeat;
+            background-position: 50%;
+        }
+
+        .gutter.gutter-horizontal {
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+            cursor: col-resize;
+        } */
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand navbar-light bg-light">
+    <ul class="navbar-nav mr-auto">
+        <li class="nav-item">
+            <span id="active-file" class="text-muted"></span>
+        </li>
+    </ul>
+    <ul class="navbar-nav ml-auto">
+        <li class="nav-item text-muted">
+            <small>Character Count: <span id="character-count">0</span></small>
+            <span class="mx-1 font-weight-lighter">|</span>
+            <small>Word Count: <span id="word-count">0</span></small>
+        </li>
+        <li class="nav-item">
+            <a class="text-muted hover-fade ml-2" data-toggle="modal" href="#" data-target="#settings">
+                <i class="fas fa-cog hover-fade"></i>
+            </a>
+        </li>
+    </ul>
+</nav>
+<div class="d-flex flex-row h-100">
+    <div class="w-100 border-top">
+        <div id="wrapper" class="d-flex flex-row">
+            <div id="editor" class="flex-column split-editor"></div>
+            <div id="preview" class="flex-column split-preview px-3"></div>
+            <nav class="navbar navbar-light bg-light fixed-bottom border-top py-1">
+                <div class="form-inline" id="editor-functions">
+                    <div class="btn-group mr-2">
+                        <a class="btn btn-sm btn-outline-secondary" id="saveFile" class="btn btn-sm btn-success px-3">
+                            <i class="fas fa-save"></i>
+                        </a>
+                    </div>
+                    <div class="btn-group mr-2">
+                        <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="B" data-op="bold" href="#">
+                            <i class="fa fa-bold"></i>
+                        </a>
+                        <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="I" data-op="italic" href="#">
+                            <i class="fa fa-italic"></i>
+                        </a>
+                        <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="G" data-op="strikethrough"
+                           href="#">
+                            <i class="fa fa-strikethrough"></i>
+                        </a>
+                    </div>
+                    <div class="btn-group mr-2">
+                        <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="1" data-op="unorderedList"
+                           href="#">
+                            <i class="fa fa-list-ul"></i>
+                        </a>
+                        <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="2" data-op="orderedList" href="#">
+                            <i class="fa fa-list-ol"></i>
+                        </a>
+                        <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="3" data-op="replaceSteps"
+                           href="#">
+                            <i class="fa fa-tasks"></i>
+                        </a>
+                    </div>
+                    <div class="dropup mr-2">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeBlockMenuButton" data-shortcut="K" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-code"></i>
+                        </button>
+                        <div class="dropdown-menu" id="codeBlockMenu" aria-labelledby="codeBlockMenuButton">
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="powershell"><i class="fas fa-terminal"></i> <u>P</u>owershell</a>
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="cli"><i class="fas fa-terminal"></i> C<u>L</u>I</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="csharp"><i class="fas fa-code"></i> <u>C</u>#</a>
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="fsharp"><i class="fas fa-code"></i> <u>F</u>#</a>
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="vb"><i class="fas fa-code"></i> <u>V</u>isual Basic</a>
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="python"><i class="fas fa-code"></i> P<u>y</u>thon</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="sql"><i class="fas fa-database"></i> <u>S</u>QL</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="xml"><i class="fas fa-code"></i> <u>X</u>ML</a>
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="json"><i class="fas fa-code"></i> <u>J</u>SON</a>
+                        </div>
+                    </div>
+                    <div class="dropup mr-2">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="alertMenuButton" data-shortcut="L" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </button>
+                        <div class="dropdown-menu" id="alertMenu" aria-labelledby="alertMenuButton">
+                            <a class="dropdown-item alert-primary md-editor-btn" href="#" data-shortcut="P" data-op="alert" data-type="primary"><u>P</u>rimary</a>
+                            <a class="dropdown-item alert-secondary md-editor-btn" href="#" data-shortcut="E" data-op="alert" data-type="secondary">S<u>e</u>condary</a>
+                            <a class="dropdown-item alert-success md-editor-btn" href="#" data-shortcut="S" data-op="alert" data-type="success"><u>S</u>uccess</a>
+                            <a class="dropdown-item alert-danger md-editor-btn" href="#" data-shortcut="D" data-op="alert" data-type="danger"><u>D</u>anger</a>
+                            <a class="dropdown-item alert-warning md-editor-btn" href="#" data-shortcut="W" data-op="alert" data-type="warning"><u>W</u>arning</a>
+                            <a class="dropdown-item alert-info md-editor-btn" href="#" data-shortcut="I" data-op="alert" data-type="info"><u>I</u>nformation</a>
+                            <a class="dropdown-item alert-light md-editor-btn" href="#" data-shortcut="L" data-op="alert" data-type="light"><u>L</u>ight</a>
+                            <a class="dropdown-item alert-dark md-editor-btn" href="#" data-shortcut="R" data-op="alert" data-type="dark">Da<u>r</u>k</a>
+                        </div>
+                    </div>
+                </div>
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="toggleDarkMode">
+                            <label class="custom-control-label" for="toggleDarkMode" id="darkModeIcon">
+                                <i class="fas fa-moon"></i>
+                            </label>
+                        </div>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+<div class="modal" tabindex="-1" role="dialog" id="settings" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title">Editor Settings</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row">
+                    <div class="col-md-24">
+                        <div class="form-group">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input setting" id="toggleAutoIndent">
+                                <label class="custom-control-label" for="toggleAutoIndent">
+                                    Automatic indent
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input setting" id="toggleWordWrap">
+                                <label class="custom-control-label" for="toggleWordWrap">
+                                    Word wrapping
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input setting" id="toggleWhitespace">
+                                <label class="custom-control-label" for="toggleWhitespace">
+                                    Render whitespace
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript" src="./mkeditor.bundle.js"></script>
+</body>
+</html>

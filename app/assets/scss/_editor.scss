@@ -1,0 +1,12 @@
+#editor {
+  flex: 1 50%;
+
+  .monaco-editor {
+    .margin-view-overlays {
+      .current-line-margin {
+        border: 2px solid #cccccc !important;
+        background: rgba(0, 0, 0, 0.2);
+      }
+    }
+  }
+}
