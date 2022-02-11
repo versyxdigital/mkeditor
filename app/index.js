@@ -36,7 +36,7 @@ if (editor && preview) {
         settings.register()
 
         // Map monaco editor commands to editor UI buttons (e.g. bold, alertblock etc.)
-        let ops = document.getElementById('editor-functions').querySelectorAll('a')
+        const ops = document.getElementById('editor-functions').querySelectorAll('a')
         if (ops) {
             ops.forEach((op) => {
                 op.addEventListener('click', (event) => {
@@ -45,7 +45,7 @@ if (editor && preview) {
                         : event.target
 
                     if (Object.prototype.hasOwnProperty.call(target.dataset, 'op')) {
-                        commands[target.dataset.op](target)
+                        commandHandler[target.dataset.op](target)
                         instance.focus()
                     }
                 })

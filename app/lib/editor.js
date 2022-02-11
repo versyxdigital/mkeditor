@@ -98,9 +98,6 @@ class Editor
                 scrollPreviewToEditorVisibleRange(visibleRange.startLineNumber, this.preview)
             }
         })
-
-        // Note: don't use scroll, because it interferes with the handler above
-        // this.preview.addEventListener('wheel', this.handlePreviewScroll.bind(this))
     }
 
     render() {
