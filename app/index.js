@@ -45,7 +45,12 @@ if (editor && preview) {
                         : event.target
 
                     if (Object.prototype.hasOwnProperty.call(target.dataset, 'op')) {
-                        commandHandler[target.dataset.op](target)
+                        if (!commands[target.dataset.op] && target.dataset.ch) {
+                            commands.exec(target.dataset.ch)
+                        } else {
+                            commands[target.dataset.op](target)
+                        }
+                        
                         instance.focus()
                     }
                 })

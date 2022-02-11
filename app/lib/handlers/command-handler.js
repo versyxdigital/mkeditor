@@ -29,11 +29,9 @@ class CommandHandler
             this.instance.addAction({
                 id: `alert-${block.type}`,
                 label: `Insert ${block.type} Alert`,
-                keybindings: [
-                    KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KEY_L, KeyCode[`KEY_${block.key}`])
-                ],
-                run: (editor) => {
-                    this.alert(block.type.toLowerCase(), editor.getModel().getValueInRange(editor.getSelection()))
+                keybindings: [KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KEY_L, KeyCode[`KEY_${block.key}`])],
+                run: () => {
+                    this.alert(block.type.toLowerCase())
                     $('#alertMenuButton').dropdown('hide')
                 }
             })
@@ -43,11 +41,9 @@ class CommandHandler
             this.instance.addAction({
                 id: `codeblock-${block.type}`,
                 label: `Insert ${block.type.charAt(0).toUpperCase() + block.type.slice(1)} Codeblock`,
-                keybindings: [
-                    KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KEY_K, KeyCode[`KEY_${block.key}`])
-                ],
-                run: (editor) => {
-                    this.codeblock(block.type.toLowerCase(), editor.getModel().getValueInRange(editor.getSelection()))
+                keybindings: [KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KEY_K, KeyCode[`KEY_${block.key}`])],
+                run: () => {
+                    this.codeblock(block.type.toLowerCase())
                     $('#codeBlockMenuButton').dropdown('hide')
                 }
             })
@@ -55,36 +51,36 @@ class CommandHandler
     }
 
     exec(op) {
-        this.replaceSelection(op + this.getSelection() + op)
+        this.do(op + this.model() + op)
     }
 
     unorderedList() {
-        this.replaceSelection(this.getSelection().replace(/^[a-zA-Z]+?/gm, (match) => `- ${match}`))
+        this.do(this.model().replace(/^[a-zA-Z]+?/gm, (match) => `- ${match}`))
     }
 
     orderedList() {
         let i = 0
-        this.replaceSelection(this.getSelection().replace(/^[a-zA-Z]+?/gm, (match) => `${++i}. ${match}`))
+        this.do(this.model().replace(/^[a-zA-Z]+?/gm, (match) => `${++i}. ${match}`))
     }
 
     orderedListToTaskList() {
         let i = 0
-        this.replaceSelection(this.getSelection().replace(/^([0-9]+)\.\s+(?!\[)/gm, (match) => `${++i}. [ ] ${match}`))
+        this.do(this.model().replace(/^([0-9]+)\.\s+(?!\[)/gm, (match) => `${++i}. [ ] ${match}`))
     }
 
     alert(params, content = null) {
-        let type = params.dataset ? params.dataset.type : params
-        content = content ? content : this.getSelection()
-        this.replaceSelection('::: '+type+'\n'+ content + '\n:::')
+        const type = params.dataset ? params.dataset.type : params
+        content = content ? content : this.model()
+        this.do('::: '+type+'\n'+ content + '\n:::')
     }
 
     codeblock(params, content = null) {
-        let language = params.dataset ? params.dataset.language : params
-        content = content ? content : this.getSelection()
-        this.replaceSelection('```'+language+'\n'+content+'\n```')
+        const language = params.dataset ? params.dataset.language : params
+        content = content ? content : this.model()
+        this.do('```'+language+'\n'+content+'\n```')
     }
 
-    replaceSelection(replacement) {
+    do(replacement) {
         this.instance.executeEdits(null, [{
             range: this.instance.getSelection(),
             text: replacement,
@@ -92,8 +88,9 @@ class CommandHandler
         }])
     }
 
-    getSelection() {
-        return this.instance.getModel().getValueInRange(this.instance.getSelection())
+    model() {
+        return this.instance.getModel()
+            .getValueInRange(this.instance.getSelection())
     }
 }
 
