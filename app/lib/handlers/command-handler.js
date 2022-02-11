@@ -7,11 +7,14 @@ class CommandHandler
         this.instance = instance
     }
 
-    registerAll() {
-        const handle = this
-
+    register() {
         for (const cmd in commands) {
-            commands[cmd].run = () => handle[cmd]()
+            if (Object.prototype.hasOwnProperty.call(commands[cmd], 'op')) {
+                commands[cmd].run = () => this.exec(commands[cmd].op)
+            } else {
+                commands[cmd].run = () => this[cmd]()
+            }
+            
             this.instance.addAction(commands[cmd])
         }
 
@@ -51,41 +54,33 @@ class CommandHandler
         }
     }
 
-    bold() {
-        this.replaceSelection('**' + this.getSelectionValue() + '**')
-    }
-
-    italic() {
-        this.replaceSelection('_' + this.getSelectionValue() + '_')
-    }
-
-    strikethrough() {
-        this.replaceSelection('~~' + this.getSelectionValue() + '~~')
+    exec(repl) {
+        this.replaceSelection(repl + this.getSelection() + repl)
     }
 
     unorderedList() {
-        this.replaceSelection(this.getSelectionValue().replace(/^[a-zA-Z]+?/gm, (match) => `- ${match}`))
+        this.replaceSelection(this.getSelection().replace(/^[a-zA-Z]+?/gm, (match) => `- ${match}`))
     }
 
     orderedList() {
         let i = 0
-        this.replaceSelection(this.getSelectionValue().replace(/^[a-zA-Z]+?/gm, (match) => `${++i}. ${match}`))
+        this.replaceSelection(this.getSelection().replace(/^[a-zA-Z]+?/gm, (match) => `${++i}. ${match}`))
     }
 
     orderedListToTaskList() {
         let i = 0
-        this.replaceSelection(this.getSelectionValue().replace(/^([0-9]+)\.\s+(?!\[)/gm, (match) => `${++i}. [ ] ${match}`))
+        this.replaceSelection(this.getSelection().replace(/^([0-9]+)\.\s+(?!\[)/gm, (match) => `${++i}. [ ] ${match}`))
     }
 
     alert(params, content = null) {
         let type = params.dataset ? params.dataset.type : params
-        content = content ? content : this.getSelectionValue()
+        content = content ? content : this.getSelection()
         this.replaceSelection('::: '+type+'\n'+ content + '\n:::')
     }
 
     codeblock(params, content = null) {
         let language = params.dataset ? params.dataset.language : params
-        content = content ? content : this.getSelectionValue()
+        content = content ? content : this.getSelection()
         this.replaceSelection('```'+language+'\n'+content+'\n```')
     }
 
@@ -97,7 +92,7 @@ class CommandHandler
         }])
     }
 
-    getSelectionValue() {
+    getSelection() {
         return this.instance.getModel().getValueInRange(this.instance.getSelection())
     }
 }

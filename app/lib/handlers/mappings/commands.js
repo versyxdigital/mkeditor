@@ -30,6 +30,7 @@ export const commands = {
         contextMenuGroupId: 'navigation',
         contextMenuOrder: 1,
         keybindings: [ KeyMod.CtrlCmd | KeyCode.KEY_B ],
+        op: '**'
     },
     italic: {
         id: 'italic',
@@ -37,6 +38,7 @@ export const commands = {
         contextMenuGroupId: 'navigation',
         contextMenuOrder: 2,
         keybindings: [ KeyMod.CtrlCmd | KeyCode.KEY_I ],
+        op: '_'
     },
     strikethrough: {
         id: 'strikethrough',
@@ -44,6 +46,7 @@ export const commands = {
         contextMenuGroupId: 'navigation',
         contextMenuOrder: 3,
         keybindings: [ KeyMod.CtrlCmd | KeyCode.KEY_G ],
+        op: '~~'
     },
     unorderedList: {
         id: 'unordered-list',
