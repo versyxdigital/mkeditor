@@ -54,8 +54,8 @@ class CommandHandler
         }
     }
 
-    exec(repl) {
-        this.replaceSelection(repl + this.getSelection() + repl)
+    exec(op) {
+        this.replaceSelection(op + this.getSelection() + op)
     }
 
     unorderedList() {
