@@ -12,15 +12,12 @@ export const alertblocks = [
 ]
 
 export const codeblocks = [
-    {type: 'Powershell', key: 'P'},
-    {type: 'CLI', key: 'L'},
+    {type: 'Sh', key: 'S'},
+    {type: 'Javascript', key: 'J'},
     {type: 'CSharp', key: 'C'},
-    {type: 'FSharp', key: 'F'},
-    {type: 'Visual-Basic', key: 'V'},
-    {type: 'Python', key: 'Y'},
-    {type: 'SQL', key: 'S'},
+    {type: 'Python', key: 'P'},
+    {type: 'SQL', key: 'Q'},
     {type: 'XML', key: 'X'},
-    {type: 'JSON', key: 'J'}
 ]
 
 export const commands = {
