@@ -1,5 +1,5 @@
 import { KeyMod, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api'
-import { commands, blockAlerts, codeBlocks } from './command/map' 
+import { commands, alertblocks, codeblocks } from './mappings/commands' 
 
 class CommandHandler
 {
@@ -22,7 +22,7 @@ class CommandHandler
             run: () => $('#settings').modal('show')
         })
 
-        blockAlerts.forEach((block) => {
+        for (const block of alertblocks) {
             this.instance.addAction({
                 id: `alert-${block.type}`,
                 label: `Insert ${block.type} Alert`,
@@ -34,9 +34,9 @@ class CommandHandler
                     $('#alertMenuButton').dropdown('hide')
                 }
             })
-        })
+        }
 
-        codeBlocks.forEach((block) => {
+        for (const block of codeblocks) {
             this.instance.addAction({
                 id: `codeblock-${block.type}`,
                 label: `Insert ${block.type.charAt(0).toUpperCase() + block.type.slice(1)} Codeblock`,
@@ -48,19 +48,7 @@ class CommandHandler
                     $('#codeBlockMenuButton').dropdown('hide')
                 }
             })
-        })
-
-        this.instance.onKeyDown((event) => {
-            if(event.ctrlKey && event.code === 'KeyK') {
-                $('#codeBlockMenuButton').dropdown('toggle')
-            }
-
-            if(event.ctrlKey && event.code === 'KeyL') {
-                $('#alertMenuButton').dropdown('toggle')
-            }
-
-            this.instance.focus()
-        })
+        }
     }
 
     bold() {
@@ -99,10 +87,6 @@ class CommandHandler
         let language = params.dataset ? params.dataset.language : params
         content = content ? content : this.getSelectionValue()
         this.replaceSelection('```'+language+'\n'+content+'\n```')
-    }
-
-    displayMedia(alt, uri) {
-        this.replaceSelection(`![${alt}](${uri})`)
     }
 
     replaceSelection(replacement) {

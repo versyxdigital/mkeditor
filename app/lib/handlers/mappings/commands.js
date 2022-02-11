@@ -1,6 +1,6 @@
 import { KeyMod, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api'
 
-export const blockAlerts = [
+export const alertblocks = [
     {type: 'Primary', key: 'P'},
     {type: 'Secondary', key: 'E'},
     {type: 'Info', key: 'I'},
@@ -11,7 +11,7 @@ export const blockAlerts = [
     {type: 'Dark', key: 'R'},
 ]
 
-export const codeBlocks = [
+export const codeblocks = [
     {type: 'Powershell', key: 'P'},
     {type: 'CLI', key: 'L'},
     {type: 'CSharp', key: 'C'},
