@@ -16,7 +16,7 @@ class SettingsHandler {
         }
     }
     
-    registerAll() {
+    register() {
         this.addAutoIndentToggleHandler()
             .addDarkModeToggleHandler()
             .addWordWrapToggleHandler()

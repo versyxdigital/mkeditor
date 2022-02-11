@@ -13,31 +13,30 @@ let activeFile
 
 if (editor && preview) {
     // Create a new Editor instance.
-    const markdownEditor = new Editor(editor, preview)
+    const mkeditor = new Editor(editor, preview)
 
     // Initialise the underlying monaco editor instance and watch for changes
     // to enable live preview rendering.
-    instance = markdownEditor.init({ watch: true })
+    instance = mkeditor.init({ watch: true })
 
     if (instance) {
         // Ensure windows are split 50,50
-        // TODO implement drag events for manual resizing
         Split(['#editor', '#preview'], {
             sizes: [50,50]
         })
 
         // Register new command handler for the monaco editor instance to provide
         // and handle editor commands and actions (e.g. bold, alertblock etc.)
-        const commandHandler = new CommandHandler(instance)
-        commandHandler.registerAll()
+        const commands = new CommandHandler(instance)
+        commands.register()
 
         // Register new settings handler for the monaco editor instance to provide
         // local settings with persistence.
-        const settingsHandler = new SettingsHandler(instance, true)
-        settingsHandler.registerAll()
+        const settings = new SettingsHandler(instance, true)
+        settings.register()
 
         // Map monaco editor commands to editor UI buttons (e.g. bold, alertblock etc.)
-        let ops = document.getElementById('editor-functions').querySelectorAll('a')
+        const ops = document.getElementById('editor-functions').querySelectorAll('a')
         if (ops) {
             ops.forEach((op) => {
                 op.addEventListener('click', (event) => {

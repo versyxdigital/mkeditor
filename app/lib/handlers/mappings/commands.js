@@ -1,0 +1,72 @@
+import { KeyMod, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api'
+
+export const alertblocks = [
+    {type: 'Primary', key: 'P'},
+    {type: 'Secondary', key: 'E'},
+    {type: 'Info', key: 'I'},
+    {type: 'Success', key: 'S'},
+    {type: 'Warning', key: 'W'},
+    {type: 'Danger', key: 'D'},
+    {type: 'Light', key: 'L'},
+    {type: 'Dark', key: 'R'},
+]
+
+export const codeblocks = [
+    {type: 'Powershell', key: 'P'},
+    {type: 'CLI', key: 'L'},
+    {type: 'CSharp', key: 'C'},
+    {type: 'FSharp', key: 'F'},
+    {type: 'Visual-Basic', key: 'V'},
+    {type: 'Python', key: 'Y'},
+    {type: 'SQL', key: 'S'},
+    {type: 'XML', key: 'X'},
+    {type: 'JSON', key: 'J'}
+]
+
+export const commands = {
+    bold: {
+        id: 'bold',
+        label: 'Make Text Bold',
+        contextMenuGroupId: 'navigation',
+        contextMenuOrder: 1,
+        keybindings: [ KeyMod.CtrlCmd | KeyCode.KEY_B ],
+        op: '**'
+    },
+    italic: {
+        id: 'italic',
+        label: 'Make Text Italic',
+        contextMenuGroupId: 'navigation',
+        contextMenuOrder: 2,
+        keybindings: [ KeyMod.CtrlCmd | KeyCode.KEY_I ],
+        op: '_'
+    },
+    strikethrough: {
+        id: 'strikethrough',
+        label: 'Make Text Strikethrough',
+        contextMenuGroupId: 'navigation',
+        contextMenuOrder: 3,
+        keybindings: [ KeyMod.CtrlCmd | KeyCode.KEY_G ],
+        op: '~~'
+    },
+    unorderedList: {
+        id: 'unordered-list',
+        label: 'Convert To Unordered List',
+        contextMenuGroupId: 'cutcopypaste',
+        contextMenuOrder: 4,
+        keybindings: [ KeyMod.CtrlCmd | KeyCode.KEY_1 ],
+    },
+    orderedList: {
+        id: 'ordered-list',
+        label: 'Convert To Ordered List',
+        contextMenuGroupId: 'cutcopypaste',
+        contextMenuOrder: 5,
+        keybindings: [ KeyMod.CtrlCmd | KeyCode.KEY_2 ],
+    },
+    orderedListToTaskList: {
+        id: 'ordered-list-to-task-list',
+        label: 'Convert Ordered List To Task List',
+        contextMenuGroupId: 'cutcopypaste',
+        contextMenuOrder: 6,
+        keybindings: [ KeyMod.CtrlCmd | KeyCode.KEY_3 ],
+    },
+}
