@@ -16,7 +16,8 @@ import {
     faTerminal,
     faMoon,
     faCog,
-    faSave
+    faSave,
+    faQuestionCircle
 } from '@fortawesome/free-solid-svg-icons'
 
 library.add(
@@ -35,7 +36,8 @@ library.add(
     faClipboard,
     faMoon,
     faCog,
-    faSave
+    faSave,
+    faQuestionCircle
 )
 
 dom.watch()
