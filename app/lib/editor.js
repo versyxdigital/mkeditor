@@ -9,10 +9,7 @@ import { wordCount, characterCount } from './extensions/word-count'
 import { getEditorLineNumberForPreviewOffset, scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 
-hljs.registerAliases('cli', { languageName: 'shell' })
-
 const md = new MarkdownIt({
-    html: true,
     code: false
 })
 

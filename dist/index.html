@@ -23,6 +23,11 @@
                 <i class="fas fa-cog hover-fade"></i>
             </a>
         </li>
+        <li class="nav-item">
+            <a class="text-muted hover-fade ml-4 modal-toggle" href="#" data-target="#editor-show-help">
+                <i class="fa fa-question-circle hover-fade"></i>
+            </a>
+        </li>
     </ul>
 </nav>
 <div class="d-flex flex-row h-100">
@@ -67,18 +72,14 @@
                             <i class="fas fa-code"></i>
                         </button>
                         <div class="dropdown-menu" id="codeBlockMenu" aria-labelledby="codeBlockMenuButton">
-                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="powershell"><i class="fas fa-terminal"></i> <u>P</u>owershell</a>
-                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="cli"><i class="fas fa-terminal"></i> C<u>L</u>I</a>
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="sh"><i class="fas fa-terminal"></i> <u>S</u>hell</a>
                             <div class="dropdown-divider"></div>
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="javascript"><i class="fas fa-code"></i> <u>J</u>avascript</a>
                             <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="csharp"><i class="fas fa-code"></i> <u>C</u>#</a>
-                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="fsharp"><i class="fas fa-code"></i> <u>F</u>#</a>
-                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="vb"><i class="fas fa-code"></i> <u>V</u>isual Basic</a>
-                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="python"><i class="fas fa-code"></i> P<u>y</u>thon</a>
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="sql"><i class="fas fa-database"></i> <u>S</u>QL</a>
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="python"><i class="fas fa-code"></i> <u>P</u>ython</a>
                             <div class="dropdown-divider"></div>
                             <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="xml"><i class="fas fa-code"></i> <u>X</u>ML</a>
-                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="json"><i class="fas fa-code"></i> <u>J</u>SON</a>
+                            <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="sql"><i class="fas fa-database"></i> S<u>Q</u>L</a>
                         </div>
                     </div>
                     <div class="dropup mr-2">
@@ -147,6 +148,173 @@
                                 </label>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal" tabindex="-1" role="dialog" id="editor-show-help" aria-hidden="true">
+    <div class="modal-dialog mw-100 w-75" role="document">
+        <div class="modal-content">
+            <div class="modal-header border-bottom-0">
+                <h3 class="modal-title">Editor Shortcuts</h3>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body px-4 py-0">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Basic Editing</h5>
+                        <table class="table table-sm table-striped">
+                            <thead>
+                            <tr>
+                                <th scope="col">Shortcut</th>
+                                <th scope="col">Description</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td><strong>Ctrl + X</strong></td>
+                                <td>Cut line (empty selection)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + C</strong></td>
+                                <td>Copy line (empty selection)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Alt + ↑ / ↓</strong></td>
+                                <td>Move line up/down</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Shift + Alt + ↑ / ↓</strong></td>
+                                <td>Copy line up/down</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + Shift + K</strong></td>
+                                <td>Delete line</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + Enter</strong></td>
+                                <td>Insert line below</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + Shift + Enter</strong></td>
+                                <td>Insert line above</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + ] / [</strong></td>
+                                <td>Indent/outdent line</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Home / End</strong></td>
+                                <td>Go to beginning/end of line</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + Home</strong></td>
+                                <td>Go to beginning of file</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + End</strong></td>
+                                <td>Go to end of file</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + ↑ / ↓</strong></td>
+                                <td>Scroll line up/down</td>
+                                <td>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Alt + PgUp / PgDn</strong></td>
+                                <td>Scroll page up/down</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Search and Replace</h5>
+                        <table class="table table-sm table-striped">
+                            <thead>
+                            <tr>
+                                <th scope="col">Shortcut</th>
+                                <th scope="col">Description</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td><strong>Ctrl + F</strong></td>
+                                <td>Find</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + H</strong></td>
+                                <td>Replace</td>
+                            </tr>
+                            <tr>
+                                <td><strong>F3 / Shift + F3</strong></td>
+                                <td>Find next/previous</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Alt + Enter</strong></td>
+                                <td>Select all occurrences of find match</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Alt + C / R / W</strong></td>
+                                <td>Toggle case-sensitive / regex / whole word</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Multi-cursor and selection</h5>
+                        <table class="table table-sm table-striped">
+                            <thead>
+                            <tr>
+                                <th scope="col">Shortcut</th>
+                                <th scope="col">Description</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td><strong>Alt + Click</strong></td>
+                                <td>Insert cursor</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + Alt + ↑ / ↓</strong></td>
+                                <td>Insert cursor above/below</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Shift + Alt + I</strong></td>
+                                <td>Insert cursor at end of each line selected</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + L</strong></td>
+                                <td>Select current line</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + F2</strong></td>
+                                <td>Select all occurrences of current word</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Shift + Alt + (Drag mouse)</strong></td>
+                                <td>Column (box) selection</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + Shift + Alt + ↑ / ↓</strong></td>
+                                <td>Column (box) selection</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ctrl + Shift + Alt + PgUp / PgDn</strong></td>
+                                <td>Column (box) selection</td>
+                            </tr>
+                            <tr>
+                                <td><strong>(Mousewheel pressed + drag cursor)</strong></td>
+                                <td>Column (box) selection</td>
+                            </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
