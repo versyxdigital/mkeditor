@@ -13,7 +13,7 @@ function getInstallerConfig () {
 
     return Promise.resolve({
         name: 'mkeditor',
-        authors: 'Chris Rowles <me@rowles.ch>',
+        authors: 'Chris Rowles',
         appDirectory: path.join(__dirname, '../out/mkeditor-win32-x64'),
         outputDirectory: path.join(__dirname, '../out/windows-installer'),
         noMsi: true,
