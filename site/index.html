@@ -1,0 +1,140 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Chris Rowles">
+    <meta name="description" content="Quickly and easily get started writing your markdown documents with MKEditor's rich set of features.">
+    <meta property="og:title" content="MKEditor - the simple markdown editor." />
+    <meta property="og:description" content="Quickly and easily get started writing your markdown documents with MKEditor's rich set of features." />
+    <meta property="og:image" content="https://breach.rowles.ch/mkeditor.png" />
+    <title>MKEditor - A Simple Markdown Editor.</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato&family=Open+Sans&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-fork-ribbon-css/0.2.3/gh-fork-ribbon.min.css" />
+
+    <style>
+        .bd-placeholder-img {
+            font-size: 1.125rem;
+            text-anchor: middle;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+        }
+        @media (min-width: 768px) {
+            .bd-placeholder-img-lg {
+                font-size: 3.5rem;
+            }
+        }
+        body {
+            font-family: 'Lato', sans-serif;
+        }
+        .icon-list {
+            padding-left: 0;
+            list-style: none;
+        }
+        .icon-list li {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: .25rem;
+        }
+        .icon-list li::before {
+            display: block;
+            flex-shrink: 0;
+            width: 1.5em;
+            height: 1.5em;
+            margin-right: .5rem;
+            content: "";
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23212529' viewBox='0 0 16 16'%3E%3Cpath d='M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM4.5 7.5a.5.5 0 0 0 0 1h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H4.5z'/%3E%3C/svg%3E") no-repeat center center / 100% auto;
+        }
+        svg:not(:root).svg-inline--fa {
+            overflow: visible;
+        }
+        .svg-inline--fa.fa-w-16 {
+            width: 1em;
+        }
+        .love {
+            color: #dc3545;
+        }
+        .svg-inline--fa {
+            display: inline-block;
+            font-size: inherit;
+            height: 1em;
+            overflow: visible;
+            vertical-align: -0.125em;
+        }
+        .filename {
+            font-size: 0.6em;
+        }
+        .github-fork-ribbon:before {
+            background-color: #212529;
+        }
+    </style>
+</head>
+<body>
+    <a class="github-fork-ribbon d-none d-md-block" href="https://github.com/c6i/mkeditor" data-ribbon="Fork me on GitHub" title="Fork me on GitHub">Fork me on GitHub</a>
+    <div class="col-lg-8 mx-auto p-3 py-md-5">
+        <header class="d-flex align-items-center pb-1 mb-5 border-bottom">
+            <a href="/" class="d-flex align-items-center text-dark text-decoration-none">
+                <img src="https://breach.rowles.ch/logo.png" class="img-fluid rounded me-2" width="30" alt="">
+                <div class="">
+                    <span class="fs-4">MKEditor</span>
+                    <span> - The simple markdown editor.</span>
+                </div>
+            </a>
+        </header>
+        
+        <main>
+            <div class="row pb-5 d-flex flex-row align-items-center">
+                <div class="col-sm-12 col-md-6">
+                    <h1>Get started with MKEditor</h1>
+                    <p class="fs-5">Quickly and easily get started writing your markdown documents with MKEditor's rich set of features.</p>
+                    <a href="https://breach.rowles.ch/mkeditor-setup-x64.exe" download class="btn btn-dark btn-lg px-4">Download</a>
+                    <p class="text-muted mt-3 mb-0"><small>mkeditor-setup-x64.exe - v1.0.0 (restless-pond)</small></p>
+                    <p class="text-muted mb-0 d-flex align-items-center" id="verification">
+                        <a class="verify-checksum-link me-1" data-bs-toggle="collapse" href="#verify-checksum" role="button" aria-expanded="false" aria-controls="verify-checksum">
+                            Verify your download by comparing its SHA256 checksum
+                        </a> - <a class="ms-1 verify-checksum-link" href="https://mkeditor.rowles.ch/verification/">info</a>
+                    </p>
+                    <div class="collapse" id="verify-checksum">
+                        <div class="py-2">
+                            <small>
+                                <pre class="mb-0 border-0">8ea6850984af32f0c06906123193e689e6985cd465d1322b404c73bcff4d90b9  *mkeditor-setup-x64.exe</pre>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-12 col-md-6">
+                    <div class="ratio ratio-16x9 border rounded-3 shadow">
+                        <video src="https://breach.rowles.ch/mkeditor.mp4" autoplay loop muted></video>
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="mb-5 text-muted">
+            
+            <div class="row">
+                <div class="col">
+                    <h2>Features</h2>
+                    <ul class="icon-list mt-4">
+                        <li>Built with monaco, markdown-it and electron.</li>
+                        <li>Follows the CommonMark markdown specification.</li>
+                        <li>Includes a built-in HTML renderer with bootstrap for previewing rendered markdown.</li>
+                        <li>Includes the ability to change settings such as dark mode and word-wrap for your preference.</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+        <footer class="pt-5 my-5 text-muted border-top">
+            Made with&nbsp;
+            <svg class="svg-inline--fa fa-heart fa-w-16 love" aria-hidden="true" focusable="false" data-prefix="fa" data-icon="heart" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" data-fa-i2svg=""><path fill="currentColor" d="M462.3 62.6C407.5 15.9 326 24.3 275.7 76.2L256 96.5l-19.7-20.3C186.1 24.3 104.5 15.9 49.7 62.6c-62.8 53.6-66.1 149.8-9.9 207.9l193.5 199.8c12.5 12.9 32.8 12.9 45.3 0l193.5-199.8c56.3-58.1 53-154.3-9.8-207.9z"></path></svg>
+            &nbsp;by <a class="text-dark" href="https://rowles.ch">Chris Rowles</a> &middot; &copy; 2022
+        </footer>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+</body>
+</html>
+
