@@ -9,22 +9,22 @@
 <nav class="navbar navbar-expand navbar-light bg-light">
     <ul class="navbar-nav mr-auto">
         <li class="nav-item">
-            <span id="active-file" class="text-muted"></span>
+            <span id="active-file" class="text-muted ms-3"></span>
         </li>
     </ul>
-    <ul class="navbar-nav ml-auto">
+    <ul class="navbar-nav ms-auto">
         <li class="nav-item text-muted">
             <small>Character Count: <span id="character-count">0</span></small>
             <span class="mx-1 font-weight-lighter">|</span>
             <small>Word Count: <span id="word-count">0</span></small>
         </li>
         <li class="nav-item">
-            <a class="text-muted hover-fade ml-2" data-toggle="modal" href="#" data-target="#settings">
+            <a class="text-muted hover-fade ms-3" href="#" data-bs-toggle="modal" data-bs-target="#settings">
                 <i class="fas fa-cog hover-fade"></i>
             </a>
         </li>
         <li class="nav-item">
-            <a class="text-muted hover-fade ml-4 modal-toggle" href="#" data-target="#editor-show-help">
+            <a class="text-muted hover-fade mx-3" href="#" data-bs-toggle="modal" data-bs-target="#editor-show-help">
                 <i class="fa fa-question-circle hover-fade"></i>
             </a>
         </li>
@@ -35,14 +35,15 @@
         <div id="wrapper" class="d-flex flex-row">
             <div id="editor" class="flex-column split-editor"></div>
             <div id="preview" class="flex-column split-preview px-3"></div>
-            <nav class="navbar navbar-light bg-light fixed-bottom border-top py-1">
-                <div class="form-inline" id="editor-functions">
-                    <div class="btn-group mr-2">
+            
+            <nav class="navbar navbar-light bg-light fixed-bottom border-top p-2">
+                <div class="d-flex justify-content-start align-items-center" id="editor-functions">
+                    <div class="btn-group me-2">
                         <a class="btn btn-sm btn-outline-secondary" id="saveFile" class="btn btn-sm btn-success px-3">
                             <i class="fas fa-save"></i>
                         </a>
                     </div>
-                    <div class="btn-group mr-2">
+                    <div class="btn-group me-2">
                         <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="B" data-op="bold" data-ch="**" href="#">
                             <i class="fa fa-bold"></i>
                         </a>
@@ -54,7 +55,7 @@
                             <i class="fa fa-strikethrough"></i>
                         </a>
                     </div>
-                    <div class="btn-group mr-2">
+                    <div class="btn-group me-2">
                         <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="1" data-op="unorderedList"
                            href="#">
                             <i class="fa fa-list-ul"></i>
@@ -67,8 +68,9 @@
                             <i class="fa fa-tasks"></i>
                         </a>
                     </div>
-                    <div class="dropup mr-2">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeBlockMenuButton" data-shortcut="K" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <div class="btn-group dropup me-2">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeBlockMenuButton" data-shortcut="K"
+                                data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-code"></i>
                         </button>
                         <div class="dropdown-menu" id="codeBlockMenu" aria-labelledby="codeBlockMenuButton">
@@ -83,7 +85,8 @@
                         </div>
                     </div>
                     <div class="dropup mr-2">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="alertMenuButton" data-shortcut="L" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="alertMenuButton" data-shortcut="L"
+                                data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-exclamation-circle"></i>
                         </button>
                         <div class="dropdown-menu" id="alertMenu" aria-labelledby="alertMenuButton">
@@ -98,11 +101,11 @@
                         </div>
                     </div>
                 </div>
-                <ul class="navbar-nav ml-auto">
+                <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <div class="custom-control custom-switch">
-                            <input type="checkbox" class="custom-control-input" id="toggleDarkMode">
-                            <label class="custom-control-label" for="toggleDarkMode" id="darkModeIcon">
+                        <div class="form-check form-switch me-2">
+                            <input type="checkbox" class="form-check-input" id="toggleDarkMode">
+                            <label class="form-check-label ms-1" for="toggleDarkMode" id="darkModeIcon">
                                 <i class="fas fa-moon"></i>
                             </label>
                         </div>
@@ -112,62 +115,48 @@
         </div>
     </div>
 </div>
-<div class="modal" tabindex="-1" role="dialog" id="settings" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<div class="modal" tabindex="-1" id="settings">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header border-bottom-0">
                 <h5 class="modal-title">Editor Settings</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
-                <div class="row">
-                    <div class="col-md-24">
-                        <div class="form-group">
-                            <div class="custom-control custom-switch">
-                                <input type="checkbox" class="custom-control-input setting" id="toggleAutoIndent">
-                                <label class="custom-control-label" for="toggleAutoIndent">
-                                    Automatic indent
-                                </label>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <div class="custom-control custom-switch">
-                                <input type="checkbox" class="custom-control-input setting" id="toggleWordWrap">
-                                <label class="custom-control-label" for="toggleWordWrap">
-                                    Word wrapping
-                                </label>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <div class="custom-control custom-switch">
-                                <input type="checkbox" class="custom-control-input setting" id="toggleWhitespace">
-                                <label class="custom-control-label" for="toggleWhitespace">
-                                    Render whitespace
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+            <div class="modal-body">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input setting" id="toggleAutoIndent">
+                    <label class="form-check-label" for="toggleAutoIndent">
+                        Automatic indent
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input setting" id="toggleWordWrap">
+                    <label class="form-check-label" for="toggleWordWrap">
+                        Word wrapping
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input setting" id="toggleWhitespace">
+                    <label class="form-check-label" for="toggleWhitespace">
+                        Render whitespace
+                    </label>
                 </div>
             </div>
         </div>
     </div>
 </div>
-<div class="modal" tabindex="-1" role="dialog" id="editor-show-help" aria-hidden="true">
+<div class="modal" tabindex="-1" id="editor-show-help">
     <div class="modal-dialog mw-100 w-75" role="document">
         <div class="modal-content">
             <div class="modal-header border-bottom-0">
                 <h3 class="modal-title">Editor Shortcuts</h3>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">×</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body px-4 py-0">
                 <div class="row">
                     <div class="col-md-6">
                         <h5>Basic Editing</h5>
-                        <table class="table table-sm table-striped">
+                        <table class="table table-sm table-striped small">
                             <thead>
                             <tr>
                                 <th scope="col">Shortcut</th>
@@ -234,7 +223,7 @@
                     </div>
                     <div class="col-md-6">
                         <h5>Search and Replace</h5>
-                        <table class="table table-sm table-striped">
+                        <table class="table table-sm table-striped small">
                             <thead>
                             <tr>
                                 <th scope="col">Shortcut</th>
@@ -269,7 +258,7 @@
                 <div class="row">
                     <div class="col-md-12">
                         <h5>Multi-cursor and selection</h5>
-                        <table class="table table-sm table-striped">
+                        <table class="table table-sm table-striped small">
                             <thead>
                             <tr>
                                 <th scope="col">Shortcut</th>

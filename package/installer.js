@@ -1,4 +1,4 @@
-const path = require('path')
+const config = require('../config/installer')
 const { createWindowsInstaller } = require('electron-winstaller')
 
 getInstallerConfig()
@@ -9,17 +9,6 @@ getInstallerConfig()
     })
 
 function getInstallerConfig () {
-    console.log('creating windows installer')
-
-    return Promise.resolve({
-        name: 'mkeditor',
-        authors: 'Chris Rowles',
-        appDirectory: path.join(__dirname, '../out/mkeditor-win32-x64'),
-        outputDirectory: path.join(__dirname, '../out/windows-installer'),
-        noMsi: true,
-        exe: 'mkeditor.exe',
-        setupExe: 'mkeditor-setup-x64.exe',
-        iconUrl: path.join(__dirname, '../app/assets/logo.ico'),
-        setupIcon: path.join(__dirname, '../app/assets/logo.ico'),
-    })
+    console.log('Creating windows installer...')
+    return Promise.resolve(config)
 }

@@ -1,7 +1,9 @@
 {
   "name": "mkeditor",
+  "license": "MIT",
   "version": "1.0.0",
-  "description": "Markdown Editor - Desktop Version",
+  "author": "Chris Rowles",
+  "description": "Markdown Editor - Desktop",
   "main": "main.js",
   "scripts": {
     "build": "webpack --config webpack.config.js",
@@ -9,7 +11,6 @@
     "make:executable": "electron-forge make",
     "make:installer": "npm run make:executable && node package/installer.js"
   },
-  "author": "Chris Rowles <me@rowles.ch>",
   "devDependencies": {
     "@electron-forge/cli": "^6.0.0-beta.63",
     "@electron-forge/maker-deb": "^6.0.0-beta.63",
@@ -35,15 +36,14 @@
     "webpack-cli": "^4.9.2"
   },
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^1.3.0",
-    "@fortawesome/free-brands-svg-icons": "^6.0.0",
-    "@fortawesome/free-regular-svg-icons": "^6.0.0",
-    "@fortawesome/free-solid-svg-icons": "^6.0.0",
+    "@fortawesome/fontawesome-svg-core": "^6.2.1",
+    "@fortawesome/free-brands-svg-icons": "^6.2.1",
+    "@fortawesome/free-regular-svg-icons": "^6.2.1",
+    "@fortawesome/free-solid-svg-icons": "^6.2.1",
+    "@popperjs/core": "^2.11.6",
     "about-window": "^1.15.2",
-    "bootstrap": "^4.6.1",
+    "bootstrap": "^5.2.0",
     "electron-squirrel-startup": "^1.0.0",
-    "jquery": "^3.6.0",
-    "popper.js": "^1.16.1",
     "split.js": "^1.6.5",
     "sweetalert2": "^11.4.0",
     "webpack-merge": "^5.8.0"
@@ -57,22 +57,39 @@
         {
           "name": "@electron-forge/maker-squirrel",
           "config": {
-            "name": "editor_electron"
+            "iconUrl": "https://mkeditoross.github.io/mkeditor/favicon.ico",
+            "setupIcon": "./app/assets/logo.ico",
+            "authors": "Chris Rowles",
+            "description": "Markdown Editor - Desktop",
+            "copyright": "Copyright © Chris Rowles 2022. All Rights Reserved"
           }
         },
         {
           "name": "@electron-forge/maker-zip",
           "platforms": [
             "darwin"
-          ]
+          ],
+          "config": {
+            "authors": "Chris Rowles",
+            "description": "Markdown Editor - Desktop",
+            "copyright": "Copyright © Chris Rowles 2022. All Rights Reserved"
+          }
         },
         {
           "name": "@electron-forge/maker-deb",
-          "config": {}
+          "config": {
+            "authors": "Chris Rowles",
+            "description": "Markdown Editor - Desktop",
+            "copyright": "Copyright © Chris Rowles 2022. All Rights Reserved"
+          }
         },
         {
           "name": "@electron-forge/maker-rpm",
-          "config": {}
+          "config": {
+            "authors": "Chris Rowles",
+            "description": "Markdown Editor - Desktop",
+            "copyright": "Copyright © Chris Rowles 2022. All Rights Reserved"
+          }
         }
       ]
     }

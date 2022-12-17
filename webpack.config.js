@@ -45,11 +45,6 @@ module.exports = {
         new MonacoWebpackPlugin({
             languages: ['markdown']
         }),
-        new webpack.ProvidePlugin({
-            $: 'jquery',
-            jQuery: 'jquery',
-            Popper: ['popper.js', 'default']
-        }),
         new webpack.optimize.LimitChunkCountPlugin({
             maxChunks: 1
         })

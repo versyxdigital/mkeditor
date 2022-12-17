@@ -1,7 +1,7 @@
 const { app } = require('electron')
 
 module.exports = {
-    handleSquirrelEvent: function () {
+    handleSquirrelEvent: () => {
         if (process.argv.length === 1) {
             return false
         }
@@ -18,8 +18,7 @@ module.exports = {
 
             try {
                 spawnedProcess = ChildProcess.spawn(command, args, {detached: true})
-            } catch (error) {
-            }
+            } catch (error) {}
 
             return spawnedProcess
         }

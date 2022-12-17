@@ -24,6 +24,7 @@ class Editor
         this.instance = null
         this.editor = editor
         this.preview = preview
+        this.commands = null
 
         // Fetch stored editor settings.
         this.savedConfig = JSON.parse(localStorage.getItem('settings'))
@@ -95,6 +96,18 @@ class Editor
                 scrollPreviewToEditorVisibleRange(visibleRange.startLineNumber, this.preview)
             }
         })
+
+        this.instance.onKeyDown((e) => {
+            if (e.ctrlKey && e.keyCode === 42 /* L */) {
+                this.commands.alerts.toggle()
+            }
+
+            if (e.ctrlKey && e.keyCode === 41 /* K */) {
+                this.commands.codeblocks.toggle()
+            }
+
+            this.instance.focus()
+        })
     }
 
     render() {
@@ -110,6 +123,10 @@ class Editor
         // Do character and word counts
         wordCount(this.preview)
         characterCount(this.preview)
+    }
+
+    registerCommandHandler(handler) {
+        this.commands = handler
     }
 }
 
