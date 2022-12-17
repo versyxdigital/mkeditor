@@ -1,4 +1,4 @@
-import { Modal } from 'bootstrap'
+import { Modal, Dropdown } from 'bootstrap'
 import { KeyMod, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api'
 import { commands, alertblocks, codeblocks } from './mappings/commands'
 
@@ -7,6 +7,8 @@ class CommandHandler
     constructor(instance) {
         this.instance = instance
         this.settings = new Modal(document.getElementById('settings'))
+        this.alerts = new Dropdown(document.getElementById('alertMenuButton'))
+        this.codeblocks = new Dropdown(document.getElementById('codeBlockMenuButton'))
     }
 
     register() {
@@ -24,7 +26,9 @@ class CommandHandler
             id: 'settings',
             label: 'Open Settings Dialog',
             keybindings: [ KeyMod.CtrlCmd | KeyCode.US_SEMICOLON ],
-            run: () => this.settings.toggle()
+            run: () => {
+                this.settings.toggle()
+            }
         })
 
         for (const block of alertblocks) {
@@ -34,7 +38,7 @@ class CommandHandler
                 keybindings: [KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KEY_L, KeyCode[`KEY_${block.key}`])],
                 run: () => {
                     this.alert(block.type.toLowerCase())
-                    document.getElementById('alertMenuButton').dropdown('hide')
+                    this.alerts.hide()
                 }
             })
         }
@@ -46,7 +50,7 @@ class CommandHandler
                 keybindings: [KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KEY_K, KeyCode[`KEY_${block.key}`])],
                 run: () => {
                     this.codeblock(block.type.toLowerCase())
-                    document.getElementById('codeBlockMenuButton').dropdown('hide')
+                    this.codeblocks.hide()
                 }
             })
         }

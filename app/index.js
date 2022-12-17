@@ -14,27 +14,28 @@ let activeFile
 if (editor && preview) {
     // Create a new Editor instance.
     const mkeditor = new Editor(editor, preview)
-
+    
     // Initialise the underlying monaco editor instance and watch for changes
     // to enable live preview rendering.
     instance = mkeditor.init({ watch: true })
-
+    
     if (instance) {
         // Ensure windows are split 50,50
         Split(['#editor', '#preview'], {
             sizes: [50,50]
         })
-
+        
         // Register new command handler for the monaco editor instance to provide
         // and handle editor commands and actions (e.g. bold, alertblock etc.)
         const commands = new CommandHandler(instance)
         commands.register()
-
+        mkeditor.registerCommandHandler(commands)
+        
         // Register new settings handler for the monaco editor instance to provide
         // local settings with persistence.
         const settings = new SettingsHandler(instance, true)
         settings.register()
-
+        
         // Map monaco editor commands to editor UI buttons (e.g. bold, alertblock etc.)
         const ops = document.getElementById('editor-functions').querySelectorAll('a')
         if (ops) {
@@ -51,7 +52,7 @@ if (editor && preview) {
                 })
             })
         }
-
+        
         // IPC (Inter-process communication) event handlers for transmitting
         // data between the browser window execution context and the node runtime.
         document.addEventListener('DOMContentLoaded', () => {
@@ -74,7 +75,7 @@ if (editor && preview) {
                         }
                     })
                 }
-
+                
                 // Enable saving files from outside of the browser window execution context.
                 // Provides access to browser window data and emits it to the ipc channel.
                 window.api.receive('from:request:save', (context) => {
@@ -86,7 +87,7 @@ if (editor && preview) {
                 window.api.receive('from:request:saveas', (context) => {
                     window.api.send(context, instance.getValue())
                 })
-
+                
                 // Enable opening files from outside of the browser window execution context.
                 // Provides access to browser window data and emits it to the ipc channel.
                 window.api.receive('from:request:open', (response) => {
@@ -102,7 +103,7 @@ if (editor && preview) {
                     instance.focus()
                     instance.trigger(command, 'editor.action.quickCommand')
                 })
-
+                
                 // Enable ipc notifications.
                 window.api.receive('from:notification:display', (event) => {
                     notify.send(event.status, event.message)
