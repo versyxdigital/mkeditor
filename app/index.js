@@ -40,17 +40,12 @@ if (editor && preview) {
         if (ops) {
             ops.forEach((op) => {
                 op.addEventListener('click', (event) => {
-                    const target = event.target.tagName === 'svg'
-                        ? event.target.parentElement
-                        : event.target
-
+                    const target = event.currentTarget
                     if (Object.prototype.hasOwnProperty.call(target.dataset, 'op')) {
-                        if (!commands[target.dataset.op] && target.dataset.ch) {
-                            commands.exec(target.dataset.ch)
-                        } else {
-                            commands[target.dataset.op](target)
-                        }
-                        
+                        target.dataset.ch && !commands[target.dataset.op]
+                            ? commands.exec(target.dataset.ch)
+                            : commands[target.dataset.op](target)
+
                         instance.focus()
                     }
                 })

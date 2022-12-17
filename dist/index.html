@@ -9,22 +9,22 @@
 <nav class="navbar navbar-expand navbar-light bg-light">
     <ul class="navbar-nav mr-auto">
         <li class="nav-item">
-            <span id="active-file" class="text-muted"></span>
+            <span id="active-file" class="text-muted ms-3"></span>
         </li>
     </ul>
-    <ul class="navbar-nav ml-auto">
+    <ul class="navbar-nav ms-auto">
         <li class="nav-item text-muted">
             <small>Character Count: <span id="character-count">0</span></small>
             <span class="mx-1 font-weight-lighter">|</span>
             <small>Word Count: <span id="word-count">0</span></small>
         </li>
         <li class="nav-item">
-            <a class="text-muted hover-fade ml-2" data-bs-toggle="modal" data-bs-target="#settings">
+            <a class="text-muted hover-fade ms-3" href="#" data-bs-toggle="modal" data-bs-target="#settings">
                 <i class="fas fa-cog hover-fade"></i>
             </a>
         </li>
         <li class="nav-item">
-            <a class="text-muted hover-fade ml-4" data-bs-toggle="modal" data-bs-target="#editor-show-help">
+            <a class="text-muted hover-fade mx-3" href="#" data-bs-toggle="modal" data-bs-target="#editor-show-help">
                 <i class="fa fa-question-circle hover-fade"></i>
             </a>
         </li>
@@ -35,6 +35,7 @@
         <div id="wrapper" class="d-flex flex-row">
             <div id="editor" class="flex-column split-editor"></div>
             <div id="preview" class="flex-column split-preview px-3"></div>
+            
             <nav class="navbar navbar-light bg-light fixed-bottom border-top p-2">
                 <div class="d-flex justify-content-start align-items-center" id="editor-functions">
                     <div class="btn-group me-2">
@@ -67,8 +68,9 @@
                             <i class="fa fa-tasks"></i>
                         </a>
                     </div>
-                    <div class="dropup me-2">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeBlockMenuButton" data-shortcut="K" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <div class="btn-group dropup me-2">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeBlockMenuButton" data-shortcut="K"
+                                data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-code"></i>
                         </button>
                         <div class="dropdown-menu" id="codeBlockMenu" aria-labelledby="codeBlockMenuButton">
@@ -83,7 +85,8 @@
                         </div>
                     </div>
                     <div class="dropup mr-2">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="alertMenuButton" data-shortcut="L" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="alertMenuButton" data-shortcut="L"
+                                data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-exclamation-circle"></i>
                         </button>
                         <div class="dropdown-menu" id="alertMenu" aria-labelledby="alertMenuButton">
@@ -98,11 +101,11 @@
                         </div>
                     </div>
                 </div>
-                <ul class="navbar-nav ml-auto">
+                <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <div class="custom-control custom-switch">
-                            <input type="checkbox" class="custom-control-input" id="toggleDarkMode">
-                            <label class="custom-control-label" for="toggleDarkMode" id="darkModeIcon">
+                        <div class="form-check form-switch me-2">
+                            <input type="checkbox" class="form-check-input" id="toggleDarkMode">
+                            <label class="form-check-label ms-1" for="toggleDarkMode" id="darkModeIcon">
                                 <i class="fas fa-moon"></i>
                             </label>
                         </div>
