@@ -9,8 +9,8 @@
   "scripts": {
     "build": "webpack --config webpack.config.js",
     "execute": "node ./node_modules/electron/cli.js .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "make:unpacked": "electron-builder --dir",
+    "make:packed": "electron-builder"
   },
   "devDependencies": {
     "asar": "^3.1.0",
