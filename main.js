@@ -1,10 +1,5 @@
 const path = require('path')
-const squirrel = require('./package/squirrel')
 const storage = require('./app/lib/node/storage')
-
-if (squirrel.handleSquirrelEvent()) {
-    return
-}
 
 const { app, BrowserWindow, ipcMain, Menu } = require('electron')
 const openAboutWindow = require('about-window').default

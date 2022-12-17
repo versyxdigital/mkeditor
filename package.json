@@ -1,26 +1,22 @@
 {
   "name": "mkeditor",
+  "productName": "MKEditor",
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Chris Rowles",
   "description": "Markdown Editor - Desktop",
   "main": "main.js",
   "scripts": {
     "build": "webpack --config webpack.config.js",
     "execute": "node ./node_modules/electron/cli.js .",
-    "make:executable": "electron-forge make",
-    "make:installer": "npm run make:executable && node package/installer.js"
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
   },
   "devDependencies": {
-    "@electron-forge/cli": "^6.0.0-beta.63",
-    "@electron-forge/maker-deb": "^6.0.0-beta.63",
-    "@electron-forge/maker-rpm": "^6.0.0-beta.63",
-    "@electron-forge/maker-squirrel": "^6.0.0-beta.63",
-    "@electron-forge/maker-zip": "^6.0.0-beta.63",
     "asar": "^3.1.0",
     "css-loader": "^5.2.7",
     "electron": "^12.2.3",
-    "electron-winstaller": "^5.0.0",
+    "electron-builder": "^23.6.0",
     "file-loader": "^6.2.0",
     "highlight.js": "^11.4.0",
     "html-webpack-plugin": "^5.5.0",
@@ -43,55 +39,24 @@
     "@popperjs/core": "^2.11.6",
     "about-window": "^1.15.2",
     "bootstrap": "^5.2.0",
-    "electron-squirrel-startup": "^1.0.0",
     "split.js": "^1.6.5",
     "sweetalert2": "^11.4.0",
     "webpack-merge": "^5.8.0"
   },
-  "config": {
-    "forge": {
-      "packagerConfig": {
-        "asar": true
-      },
-      "makers": [
-        {
-          "name": "@electron-forge/maker-squirrel",
-          "config": {
-            "iconUrl": "https://mkeditoross.github.io/mkeditor/favicon.ico",
-            "setupIcon": "./app/assets/logo.ico",
-            "authors": "Chris Rowles",
-            "description": "Markdown Editor - Desktop",
-            "copyright": "Copyright © Chris Rowles 2022. All Rights Reserved"
-          }
-        },
-        {
-          "name": "@electron-forge/maker-zip",
-          "platforms": [
-            "darwin"
-          ],
-          "config": {
-            "authors": "Chris Rowles",
-            "description": "Markdown Editor - Desktop",
-            "copyright": "Copyright © Chris Rowles 2022. All Rights Reserved"
-          }
-        },
-        {
-          "name": "@electron-forge/maker-deb",
-          "config": {
-            "authors": "Chris Rowles",
-            "description": "Markdown Editor - Desktop",
-            "copyright": "Copyright © Chris Rowles 2022. All Rights Reserved"
-          }
-        },
-        {
-          "name": "@electron-forge/maker-rpm",
-          "config": {
-            "authors": "Chris Rowles",
-            "description": "Markdown Editor - Desktop",
-            "copyright": "Copyright © Chris Rowles 2022. All Rights Reserved"
-          }
-        }
-      ]
+  "build": {
+    "appId": "com.mkeditor.app",
+    "win": {
+      "target": "nsis",
+      "icon": "dist/icon.ico"
+    },
+    "directories": {
+      "output": "releases/${platform}/${arch}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "installerIcon": "dist/icon.ico",
+      "license": "license.txt"
     }
   }
 }
