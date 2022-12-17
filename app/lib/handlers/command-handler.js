@@ -22,7 +22,7 @@ class CommandHandler
             id: 'settings',
             label: 'Open Settings Dialog',
             keybindings: [ KeyMod.CtrlCmd | KeyCode.US_SEMICOLON ],
-            run: () => $('#settings').modal('show')
+            run: () => document.getElementById('settings').modal('show')
         })
 
         for (const block of alertblocks) {
@@ -32,7 +32,7 @@ class CommandHandler
                 keybindings: [KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KEY_L, KeyCode[`KEY_${block.key}`])],
                 run: () => {
                     this.alert(block.type.toLowerCase())
-                    $('#alertMenuButton').dropdown('hide')
+                    document.getElementById('alertMenuButton').dropdown('hide')
                 }
             })
         }
@@ -44,7 +44,7 @@ class CommandHandler
                 keybindings: [KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KEY_K, KeyCode[`KEY_${block.key}`])],
                 run: () => {
                     this.codeblock(block.type.toLowerCase())
-                    $('#codeBlockMenuButton').dropdown('hide')
+                    document.getElementById('codeBlockMenuButton').dropdown('hide')
                 }
             })
         }
