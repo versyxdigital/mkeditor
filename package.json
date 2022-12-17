@@ -45,18 +45,25 @@
   },
   "build": {
     "appId": "com.mkeditor.app",
+    "directories": {
+      "output": "releases/${platform}/${arch}"
+    },
     "win": {
       "target": "nsis",
       "icon": "dist/icon.ico"
     },
-    "directories": {
-      "output": "releases/${platform}/${arch}"
-    },
     "nsis": {
       "oneClick": false,
       "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": true,
       "installerIcon": "dist/icon.ico",
       "license": "license.txt"
+    },
+    "linux": {
+      "target": "deb",
+      "icon": "dist/icon.ico",
+      "category": "Utility"
     }
   }
 }
