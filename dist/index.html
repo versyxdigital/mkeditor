@@ -19,12 +19,12 @@
             <small>Word Count: <span id="word-count">0</span></small>
         </li>
         <li class="nav-item">
-            <a class="text-muted hover-fade ml-2" data-toggle="modal" href="#" data-target="#settings">
+            <a class="text-muted hover-fade ml-2" data-bs-toggle="modal" data-bs-target="#settings">
                 <i class="fas fa-cog hover-fade"></i>
             </a>
         </li>
         <li class="nav-item">
-            <a class="text-muted hover-fade ml-4 modal-toggle" href="#" data-target="#editor-show-help">
+            <a class="text-muted hover-fade ml-4" data-bs-toggle="modal" data-bs-target="#editor-show-help">
                 <i class="fa fa-question-circle hover-fade"></i>
             </a>
         </li>
@@ -35,14 +35,14 @@
         <div id="wrapper" class="d-flex flex-row">
             <div id="editor" class="flex-column split-editor"></div>
             <div id="preview" class="flex-column split-preview px-3"></div>
-            <nav class="navbar navbar-light bg-light fixed-bottom border-top py-1">
-                <div class="form-inline" id="editor-functions">
-                    <div class="btn-group mr-2">
+            <nav class="navbar navbar-light bg-light fixed-bottom border-top p-2">
+                <div class="d-flex justify-content-start align-items-center" id="editor-functions">
+                    <div class="btn-group me-2">
                         <a class="btn btn-sm btn-outline-secondary" id="saveFile" class="btn btn-sm btn-success px-3">
                             <i class="fas fa-save"></i>
                         </a>
                     </div>
-                    <div class="btn-group mr-2">
+                    <div class="btn-group me-2">
                         <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="B" data-op="bold" data-ch="**" href="#">
                             <i class="fa fa-bold"></i>
                         </a>
@@ -54,7 +54,7 @@
                             <i class="fa fa-strikethrough"></i>
                         </a>
                     </div>
-                    <div class="btn-group mr-2">
+                    <div class="btn-group me-2">
                         <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="1" data-op="unorderedList"
                            href="#">
                             <i class="fa fa-list-ul"></i>
@@ -67,7 +67,7 @@
                             <i class="fa fa-tasks"></i>
                         </a>
                     </div>
-                    <div class="dropup mr-2">
+                    <div class="dropup me-2">
                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeBlockMenuButton" data-shortcut="K" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-code"></i>
                         </button>
@@ -112,56 +112,48 @@
         </div>
     </div>
 </div>
-<div class="modal" tabindex="-1" role="dialog" id="settings" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<div class="modal" tabindex="-1" id="settings">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header border-bottom-0">
                 <h5 class="modal-title">Editor Settings</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
-                <div class="row">
-                    <div class="col-md-24">
-                        <div class="form-group">
-                            <div class="custom-control custom-switch">
-                                <input type="checkbox" class="custom-control-input setting" id="toggleAutoIndent">
-                                <label class="custom-control-label" for="toggleAutoIndent">
-                                    Automatic indent
-                                </label>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <div class="custom-control custom-switch">
-                                <input type="checkbox" class="custom-control-input setting" id="toggleWordWrap">
-                                <label class="custom-control-label" for="toggleWordWrap">
-                                    Word wrapping
-                                </label>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <div class="custom-control custom-switch">
-                                <input type="checkbox" class="custom-control-input setting" id="toggleWhitespace">
-                                <label class="custom-control-label" for="toggleWhitespace">
-                                    Render whitespace
-                                </label>
-                            </div>
-                        </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input setting" id="toggleAutoIndent">
+                        <label class="custom-control-label" for="toggleAutoIndent">
+                            Automatic indent
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input setting" id="toggleWordWrap">
+                        <label class="custom-control-label" for="toggleWordWrap">
+                            Word wrapping
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input setting" id="toggleWhitespace">
+                        <label class="custom-control-label" for="toggleWhitespace">
+                            Render whitespace
+                        </label>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-<div class="modal" tabindex="-1" role="dialog" id="editor-show-help" aria-hidden="true">
+<div class="modal" tabindex="-1" id="editor-show-help">
     <div class="modal-dialog mw-100 w-75" role="document">
         <div class="modal-content">
             <div class="modal-header border-bottom-0">
                 <h3 class="modal-title">Editor Shortcuts</h3>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">×</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body px-4 py-0">
                 <div class="row">

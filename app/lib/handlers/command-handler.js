@@ -1,10 +1,12 @@
+import { Modal } from 'bootstrap'
 import { KeyMod, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api'
-import { commands, alertblocks, codeblocks } from './mappings/commands' 
+import { commands, alertblocks, codeblocks } from './mappings/commands'
 
 class CommandHandler
 {
     constructor(instance) {
         this.instance = instance
+        this.settings = new Modal(document.getElementById('settings'))
     }
 
     register() {
@@ -22,7 +24,7 @@ class CommandHandler
             id: 'settings',
             label: 'Open Settings Dialog',
             keybindings: [ KeyMod.CtrlCmd | KeyCode.US_SEMICOLON ],
-            run: () => document.getElementById('settings').modal('show')
+            run: () => this.settings.toggle()
         })
 
         for (const block of alertblocks) {
