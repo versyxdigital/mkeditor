@@ -4,3 +4,4 @@ dist/*
 out/
 .idea
 export/
+releases
