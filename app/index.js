@@ -1,9 +1,9 @@
 import './bootstrap'
 import Split from 'split.js'
-import notify from './lib/utilities/notify'
-import Editor from './lib/editor'
-import CommandHandler from './lib/handlers/command-handler'
-import SettingsHandler from './lib/handlers/settings-handler'
+import notify from './utilities/notify'
+import Editor from './editor'
+import CommandHandler from './handlers/command-handler'
+import SettingsHandler from './handlers/settings-handler'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 
 const editor = document.getElementById('editor')

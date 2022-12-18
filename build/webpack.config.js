@@ -11,7 +11,7 @@ module.exports = {
     output: {
         globalObject: 'self',
         filename: 'mkeditor.bundle.js',
-        path: path.resolve(__dirname, 'dist')
+        path: path.resolve(__dirname, '../dist')
     },
     optimization: {
         minimizer: [new TerserWebpackPlugin({

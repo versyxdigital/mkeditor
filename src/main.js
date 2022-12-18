@@ -1,5 +1,4 @@
 const path = require('path')
-const storage = require('./lib/storage')
 const { app, dialog, ipcMain, nativeTheme, BrowserWindow, Menu } = require('electron')
 const IpcHandler = require('./lib/ipc')
 const MenuHandler = require('./lib/menu')
@@ -33,7 +32,7 @@ function createWindow() {
     const menuHandler = new MenuHandler(app, Menu)
     menuHandler.register(context)
 
-    const ipcHandler = new IpcHandler(ipcMain, storage)
+    const ipcHandler = new IpcHandler(ipcMain)
     ipcHandler.register(context)
 
     context.on('close', function(event) {
@@ -70,7 +69,5 @@ app.on('activate', () => {
 })
 
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit()
-    }
+    app.quit()
 })

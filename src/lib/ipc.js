@@ -1,9 +1,9 @@
+const storage = require('./storage')
 
 module.exports = class IpcHandler
 {
-    constructor(ipc, storage) {
+    constructor(ipc) {
         this.ipc = ipc
-        this.storage = storage
     }
 
     register(context) {
@@ -11,7 +11,7 @@ module.exports = class IpcHandler
             const content = data.content
             const file = data.filepath
 
-            this.storage.newFile(context, {
+            storage.newFile(context, {
                 id: event.sender.id,
                 data: content,
                 file
@@ -22,7 +22,7 @@ module.exports = class IpcHandler
             const content = data.content
             const filepath = data.filepath
 
-            this.storage.save(context, {
+            storage.save(context, {
                 id: event.sender.id,
                 data: content,
                 existingFilepath: filepath
@@ -30,7 +30,7 @@ module.exports = class IpcHandler
         })
 
         this.ipc.on('to:request:saveas', (event, data) => {
-            this.storage.save(context, {
+            storage.save(context, {
                 id: event.sender.id,
                 data,
             })
