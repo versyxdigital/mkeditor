@@ -1,6 +1,7 @@
 const { ipcRenderer } = require('electron')
 
 const senderWhitelist = [
+    'to:request:new',
     'to:request:open',
     'to:request:save',
     'to:request:saveas',
@@ -9,6 +10,7 @@ const senderWhitelist = [
 ]
 
 const receiverWhitelist = [
+    'from:request:new',
     'from:request:open',
     'from:request:save',
     'from:request:saveas',

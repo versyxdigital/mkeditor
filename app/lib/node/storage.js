@@ -1,6 +1,15 @@
 const { dialog } = require('electron')
 const fs = require('fs')
 
+const saveBeforeExiting = (win) => {
+    dialog.showMessageBox(null, {
+        type: 'question',
+        buttons: ['Yes', 'No'],
+        title: 'Save before exit',
+        message: 'Would you like to save before closing?'
+    })
+}
+
 module.exports = {
     async save(win, {id, data, existingFilepath = null, encoding = 'utf-8'}) {
         let options = {

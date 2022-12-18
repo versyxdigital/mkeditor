@@ -24,6 +24,13 @@ function configureApplicationMenu() {
             label: 'File',
             submenu: [
                 {
+                    label: 'New File...',
+                    click: () => {
+                        win.webContents.send('from:request:new', 'to:request:new')
+                    },
+                    accelerator: 'Ctrl+N' 
+                },
+                {
                     label: 'Open File...',
                     click: () => {
                         storage.open(win).then(response => {
@@ -169,6 +176,10 @@ ipcMain.on('to:request:save', (event, data = { content, filepath }) => {
 ipcMain.on('to:request:saveas', (event, data) => {
     storage.save(win, {
         id: event.sender.id,
-        data: data,
+        data,
     })
+})
+
+ipcMain.on('to:request:new', (event, data) => {
+    console.log(event, data)
 })

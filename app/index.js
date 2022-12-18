@@ -76,6 +76,16 @@ if (editor && preview) {
                     })
                 }
                 
+                // Enable opening files from outside of the browser window execution context.
+                // Provides access to browser window data and emits it to the ipc channel.
+                window.api.receive('from:request:new', () => {
+                    activeFile = null
+                    document.querySelector('#active-file').innerText = null
+                    instance.setValue('')
+                    instance.focus()
+                })
+
+
                 // Enable saving files from outside of the browser window execution context.
                 // Provides access to browser window data and emits it to the ipc channel.
                 window.api.receive('from:request:save', (context) => {
