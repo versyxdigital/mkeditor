@@ -15,7 +15,7 @@ const { contextBridge } = require('electron')
  * sending synchronous and asynchronous messages accross different execution contexts
  * (i.e. from the render process (web page) to the main process.).
  */
-const { contextBridgeChannel } = require('./app/lib/node/channel')
+const { contextBridgeChannel } = require('./lib/channel')
 
 /**
  * The "Main World" is the JavaScript context that the main renderer code runs in.

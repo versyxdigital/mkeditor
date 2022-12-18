@@ -1,8 +1,8 @@
 const path = require('path')
-const storage = require('./app/lib/node/storage')
-const IpcHandler = require('./app/lib/node/ipc')
-const MenuHandler = require('./app/lib/node/menu')
+const storage = require('./lib/storage')
 const { app, dialog, ipcMain, nativeTheme, BrowserWindow, Menu } = require('electron')
+const IpcHandler = require('./lib/ipc')
+const MenuHandler = require('./lib/menu')
 
 app.commandLine.appendSwitch('no-sandbox')
 app.commandLine.appendSwitch('disable-gpu')
@@ -28,10 +28,10 @@ function createWindow() {
     })
 
     context.webContents.on('will-navigate', event => event.preventDefault())
-    context.loadFile(path.join(__dirname, 'dist/index.html'))
+    context.loadFile(path.join(__dirname, '../dist/index.html'))
 
-    const menu = new MenuHandler(app, Menu)
-    menu.register(context)
+    const menuHandler = new MenuHandler(app, Menu)
+    menuHandler.register(context)
 
     const ipcHandler = new IpcHandler(ipcMain, storage)
     ipcHandler.register(context)
