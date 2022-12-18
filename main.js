@@ -6,6 +6,15 @@ const openAboutWindow = require('about-window').default
 
 let win
 
+app.commandLine.appendSwitch('no-sandbox')
+app.commandLine.appendSwitch('disable-gpu')
+app.commandLine.appendSwitch('disable-software-rasterizer')
+app.commandLine.appendSwitch('disable-gpu-compositing')
+app.commandLine.appendSwitch('disable-gpu-rasterization')
+app.commandLine.appendSwitch('disable-gpu-sandbox')
+app.commandLine.appendSwitch('--no-sandbox')
+app.disableHardwareAcceleration()
+
 function configureApplicationMenu() {
     app.applicationMenu = Menu.buildFromTemplate([
         {

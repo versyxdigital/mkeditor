@@ -3,7 +3,7 @@
   "productName": "MKEditor",
   "license": "MIT",
   "version": "1.1.0",
-  "author": "Chris Rowles",
+  "author": "Chris Rowles <me@rowles.ch>",
   "description": "Markdown Editor - Desktop",
   "main": "main.js",
   "scripts": {
