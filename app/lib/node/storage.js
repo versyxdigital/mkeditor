@@ -13,7 +13,6 @@ const saveChangesToExisting = async () => {
 }
 
 const setActiveFile = (win, filepath = null) => {
-    console.log(filepath)
     const filename = filepath ? filepath.split('\\').slice(-1).pop() : ''
     const content = filepath ? fs.readFileSync(filepath, { encoding: 'utf-8' }) : ''
 
@@ -28,13 +27,12 @@ const setActiveFile = (win, filepath = null) => {
 module.exports = {
     async newFile(win, {data, file, encoding = 'utf-8'}) {
         const check = await saveChangesToExisting()
-        console.log('check', check)
         if (check) {
-            fs.writeFileSync(file, data, encoding)
-
-            win.webContents.send('from:notification:display', {
-                status: 'success',
-                message: 'File saved.'
+            await this.save(win, {
+                id: 'new',
+                data,
+                existingFilepath: file,
+                encoding
             })
         }
 
