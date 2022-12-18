@@ -50,7 +50,7 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "dist/icon.ico"
+      "icon": "build/resourcs/icon.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -58,11 +58,11 @@
       "allowToChangeInstallationDirectory": true,
       "deleteAppDataOnUninstall": true,
       "installerIcon": "dist/icon.ico",
-      "license": "dist/license.txt"
+      "license": "build/resourcs/license.txt"
     },
     "linux": {
       "target": "deb",
-      "icon": "dist/icon.ico",
+      "icon": "build/resourcs/icon.ico",
       "category": "Utility"
     }
   }
