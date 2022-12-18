@@ -32,13 +32,14 @@ module.exports = {
                 id: 'new',
                 data,
                 existingFilepath: file,
-                encoding
+                encoding,
+                reset: true
             })
         }
 
         setActiveFile(win.webContents, null, '')
     },
-    async save(win, {id, data, existingFilepath = null, encoding = 'utf-8'}) {
+    async save(win, {id, data, existingFilepath = null, encoding = 'utf-8', reset = false}) {
         let options = {
             title: 'Save file',
             defaultPath : `markdown-${id}`,
@@ -90,6 +91,10 @@ module.exports = {
                         status: 'success',
                         message: 'File saved.'
                     })
+
+                    if (reset) {
+                        filePath = null
+                    }
 
                     setActiveFile(win.webContents, filePath)
                 } catch (error) {
