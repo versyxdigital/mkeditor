@@ -77,7 +77,6 @@ if (editor && preview) {
                     })
                 }
 
-
                 // Set the theme according to the user's system theme
                 window.api.receive('from:theme:set', (shouldUseDarkMode) => {
                     if (shouldUseDarkMode) {

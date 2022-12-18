@@ -1,10 +1,8 @@
 const path = require('path')
 const storage = require('./app/lib/node/storage')
-
-const { app, ipcMain, nativeTheme, BrowserWindow, Menu } = require('electron')
-const openAboutWindow = require('about-window').default
-
-let win
+const IpcHandler = require('./app/lib/node/ipc')
+const MenuHandler = require('./app/lib/node/menu')
+const { app, dialog, ipcMain, nativeTheme, BrowserWindow, Menu } = require('electron')
 
 app.commandLine.appendSwitch('no-sandbox')
 app.commandLine.appendSwitch('disable-gpu')
@@ -15,103 +13,10 @@ app.commandLine.appendSwitch('disable-gpu-sandbox')
 app.commandLine.appendSwitch('--no-sandbox')
 app.disableHardwareAcceleration()
 
-function configureApplicationMenu() {
-    app.applicationMenu = Menu.buildFromTemplate([
-        {
-            label: '',
-        },
-        {
-            label: 'File',
-            submenu: [
-                {
-                    label: 'New File...',
-                    click: () => {
-                        win.webContents.send('from:request:new', 'to:request:new')
-                    },
-                    accelerator: 'Ctrl+N' 
-                },
-                {
-                    label: 'Open File...',
-                    click: () => {
-                        storage.open(win).then(response => {
-                            win.webContents.send('from:request:open', response)
-                        })
-                    },
-                    accelerator: 'Ctrl+O' 
-                },
-                {
-                    label: 'Save',
-                    click: () => {
-                        win.webContents.send('from:request:save', 'to:request:save')
-                    },
-                    accelerator: 'Ctrl+S'
-                },
-                {
-                    label: 'Save As...',
-                    click: () => {
-                        win.webContents.send('from:request:saveas', 'to:request:saveas')
-                    },
-                    accelerator: 'Ctrl+Shift+S'
-                },
-                { type: 'separator' },
-                { role: 'quit' },
-            ]
-        },
-        {
-            label: 'Edit',
-            submenu: [
-                { role: 'undo' },
-                { role: 'redo' },
-                { type: 'separator' },
-                { role: 'cut' },
-                { role: 'copy' },
-                { role: 'paste' },
-            ]
-        },
-        {
-            label: 'View',
-            submenu: [
-                {
-                    label: 'Command Palette...',
-                    click: () => {
-                        win.webContents.send('from:command:palette', 'open')
-                    },
-                    accelerator: 'F1'
-                },
-                { role: 'togglefullscreen' },
-                {
-                    label: 'Toggle Developer Tools',
-                    accelerator: (function () {
-                        return process.platfom === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I'
-                    }()),
-                    click: () => {
-                        win.webContents.toggleDevTools()
-                    }
-                }
-            ]
-        },
-        {
-            label: 'Help',
-            submenu: [
-                {
-                    label: 'About...',
-                    click: () => {
-                        openAboutWindow({
-                            icon_path: path.join(__dirname, 'app/assets/logo.ico'),
-                            product_name: 'MKEditor',
-                            copyright: '© 2021-' + new Date().getFullYear() + ' Chris Rowles. All rights reserved.',
-                            package_json_dir: __dirname,
-                            use_version_info: false
-                        })
-                    }
-                }
-            ]
-        }
-    ])
-}
+let context
 
 function createWindow() {
-    win = new BrowserWindow({
+    context = new BrowserWindow({
         show: false,
         icon: path.join(__dirname, 'app/assets/logo.ico'),
         webPreferences: {
@@ -122,75 +27,50 @@ function createWindow() {
         }
     })
 
-    win.webContents.on('will-navigate', event => event.preventDefault())
-    win.loadFile(path.join(__dirname, 'dist/index.html'))
+    context.webContents.on('will-navigate', event => event.preventDefault())
+    context.loadFile(path.join(__dirname, 'dist/index.html'))
 
-    configureApplicationMenu()
+    const menu = new MenuHandler(app, Menu)
+    menu.register(context)
 
-    win.on('close', function(event) {
-        const choice = require('electron').dialog.showMessageBoxSync(this, {
+    const ipcHandler = new IpcHandler(ipcMain, storage)
+    ipcHandler.register(context)
+
+    context.on('close', function(event) {
+        const choice = dialog.showMessageBoxSync(this, {
             type: 'question',
             buttons: ['Yes', 'No'],
             title: 'Confirm',
             message: 'Are you sure you want to quit?'
         })
 
-        if (choice == 1) {
+        if (choice) {
             event.preventDefault()
         }
     })
 
-    win.on('closed', () => {
-        win = null
+    context.on('closed', () => {
+        context = null
     })
 
-    win.webContents.on('did-finish-load', () => {
-        win.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors)
+    context.webContents.on('did-finish-load', () => {
+        context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors)
     })
 
-    win.maximize()
-    win.show()
+    context.maximize()
+    context.show()
 }
 
 app.on('ready', createWindow)
+
+app.on('activate', () => {
+    if (!context) {
+        createWindow()
+    }
+})
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit()
     }
-})
-
-app.on('activate', () => {
-    if (win === null) {
-        createWindow()
-    }
-})
-
-ipcMain.on('to:request:save', (event, data = { content, filepath }) => {
-    const content = data.content
-    const filepath = data.filepath
-
-    storage.save(win, {
-        id: event.sender.id,
-        data: content,
-        existingFilepath: filepath
-    })
-})
-
-ipcMain.on('to:request:saveas', (event, data) => {
-    storage.save(win, {
-        id: event.sender.id,
-        data,
-    })
-})
-
-ipcMain.on('to:request:new', (event, data) => {
-    const content = data.content
-    const file = data.filepath
-
-    storage.newFile(win, {
-        id: event.sender.id,
-        data: content,
-        file: file
-    })
 })
