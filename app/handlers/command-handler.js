@@ -56,6 +56,25 @@ class CommandHandler
         }
     }
 
+    map() {
+        // Map monaco editor commands to editor UI buttons (e.g. bold, alertblock etc.)
+        const ops = document.getElementById('editor-functions').querySelectorAll('a')
+        if (ops) {
+            ops.forEach((op) => {
+                op.addEventListener('click', (event) => {
+                    const target = event.currentTarget
+                    if (Object.prototype.hasOwnProperty.call(target.dataset, 'op')) {
+                        target.dataset.ch && !commands[target.dataset.op]
+                            ? commands.exec(target.dataset.ch)
+                            : commands[target.dataset.op](target)
+
+                        this.instance.focus()
+                    }
+                })
+            })
+        }
+    }
+
     exec(op) {
         this.do(op + this.model() + op)
     }

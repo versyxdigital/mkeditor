@@ -12,11 +12,11 @@ const saveChangesToExisting = async () => {
     return check.response === 0
 }
 
-const setActiveFile = (win, filepath = null) => {
+const setActiveFile = (context, filepath = null) => {
     const filename = filepath ? filepath.split('\\').slice(-1).pop() : ''
     const content = filepath ? fs.readFileSync(filepath, { encoding: 'utf-8' }) : ''
 
-    win.send('from:request:open', {
+    context.webContents.send('from:request:open', {
         filepath,
         filename,
         content
@@ -25,10 +25,10 @@ const setActiveFile = (win, filepath = null) => {
 
 
 module.exports = {
-    async newFile(win, {data, file, encoding = 'utf-8'}) {
+    async newFile(context, {data, file, encoding = 'utf-8'}) {
         const check = await saveChangesToExisting()
         if (check) {
-            await this.save(win, {
+            await this.save(context, {
                 id: 'new',
                 data,
                 existingFilepath: file,
@@ -37,9 +37,9 @@ module.exports = {
             })
         }
 
-        setActiveFile(win.webContents, null, '')
+        setActiveFile(context, null, '')
     },
-    async save(win, {id, data, existingFilepath = null, encoding = 'utf-8', reset = false}) {
+    async save(context, {id, data, existingFilepath = null, encoding = 'utf-8', reset = false}) {
         let options = {
             title: 'Save file',
             defaultPath : `markdown-${id}`,
@@ -64,20 +64,20 @@ module.exports = {
                 try {
                     fs.writeFileSync(existingFilepath, data, encoding)
 
-                    win.webContents.send('from:notification:display', {
+                    context.webContents.send('from:notification:display', {
                         status: 'success',
                         message: 'File saved.'
                     })
 
-                    setActiveFile(win.webContents, existingFilepath)
+                    setActiveFile(context, existingFilepath)
                 } catch (error) {
-                    win.webContents.send('from:notification:display', {
+                    context.webContents.send('from:notification:display', {
                         status: 'error',
                         message: `Unable to save file, please check ${existingFilepath}`
                     })
                 }
             } else {
-                win.webContents.send('from:notification:display', {
+                context.webContents.send('from:notification:display', {
                     status: 'error',
                     message: `Unable to save file, please check ${existingFilepath}.`
                 })
@@ -88,7 +88,7 @@ module.exports = {
                     try {
                         fs.writeFileSync(filePath, data, encoding)
 
-                        win.webContents.send('from:notification:display', {
+                        context.webContents.send('from:notification:display', {
                             status: 'success',
                             message: 'File saved.'
                         })
@@ -97,10 +97,10 @@ module.exports = {
                             filePath = null
                         }
 
-                        setActiveFile(win.webContents, filePath)
+                        setActiveFile(context, filePath)
                     } catch (error) {
                         if (error.code !== 'ENOENT') {
-                            win.webContents.send('from:notification:display', {
+                            context.webContents.send('from:notification:display', {
                                 status: 'error',
                                 message: 'An error has occurred, please try again.'
                             })
@@ -108,7 +108,7 @@ module.exports = {
                     }
                 })
                 .catch(() =>{
-                    win.webContents.send('from:notification:display', {
+                    context.webContents.send('from:notification:display', {
                         status: 'error',
                         message: 'An error has occurred, please try again.'
                     })
@@ -116,7 +116,7 @@ module.exports = {
         }
     },
 
-    async open(win) {
+    async open(context) {
         return new Promise((resolve) => {
             dialog.showOpenDialog({
                 filters: [
@@ -144,7 +144,7 @@ module.exports = {
             }).catch((error) => {
                 console.log(error.code)
                 if (error.message !== 'noselection') {
-                    win.webContents.send('from:notification:display', {
+                    context.webContents.send('from:notification:display', {
                         status: 'error',
                         message: 'Unable to open file.'
                     })   

@@ -2,15 +2,15 @@
   "name": "mkeditor",
   "productName": "MKEditor",
   "license": "MIT",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": "Chris Rowles <me@rowles.ch>",
   "description": "Markdown Editor - Desktop",
-  "main": "main.js",
+  "main": "src/main.js",
   "scripts": {
-    "build": "webpack --config webpack.config.js",
+    "build": "webpack --config build/webpack.config.js",
     "execute": "node ./node_modules/electron/cli.js .",
-    "make:unpacked": "electron-builder --dir",
-    "make:packed": "electron-builder"
+    "make:executable": "electron-builder --dir",
+    "make:installer": "electron-builder"
   },
   "devDependencies": {
     "asar": "^3.1.0",
@@ -50,19 +50,19 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "dist/icon.ico"
+      "icon": "build/resources/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": true,
       "allowToChangeInstallationDirectory": true,
       "deleteAppDataOnUninstall": true,
-      "installerIcon": "dist/icon.ico",
-      "license": "license.txt"
+      "installerIcon": "build/resources/icon.ico",
+      "license": "build/resources/license.txt"
     },
     "linux": {
       "target": "deb",
-      "icon": "dist/icon.ico",
+      "icon": "build/resources/icon.ico",
       "category": "Utility"
     }
   }

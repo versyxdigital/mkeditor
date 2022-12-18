@@ -1,7 +1,5 @@
-node_modules
-dist/*
-!dist/index.html
-out/
 .idea
-export/
-releases
+node_modules
+dist/
+out/
+releases/

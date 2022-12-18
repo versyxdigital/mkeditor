@@ -2,7 +2,7 @@
 
 The simple markdown editor.
 
-![MKEditor](demo.png)
+![MKEditor](https://i.imgur.com/gTHbJne.png)
 
 ### Features
 
