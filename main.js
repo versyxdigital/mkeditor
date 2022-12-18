@@ -1,7 +1,7 @@
 const path = require('path')
 const storage = require('./app/lib/node/storage')
 
-const { app, BrowserWindow, ipcMain, Menu } = require('electron')
+const { app, ipcMain, nativeTheme, BrowserWindow, Menu } = require('electron')
 const openAboutWindow = require('about-window').default
 
 let win
@@ -142,6 +142,10 @@ function createWindow() {
 
     win.on('closed', () => {
         win = null
+    })
+
+    win.webContents.on('did-finish-load', () => {
+        win.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors)
     })
 
     win.maximize()
