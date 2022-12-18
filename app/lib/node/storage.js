@@ -83,34 +83,36 @@ module.exports = {
                 })
             }
         } else {
-            dialog.showSaveDialog(null, options).then(({ filePath }) => {
-                try {
-                    fs.writeFileSync(filePath, data, encoding)
+            dialog.showSaveDialog(null, options)
+                .then(({ filePath }) => {
+                    try {
+                        fs.writeFileSync(filePath, data, encoding)
 
-                    win.webContents.send('from:notification:display', {
-                        status: 'success',
-                        message: 'File saved.'
-                    })
-
-                    if (reset) {
-                        filePath = null
-                    }
-
-                    setActiveFile(win.webContents, filePath)
-                } catch (error) {
-                    if (error.code !== 'ENOENT') {
                         win.webContents.send('from:notification:display', {
-                            status: 'error',
-                            message: 'An error has occurred, please try again.'
+                            status: 'success',
+                            message: 'File saved.'
                         })
+
+                        if (reset) {
+                            filePath = null
+                        }
+
+                        setActiveFile(win.webContents, filePath)
+                    } catch (error) {
+                        if (error.code !== 'ENOENT') {
+                            win.webContents.send('from:notification:display', {
+                                status: 'error',
+                                message: 'An error has occurred, please try again.'
+                            })
+                        }
                     }
-                }
-            }).catch(() =>{
-                win.webContents.send('from:notification:display', {
-                    status: 'error',
-                    message: 'An error has occurred, please try again.'
                 })
-            })
+                .catch(() =>{
+                    win.webContents.send('from:notification:display', {
+                        status: 'error',
+                        message: 'An error has occurred, please try again.'
+                    })
+                })
         }
     },
 
