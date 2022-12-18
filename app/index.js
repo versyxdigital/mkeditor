@@ -76,6 +76,15 @@ if (editor && preview) {
                     })
                 }
                 
+                // Enable new files from outside of the browser window execution context.
+                // Provides access to browser window data and emits it to the ipc channel.
+                window.api.receive('from:request:new', (context) => {
+                    window.api.send(context, {
+                        content: instance.getValue(),
+                        filepath: activeFile
+                    })
+                })
+
                 // Enable saving files from outside of the browser window execution context.
                 // Provides access to browser window data and emits it to the ipc channel.
                 window.api.receive('from:request:save', (context) => {

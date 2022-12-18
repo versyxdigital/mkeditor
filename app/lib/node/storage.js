@@ -1,8 +1,45 @@
 const { dialog } = require('electron')
 const fs = require('fs')
 
+const saveChangesToExisting = async () => {
+    const check = await dialog.showMessageBox(null, {
+        type: 'question',
+        buttons: ['Yes', 'No'],
+        title: 'Save changes',
+        message: 'Would you like to save changes to your existing file first?'
+    })
+
+    return check.response === 0
+}
+
+const setActiveFile = (win, filepath = null) => {
+    const filename = filepath ? filepath.split('\\').slice(-1).pop() : ''
+    const content = filepath ? fs.readFileSync(filepath, { encoding: 'utf-8' }) : ''
+
+    win.send('from:request:open', {
+        filepath,
+        filename,
+        content
+    })
+}
+
+
 module.exports = {
-    async save(win, {id, data, existingFilepath = null, encoding = 'utf-8'}) {
+    async newFile(win, {data, file, encoding = 'utf-8'}) {
+        const check = await saveChangesToExisting()
+        if (check) {
+            await this.save(win, {
+                id: 'new',
+                data,
+                existingFilepath: file,
+                encoding,
+                reset: true
+            })
+        }
+
+        setActiveFile(win.webContents, null, '')
+    },
+    async save(win, {id, data, existingFilepath = null, encoding = 'utf-8', reset = false}) {
         let options = {
             title: 'Save file',
             defaultPath : `markdown-${id}`,
@@ -12,17 +49,6 @@ module.exports = {
                 {name: 'md', extensions: ['md']},
                 {name: 'All Files', extensions: ['*']}
             ]
-        }
-
-        const setActiveFile = (win, filepath) => {
-            const filename = filepath.split('\\').slice(-1).pop()
-            const content = fs.readFileSync(filepath, { encoding: 'utf-8' })
-
-            win.send('from:request:open', {
-                filepath,
-                filename,
-                content
-            })
         }
 
         if (existingFilepath) {
@@ -57,30 +83,36 @@ module.exports = {
                 })
             }
         } else {
-            dialog.showSaveDialog(null, options).then(({ filePath }) => {
-                try {
-                    fs.writeFileSync(filePath, data, encoding)
+            dialog.showSaveDialog(null, options)
+                .then(({ filePath }) => {
+                    try {
+                        fs.writeFileSync(filePath, data, encoding)
 
-                    win.webContents.send('from:notification:display', {
-                        status: 'success',
-                        message: 'File saved.'
-                    })
-
-                    setActiveFile(win.webContents, filePath)
-                } catch (error) {
-                    if (error.code !== 'ENOENT') {
                         win.webContents.send('from:notification:display', {
-                            status: 'error',
-                            message: 'An error has occurred, please try again.'
+                            status: 'success',
+                            message: 'File saved.'
                         })
+
+                        if (reset) {
+                            filePath = null
+                        }
+
+                        setActiveFile(win.webContents, filePath)
+                    } catch (error) {
+                        if (error.code !== 'ENOENT') {
+                            win.webContents.send('from:notification:display', {
+                                status: 'error',
+                                message: 'An error has occurred, please try again.'
+                            })
+                        }
                     }
-                }
-            }).catch(() =>{
-                win.webContents.send('from:notification:display', {
-                    status: 'error',
-                    message: 'An error has occurred, please try again.'
                 })
-            })
+                .catch(() =>{
+                    win.webContents.send('from:notification:display', {
+                        status: 'error',
+                        message: 'An error has occurred, please try again.'
+                    })
+                })
         }
     },
 
