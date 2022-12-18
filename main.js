@@ -181,5 +181,12 @@ ipcMain.on('to:request:saveas', (event, data) => {
 })
 
 ipcMain.on('to:request:new', (event, data) => {
-    console.log(event, data)
+    const content = data.content
+    const file = data.filepath
+
+    storage.newFile(win, {
+        id: event.sender.id,
+        data: content,
+        file: file
+    })
 })

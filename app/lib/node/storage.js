@@ -1,16 +1,45 @@
 const { dialog } = require('electron')
 const fs = require('fs')
 
-const saveBeforeExiting = (win) => {
-    dialog.showMessageBox(null, {
+const saveChangesToExisting = async () => {
+    const check = await dialog.showMessageBox(null, {
         type: 'question',
         buttons: ['Yes', 'No'],
-        title: 'Save before exit',
-        message: 'Would you like to save before closing?'
+        title: 'Save changes',
+        message: 'Would you like to save changes to your existing file first?'
+    })
+
+    return check.response === 0
+}
+
+const setActiveFile = (win, filepath = null) => {
+    console.log(filepath)
+    const filename = filepath ? filepath.split('\\').slice(-1).pop() : ''
+    const content = filepath ? fs.readFileSync(filepath, { encoding: 'utf-8' }) : ''
+
+    win.send('from:request:open', {
+        filepath,
+        filename,
+        content
     })
 }
 
+
 module.exports = {
+    async newFile(win, {data, file, encoding = 'utf-8'}) {
+        const check = await saveChangesToExisting()
+        console.log('check', check)
+        if (check) {
+            fs.writeFileSync(file, data, encoding)
+
+            win.webContents.send('from:notification:display', {
+                status: 'success',
+                message: 'File saved.'
+            })
+        }
+
+        setActiveFile(win.webContents, null, '')
+    },
     async save(win, {id, data, existingFilepath = null, encoding = 'utf-8'}) {
         let options = {
             title: 'Save file',
@@ -21,17 +50,6 @@ module.exports = {
                 {name: 'md', extensions: ['md']},
                 {name: 'All Files', extensions: ['*']}
             ]
-        }
-
-        const setActiveFile = (win, filepath) => {
-            const filename = filepath.split('\\').slice(-1).pop()
-            const content = fs.readFileSync(filepath, { encoding: 'utf-8' })
-
-            win.send('from:request:open', {
-                filepath,
-                filename,
-                content
-            })
         }
 
         if (existingFilepath) {
