@@ -7,10 +7,7 @@ module.exports = class IpcHandler
     }
 
     register(context) {
-        this.ipc.on('to:request:new', (event, data) => {
-            const content = data.content
-            const file = data.filepath
-
+        this.ipc.on('to:request:new', (event, { content, file }) => {
             storage.newFile(context, {
                 id: event.sender.id,
                 data: content,
@@ -18,14 +15,12 @@ module.exports = class IpcHandler
             })
         })
 
-        this.ipc.on('to:request:save', (event, data = { content, filepath }) => {
-            const content = data.content
-            const filepath = data.filepath
-
+        this.ipc.on('to:request:save', (event, { content, file }) => {
+            console.log(content, file)
             storage.save(context, {
                 id: event.sender.id,
                 data: content,
-                existingFilepath: filepath
+                file
             })
         })
 

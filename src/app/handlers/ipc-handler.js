@@ -10,8 +10,8 @@ export default class IpcHandler
     }
     
     /**
-     * Register IPC (Inter-process communication) event handlers for transmitting
-     * data between the browser window execution context and the node runtime.
+     * Register IPC event handlers for transmitting data between the browser window
+     * execution context and the node runtime.
      */
     register() {
         // Enable saving from within the browser window execution context
@@ -23,7 +23,7 @@ export default class IpcHandler
                 if (this.activeFile) {
                     this.context.send('to:request:save', {
                         content: this.app.getValue(),
-                        filepath: this.activeFile
+                        file: this.activeFile
                     })
                 } else {
                     this.context.send('to:request:saveas', this.app.getValue())
@@ -49,9 +49,10 @@ export default class IpcHandler
         // Enable new files from outside of the browser window execution context.
         // Provides access to browser window data and emits it to the ipc channel.
         this.context.receive('from:request:new', (context) => {
+            console.log({context});
             this.context.send(context, {
                 content: this.app.getValue(),
-                filepath: this.activeFile
+                file: this.activeFile
             })
         })
         
@@ -60,7 +61,7 @@ export default class IpcHandler
         this.context.receive('from:request:save', (context) => {
             this.context.send(context, {
                 content: this.app.getValue(),
-                filepath: this.activeFile
+                file: this.activeFile
             })
         })
         
@@ -73,7 +74,7 @@ export default class IpcHandler
         this.context.receive('from:request:open', (response) => {
             this.app.focus()
             this.app.setValue(response.content)
-            this.activeFile = response.filepath
+            this.activeFile = response.file
             document.querySelector('#active-file').innerText = response.filename
         })
         

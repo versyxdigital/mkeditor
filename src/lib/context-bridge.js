@@ -1,13 +1,9 @@
 const { ipcRenderer } = require('electron')
 
 const senderWhitelist = [
-    'to:theme:set',
     'to:request:new',
-    'to:request:open',
     'to:request:save',
     'to:request:saveas',
-    'to:command:palette',
-    'to:notification:display'
 ]
 
 const receiverWhitelist = [
@@ -17,7 +13,8 @@ const receiverWhitelist = [
     'from:request:save',
     'from:request:saveas',
     'from:command:palette',
-    'from:notification:display'
+    'from:notification:display',
+    'from:set:title'
 ]
 
 module.exports = {

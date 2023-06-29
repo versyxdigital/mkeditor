@@ -12,12 +12,12 @@ const saveChangesToExisting = async () => {
     return check.response === 0
 }
 
-const setActiveFile = (context, filepath = null) => {
-    const filename = filepath ? filepath.split('\\').slice(-1).pop() : ''
-    const content = filepath ? fs.readFileSync(filepath, { encoding: 'utf-8' }) : ''
+const setActiveFile = (context, file = null) => {
+    const filename = file ? file.split('\\').slice(-1).pop() : ''
+    const content = file ? fs.readFileSync(file, { encoding: 'utf-8' }) : ''
 
     context.webContents.send('from:request:open', {
-        filepath,
+        file,
         filename,
         content
     })
@@ -31,7 +31,7 @@ module.exports = {
             await this.save(context, {
                 id: 'new',
                 data,
-                existingFilepath: file,
+                file,
                 encoding,
                 reset: true
             })
@@ -39,7 +39,7 @@ module.exports = {
 
         setActiveFile(context, null, '')
     },
-    async save(context, {id, data, existingFilepath = null, encoding = 'utf-8', reset = false}) {
+    async save(context, {id, data, file = null, encoding = 'utf-8', reset = false}) {
         let options = {
             title: 'Save file',
             defaultPath : `markdown-${id}`,
@@ -51,35 +51,35 @@ module.exports = {
             ]
         }
 
-        if (existingFilepath) {
+        if (file) {
             let check
 
             try {
-                check = fs.statSync(existingFilepath)
+                check = fs.statSync(file)
             } catch (error) {
                 check = error.code || error
             }
 
             if (check !== 'ENOENT') {
                 try {
-                    fs.writeFileSync(existingFilepath, data, encoding)
+                    fs.writeFileSync(file, data, encoding)
 
                     context.webContents.send('from:notification:display', {
                         status: 'success',
                         message: 'File saved.'
                     })
 
-                    setActiveFile(context, existingFilepath)
+                    setActiveFile(context, file)
                 } catch (error) {
                     context.webContents.send('from:notification:display', {
                         status: 'error',
-                        message: `Unable to save file, please check ${existingFilepath}`
+                        message: `Unable to save file, please check ${file}`
                     })
                 }
             } else {
                 context.webContents.send('from:notification:display', {
                     status: 'error',
-                    message: `Unable to save file, please check ${existingFilepath}.`
+                    message: `Unable to save file, please check ${file}.`
                 })
             }
         } else {
@@ -137,7 +137,7 @@ module.exports = {
                 let filename = filePaths[0].split('\\').slice(-1).pop()
 
                 return resolve({
-                    filepath: filePaths[0],
+                    file: filePaths[0],
                     filename,
                     content
                 })
