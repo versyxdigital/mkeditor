@@ -6,7 +6,7 @@ import alertBlocks from './extensions/alert-blocks'
 import tableStyles from './extensions/table-styles'
 import lineNumbers from './extensions/line-numbers'
 import { wordCount, characterCount } from './extensions/word-count'
-import { getEditorLineNumberForPreviewOffset, scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync'
+import { scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync'
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api'
 
 const md = new MarkdownIt({
@@ -21,18 +21,25 @@ md.use(tableStyles, {tableClass: ['table', 'table-sm', 'table-bordered', 'table-
 class Editor
 {
     constructor(editor, preview) {
+        // Active editor
         this.instance = null
+
+        // Editor and preview DOM
         this.editor = editor
         this.preview = preview
-        this.commands = null
-        this.settings = null
-        this.ipc = null
-        this.original = null
+
+        // Access to handlers
+        this.commandHandler = null
+        this.settingsHandler = null
+        this.ipcHandler = null
+
+        // Track initial editor value for comparison to current value
+        this.loadedInitialEditorValue = null
 
         // Fetch stored editor settings.
         this.savedConfig = JSON.parse(localStorage.getItem('settings'))
         
-        // Set editor settings to either defaults or saved settings.
+        // Set editor settings to either defaults or saved settings
         this.wordWrap = 'on'
         this.autoIndent = 'none'
         this.whitespace = 'none'
@@ -58,9 +65,9 @@ class Editor
                 accessibilityPageSize: 1000
             })
 
-            this.original = this.instance.getValue()
+            this.loadedInitialEditorValue = this.instance.getValue()
             window.addEventListener('editor:state', (event) => {
-                this.original = event.detail
+                this.loadedInitialEditorValue = event.detail
             })
 
             window.onresize = () => this.instance.layout()
@@ -79,27 +86,11 @@ class Editor
         return this.instance
     }
 
-    handlePreviewScroll(event) {
-        event.stopPropagation()
-
-        const line = getEditorLineNumberForPreviewOffset(
-            this.instance.getModel().getLineCount(),
-            event.target
-        )
-
-        this.instance.revealRangeAtTop({
-            startColumn: 0,
-            endColumn: 100,
-            startLineNumber: Math.floor(line),
-            endLineNumber: Math.floor(line) + 1
-        }, 0)
-    }
-
     watch() {
         this.instance.onDidChangeModelContent(() => {
-            if (this.ipc) {
-                this.ipc.trackEditorStateBetweenExecutionContext(
-                    this.original,
+            if (this.ipcHandler) {
+                this.ipcHandler.trackEditorStateBetweenExecutionContext(
+                    this.loadedInitialEditorValue,
                     this.instance.getValue()
                 )
             }
@@ -116,11 +107,11 @@ class Editor
 
         this.instance.onKeyDown((e) => {
             if (e.ctrlKey && e.keyCode === 42 /* L */) {
-                this.commands.alerts.toggle()
+                this.commandHandler.alerts.toggle()
             }
 
             if (e.ctrlKey && e.keyCode === 41 /* K */) {
-                this.commands.codeblocks.toggle()
+                this.commandHandler.codeblocks.toggle()
             }
 
             this.instance.focus()
@@ -128,30 +119,27 @@ class Editor
     }
 
     render() {
-        // Render source markdown
         this.preview.innerHTML = md.render(this.instance.getValue())
-
-        // Highlight codeblocks and provide copy func
+        
         this.preview.querySelectorAll('pre code').forEach((block) => {
             hljs.highlightElement(block)
         })
         codeBlocks()
 
-        // Do character and word counts
         wordCount(this.preview)
         characterCount(this.preview)
     }
 
     registerCommandHandler(handler) {
-        this.commands = handler
+        this.commandHandler = handler
     }
 
     registerSettingsHandler(handler) {
-        this.settings = handler
+        this.settingsHandler = handler
     }
 
     registerIpcHandler(handler) {
-        this.ipc = handler
+        this.ipcHandler = handler
     }
 }
 

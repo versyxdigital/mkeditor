@@ -1,9 +1,9 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api'
 
 class SettingsHandler {
-    constructor(instance, persistence = false) {
-        this.editor = instance
-        this.persist = persistence
+    constructor(instance, persist = false) {
+        this.instance = instance
+        this.persist = persist
 
         if (localStorage.getItem('settings')) {
             this.settings = JSON.parse(localStorage.getItem('settings'))
@@ -62,7 +62,7 @@ class SettingsHandler {
                     this.settings.toggleAutoIndent = false
                 }
                 
-                this.editor.updateOptions({ autoIndent: option })
+                this.instance.updateOptions({ autoIndent: option })
             })
         }
         
@@ -110,7 +110,7 @@ class SettingsHandler {
                     this.settings.toggleWordWrap = false
                 }
 
-                this.editor.updateOptions({ wordWrap: option })
+                this.instance.updateOptions({ wordWrap: option })
             })
         }
         
@@ -130,7 +130,7 @@ class SettingsHandler {
                     this.settings.toggleWhitespace = false
                 }
 
-                this.editor.updateOptions({ renderWhitespace: option })
+                this.instance.updateOptions({ renderWhitespace: option })
             })
         }
 
