@@ -36,6 +36,7 @@ function createWindow() {
     ipcHandler.register(context)
 
     context.on('close', function(event) {
+        // TODO offer save before closing instead
         const choice = dialog.showMessageBoxSync(this, {
             type: 'question',
             buttons: ['Yes', 'No'],

@@ -48,9 +48,8 @@ export default class IpcHandler
         
         // Enable new files from outside of the browser window execution context.
         // Provides access to browser window data and emits it to the ipc channel.
-        this.context.receive('from:request:new', (context) => {
-            console.log({context});
-            this.context.send(context, {
+        this.context.receive('from:request:new', (channel) => {
+            this.context.send(channel, {
                 content: this.app.getValue(),
                 file: this.activeFile
             })
@@ -58,25 +57,26 @@ export default class IpcHandler
         
         // Enable saving files from outside of the browser window execution context.
         // Provides access to browser window data and emits it to the ipc channel.
-        this.context.receive('from:request:save', (context) => {
-            this.context.send(context, {
+        this.context.receive('from:request:save', (channel) => {
+            this.context.send(channel, {
                 content: this.app.getValue(),
                 file: this.activeFile
             })
         })
         
-        this.context.receive('from:request:saveas', (context) => {
-            this.context.send(context, this.app.getValue())
+        this.context.receive('from:request:saveas', (channel) => {
+            this.context.send(channel, this.app.getValue())
         })
         
         // Enable opening files from outside of the browser window execution context.
         // Provides access to browser window data and emits it to the ipc channel.
-        this.context.receive('from:request:open', (response) => {
+        this.context.receive('from:request:open', ({ content, filename, file }) => {
             this.app.focus()
-            this.app.setValue(response.content)
-            this.activeFile = response.file
-            document.querySelector('#active-file').innerText = response.filename
-            this.context.send('to:set:title', response.filename)
+            this.app.setValue(content)
+            this.activeFile = file
+            
+            document.querySelector('#active-file').innerText = filename
+            this.context.send('to:set:title', filename)
         })
         
         // Enable access to the monaco editor command palette from outside the browser

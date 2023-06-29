@@ -19,8 +19,6 @@ const receiverWhitelist = [
 ]
 
 module.exports = {
-    senderWhitelist,
-    receiverWhitelist,
     contextBridgeChannel() {
         return {
             send: (channel, data) => {
