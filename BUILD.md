@@ -169,3 +169,7 @@ You can also run each build step seperately:
 You can also run the executable app without building the executable, by using the electron CLI, this is useful for development as it takes a while to build executables and installers:
 
 - `npm run dev:execute`
+
+You can also run the HTTP server that is included in dependencies and access mkeditor directly through your browser: 
+
+- `npm run dev:http`
