@@ -27,10 +27,12 @@ mkeditor.registerCommandHandler(commandHandler)
 // local settings with persistence.
 const settingsHandler = new SettingsHandler(app, true)
 settingsHandler.register()
+mkeditor.registerSettingsHandler(settingsHandler)
 
 // If running within electron app, register IPC handler for communication
 // between execution contexts.
 if (Object.prototype.hasOwnProperty.call(window, 'api')) {
     const ipcHandler = new IpcHandler(app, window.api)
     ipcHandler.register()
+    mkeditor.registerIpcHandler(ipcHandler)
 }

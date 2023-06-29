@@ -25,6 +25,9 @@ class Editor
         this.editor = editor
         this.preview = preview
         this.commands = null
+        this.settings = null
+        this.ipc = null
+        this.state = null
 
         // Fetch stored editor settings.
         this.savedConfig = JSON.parse(localStorage.getItem('settings'))
@@ -53,6 +56,12 @@ class Editor
                 smoothScrolling: 'true',
                 roundedSelection: false,
                 accessibilityPageSize: 1000
+            })
+
+            this.state = this.instance.getValue()
+            window.addEventListener('editor:state', (event) => {
+                console.log({event})
+                this.state = event.detail
             })
 
             window.onresize = () => this.instance.layout()
@@ -127,6 +136,14 @@ class Editor
 
     registerCommandHandler(handler) {
         this.commands = handler
+    }
+
+    registerSettingsHandler(handler) {
+        this.settings = handler
+    }
+
+    registerIpcHandler(handler) {
+        this.ipc = handler
     }
 }
 

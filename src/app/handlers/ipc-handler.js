@@ -30,7 +30,7 @@ export default class IpcHandler
                 }
             })
         }
-        
+
         // Set the theme according to the user's system theme
         this.context.receive('from:theme:set', (shouldUseDarkMode) => {
             if (shouldUseDarkMode) {
@@ -76,6 +76,11 @@ export default class IpcHandler
             this.activeFile = file
             
             document.querySelector('#active-file').innerText = filename
+
+            window.dispatchEvent(new CustomEvent('editor:state', {
+                detail: this.app.getValue()
+            }))
+
             this.context.send('to:set:title', filename)
         })
         
