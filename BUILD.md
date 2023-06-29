@@ -13,13 +13,17 @@ MKeditor is a cross-platform markdown editor application built primarily in Java
 * [Electron Application](#electron-application)
   * [Preloading](#preloading)
   * [Context Isolation and IPC](#context-isolation-and-icp)
-  
+* [Building](#building)
+
 ## Requirements
 
 - Node v18+
 - NPM
 
 ## Application Structure
+
+The application structure is as follows:
+
 ```
 .
 ├── build                   # Package build assets (icon, license)
@@ -37,8 +41,6 @@ MKeditor is a cross-platform markdown editor application built primarily in Java
 ├── LICENSE                 # The license
 └── README.md               # This file
 ```
-
-## Getting Started
 
 The codebase is split into multiple parts:
 
@@ -149,5 +151,21 @@ this.ipc.on('to:request:saveas', (event, data) => {
 
 As you can see, both events triggered from the renderer process are handled by the main process. In this instance, the IPC handler facilitates the passage of data from the renderer - id, editor content and in the case of exsting files, destination file - to our node storage access logic.
 
+## Building
 
+With the required build tools and dependencies installed (`npm install`) you can build the application and installer in a single step:
 
+- `npm run build:installer`
+
+This will build the mkeditor application and output an installer to `releases/${platform}/${arch}"`.
+
+If you are running on Windows, it will output an MSI installer, if you are running Linux, it will output a debian package... I haven't added a configuration for MacOS yet.
+
+You can also run each build step seperately:
+
+- `npm run build:mkeditor`: Builds only the mkeditor app, contained to `dist/`
+- `npm run build:executable`: Builds both mkeditor and the executable app, without an installer
+
+You can also run the executable app without building the executable, by using the electron CLI, this is useful for development as it takes a while to build executables and installers:
+
+- `npm run dev:execute`
