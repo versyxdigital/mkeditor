@@ -76,6 +76,7 @@ export default class IpcHandler
             this.app.setValue(response.content)
             this.activeFile = response.file
             document.querySelector('#active-file').innerText = response.filename
+            this.context.send('to:set:title', response.filename)
         })
         
         // Enable access to the monaco editor command palette from outside the browser

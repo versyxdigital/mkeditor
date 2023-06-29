@@ -6,7 +6,16 @@ module.exports = class IpcHandler
         this.ipc = ipc
     }
 
+    /**
+     * Register IPC event listeners to the execution context
+     * 
+     * @param {*} context 
+     */
     register(context) {
+        this.ipc.on('to:set:title', (event, title) => {
+            context.setTitle(`MKEditor - ${title}`)
+        })
+
         this.ipc.on('to:request:new', (event, { content, file }) => {
             storage.newFile(context, {
                 id: event.sender.id,
@@ -16,7 +25,6 @@ module.exports = class IpcHandler
         })
 
         this.ipc.on('to:request:save', (event, { content, file }) => {
-            console.log(content, file)
             storage.save(context, {
                 id: event.sender.id,
                 data: content,
