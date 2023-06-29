@@ -37,6 +37,9 @@ commandHandler.map()
 const settingsHandler = new SettingsHandler(app, true)
 settingsHandler.register()
 
-// Register IPC handler for communication between execution contexts
-const ipcHandler = new IpcHandler(app, api)
-ipcHandler.register()
+// If running within electron app, register IPC handler for communication
+// between execution contexts.
+if (api !== undefined) {
+    const ipcHandler = new IpcHandler(app, api)
+    ipcHandler.register()
+}
