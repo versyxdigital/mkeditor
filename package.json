@@ -7,7 +7,7 @@
   "description": "Markdown Editor - Desktop",
   "main": "src/main.js",
   "scripts": {
-    "build": "webpack --config build/webpack.config.js",
+    "build": "webpack --config webpack.config.js",
     "execute": "node ./node_modules/electron/cli.js .",
     "make:executable": "electron-builder --dir",
     "make:installer": "electron-builder"

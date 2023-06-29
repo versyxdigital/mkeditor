@@ -6,12 +6,12 @@ const TerserWebpackPlugin = require('terser-webpack-plugin')
 module.exports = {
     mode: 'production',
     entry: {
-        mkeditor: ['./app/index.js', './app/assets/scss/index.scss'],
+        mkeditor: ['./src/app/index.js', './src/app/assets/scss/index.scss'],
     },
     output: {
         globalObject: 'self',
         filename: 'mkeditor.bundle.js',
-        path: path.resolve(__dirname, '../dist')
+        path: path.resolve(__dirname, 'dist')
     },
     optimization: {
         minimizer: [new TerserWebpackPlugin({
