@@ -9,10 +9,11 @@ MKeditor is a cross-platform markdown editor application built primarily in Java
 * [Requirements](#requirements)
 * [Application Structure](#application-structure)
 * [Getting Started](#getting-started)
-* [Downloading & Compiling](#downloading--compiling)
-* [Creating the Chroot Environment](#creating-the-chroot-environment)
-* [Enabling the Worker](#enabling-the-worker)
-  * [How it Works](#how-it-works)
+* [MKeditor Application](#mkeditor-application)
+* [Electron Application](#electron-application)
+  * [Preloading](#preloading)
+  * [Context Isolation & IPC](#context-isolation-and-icp)
+  * [Inter-Process Communication](#inter-process-communication)
 * [Preparing the UI](#preparing-the-ui)
 * [Deployment](#deployment-help)
 
@@ -47,7 +48,12 @@ The codebase is split into multiple parts:
 - `src/app`: The standalone mkeditor application
 - `src/lib`: Other functionality - IPC, context bridging and storage access
 
+## MKeditor Application
+
 The mkeditor application is bundled via [webpack](https://webpack.js.org/) and output to `dist/`, once you've built the application, you can run mkeditor directly in the browser, either through a server or simply by opening `dist/index.html`.
+
+
+## Electron Application
 
 The electron application entry point - `main.js` - creates the browser window:
 
@@ -64,7 +70,33 @@ context = new BrowserWindow({
 })
 ```
 
+### Preloading
+
 The `preload` option specifies the [preload script](https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts) that will be loaded before other scripts run in the page. This script will always have access to node APIs no matter whether node integration is turned on or off.
+
+```javascript
+/**
+ * The contextBridge module provides a safe, bi-directional, synchronous
+ * bridge across isolated contexts.
+ */
+const { contextBridge } = require('electron')
+
+/**
+ * contextBridgeChannel utilises the ipcRenderer module to provide methods for
+ * sending synchronous and asynchronous messages accross different execution contexts
+ */
+const { contextBridgeChannel } = require('./lib/context-bridge')
+
+/**
+ * The "Main World" is the JavaScript context that the main renderer code runs in.
+ * 
+ * When contextIsolation is enabled in webPreferences, the preload scripts run in an
+ * "Isolated World" that is exposed to the "Main World" through the contextBridge.
+ */
+contextBridge.exposeInMainWorld('api', contextBridgeChannel())
+```
+
+### Context Isolation and IPC
 
 The preloader facilitates [context-isolated](https://www.electronjs.org/docs/latest/tutorial/context-isolation) [communication](https://www.electronjs.org/docs/latest/tutorial/ipc) between the renderer and the main process via [IPC channels](https://www.electronjs.org/docs/latest/tutorial/ipc#ipc-channels).
 
