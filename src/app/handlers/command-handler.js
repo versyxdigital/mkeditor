@@ -54,6 +54,8 @@ class CommandHandler
                 }
             })
         }
+
+        this.map()
     }
 
     map() {
@@ -64,8 +66,8 @@ class CommandHandler
                 op.addEventListener('click', (event) => {
                     const target = event.currentTarget
                     if (Object.prototype.hasOwnProperty.call(target.dataset, 'op')) {
-                        target.dataset.ch && !commands[target.dataset.op]
-                            ? commands.exec(target.dataset.ch)
+                        target.dataset.ch && !(commands[target.dataset.op] instanceof Function)
+                            ? this.exec(target.dataset.ch)
                             : commands[target.dataset.op](target)
 
                         this.instance.focus()

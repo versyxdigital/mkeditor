@@ -12,25 +12,16 @@ const preview = document.getElementById('preview')
 
 // Create a new Editor instance.
 const mkeditor = new Editor(editor, preview)
-const app = mkeditor.init({
-    watch: true
-})
+const app = mkeditor.init({ watch: true })
 
 // Ensure windows are split 50,50
-Split(['#editor', '#preview'], {
-    sizes: [50,50]
-})
-
-const { api } = window
+Split(['#editor', '#preview'], { sizes: [50, 50] })
 
 // Register new command handler for the monaco editor instance to provide
 // and handle editor commands and actions (e.g. bold, alertblock etc.)
 const commandHandler = new CommandHandler(app)
 commandHandler.register()
 mkeditor.registerCommandHandler(commandHandler)
-
-// Map monaco editor commands to editor UI buttons (e.g. bold, alertblock etc.)
-commandHandler.map()
 
 // Register new settings handler for the monaco editor instance to provide
 // local settings with persistence.
@@ -39,7 +30,7 @@ settingsHandler.register()
 
 // If running within electron app, register IPC handler for communication
 // between execution contexts.
-if (api !== undefined) {
-    const ipcHandler = new IpcHandler(app, api)
+if (Object.prototype.hasOwnProperty.call(window, 'api')) {
+    const ipcHandler = new IpcHandler(app, window.api)
     ipcHandler.register()
 }
