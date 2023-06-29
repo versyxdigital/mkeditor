@@ -2,8 +2,8 @@
   "name": "mkeditor",
   "productName": "MKEditor",
   "license": "MIT",
-  "version": "1.2.1",
-  "author": "Chris Rowles <me@rowles.ch>",
+  "version": "1.2.2",
+  "author": "Chris Rowles <christopher.rowles@outlook.com>",
   "description": "Markdown Editor - Desktop",
   "main": "src/main.js",
   "scripts": {
