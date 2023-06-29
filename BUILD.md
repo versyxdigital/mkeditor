@@ -12,11 +12,8 @@ MKeditor is a cross-platform markdown editor application built primarily in Java
 * [MKeditor Application](#mkeditor-application)
 * [Electron Application](#electron-application)
   * [Preloading](#preloading)
-  * [Context Isolation & IPC](#context-isolation-and-icp)
-  * [Inter-Process Communication](#inter-process-communication)
-* [Preparing the UI](#preparing-the-ui)
-* [Deployment](#deployment-help)
-
+  * [Context Isolation and IPC](#context-isolation-and-icp)
+  
 ## Requirements
 
 - Node v18+
@@ -55,7 +52,7 @@ The mkeditor application is bundled via [webpack](https://webpack.js.org/) and o
 
 ## Electron Application
 
-The electron application entry point - `main.js` - creates the browser window:
+The electron application entry point - `src/main.js` - creates the browser window:
 
 ```javascript
 context = new BrowserWindow({
@@ -70,9 +67,15 @@ context = new BrowserWindow({
 })
 ```
 
+The mkeditor application is then loaded into the execution context:
+
+```javascript
+context.loadFile(path.join(__dirname, '../dist/index.html'))
+```
+
 ### Preloading
 
-The `preload` option specifies the [preload script](https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts) that will be loaded before other scripts run in the page. This script will always have access to node APIs no matter whether node integration is turned on or off.
+The `preload` option that is passed when creating a new browser window specifies the [preload script](https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts) that will be loaded before other scripts run in the page. This script will always have access to node APIs no matter whether node integration is turned on or off.
 
 ```javascript
 /**
@@ -87,26 +90,15 @@ const { contextBridge } = require('electron')
  */
 const { contextBridgeChannel } = require('./lib/context-bridge')
 
-/**
- * The "Main World" is the JavaScript context that the main renderer code runs in.
- * 
- * When contextIsolation is enabled in webPreferences, the preload scripts run in an
- * "Isolated World" that is exposed to the "Main World" through the contextBridge.
- */
+
 contextBridge.exposeInMainWorld('api', contextBridgeChannel())
 ```
 
-### Context Isolation and IPC
+### Context Isolation and ICP
 
 The preloader facilitates [context-isolated](https://www.electronjs.org/docs/latest/tutorial/context-isolation) [communication](https://www.electronjs.org/docs/latest/tutorial/ipc) between the renderer and the main process via [IPC channels](https://www.electronjs.org/docs/latest/tutorial/ipc#ipc-channels).
 
-The mkeditor application is then loaded into the execution context:
-
-```javascript
-context.loadFile(path.join(__dirname, '../dist/index.html'))
-```
-
-The IPC handler is then instantiated:
+The IPC handler is instantiated from the entry point - `src/main.js`:
 
 ```javascript
 const ipcHandler = new IpcHandler(ipcMain)
@@ -130,9 +122,9 @@ saveBtn.addEventListener('click', () => {
 })
 ```
 
-`this.context` is the ipc renderer process which is exposed to the browser window as `window.api` through the preloader.
+`this.context` is the IPC renderer process which is exposed to the browser window as `window.api` through the preloader.
 
-When the save button is clicked, a check is performed to see if the user is editing an existing file, if so, the ipc renderer triggers a `to:request:save` event, otherwise it triggers a `to:request:saveas` event.
+When the save button is clicked, a check is performed to see if the user is editing an existing file, if so, the IPC renderer triggers a `to:request:save` event, otherwise it triggers a `to:request:saveas` event.
 
 The IPC handler contains listeners for these events:
 
@@ -153,7 +145,7 @@ this.ipc.on('to:request:saveas', (event, data) => {
 })
 ```
 
-`this.ipc` is the ipc main process which communicates asynchronously to renderer processes.
+`this.ipc` is the IPC main process which communicates asynchronously to renderer processes.
 
 As you can see, both events triggered from the renderer process are handled by the main process. In this instance, the IPC handler facilitates the passage of data from the renderer - id, editor content and in the case of exsting files, destination file - to our node storage access logic.
 
