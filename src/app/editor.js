@@ -7,7 +7,7 @@ import tableStyles from './extensions/table-styles'
 import lineNumbers from './extensions/line-numbers'
 import { wordCount, characterCount } from './extensions/word-count'
 import { getEditorLineNumberForPreviewOffset, scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync'
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+import { editor } from 'monaco-editor/esm/vs/editor/editor.api'
 
 const md = new MarkdownIt({
     code: false
@@ -42,7 +42,7 @@ class Editor
 
     init(options = {watch: false}) {
         try {
-            this.instance = monaco.editor.create(this.editor, {
+            this.instance = editor.create(this.editor, {
                 value: '# Write some stuff...',
                 language: 'markdown',
                 wordBasedSuggestions: false,

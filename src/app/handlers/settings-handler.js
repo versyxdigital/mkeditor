@@ -1,4 +1,4 @@
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+import { editor } from 'monaco-editor/esm/vs/editor/editor.api'
 
 class SettingsHandler {
     constructor(instance, persistence = false) {
@@ -90,7 +90,7 @@ class SettingsHandler {
                     this.settings.toggleDarkMode = false
                 }
 
-                monaco.editor.setTheme(theme)
+                editor.setTheme(theme)
             })
         }
         

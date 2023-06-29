@@ -1,5 +1,5 @@
 import notify from '../utilities/notify'
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+import { editor } from 'monaco-editor/esm/vs/editor/editor.api'
 
 export default class IpcHandler
 {
@@ -41,7 +41,7 @@ export default class IpcHandler
                 const toggle = document.querySelector('#toggleDarkMode')
                 toggle.checked = true
                 
-                monaco.editor.setTheme('vs-dark')
+                editor.setTheme('vs-dark')
                 document.body.setAttribute('data-theme', 'dark')
             }
         })

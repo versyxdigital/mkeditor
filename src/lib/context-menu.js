@@ -91,9 +91,9 @@ module.exports = class MenuHandler
                         label: 'About...',
                         click: () => {
                             openAboutWindow({
-                                icon_path: path.join(__dirname, '../../app/assets/logo.ico'),
+                                icon_path: path.join(__dirname, '../app/assets/logo.ico'),
                                 product_name: 'MKEditor',
-                                copyright: '© 2021-' + new Date().getFullYear() + ' Chris Rowles. All rights reserved.',
+                                copyright: '© 2021 - ' + new Date().getFullYear() + ' Chris Rowles. All rights reserved.',
                                 package_json_dir: path.join(__dirname, '../../'),
                                 use_version_info: false
                             })

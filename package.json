@@ -48,6 +48,11 @@
     "directories": {
       "output": "releases/${platform}/${arch}"
     },
+    "linux": {
+      "target": "deb",
+      "icon": "build/resources/icon.ico",
+      "category": "Utility"
+    },
     "win": {
       "target": "nsis",
       "icon": "build/resources/icon.ico"
@@ -60,10 +65,10 @@
       "installerIcon": "build/resources/icon.ico",
       "license": "build/resources/license.txt"
     },
-    "linux": {
-      "target": "deb",
-      "icon": "build/resources/icon.ico",
-      "category": "Utility"
+    "msi": {
+      "oneClick": false,
+      "perMachine": true,
+      "runAfterFinish": true
     }
   }
 }
