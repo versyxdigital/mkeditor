@@ -27,7 +27,7 @@ class Editor
         this.commands = null
         this.settings = null
         this.ipc = null
-        this.state = null
+        this.original = null
 
         // Fetch stored editor settings.
         this.savedConfig = JSON.parse(localStorage.getItem('settings'))
@@ -58,10 +58,9 @@ class Editor
                 accessibilityPageSize: 1000
             })
 
-            this.state = this.instance.getValue()
+            this.original = this.instance.getValue()
             window.addEventListener('editor:state', (event) => {
-                console.log({event})
-                this.state = event.detail
+                this.original = event.detail
             })
 
             window.onresize = () => this.instance.layout()
@@ -97,7 +96,16 @@ class Editor
     }
 
     watch() {
-        this.instance.onDidChangeModelContent(() => this.render())
+        this.instance.onDidChangeModelContent(() => {
+            if (this.ipc) {
+                this.ipc.trackEditorStateBetweenExecutionContext(
+                    this.original,
+                    this.instance.getValue()
+                )
+            }
+
+            this.render()
+        })
 
         this.instance.onDidScrollChange(() => {
             const visibleRange = this.instance.getVisibleRanges()[0]

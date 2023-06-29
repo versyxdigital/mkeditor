@@ -74,12 +74,14 @@ export default class IpcHandler
             this.app.focus()
             this.app.setValue(content)
             this.activeFile = file
-            
-            document.querySelector('#active-file').innerText = filename
 
+            // Dispatch contents so the editor can track it.
+            // This handler and the editor both reside within the same execution context.
             window.dispatchEvent(new CustomEvent('editor:state', {
                 detail: this.app.getValue()
             }))
+            
+            document.querySelector('#active-file').innerText = filename
 
             this.context.send('to:set:title', filename)
         })
@@ -95,5 +97,9 @@ export default class IpcHandler
         this.context.receive('from:notification:display', (event) => {
             notify.send(event.status, event.message)
         })
+    }
+
+    trackEditorStateBetweenExecutionContext(original, current) {
+        this.context.send('to:editor:state', { original, current })
     }
 }

@@ -16,6 +16,11 @@ module.exports = class IpcHandler
             context.setTitle(`MKEditor - ${title}`)
         })
 
+        this.ipc.on('to:editor:state', (event, { original, current }) => {
+            console.log(original === current)
+            console.log({original, current})
+        })
+
         this.ipc.on('to:request:new', (event, { content, file }) => {
             storage.newFile(context, {
                 id: event.sender.id,
