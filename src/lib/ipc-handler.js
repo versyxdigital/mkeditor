@@ -21,21 +21,17 @@ module.exports = class IpcHandler
         })
 
         this.ipc.on('to:editor:state', (event, { original, current }) => {
-            this.contextBridgedContent.original = original
-            this.contextBridgedContent.current = current
-            console.log(this.contextBridgedContentHasChanged())
+            this.updateContextBridgedContent(original, current)
         })
 
         this.ipc.on('to:request:new', (event, { content, file }) => {
-            if (this.contextBridgedContentHasChanged()) {
-                // TODO dialog
-            }
-
             storage.newFile(context, {
                 id: event.sender.id,
                 data: content,
                 file
-            })
+            }).then(() => {
+                this.resetContextBridgedContent()
+            })            
         })
 
         this.ipc.on('to:request:save', (event, { content, file }) => {
@@ -43,6 +39,8 @@ module.exports = class IpcHandler
                 id: event.sender.id,
                 data: content,
                 file
+            }).then(() => {
+                this.resetContextBridgedContent()
             })
         })
 
@@ -50,11 +48,23 @@ module.exports = class IpcHandler
             storage.save(context, {
                 id: event.sender.id,
                 data,
+            }).then(() => {
+                this.resetContextBridgedContent()
             })
         })
     }
 
     contextBridgedContentHasChanged() {
         return this.contextBridgedContent.current !== this.contextBridgedContent.original
+    }
+
+    updateContextBridgedContent(orginal, current) {
+        this.contextBridgedContent.original = orginal
+        this.contextBridgedContent.current = current
+    }
+
+    resetContextBridgedContent() {
+        this.contextBridgedContent.original = null
+        this.contextBridgedContent.current = null
     }
 }

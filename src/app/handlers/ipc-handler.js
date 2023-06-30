@@ -78,6 +78,8 @@ export default class IpcHandler
             window.dispatchEvent(new CustomEvent('editor:state', {
                 detail: this.instance.getValue()
             }))
+
+            this.trackEditorStateBetweenExecutionContext(content, content)
             
             document.querySelector('#active-file').innerText = filename
 
