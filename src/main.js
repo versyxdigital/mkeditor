@@ -4,13 +4,10 @@ const ContextMenu = require('./lib/context-menu')
 const DialogHandler = require('./lib/dialog-handler')
 const IpcHandler = require('./lib/ipc-handler')
 
-app.commandLine.appendSwitch('no-sandbox')
 app.commandLine.appendSwitch('disable-gpu')
 app.commandLine.appendSwitch('disable-software-rasterizer')
 app.commandLine.appendSwitch('disable-gpu-compositing')
 app.commandLine.appendSwitch('disable-gpu-rasterization')
-app.commandLine.appendSwitch('disable-gpu-sandbox')
-app.commandLine.appendSwitch('--no-sandbox')
 app.disableHardwareAcceleration()
 
 let context
@@ -38,7 +35,11 @@ function createWindow() {
     const ipcHandler = new IpcHandler(ipcMain)
     ipcHandler.register(context)
 
-    context.on('close', function(event) {
+    context.webContents.on('did-finish-load', () => {
+        context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors)
+    })
+
+    context.on('close', (event) => {
         if (ipcHandler.contextBridgedContentHasChanged()) {
             dialogHandler.promptUserForUnsavedChanges(event);
         }
@@ -46,10 +47,6 @@ function createWindow() {
 
     context.on('closed', () => {
         context = null
-    })
-
-    context.webContents.on('did-finish-load', () => {
-        context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors)
     })
 
     context.maximize()
