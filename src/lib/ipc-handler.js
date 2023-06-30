@@ -4,6 +4,7 @@ module.exports = class IpcHandler
 {
     constructor(ipc) {
         this.ipc = ipc
+        this.contextWindowTitle = 'MKEditor'
         this.contextBridgedContent = {
             original: null,
             current: null
@@ -16,12 +17,22 @@ module.exports = class IpcHandler
      * @param {*} context 
      */
     register(context) {
-        this.ipc.on('to:set:title', (event, title) => {
-            context.setTitle(`MKEditor - ${title}`)
+        this.ipc.on('to:set:title', (event, title = null) => {
+            if (title) {
+                this.contextWindowTitle = `${this.contextWindowTitle} - ${title}`
+            }
+
+            context.setTitle(this.contextWindowTitle)
         })
 
         this.ipc.on('to:editor:state', (event, { original, current }) => {
             this.updateContextBridgedContent(original, current)
+
+            if (this.contextBridgedContentHasChanged()) {
+                context.setTitle(`${this.contextWindowTitle} - *(Unsaved Changes)*`)
+            } else {
+                context.setTitle(this.contextWindowTitle)
+            }
         })
 
         this.ipc.on('to:request:new', (event, { content, file }) => {
