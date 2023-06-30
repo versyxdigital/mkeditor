@@ -55,10 +55,6 @@ class CommandHandler
             })
         }
 
-        this.map()
-    }
-
-    map() {
         // Map monaco editor commands to editor UI buttons (e.g. bold, alertblock etc.)
         const ops = document.getElementById('editor-functions').querySelectorAll('a')
         if (ops) {
@@ -67,7 +63,7 @@ class CommandHandler
                     const target = event.currentTarget
                     if (Object.prototype.hasOwnProperty.call(target.dataset, 'op')) {
                         target.dataset.ch && !(commands[target.dataset.op] instanceof Function)
-                            ? this.exec(target.dataset.ch)
+                            ? this.execute(target.dataset.ch)
                             : commands[target.dataset.op](target)
 
                         this.instance.focus()
@@ -77,8 +73,20 @@ class CommandHandler
         }
     }
 
-    exec(op) {
+    execute(op) {
         this.do(op + this.model() + op)
+    }
+
+    do(text) {
+        this.instance.executeEdits(null, [{
+            range: this.instance.getSelection(),
+            text,
+            forceMoveMarkers: true
+        }])
+    }
+
+    model() {
+        return this.instance.getModel().getValueInRange(this.instance.getSelection())
     }
 
     unorderedList() {
@@ -105,19 +113,6 @@ class CommandHandler
         const language = params.dataset ? params.dataset.language : params
         content = content ? content : this.model()
         this.do('```'+language+'\n'+content+'\n```')
-    }
-
-    do(replacement) {
-        this.instance.executeEdits(null, [{
-            range: this.instance.getSelection(),
-            text: replacement,
-            forceMoveMarkers: true
-        }])
-    }
-
-    model() {
-        return this.instance.getModel()
-            .getValueInRange(this.instance.getSelection())
     }
 }
 

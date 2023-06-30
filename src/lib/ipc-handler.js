@@ -4,6 +4,10 @@ module.exports = class IpcHandler
 {
     constructor(ipc) {
         this.ipc = ipc
+        this.contextBridgedContent = {
+            original: null,
+            current: null
+        }
     }
 
     /**
@@ -16,12 +20,18 @@ module.exports = class IpcHandler
             context.setTitle(`MKEditor - ${title}`)
         })
 
+        this.ipc.on('to:editor:state', (event, { original, current }) => {
+            this.updateContextBridgedContent(original, current)
+        })
+
         this.ipc.on('to:request:new', (event, { content, file }) => {
             storage.newFile(context, {
                 id: event.sender.id,
                 data: content,
                 file
-            })
+            }).then(() => {
+                this.resetContextBridgedContent()
+            })            
         })
 
         this.ipc.on('to:request:save', (event, { content, file }) => {
@@ -29,6 +39,8 @@ module.exports = class IpcHandler
                 id: event.sender.id,
                 data: content,
                 file
+            }).then(() => {
+                this.resetContextBridgedContent()
             })
         })
 
@@ -36,7 +48,23 @@ module.exports = class IpcHandler
             storage.save(context, {
                 id: event.sender.id,
                 data,
+            }).then(() => {
+                this.resetContextBridgedContent()
             })
         })
+    }
+
+    contextBridgedContentHasChanged() {
+        return this.contextBridgedContent.current !== this.contextBridgedContent.original
+    }
+
+    updateContextBridgedContent(orginal, current) {
+        this.contextBridgedContent.original = orginal
+        this.contextBridgedContent.current = current
+    }
+
+    resetContextBridgedContent() {
+        this.contextBridgedContent.original = null
+        this.contextBridgedContent.current = null
     }
 }
