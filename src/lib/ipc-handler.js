@@ -4,6 +4,10 @@ module.exports = class IpcHandler
 {
     constructor(ipc) {
         this.ipc = ipc
+        this.contextBridgedContent = {
+            original: null,
+            current: null
+        }
     }
 
     /**
@@ -17,11 +21,16 @@ module.exports = class IpcHandler
         })
 
         this.ipc.on('to:editor:state', (event, { original, current }) => {
-            console.log(original === current)
-            console.log({original, current})
+            this.contextBridgedContent.original = original
+            this.contextBridgedContent.current = current
+            console.log(this.contextBridgedContentHasChanged())
         })
 
         this.ipc.on('to:request:new', (event, { content, file }) => {
+            if (this.contextBridgedContentHasChanged()) {
+                // TODO dialog
+            }
+
             storage.newFile(context, {
                 id: event.sender.id,
                 data: content,
@@ -43,5 +52,9 @@ module.exports = class IpcHandler
                 data,
             })
         })
+    }
+
+    contextBridgedContentHasChanged() {
+        return this.contextBridgedContent.current !== this.contextBridgedContent.original
     }
 }

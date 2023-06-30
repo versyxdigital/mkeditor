@@ -1,7 +1,8 @@
 const path = require('path')
-const { app, dialog, ipcMain, nativeTheme, BrowserWindow, Menu } = require('electron')
-const IpcHandler = require('./lib/ipc-handler')
+const { app, ipcMain, nativeTheme, BrowserWindow, Menu } = require('electron')
 const ContextMenu = require('./lib/context-menu')
+const DialogHandler = require('./lib/dialog-handler')
+const IpcHandler = require('./lib/ipc-handler')
 
 app.commandLine.appendSwitch('no-sandbox')
 app.commandLine.appendSwitch('disable-gpu')
@@ -32,20 +33,14 @@ function createWindow() {
     const contextMenu = new ContextMenu(app, Menu)
     contextMenu.register(context)
 
+    const dialogHandler = new DialogHandler(context)
+
     const ipcHandler = new IpcHandler(ipcMain)
     ipcHandler.register(context)
 
     context.on('close', function(event) {
-        // TODO offer save before closing instead
-        const choice = dialog.showMessageBoxSync(this, {
-            type: 'question',
-            buttons: ['Yes', 'No'],
-            title: 'Confirm',
-            message: 'Are you sure you want to quit?'
-        })
-
-        if (choice) {
-            event.preventDefault()
+        if (ipcHandler.contextBridgedContentHasChanged()) {
+            dialogHandler.promptUserForUnsavedChanges(event);
         }
     })
 

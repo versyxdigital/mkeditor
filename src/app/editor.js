@@ -53,7 +53,7 @@ class Editor
     init(options = {watch: false}) {
         try {
             this.instance = editor.create(this.editor, {
-                value: '# Write some stuff...',
+                value: '',
                 language: 'markdown',
                 wordBasedSuggestions: false,
                 autoIndent: this.autoIndent,
