@@ -12,20 +12,14 @@ const lineNumbers = (instance) => {
     ]
 
     lineNumberRendererRuleNames.forEach((rule) => {
-        let original = md.renderer.rules[rule]
+        const original = md.renderer.rules[rule]
 
         md.renderer.rules[rule] = (tokens, idx, options, env, self) => {
-            let token = tokens[idx]
-
+            const token = tokens[idx]
             if (token.map && token.map.length) {
                 token.attrPush(['class', 'has-line-data'])
-            
-                if (rule === 'fence') {
-                    token.attrPush(['data-line-start', token.map[0] + 1])
-                } else {
-                    token.attrPush(['data-line-start', token.map[0]])
-                }
-             
+
+                token.attrPush(['data-line-start', token.map[0] + 1])
                 token.attrPush(['data-line-end', token.map[1]])
             }
 
