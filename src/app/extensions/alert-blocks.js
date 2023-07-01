@@ -43,8 +43,7 @@ function setupContainer(name) {
 }
 
 function setupLinks() {
-    let defaultRender = md.renderer.rules.link_open || selfRender
-
+    const defaultRender = md.renderer.rules.link_open || selfRender
     md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
         if (isContainerOpen()) {
             tokens[idx].attrPush(['class', 'alert-link'])

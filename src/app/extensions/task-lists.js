@@ -1,14 +1,14 @@
 const taskLists = (md, options) => {
-    let defaults
-    defaults = {
+    const defaults = {
         disabled: true,
         ulClass: 'task-list',
         liClass: 'task-list-item'
     }
+
     options = Object.assign({}, defaults, options)
+
     md.core.ruler.after('inline', 'github-task-lists', (state) => {
-        let tokens = state.tokens
-        
+        const tokens = state.tokens
         for (let i = 2; i < tokens.length; ++i) {
             if (isTaskListItem(tokens, i)) {
                 convert(tokens[i], options, tokens, tokens[i-2], state.Token)
@@ -28,9 +28,9 @@ const taskLists = (md, options) => {
 }
 
 function attrSet(token, name, value) {
-    let index = token.attrIndex(name)
-    let attr = [name, value]
-
+    const index = token.attrIndex(name)
+    const attr = [name, value]
+    
     if (index < 0) {
         token.attrPush(attr)
     } else {
@@ -39,12 +39,13 @@ function attrSet(token, name, value) {
 }
 
 function parentTokenIndex(tokens, index) {
-    let targetLevel = tokens[index].level - 1
+    const targetLevel = tokens[index].level - 1
     for (let i = index - 1; i >= 0; --i) {
         if (tokens[i].level === targetLevel) {
             return i
         }
     }
+
     return -1
 }
 
@@ -57,20 +58,20 @@ function isTaskListItem(tokens, index) {
 
 function convert(token, options, tokens, targetToken, TokenConstructor) {
     token.children[0].content = token.children[0].content.slice(3)
-
-    // checkbox
     targetToken.children = targetToken.children || []
     const checkbox = makeCheckbox(token, options, TokenConstructor)
     targetToken.children.unshift(checkbox)
 }
 
 function makeCheckbox(token, options, TokenConstructor) {
-    let checkbox = new TokenConstructor('checkbox_input', 'input', 0)
+    const checkbox = new TokenConstructor('checkbox_input', 'input', 0)
     checkbox.attrs = [['type', 'checkbox']]
-    let checked = /^\[[xX]\][ \u00A0]/.test(token.content) // if token.content starts with '[x] ' or '[X] '
+
+    const checked = /^\[[xX]\][ \u00A0]/.test(token.content) // if token.content starts with '[x] ' or '[X] '
     if (checked === true) {
         checkbox.attrs.push(['checked', 'true'])
     }
+
     if (options.disabled === true) {
         checkbox.attrs.push(['disabled', 'true'])
     }

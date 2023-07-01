@@ -1,5 +1,5 @@
 const codeBlocks = (instance, options) => {
-    let defaults = {
+    const defaults = {
         templateSelector: '#copyCode',
         contentSelector: 'body',
         loadDelay: 0,
@@ -9,6 +9,7 @@ const codeBlocks = (instance, options) => {
         checkIconContent: '',
         onBeforeCodeCopied: null
     }
+
     options = Object.assign({}, defaults, options)
 
     function init(config) {
@@ -30,36 +31,34 @@ const codeBlocks = (instance, options) => {
 
     function addButton() {
         if (!document.querySelector(options.templateSelector)) {
-            let node = document.createElement('div')
+            const node = document.createElement('div')
             node.innerHTML = getTemplate()
-
-            let template = node.querySelector(options.templateSelector)
-            document.body.appendChild(template)
+            document.body.appendChild(node.querySelector(options.templateSelector))
         }
 
-        let buttonText = document.querySelector(options.templateSelector).innerHTML
+        const blocks = document.querySelectorAll('pre>code.hljs')
+        for (let index = 0; index < blocks.length; index++) {
+            let el = blocks[index]
+            if (el.querySelector('.copy-code')) {
+                continue
+            }
 
-        let codeblocks = document.querySelectorAll('pre>code.hljs')
-        for (let index = 0; index < codeblocks.length; index++) {
-            let el = codeblocks[index]
-            if (el.querySelector('.copy-code')) continue
             let lang = ''
-
             for (let i = 0; i < el.classList.length; i++) {
                 let cl = el.classList[i]
-
-                if (cl.substr(0, 9) === 'language-') {
+                if (cl.substring(0, 9) === 'language-') {
                     lang = el.classList[i].replace('language-', '')
                     break
-                } else if (cl.substr(0, 5) === 'lang-') {
+                } else if (cl.substring(0, 5) === 'lang-') {
                     lang = el.classList[i].replace('lang-', '')
                     break
                 }
 
-
                 if (!lang) {
                     for (let j = 0; j < el.classList.length; j++) {
-                        if (el.classList[j] === 'hljs') continue
+                        if (el.classList[j] === 'hljs') {
+                            continue
+                        }
                         lang = el.classList[j]
                         break
                     }
@@ -72,7 +71,8 @@ const codeBlocks = (instance, options) => {
                 lang = 'text'
             }
 
-            let html = buttonText.replace('{{language}}', lang)
+            const html = document.querySelector(options.templateSelector).innerHTML
+                .replace('{{language}}', lang)
                 .replace('{{copyIconClass}}', options.copyIconClass)
                 .trim()
 
@@ -80,7 +80,7 @@ const codeBlocks = (instance, options) => {
             newButton.innerHTML = html
             newButton = newButton.querySelector('.copy-code')
 
-            let pre = el.parentElement
+            const pre = el.parentElement
             pre.classList.add('copy-code-pre')
 
             if (options.copyIconContent) {
@@ -90,8 +90,7 @@ const codeBlocks = (instance, options) => {
             pre.insertBefore(newButton, el)
         }
 
-        let content = document.querySelector(options.contentSelector)
-        content.addEventListener('click', (event) => {
+        document.querySelector(options.contentSelector).addEventListener('click', (event) => {
             if (event.target.classList.contains('copy-code-copy-icon')) {
                 event.preventDefault()
                 event.cancelBubble = true
@@ -103,20 +102,21 @@ const codeBlocks = (instance, options) => {
     }
 
     function copyCodeToClipboard(event) {
-        let source = event.target.parentElement.parentElement.parentElement
-        let code = source.querySelector('pre>code')
+        const source = event.target.parentElement.parentElement.parentElement
+        const code = source.querySelector('pre>code')
         let text = code.textContent || code.innerText
 
         if (options.onBeforeCodeCopied) {
             text = options.onBeforeCodeCopied(text, code)
         }
 
-        let el = document.createElement('textarea')
+        const el = document.createElement('textarea')
         el.value = text.trim()
+
         document.body.appendChild(el)
+
         el.style.display = 'block'
         el.select()
-
 
         document.execCommand('copy')
         document.body.removeChild(el)
@@ -125,10 +125,9 @@ const codeBlocks = (instance, options) => {
     }
 
     function swapIcons(source) {
-        let copyIcons = options.copyIconClass.split(' ')
-        let checkIcons = options.checkIconClass.split(' ')
-
-        let fa = source.querySelector('.copy-code-copy-icon')
+        const copyIcons = options.copyIconClass.split(' ')
+        const checkIcons = options.checkIconClass.split(' ')
+        const fa = source.querySelector('.copy-code-copy-icon')
         fa.innerText = options.checkIconContent
 
         for (let i = 0; i < copyIcons.length; i++) {
@@ -153,7 +152,7 @@ const codeBlocks = (instance, options) => {
     }
 
     function getTemplate() {
-        let parts =
+        const parts =
             [
                 '<div id="copyCode" style="display:none">',
                 '    <div class="copy-code">',
