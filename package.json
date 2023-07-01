@@ -55,6 +55,10 @@
       "icon": "build/resources/icon.ico",
       "category": "Utility"
     },
+    "mac": {
+      "target": "pkg",
+      "icon": "build/resources/icon512x512.png"
+    },
     "win": {
       "target": "nsis",
       "icon": "build/resources/icon.ico"
@@ -71,6 +75,9 @@
       "oneClick": false,
       "perMachine": true,
       "runAfterFinish": true
+    },
+    "pkg": {
+      "license": "build/resources/license.txt"
     }
   }
 }
