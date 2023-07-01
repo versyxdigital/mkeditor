@@ -1,7 +1,7 @@
 import hljs from 'highlight.js'
 import MarkdownIt from 'markdown-it'
 import taskLists from './extensions/task-lists'
-import codeBlocks from './extensions/code-blocks'
+import copyCodeBlocks from './extensions/code-blocks'
 import alertBlocks from './extensions/alert-blocks'
 import tableStyles from './extensions/table-styles'
 import lineNumbers from './extensions/line-numbers'
@@ -10,7 +10,23 @@ import { scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync'
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api'
 
 const md = new MarkdownIt({
-    code: false
+    code: false,
+    breaks: true,
+    linkify: true,
+    highlight: (str, lang) => {
+        const escape = md.utils.escapeHtml
+        if (lang && hljs.getLanguage(lang)) {
+            try {
+                return '<pre class="hljs"><code class="hljs language-'+lang+'">' +
+                            hljs.highlight(lang, str, {
+                                ignoreIllegals: true
+                            }).value +
+                        '</code></pre>'
+            } catch (__) {}
+        } else {
+            return '<pre class="hljs"><code>' + escape(str) + '</code></pre>'
+        }
+    }
 })
 
 md.use(alertBlocks)
@@ -121,11 +137,7 @@ class Editor
     render() {
         this.preview.innerHTML = md.render(this.instance.getValue())
         
-        this.preview.querySelectorAll('pre code').forEach((block) => {
-            hljs.highlightElement(block)
-        })
-        codeBlocks()
-
+        copyCodeBlocks()
         wordCount(this.preview)
         characterCount(this.preview)
     }

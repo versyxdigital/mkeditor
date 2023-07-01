@@ -1,4 +1,4 @@
-const codeBlocks = (instance, options) => {
+const copyCodeBlocks = (instance, options) => {
     const defaults = {
         templateSelector: '#copyCode',
         contentSelector: 'body',
@@ -175,4 +175,4 @@ const codeBlocks = (instance, options) => {
     init(options)
 }
 
-export default codeBlocks
+export default copyCodeBlocks
