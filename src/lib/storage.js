@@ -39,6 +39,7 @@ module.exports = {
 
         setActiveFile(context, null, '')
     },
+
     async save(context, {id, data, file = null, encoding = 'utf-8', reset = false}) {
         let options = {
             title: 'Save file',

@@ -3,6 +3,7 @@ const { app, ipcMain, nativeTheme, BrowserWindow, Menu } = require('electron')
 const ContextMenu = require('./lib/context-menu')
 const DialogHandler = require('./lib/dialog-handler')
 const IpcHandler = require('./lib/ipc-handler')
+const SettingsHandler = require('./lib/settings-handler');
 
 app.commandLine.appendSwitch('disable-gpu')
 app.commandLine.appendSwitch('disable-software-rasterizer')
@@ -34,6 +35,11 @@ function createWindow() {
 
     const ipcHandler = new IpcHandler(ipcMain)
     ipcHandler.register(context)
+
+    const settingsHandler = new SettingsHandler();
+    const settingg = settingsHandler.loadSettingsFile();
+
+    console.log(settingg);
 
     context.webContents.on('did-finish-load', () => {
         context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors)

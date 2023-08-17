@@ -14,7 +14,7 @@ class CommandHandler
     register() {
         for (const cmd in commands) {
             if (Object.prototype.hasOwnProperty.call(commands[cmd], 'op')) {
-                commands[cmd].run = () => this.exec(commands[cmd].op)
+                commands[cmd].run = () => this.execute(commands[cmd].op)
             } else {
                 commands[cmd].run = () => this[cmd]()
             }
