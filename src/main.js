@@ -39,7 +39,6 @@ function createWindow() {
     const settingsHandler = new SettingsHandler(context);
 
     context.webContents.on('did-finish-load', () => {
-        context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors);
         context.webContents.send('from:settings:set', settingsHandler.loadSettingsFile())
     })
 

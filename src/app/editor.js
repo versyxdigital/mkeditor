@@ -133,11 +133,16 @@ class Editor
         this.wordWrap = settings.toggleWordWrap ? 'on' : 'off';
         this.autoIndent = settings.toggleAutoIndent ? 'advanced' : 'none';
         this.whitespace = settings.toggleWhitespace ? 'all' : 'none';
+        this.minimap = settings.toggleMinimap ? {enabled: true} : {enabled: 'false'};
+        this.foldingControls = settings.showFoldingControls ? 'always' : 'never';
 
-        editor.setTheme(this.toggleDarkMode ? 'vs-dark' : 'vs');
+        editor.setTheme(this.toggleDarkMode ? 'vs-dark' : 'gdmTheme');
+        
         this.instance.updateOptions({ wordWrap: this.wordWrap });
         this.instance.updateOptions({ autoIndent: this.autoIndent });
         this.instance.updateOptions({ renderWhitespace: this.whitespace });
+        this.instance.updateOptions({ minimap: this.minimap });
+        this.instance.updateOptions({ showFoldingControls: this.foldingControls });
     }
 
     registerCommandHandler(handler) {
