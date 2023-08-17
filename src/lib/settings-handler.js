@@ -8,10 +8,12 @@ module.exports = class SettingsHandler
   file = null;
 
   settings = {
-    toggleAutoIndent: false,
+    toggleAutoIndent: true,
     toggleDarkMode: false,
-    toggleWordWrap: true,
+    toggleWordWrap: false,
     toggleWhitespace: false,
+    toggleMinimap: true,
+    showFoldingControls: false
   }
 
   constructor () {
@@ -36,14 +38,13 @@ module.exports = class SettingsHandler
 
     if (! fs.existsSync(this.file)) {
       settings = {...this.settings, ...settings};
-      
-      console.log({ settings });
-
-      fs.writeFileSync(this.file, JSON.stringify(settings, null, 4), {
-        encoding: 'utf-8'
-      });
+      this.saveSettingsToFile(settings);
     }
   }
 
-  saveSettingsToFile() {}
+  saveSettingsToFile(settings) {
+    fs.writeFileSync(this.file, JSON.stringify(settings, null, 4), {
+      encoding: 'utf-8'
+    });
+  }
 }

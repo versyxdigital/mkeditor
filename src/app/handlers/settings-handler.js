@@ -15,7 +15,8 @@ class SettingsHandler {
                 toggleAutoIndent: false,
                 toggleDarkMode: false,
                 toggleWordWrap: true,
-                toggleWhitespace: false
+                toggleWhitespace: false,
+                toggleMinimap: true,
             }
         }
     }
@@ -25,6 +26,7 @@ class SettingsHandler {
             .addDarkModeToggleHandler()
             .addWordWrapToggleHandler()
             .addWhitespaceToggleHandler()
+            .addMinimapToggleHandler()
         
         if (this.persist) {
             this.addPersistSettingsHandler()
@@ -139,6 +141,26 @@ class SettingsHandler {
                 }
 
                 this.instance.updateOptions({ renderWhitespace: option })
+            })
+        }
+
+        return this
+    }
+
+    addMinimapToggleHandler() {
+        let toggleMinimap = document.querySelector('#toggleMinimap');
+        if (toggleMinimap) {
+            toggleMinimap.addEventListener('click', (event) => {
+                let option
+                if (event.target.checked) {
+                    option = {enabled: true}
+                    this.settings.toggleMinimap = true
+                } else {
+                    option = {enabled: false}
+                    this.settings.toggleMinimap = false
+                }
+
+                this.instance.updateOptions({ minimap: option })
             })
         }
 

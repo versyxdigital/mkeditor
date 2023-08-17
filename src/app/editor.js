@@ -73,6 +73,18 @@ class Editor
                 this.loadedInitialEditorValue = event.detail
             })
 
+            const saveButton = document.querySelector('#save-settings-ipc');
+            if (saveButton) {
+                saveButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    if (this.ipcHandler && this.settingsHandler) {
+                        this.ipcHandler.saveSettingsToFile(
+                            this.settingsHandler.getActiveSettings()
+                        );
+                    }
+                });
+            }
+
             window.onresize = () => this.instance.layout()
             this.preview.onresize = () => this.instance.layout()
 

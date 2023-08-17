@@ -3,6 +3,7 @@ const { ipcRenderer } = require('electron')
 const senderWhitelist = [
     'to:set:title',
     'to:editor:state',
+    'to:settings:save',
     'to:request:new',
     'to:request:save',
     'to:request:saveas',

@@ -122,24 +122,42 @@
                 <h5 class="modal-title">Editor Settings</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body small">
                 <div class="form-check">
                     <input type="checkbox" class="form-check-input setting" id="toggleAutoIndent">
                     <label class="form-check-label" for="toggleAutoIndent">
                         Automatic indent
                     </label>
                 </div>
-                <div class="form-check">
+                <div class="form-check mt-2">
                     <input type="checkbox" class="form-check-input setting" id="toggleWordWrap">
                     <label class="form-check-label" for="toggleWordWrap">
-                        Word wrapping
+                        Automatic word wrapping
                     </label>
                 </div>
-                <div class="form-check">
+                <div class="form-check mt-2">
                     <input type="checkbox" class="form-check-input setting" id="toggleWhitespace">
                     <label class="form-check-label" for="toggleWhitespace">
                         Render whitespace
                     </label>
+                </div>
+                <div class="form-check mt-2">
+                    <input type="checkbox" class="form-check-input setting" id="showFoldingControls">
+                    <label class="form-check-label" for="showFoldingControls">
+                        Show folding controls
+                    </label>
+                </div>
+                <div class="form-check mt-2">
+                    <input type="checkbox" class="form-check-input setting" id="toggleMinimap">
+                    <label class="form-check-label" for="toggleMinimap">
+                        Show minimap
+                    </label>
+                </div>
+                <div class="form-group mt-3">
+                    <button id="save-settings-ipc" class="btn btn-sm btn-success">
+                        <i class="fas fa-save"></i>
+                        <span class="ms-1">Save Settings</span>
+                    </button>
                 </div>
             </div>
         </div>

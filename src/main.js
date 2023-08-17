@@ -26,17 +26,17 @@ function createWindow() {
     })
 
     context.webContents.on('will-navigate', event => event.preventDefault())
-    context.loadFile(path.join(__dirname, '../dist/index.html'))
+    context.loadFile(path.join(__dirname, '../dist/index.html'));
 
-    const ipcHandler = new IpcHandler(ipcMain);
+    const settingsHandler = new SettingsHandler(context);
+
+    const ipcHandler = new IpcHandler(ipcMain, settingsHandler);
     ipcHandler.register(context);
 
     const contextMenu = new ContextMenu(app, Menu);
     contextMenu.register(context);
 
     const dialogHandler = new DialogHandler(context);
-
-    const settingsHandler = new SettingsHandler(context);
 
     context.webContents.on('did-finish-load', () => {
         context.webContents.send('from:settings:set', settingsHandler.loadSettingsFile())

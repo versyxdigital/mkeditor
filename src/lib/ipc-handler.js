@@ -2,13 +2,14 @@ const storage = require('./storage')
 
 module.exports = class IpcHandler
 {
-    constructor(ipc) {
+    constructor(ipc, settingsHandler) {
         this.ipc = ipc
         this.contextWindowTitle = 'MKEditor'
         this.contextBridgedContent = {
             original: null,
             current: null
         }
+        this.settingsHandler = settingsHandler
     }
 
     /**
@@ -23,7 +24,7 @@ module.exports = class IpcHandler
             }
 
             context.setTitle(this.contextWindowTitle)
-        })
+        });
 
         this.ipc.on('to:editor:state', (event, { original, current }) => {
             this.updateContextBridgedContent(original, current)
@@ -33,7 +34,12 @@ module.exports = class IpcHandler
             } else {
                 context.setTitle(this.contextWindowTitle)
             }
-        })
+        });
+
+        this.ipc.on('to:settings:save', (event, { settings }) => {
+            console.log('saving settings', {settings});
+            this.settingsHandler.saveSettingsToFile(settings);
+        });
 
         this.ipc.on('to:request:new', (event, { content, file }) => {
             storage.newFile(context, {
@@ -43,7 +49,7 @@ module.exports = class IpcHandler
             }).then(() => {
                 this.resetContextBridgedContent()
             })            
-        })
+        });
 
         this.ipc.on('to:request:save', (event, { content, file }) => {
             storage.save(context, {

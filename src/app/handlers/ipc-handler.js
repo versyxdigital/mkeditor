@@ -9,7 +9,6 @@ export default class IpcHandler
         this.instance = instance
         this.context = context
         this.activeFile = null
-        this.loadedSettings = null
     }
     
     /**
@@ -50,6 +49,8 @@ export default class IpcHandler
         // Set settings from stored settings file (%HOME%/.mkeditor/settings.json)
         this.context.receive('from:settings:set', (settings) => {
             this.mkeditor.applySettingsFromIpcStorage(settings);
+
+            this.context.send('from:theme:set', settings.toggleDarkMode);
             
             const handler = new SettingsHandler(this.instance, true, settings);
             handler.register();
@@ -108,6 +109,10 @@ export default class IpcHandler
         this.context.receive('from:notification:display', (event) => {
             notify.send(event.status, event.message)
         })
+    }
+
+    saveSettingsToFile(settings) {
+        this.context.send('to:settings:save', { settings })
     }
 
     trackEditorStateBetweenExecutionContext(original, current) {
