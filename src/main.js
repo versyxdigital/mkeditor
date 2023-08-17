@@ -28,21 +28,19 @@ function createWindow() {
     context.webContents.on('will-navigate', event => event.preventDefault())
     context.loadFile(path.join(__dirname, '../dist/index.html'))
 
-    const contextMenu = new ContextMenu(app, Menu)
-    contextMenu.register(context)
+    const ipcHandler = new IpcHandler(ipcMain);
+    ipcHandler.register(context);
 
-    const dialogHandler = new DialogHandler(context)
+    const contextMenu = new ContextMenu(app, Menu);
+    contextMenu.register(context);
 
-    const ipcHandler = new IpcHandler(ipcMain)
-    ipcHandler.register(context)
+    const dialogHandler = new DialogHandler(context);
 
-    const settingsHandler = new SettingsHandler();
-    const settingg = settingsHandler.loadSettingsFile();
-
-    console.log(settingg);
+    const settingsHandler = new SettingsHandler(context);
 
     context.webContents.on('did-finish-load', () => {
-        context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors)
+        context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors);
+        context.webContents.send('from:settings:set', settingsHandler.loadSettingsFile())
     })
 
     context.on('close', (event) => {

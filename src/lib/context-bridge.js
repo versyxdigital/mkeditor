@@ -11,6 +11,7 @@ const senderWhitelist = [
 const receiverWhitelist = [
     'from:set:title',
     'from:theme:set',
+    'from:settings:set',
     'from:request:new',
     'from:request:open',
     'from:request:save',

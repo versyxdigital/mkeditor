@@ -51,19 +51,6 @@ class Editor
 
         // Track initial editor value for comparison to current value
         this.loadedInitialEditorValue = null
-
-        // Fetch stored editor settings.
-        this.savedConfig = JSON.parse(localStorage.getItem('settings'))
-        
-        // Set editor settings to either defaults or saved settings
-        this.wordWrap = 'on'
-        this.autoIndent = 'none'
-        this.whitespace = 'none'
-        if (this.savedConfig) {
-            this.wordWrap = this.savedConfig.toggleWordWrap ? 'on' : 'off'
-            this.autoIndent = this.savedConfig.toggleAutoIndent ? 'advanced' : 'none'
-            this.whitespace = this.savedConfig.toggleWhitespace ? 'all' : 'none'
-        }
     }
 
     init(options = {watch: false}) {
@@ -140,6 +127,17 @@ class Editor
         copyCodeBlocks()
         wordCount(this.preview)
         characterCount(this.preview)
+    }
+
+    applySettingsFromIpcStorage(settings) {
+        this.wordWrap = settings.toggleWordWrap ? 'on' : 'off';
+        this.autoIndent = settings.toggleAutoIndent ? 'advanced' : 'none';
+        this.whitespace = settings.toggleWhitespace ? 'all' : 'none';
+
+        editor.setTheme(this.toggleDarkMode ? 'vs-dark' : 'vs');
+        this.instance.updateOptions({ wordWrap: this.wordWrap });
+        this.instance.updateOptions({ autoIndent: this.autoIndent });
+        this.instance.updateOptions({ renderWhitespace: this.whitespace });
     }
 
     registerCommandHandler(handler) {

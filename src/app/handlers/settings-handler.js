@@ -1,17 +1,21 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api'
 
 class SettingsHandler {
-    constructor(instance, persist = false) {
+    constructor(instance, persist = false, storedSettings = null) {
         this.instance = instance
         this.persist = persist
 
         if (localStorage.getItem('settings')) {
             this.settings = JSON.parse(localStorage.getItem('settings'))
+        } else if (storedSettings) {
+            console.log('Using settings from stored file');
+            this.settings = storedSettings;
         } else {
             this.settings = {
                 toggleAutoIndent: false,
                 toggleDarkMode: false,
-                toggleWordWrap: true
+                toggleWordWrap: true,
+                toggleWhitespace: false
             }
         }
     }
@@ -26,6 +30,10 @@ class SettingsHandler {
             this.addPersistSettingsHandler()
                 .applySettingsOnLoad()
         }
+    }
+
+    getActiveSettings() {
+        return this.settings;
     }
     
     applySettingsOnLoad() {

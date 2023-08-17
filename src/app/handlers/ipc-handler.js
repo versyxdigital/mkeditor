@@ -1,12 +1,15 @@
 import notify from '../utilities/notify'
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api'
+import SettingsHandler from './settings-handler'
 
 export default class IpcHandler
 {
-    constructor(instance, context) {
+    constructor(mkeditor, instance, context) {
+        this.mkeditor = mkeditor
         this.instance = instance
         this.context = context
         this.activeFile = null
+        this.loadedSettings = null
     }
     
     /**
@@ -42,7 +45,15 @@ export default class IpcHandler
                 editor.setTheme('vs-dark')
                 document.body.setAttribute('data-theme', 'dark')
             }
-        })
+        });
+
+        // Set settings from stored settings file (%HOME%/.mkeditor/settings.json)
+        this.context.receive('from:settings:set', (settings) => {
+            this.mkeditor.applySettingsFromIpcStorage(settings);
+            
+            const handler = new SettingsHandler(this.instance, true, settings);
+            handler.register();
+        });
         
         // Enable new files from outside of the browser window execution context.
         // Provides access to browser window data and emits it to the ipc channel.
