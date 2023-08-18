@@ -12,10 +12,14 @@ const preview = document.getElementById('preview');
 
 // Create a new Editor instance.
 const mkeditor = new Editor(editor, preview);
-const app = mkeditor.init({ watch: true });
+const app = mkeditor.init({
+    watch: true
+});
 
 // Ensure windows are split 50,50
-Split(['#editor', '#preview'], { sizes: [50, 50] });
+Split(['#editor', '#preview'], {
+    sizes: [50, 50]
+});
 
 // Register new command handler for the monaco editor instance to provide
 // and handle editor commands and actions (e.g. bold, alertblock etc.)
