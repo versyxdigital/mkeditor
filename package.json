@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "asar": "^3.1.0",
-    "css-loader": "^5.2.7",
+    "css-loader": "^6.8.1",
     "electron": "^26.0.0",
     "electron-builder": "^24.6.3",
     "eslint": "^8.47.0",
@@ -35,7 +35,7 @@
     "monaco-editor-webpack-plugin": "^4.2.0",
     "sass": "^1.66.0",
     "sass-loader": "^13.3.2",
-    "style-loader": "^2.0.0",
+    "style-loader": "^3.3.3",
     "terser-webpack-plugin": "^5.3.1",
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4"
