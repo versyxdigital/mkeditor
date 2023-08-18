@@ -27,7 +27,7 @@ class CommandHandler {
         this.instance.addAction({
             id: 'settings',
             label: 'Open Settings Dialog',
-            keybindings: [KeyMod.CtrlCmd | KeyCode.US_SEMICOLON],
+            keybindings: [KeyMod.CtrlCmd | KeyCode.Semicolon],
             run: () => {
                 this.settings.toggle();
             }
@@ -37,7 +37,10 @@ class CommandHandler {
             this.instance.addAction({
                 id: `alert-${block.type}`,
                 label: `Insert ${block.type} Alert`,
-                keybindings: [KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KEY_L, KeyCode[`KEY_${block.key}`])],
+                keybindings: [KeyMod.chord(
+                    KeyMod.CtrlCmd | KeyCode.KeyL,
+                    KeyCode[`Key${block.key}`]
+                )],
                 run: () => {
                     this.alert(block.type.toLowerCase());
                     this.alerts.hide();
@@ -49,7 +52,10 @@ class CommandHandler {
             this.instance.addAction({
                 id: `codeblock-${block.type}`,
                 label: `Insert ${block.type.charAt(0).toUpperCase() + block.type.slice(1)} Codeblock`,
-                keybindings: [KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KEY_K, KeyCode[`KEY_${block.key}`])],
+                keybindings: [KeyMod.chord(
+                    KeyMod.CtrlCmd | KeyCode.KeyK,
+                    KeyCode[`Key${block.key}`]
+                )],
                 run: () => {
                     this.codeblock(block.type.toLowerCase());
                     this.codeblocks.hide();
