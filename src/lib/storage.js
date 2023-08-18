@@ -1,5 +1,5 @@
-const { dialog } = require('electron')
-const fs = require('fs')
+const { dialog } = require('electron');
+const fs = require('fs');
 
 const saveChangesToExisting = async () => {
     const check = await dialog.showMessageBox(null, {
@@ -7,26 +7,25 @@ const saveChangesToExisting = async () => {
         buttons: ['Yes', 'No'],
         title: 'Save changes',
         message: 'Would you like to save changes to your existing file first?'
-    })
+    });
 
-    return check.response === 0
-}
+    return check.response === 0;
+};
 
 const setActiveFile = (context, file = null) => {
-    const filename = file ? file.split('\\').slice(-1).pop() : ''
-    const content = file ? fs.readFileSync(file, { encoding: 'utf-8' }) : ''
+    const filename = file ? file.split('\\').slice(-1).pop() : '';
+    const content = file ? fs.readFileSync(file, { encoding: 'utf-8' }) : '';
 
     context.webContents.send('from:request:open', {
         file,
         filename,
         content
-    })
-}
-
+    });
+};
 
 module.exports = {
-    async newFile(context, {data, file, encoding = 'utf-8'}) {
-        const check = await saveChangesToExisting()
+    async newFile (context, { data, file, encoding = 'utf-8' }) {
+        const check = await saveChangesToExisting();
         if (check) {
             await this.save(context, {
                 id: 'new',
@@ -34,90 +33,90 @@ module.exports = {
                 file,
                 encoding,
                 reset: true
-            })
+            });
         }
 
-        setActiveFile(context, null, '')
+        setActiveFile(context, null, '');
     },
 
-    async save(context, {id, data, file = null, encoding = 'utf-8', reset = false}) {
-        let options = {
+    async save (context, { id, data, file = null, encoding = 'utf-8', reset = false }) {
+        const options = {
             title: 'Save file',
-            defaultPath : `markdown-${id}`,
-            buttonLabel : 'Save',
+            defaultPath: `markdown-${id}`,
+            buttonLabel: 'Save',
 
-            filters :[
-                {name: 'md', extensions: ['md']},
-                {name: 'All Files', extensions: ['*']}
+            filters: [
+                { name: 'md', extensions: ['md'] },
+                { name: 'All Files', extensions: ['*'] }
             ]
-        }
+        };
 
         if (file) {
-            let check
+            let check;
 
             try {
-                check = fs.statSync(file)
+                check = fs.statSync(file);
             } catch (error) {
-                check = error.code || error
+                check = error.code || error;
             }
 
             if (check !== 'ENOENT') {
                 try {
-                    fs.writeFileSync(file, data, encoding)
+                    fs.writeFileSync(file, data, encoding);
 
                     context.webContents.send('from:notification:display', {
                         status: 'success',
                         message: 'File saved.'
-                    })
+                    });
 
-                    setActiveFile(context, file)
+                    setActiveFile(context, file);
                 } catch (error) {
                     context.webContents.send('from:notification:display', {
                         status: 'error',
                         message: `Unable to save file, please check ${file}`
-                    })
+                    });
                 }
             } else {
                 context.webContents.send('from:notification:display', {
                     status: 'error',
                     message: `Unable to save file, please check ${file}.`
-                })
+                });
             }
         } else {
             dialog.showSaveDialog(null, options)
                 .then(({ filePath }) => {
                     try {
-                        fs.writeFileSync(filePath, data, encoding)
+                        fs.writeFileSync(filePath, data, encoding);
 
                         context.webContents.send('from:notification:display', {
                             status: 'success',
                             message: 'File saved.'
-                        })
+                        });
 
                         if (reset) {
-                            filePath = null
+                            filePath = null;
                         }
 
-                        setActiveFile(context, filePath)
+                        setActiveFile(context, filePath);
                     } catch (error) {
                         if (error.code !== 'ENOENT') {
                             context.webContents.send('from:notification:display', {
                                 status: 'error',
                                 message: 'An error has occurred, please try again.'
-                            })
+                            });
                         }
                     }
                 })
-                .catch(() =>{
+                .catch(() => {
                     context.webContents.send('from:notification:display', {
                         status: 'error',
                         message: 'An error has occurred, please try again.'
-                    })
-                })
+                    });
+                });
         }
     },
 
-    async open(context) {
+    async open (context) {
         return new Promise((resolve) => {
             dialog.showOpenDialog({
                 filters: [
@@ -126,31 +125,31 @@ module.exports = {
                 ],
                 properties: ['openFile']
             })
-            .then(({ filePaths }) => {
-                if (filePaths.length === 0) {
-                    throw new Error('noselection')
-                }
+                .then(({ filePaths }) => {
+                    if (filePaths.length === 0) {
+                        throw new Error('noselection');
+                    }
 
-                let content = fs.readFileSync(filePaths[0], {
-                    encoding: 'utf-8'
-                })
+                    const content = fs.readFileSync(filePaths[0], {
+                        encoding: 'utf-8'
+                    });
 
-                let filename = filePaths[0].split('\\').slice(-1).pop()
+                    const filename = filePaths[0].split('\\').slice(-1).pop();
 
-                return resolve({
-                    file: filePaths[0],
-                    filename,
-                    content
-                })
-            }).catch((error) => {
-                console.log(error.code)
-                if (error.message !== 'noselection') {
-                    context.webContents.send('from:notification:display', {
-                        status: 'error',
-                        message: 'Unable to open file.'
-                    })   
-                }
-            })
-        })
+                    return resolve({
+                        file: filePaths[0],
+                        filename,
+                        content
+                    });
+                }).catch((error) => {
+                    console.log(error.code);
+                    if (error.message !== 'noselection') {
+                        context.webContents.send('from:notification:display', {
+                            status: 'error',
+                            message: 'Unable to open file.'
+                        });
+                    }
+                });
+        });
     }
-}
+};

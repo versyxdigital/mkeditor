@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('electron')
+const { ipcRenderer } = require('electron');
 
 const senderWhitelist = [
     'to:set:title',
@@ -6,8 +6,8 @@ const senderWhitelist = [
     'to:settings:save',
     'to:request:new',
     'to:request:save',
-    'to:request:saveas',
-]
+    'to:request:saveas'
+];
 
 const receiverWhitelist = [
     'from:set:title',
@@ -18,24 +18,24 @@ const receiverWhitelist = [
     'from:request:save',
     'from:request:saveas',
     'from:command:palette',
-    'from:notification:display',
-]
+    'from:notification:display'
+];
 
 module.exports = {
-    contextBridgeChannel() {
+    contextBridgeChannel () {
         return {
             send: (channel, data) => {
                 if (senderWhitelist.includes(channel)) {
-                    ipcRenderer.send(channel, data)
+                    ipcRenderer.send(channel, data);
                 }
             },
             receive: (channel, func) => {
                 if (receiverWhitelist.includes(channel)) {
                     ipcRenderer.on(channel, (event, ...args) => {
-                        func(...args)
-                    })
+                        func(...args);
+                    });
                 }
             }
-        }
+        };
     }
-}
+};

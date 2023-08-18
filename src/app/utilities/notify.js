@@ -1,6 +1,6 @@
-import Swal from 'sweetalert2'
+import Swal from 'sweetalert2';
 
-const notify = {}
+const notify = {};
 
 notify.toast = Swal.mixin({
     toast: true,
@@ -9,25 +9,24 @@ notify.toast = Swal.mixin({
     timer: 5000,
     timerProgressBar: true,
     showClass: {
-        popup: '',
+        popup: ''
     },
     hideClass: {
         popup: ''
     },
     didOpen: (toast) => {
-        toast.addEventListener('mouseenter', Swal.stopTimer)
-        toast.addEventListener('mouseleave', Swal.resumeTimer)
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
     }
-})
-
+});
 
 notify.send = async (type, msg, position = 'bottom-end') => {
     await notify.toast.fire({
         icon: type,
         title: type.charAt(0).toUpperCase() + type.slice(1),
         text: msg,
-        position: position
-    })
-}
+        position
+    });
+};
 
-export default notify
+export default notify;

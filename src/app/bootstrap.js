@@ -1,5 +1,5 @@
-import 'bootstrap'
-import {dom, library} from '@fortawesome/fontawesome-svg-core'
+import 'bootstrap';
+import { dom, library } from '@fortawesome/fontawesome-svg-core';
 import {
     faBold,
     faCheck,
@@ -18,7 +18,7 @@ import {
     faCog,
     faSave,
     faQuestionCircle
-} from '@fortawesome/free-solid-svg-icons'
+} from '@fortawesome/free-solid-svg-icons';
 
 library.add(
     faBold,
@@ -38,6 +38,6 @@ library.add(
     faCog,
     faSave,
     faQuestionCircle
-)
+);
 
-dom.watch()
+dom.watch();

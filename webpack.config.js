@@ -1,12 +1,12 @@
-const path = require('path')
-const webpack = require('webpack')
-const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin')
-const TerserWebpackPlugin = require('terser-webpack-plugin')
+const path = require('path');
+const webpack = require('webpack');
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+const TerserWebpackPlugin = require('terser-webpack-plugin');
 
 module.exports = {
     mode: 'production',
     entry: {
-        mkeditor: ['./src/app/index.js', './src/app/assets/scss/index.scss'],
+        mkeditor: ['./src/app/index.js', './src/app/assets/scss/index.scss']
     },
     output: {
         globalObject: 'self',
@@ -15,8 +15,8 @@ module.exports = {
     },
     optimization: {
         minimizer: [new TerserWebpackPlugin({
-            extractComments: true,
-        })],
+            extractComments: true
+        })]
     },
     module: {
         rules: [
@@ -30,7 +30,7 @@ module.exports = {
                 use: [
                     {
                         loader: 'file-loader',
-                        options: {name: 'mkeditor.bundle.css'}
+                        options: { name: 'mkeditor.bundle.css' }
                     },
                     'sass-loader'
                 ]
@@ -49,4 +49,4 @@ module.exports = {
             maxChunks: 1
         })
     ]
-}
+};

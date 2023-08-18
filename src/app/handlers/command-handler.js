@@ -1,35 +1,37 @@
-import { Modal, Dropdown } from 'bootstrap'
-import { KeyMod, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api'
-import { commands, alertblocks, codeblocks } from './mappings/commands'
+import { Modal, Dropdown } from 'bootstrap';
+import { KeyMod, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api';
+import { commands, alertblocks, codeblocks } from './mappings/commands';
 
-class CommandHandler
-{
-    constructor(instance) {
-        this.instance = instance
-        this.settings = new Modal(document.getElementById('settings'))
-        this.alerts = new Dropdown(document.getElementById('alertMenuButton'))
-        this.codeblocks = new Dropdown(document.getElementById('codeBlockMenuButton'))
+/**
+ * Command Handler
+ */
+class CommandHandler {
+    constructor (instance) {
+        this.instance = instance;
+        this.settings = new Modal(document.getElementById('settings'));
+        this.alerts = new Dropdown(document.getElementById('alertMenuButton'));
+        this.codeblocks = new Dropdown(document.getElementById('codeBlockMenuButton'));
     }
 
-    register() {
+    register () {
         for (const cmd in commands) {
             if (Object.prototype.hasOwnProperty.call(commands[cmd], 'op')) {
-                commands[cmd].run = () => this.execute(commands[cmd].op)
+                commands[cmd].run = () => this.execute(commands[cmd].op);
             } else {
-                commands[cmd].run = () => this[cmd]()
+                commands[cmd].run = () => this[cmd]();
             }
-            
-            this.instance.addAction(commands[cmd])
+
+            this.instance.addAction(commands[cmd]);
         }
 
         this.instance.addAction({
             id: 'settings',
             label: 'Open Settings Dialog',
-            keybindings: [ KeyMod.CtrlCmd | KeyCode.US_SEMICOLON ],
+            keybindings: [KeyMod.CtrlCmd | KeyCode.US_SEMICOLON],
             run: () => {
-                this.settings.toggle()
+                this.settings.toggle();
             }
-        })
+        });
 
         for (const block of alertblocks) {
             this.instance.addAction({
@@ -37,10 +39,10 @@ class CommandHandler
                 label: `Insert ${block.type} Alert`,
                 keybindings: [KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KEY_L, KeyCode[`KEY_${block.key}`])],
                 run: () => {
-                    this.alert(block.type.toLowerCase())
-                    this.alerts.hide()
+                    this.alert(block.type.toLowerCase());
+                    this.alerts.hide();
                 }
-            })
+            });
         }
 
         for (const block of codeblocks) {
@@ -49,71 +51,71 @@ class CommandHandler
                 label: `Insert ${block.type.charAt(0).toUpperCase() + block.type.slice(1)} Codeblock`,
                 keybindings: [KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KEY_K, KeyCode[`KEY_${block.key}`])],
                 run: () => {
-                    this.codeblock(block.type.toLowerCase())
-                    this.codeblocks.hide()
+                    this.codeblock(block.type.toLowerCase());
+                    this.codeblocks.hide();
                 }
-            })
+            });
         }
 
         // Map monaco editor commands to editor UI buttons (e.g. bold, alertblock etc.)
-        const ops = document.getElementById('editor-functions').querySelectorAll('a')
+        const ops = document.getElementById('editor-functions').querySelectorAll('a');
         if (ops) {
             ops.forEach((op) => {
                 op.addEventListener('click', (event) => {
-                    const target = event.currentTarget
+                    const target = event.currentTarget;
                     if (Object.prototype.hasOwnProperty.call(target.dataset, 'op')) {
                         target.dataset.ch && !(commands[target.dataset.op] instanceof Function)
                             ? this.execute(target.dataset.ch)
-                            : commands[target.dataset.op](target)
+                            : commands[target.dataset.op](target);
 
-                        this.instance.focus()
+                        this.instance.focus();
                     }
-                })
-            })
+                });
+            });
         }
     }
 
-    execute(op) {
-        this.do(op + this.model() + op)
+    execute (op) {
+        this.do(op + this.model() + op);
     }
 
-    do(text) {
+    do (text) {
         this.instance.executeEdits(null, [{
             range: this.instance.getSelection(),
             text,
             forceMoveMarkers: true
-        }])
+        }]);
     }
 
-    model() {
-        return this.instance.getModel().getValueInRange(this.instance.getSelection())
+    model () {
+        return this.instance.getModel().getValueInRange(this.instance.getSelection());
     }
 
-    unorderedList() {
-        this.do(this.model().replace(/^[a-zA-Z]+?/gm, (match) => `- ${match}`))
+    unorderedList () {
+        this.do(this.model().replace(/^[a-zA-Z]+?/gm, (match) => `- ${match}`));
     }
 
-    orderedList() {
-        let i = 0
-        this.do(this.model().replace(/^[a-zA-Z]+?/gm, (match) => `${++i}. ${match}`))
+    orderedList () {
+        let i = 0;
+        this.do(this.model().replace(/^[a-zA-Z]+?/gm, (match) => `${++i}. ${match}`));
     }
 
-    orderedListToTaskList() {
-        let i = 0
-        this.do(this.model().replace(/^([0-9]+)\.\s+(?!\[)/gm, (match) => `${++i}. [ ] ${match}`))
+    orderedListToTaskList () {
+        let i = 0;
+        this.do(this.model().replace(/^([0-9]+)\.\s+(?!\[)/gm, (match) => `${++i}. [ ] ${match}`));
     }
 
-    alert(params, content = null) {
-        const type = params.dataset ? params.dataset.type : params
-        content = content ? content : this.model()
-        this.do('::: '+type+'\n'+ content + '\n:::')
+    alert (params, content = null) {
+        const type = params.dataset ? params.dataset.type : params;
+        content = content || this.model();
+        this.do('::: ' + type + '\n' + content + '\n:::');
     }
 
-    codeblock(params, content = null) {
-        const language = params.dataset ? params.dataset.language : params
-        content = content ? content : this.model()
-        this.do('```'+language+'\n'+content+'\n```')
+    codeblock (params, content = null) {
+        const language = params.dataset ? params.dataset.language : params;
+        content = content || this.model();
+        this.do('```' + language + '\n' + content + '\n```');
     }
 }
 
-export default CommandHandler
+export default CommandHandler;

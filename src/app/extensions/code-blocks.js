@@ -8,150 +8,150 @@ const copyCodeBlocks = (instance, options) => {
         checkIconClass: 'fa fa-check text-success',
         checkIconContent: '',
         onBeforeCodeCopied: null
-    }
+    };
 
-    options = Object.assign({}, defaults, options)
+    options = Object.assign({}, defaults, options);
 
-    function init(config) {
-        Object.assign(options, config)
+    function init (config) {
+        Object.assign(options, config);
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', load)
+            document.addEventListener('DOMContentLoaded', load);
         } else {
-            load()
+            load();
         }
     }
 
-    function load() {
+    function load () {
         if (options.loadDelay) {
-            setTimeout(addButton, options.loadDelay)
+            setTimeout(addButton, options.loadDelay);
         } else {
-            addButton()
+            addButton();
         }
     }
 
-    function addButton() {
+    function addButton () {
         if (!document.querySelector(options.templateSelector)) {
-            const node = document.createElement('div')
-            node.innerHTML = getTemplate()
-            document.body.appendChild(node.querySelector(options.templateSelector))
+            const node = document.createElement('div');
+            node.innerHTML = getTemplate();
+            document.body.appendChild(node.querySelector(options.templateSelector));
         }
 
-        const blocks = document.querySelectorAll('pre>code.hljs')
+        const blocks = document.querySelectorAll('pre>code.hljs');
         for (let index = 0; index < blocks.length; index++) {
-            let el = blocks[index]
+            const el = blocks[index];
             if (el.querySelector('.copy-code')) {
-                continue
+                continue;
             }
 
-            let lang = ''
+            let lang = '';
             for (let i = 0; i < el.classList.length; i++) {
-                let cl = el.classList[i]
+                const cl = el.classList[i];
                 if (cl.substring(0, 9) === 'language-') {
-                    lang = el.classList[i].replace('language-', '')
-                    break
+                    lang = el.classList[i].replace('language-', '');
+                    break;
                 } else if (cl.substring(0, 5) === 'lang-') {
-                    lang = el.classList[i].replace('lang-', '')
-                    break
+                    lang = el.classList[i].replace('lang-', '');
+                    break;
                 }
 
                 if (!lang) {
                     for (let j = 0; j < el.classList.length; j++) {
                         if (el.classList[j] === 'hljs') {
-                            continue
+                            continue;
                         }
-                        lang = el.classList[j]
-                        break
+                        lang = el.classList[j];
+                        break;
                     }
                 }
             }
 
             if (lang) {
-                lang = lang.toLowerCase()
+                lang = lang.toLowerCase();
             } else {
-                lang = 'text'
+                lang = 'text';
             }
 
             const html = document.querySelector(options.templateSelector).innerHTML
                 .replace('{{language}}', lang)
                 .replace('{{copyIconClass}}', options.copyIconClass)
-                .trim()
+                .trim();
 
-            let newButton = document.createElement('div')
-            newButton.innerHTML = html
-            newButton = newButton.querySelector('.copy-code')
+            let newButton = document.createElement('div');
+            newButton.innerHTML = html;
+            newButton = newButton.querySelector('.copy-code');
 
-            const pre = el.parentElement
-            pre.classList.add('copy-code-pre')
+            const pre = el.parentElement;
+            pre.classList.add('copy-code-pre');
 
             if (options.copyIconContent) {
-                newButton.querySelector('.copy-code-copy-icon').innerText = options.copyIconContent
+                newButton.querySelector('.copy-code-copy-icon').innerText = options.copyIconContent;
             }
 
-            pre.insertBefore(newButton, el)
+            pre.insertBefore(newButton, el);
         }
 
         document.querySelector(options.contentSelector).addEventListener('click', (event) => {
             if (event.target.classList.contains('copy-code-copy-icon')) {
-                event.preventDefault()
-                event.cancelBubble = true
-                copyCodeToClipboard(event)
+                event.preventDefault();
+                event.cancelBubble = true;
+                copyCodeToClipboard(event);
             }
 
-            return false
-        })
+            return false;
+        });
     }
 
-    function copyCodeToClipboard(event) {
-        const source = event.target.parentElement.parentElement.parentElement
-        const code = source.querySelector('pre>code')
-        let text = code.textContent || code.innerText
+    function copyCodeToClipboard (event) {
+        const source = event.target.parentElement.parentElement.parentElement;
+        const code = source.querySelector('pre>code');
+        let text = code.textContent || code.innerText;
 
         if (options.onBeforeCodeCopied) {
-            text = options.onBeforeCodeCopied(text, code)
+            text = options.onBeforeCodeCopied(text, code);
         }
 
-        const el = document.createElement('textarea')
-        el.value = text.trim()
+        const el = document.createElement('textarea');
+        el.value = text.trim();
 
-        document.body.appendChild(el)
+        document.body.appendChild(el);
 
-        el.style.display = 'block'
-        el.select()
+        el.style.display = 'block';
+        el.select();
 
-        document.execCommand('copy')
-        document.body.removeChild(el)
+        document.execCommand('copy');
+        document.body.removeChild(el);
 
-        swapIcons(source)
+        swapIcons(source);
     }
 
-    function swapIcons(source) {
-        const copyIcons = options.copyIconClass.split(' ')
-        const checkIcons = options.checkIconClass.split(' ')
-        const fa = source.querySelector('.copy-code-copy-icon')
-        fa.innerText = options.checkIconContent
+    function swapIcons (source) {
+        const copyIcons = options.copyIconClass.split(' ');
+        const checkIcons = options.checkIconClass.split(' ');
+        const fa = source.querySelector('.copy-code-copy-icon');
+        fa.innerText = options.checkIconContent;
 
         for (let i = 0; i < copyIcons.length; i++) {
-            fa.classList.remove(copyIcons[i])
+            fa.classList.remove(copyIcons[i]);
         }
 
         for (let i = 0; i < checkIcons.length; i++) {
-            fa.classList.add(checkIcons[i])
+            fa.classList.add(checkIcons[i]);
         }
 
         setTimeout(function () {
-            fa.innerText = options.copyIconContent
+            fa.innerText = options.copyIconContent;
 
             for (let i = 0; i < checkIcons.length; i++) {
-                fa.classList.remove(checkIcons[i])
+                fa.classList.remove(checkIcons[i]);
             }
 
             for (let i = 0; i < copyIcons.length; i++) {
-                fa.classList.add(copyIcons[i])
+                fa.classList.add(copyIcons[i]);
             }
-        }, 2000)
+        }, 2000);
     }
 
-    function getTemplate() {
+    function getTemplate () {
         const parts =
             [
                 '<div id="copyCode" style="display:none">',
@@ -162,17 +162,17 @@ const copyCodeBlocks = (instance, options) => {
                 '        </div>',
                 '     </div>',
                 '</div>'
-            ]
+            ];
 
-        let html = ''
+        let html = '';
         for (let i = 0; i < parts.length; i++) {
-            html += parts[i] + '\n'
+            html += parts[i] + '\n';
         }
 
-        return html
+        return html;
     }
 
-    init(options)
-}
+    init(options);
+};
 
-export default copyCodeBlocks
+export default copyCodeBlocks;

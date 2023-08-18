@@ -1,18 +1,17 @@
-const path = require('path')
-const storage = require('./storage')
-const openAboutWindow = require('about-window').default
+const path = require('path');
+const storage = require('./storage');
+const openAboutWindow = require('about-window').default;
 
-module.exports = class MenuHandler
-{
-    constructor(app, menu) {
-        this.app = app
-        this.menu = menu
+module.exports = class MenuHandler {
+    constructor (app, menu) {
+        this.app = app;
+        this.menu = menu;
     }
 
-    register(context) {
+    register (context) {
         this.app.applicationMenu = this.menu.buildFromTemplate([
             {
-                label: '',
+                label: ''
             },
             {
                 label: 'File',
@@ -20,35 +19,35 @@ module.exports = class MenuHandler
                     {
                         label: 'New File...',
                         click: () => {
-                            context.webContents.send('from:request:new', 'to:request:new')
+                            context.webContents.send('from:request:new', 'to:request:new');
                         },
-                        accelerator: 'Ctrl+N' 
+                        accelerator: 'Ctrl+N'
                     },
                     {
                         label: 'Open File...',
                         click: () => {
                             storage.open(context).then(response => {
-                                context.webContents.send('from:request:open', response)
-                            })
+                                context.webContents.send('from:request:open', response);
+                            });
                         },
-                        accelerator: 'Ctrl+O' 
+                        accelerator: 'Ctrl+O'
                     },
                     {
                         label: 'Save',
                         click: () => {
-                            context.webContents.send('from:request:save', 'to:request:save')
+                            context.webContents.send('from:request:save', 'to:request:save');
                         },
                         accelerator: 'Ctrl+S'
                     },
                     {
                         label: 'Save As...',
                         click: () => {
-                            context.webContents.send('from:request:saveas', 'to:request:saveas')
+                            context.webContents.send('from:request:saveas', 'to:request:saveas');
                         },
                         accelerator: 'Ctrl+Shift+S'
                     },
                     { type: 'separator' },
-                    { role: 'quit' },
+                    { role: 'quit' }
                 ]
             },
             {
@@ -59,7 +58,7 @@ module.exports = class MenuHandler
                     { type: 'separator' },
                     { role: 'cut' },
                     { role: 'copy' },
-                    { role: 'paste' },
+                    { role: 'paste' }
                 ]
             },
             {
@@ -68,7 +67,7 @@ module.exports = class MenuHandler
                     {
                         label: 'Command Palette...',
                         click: () => {
-                            context.webContents.send('from:command:palette', 'open')
+                            context.webContents.send('from:command:palette', 'open');
                         },
                         accelerator: 'F1'
                     },
@@ -76,10 +75,10 @@ module.exports = class MenuHandler
                     {
                         label: 'Toggle Developer Tools',
                         accelerator: (function () {
-                            return process.platfom === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I'
+                            return process.platfom === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I';
                         }()),
                         click: () => {
-                            context.webContents.toggleDevTools()
+                            context.webContents.toggleDevTools();
                         }
                     }
                 ]
@@ -96,11 +95,11 @@ module.exports = class MenuHandler
                                 copyright: '© 2021 - ' + new Date().getFullYear() + ' Chris Rowles. All rights reserved.',
                                 package_json_dir: path.join(__dirname, '../../'),
                                 use_version_info: false
-                            })
+                            });
                         }
                     }
                 ]
             }
-        ])
+        ]);
     }
-}
+};
