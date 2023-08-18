@@ -16,11 +16,14 @@ export default class IpcHandler {
      * @param {*} mkeditor
      * @param {*} instance
      * @param {*} context
+     * @param {*} dispatcher
      */
-    constructor (mkeditor, instance, context) {
+    constructor (mkeditor, instance, context, dispatcher) {
         this.mkeditor = mkeditor;
         this.instance = instance;
         this.context = context;
+        this.dispatcher = dispatcher;
+
         this.activeFile = null;
     }
 
@@ -106,9 +109,9 @@ export default class IpcHandler {
 
             // Dispatch contents so the editor can track it.
             // This handler and the editor both reside within the same execution context.
-            window.dispatchEvent(new CustomEvent('editor:state', {
-                detail: this.instance.getValue()
-            }));
+            this.dispatcher.setState({
+                content: this.instance.getValue()
+            });
 
             this.trackEditorStateBetweenExecutionContext(content, content);
 

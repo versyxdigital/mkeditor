@@ -5,7 +5,7 @@ import { scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync';
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 
 class Editor {
-    constructor (editor, preview) {
+    constructor (editor, preview, dispatcher) {
         // Active editor
         this.instance = null;
 
@@ -20,6 +20,9 @@ class Editor {
 
         // Track initial editor value for comparison to current value
         this.loadedInitialEditorValue = null;
+
+        // Event dispatcher
+        this.dispatcher = dispatcher;
     }
 
     init (options = { watch: false }) {
@@ -38,8 +41,8 @@ class Editor {
             });
 
             this.loadedInitialEditorValue = this.instance.getValue();
-            window.addEventListener('editor:state', (event) => {
-                this.loadedInitialEditorValue = event.detail;
+            this.dispatcher.addEventListener('editor:state', (event) => {
+                this.loadedInitialEditorValue = event.message;
             });
 
             const saveButton = document.querySelector('#save-settings-ipc');
