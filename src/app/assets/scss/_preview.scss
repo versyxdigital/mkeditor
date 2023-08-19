@@ -1,10 +1,27 @@
 #preview {
+  height: 100%;
   overflow-y: auto;
-  flex: 1 50%;
   padding-bottom: 44px;
   background-color: #fff;
 
   ul li, ol li {
     position: relative;
+    font-size: .9rem;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  h2 {
+    font-size: 1.35rem;
+  }
+
+  h3 {
+    font-size: 1rem;
+  }
+
+  p, a {
+    font-size: .9rem;
   }
 }
