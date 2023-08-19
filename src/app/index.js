@@ -1,4 +1,4 @@
-import './bootstrap';
+import './icons';
 import Split from 'split.js';
 import Editor from './editor';
 import EditorDispatcher from './events/editor-dispatcher';
@@ -16,39 +16,37 @@ const dispatcher = new EditorDispatcher();
 
 // Create a new Editor instance.
 const mkeditor = new Editor(editor, preview, dispatcher);
-const app = mkeditor.init({
-    watch: true
-});
+const instance = mkeditor.init({ watch: true });
 
 // Implement draggable splitter.
 Split(['#editor-split', '#preview-split'], {
     onDrag () {
-        app.layout();
+        instance.layout();
     }
 });
 
 // Event listener to resize the layout when the viewport is loaded.
-window.onload = () => app.layout();
+window.onload = () => instance.layout();
 
 // Register new command handler for the monaco editor instance to provide
 // and handle editor commands and actions (e.g. bold, alertblock etc.)
-const commandHandler = new CommandHandler(app);
-commandHandler.register();
-mkeditor.registerCommandHandler(commandHandler);
+mkeditor.registerCommandHandler(
+    new CommandHandler(instance, true)
+);
 
 // Register new settings handler for the monaco editor instance to provide
 // local settings with persistence.
-const settingsHandler = new SettingsHandler(app, {
-    persistSettings: true
-});
-
-settingsHandler.register();
-mkeditor.registerSettingsHandler(settingsHandler);
+mkeditor.registerSettingsHandler(
+    new SettingsHandler(instance, {
+        persistSettings: true
+    }, true)
+);
 
 // If running within electron app, register IPC handler for communication
 // between execution contexts.
 if (Object.prototype.hasOwnProperty.call(window, 'api')) {
-    const ipcHandler = new IpcHandler(mkeditor, app, window.api, dispatcher);
-    ipcHandler.register();
-    mkeditor.registerIpcHandler(ipcHandler);
+    const context = window.api;
+    mkeditor.registerIpcHandler(
+        new IpcHandler(mkeditor, instance, context, dispatcher, true)
+    );
 }

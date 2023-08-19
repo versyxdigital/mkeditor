@@ -18,13 +18,17 @@ export default class IpcHandler {
      * @param {*} context
      * @param {*} dispatcher
      */
-    constructor (mkeditor, instance, context, dispatcher) {
+    constructor (mkeditor, instance, context, dispatcher, register = false) {
         this.mkeditor = mkeditor;
         this.instance = instance;
         this.context = context;
         this.dispatcher = dispatcher;
 
         this.activeFile = null;
+
+        if (register) {
+            this.register();
+        }
     }
 
     /**

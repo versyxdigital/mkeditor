@@ -38,7 +38,7 @@ class SettingsHandler {
      * @param {boolean} persistSettings choose to persist settings through localStorage
      * @param {object|null} storedSettings  Load stored settings from a settings file
      */
-    constructor (instance, { persistSettings = false, storedSettings = null }) {
+    constructor (instance, { persistSettings = false, storedSettings = null }, register = false) {
         this.instance = instance;
         this.persistSettings = persistSettings;
 
@@ -47,6 +47,10 @@ class SettingsHandler {
         } else if (storedSettings) {
             console.log('Using settings from stored file');
             this.settings = storedSettings;
+        }
+
+        if (register) {
+            this.register();
         }
     }
 

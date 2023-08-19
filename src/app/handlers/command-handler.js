@@ -6,14 +6,30 @@ import { commands, alertblocks, codeblocks } from './mappings/commands';
  * Command Handler
  */
 class CommandHandler {
-    constructor (instance) {
+    constructor (instance, register = false) {
         this.instance = instance;
         this.settings = new Modal(document.getElementById('settings'));
         this.alerts = new Dropdown(document.getElementById('alertMenuButton'));
         this.codeblocks = new Dropdown(document.getElementById('codeBlockMenuButton'));
+
+        if (register) {
+            this.register();
+        }
     }
 
     register () {
+        this.instance.onKeyDown((e) => {
+            if (e.ctrlKey && e.keyCode === 42 /* L */) {
+                this.alerts.toggle();
+            }
+
+            if (e.ctrlKey && e.keyCode === 41 /* K */) {
+                this.codeblocks.toggle();
+            }
+
+            this.instance.focus();
+        });
+
         for (const cmd in commands) {
             if (Object.prototype.hasOwnProperty.call(commands[cmd], 'op')) {
                 commands[cmd].run = () => this.execute(commands[cmd].op);

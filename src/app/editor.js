@@ -82,7 +82,9 @@ class Editor {
                 );
             }
 
-            this.render();
+            setTimeout(() => {
+                this.render();
+            }, 500);
         });
 
         this.instance.onDidScrollChange(() => {
@@ -90,18 +92,6 @@ class Editor {
             if (visibleRange) {
                 scrollPreviewToEditorVisibleRange(visibleRange.startLineNumber, this.preview);
             }
-        });
-
-        this.instance.onKeyDown((e) => {
-            if (e.ctrlKey && e.keyCode === 42 /* L */) {
-                this.commandHandler.alerts.toggle();
-            }
-
-            if (e.ctrlKey && e.keyCode === 41 /* K */) {
-                this.commandHandler.codeblocks.toggle();
-            }
-
-            this.instance.focus();
         });
     }
 

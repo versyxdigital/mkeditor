@@ -2,6 +2,7 @@ const path = require('path');
 const webpack = require('webpack');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const TerserWebpackPlugin = require('terser-webpack-plugin');
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = {
     mode: 'production',
@@ -9,7 +10,7 @@ module.exports = {
         mkeditor: ['./src/app/index.js', './src/app/assets/scss/index.scss']
     },
     output: {
-        globalObject: 'self',
+        globalObject: 'this',
         filename: 'mkeditor.bundle.js',
         path: path.resolve(__dirname, 'dist')
     },
@@ -43,10 +44,25 @@ module.exports = {
     },
     plugins: [
         new MonacoWebpackPlugin({
-            languages: ['markdown']
+            languages: ['markdown'],
+            features: [
+                'clipboard',
+                'cursorUndo',
+                'find',
+                'fontZoom',
+                'inPlaceReplace',
+                'indentation',
+                'lineSelection',
+                'links',
+                'multicursor',
+                'quickCommand',
+                'referenceSearch',
+                'wordHighlighter'
+            ]
         }),
         new webpack.optimize.LimitChunkCountPlugin({
             maxChunks: 1
-        })
+        }),
+        new BundleAnalyzerPlugin()
     ]
 };

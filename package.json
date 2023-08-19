@@ -38,6 +38,7 @@
     "style-loader": "^3.3.3",
     "terser-webpack-plugin": "^5.3.1",
     "webpack": "^5.88.2",
+    "webpack-bundle-analyzer": "^4.9.0",
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
@@ -48,6 +49,7 @@
     "@popperjs/core": "^2.11.8",
     "about-window": "^1.15.2",
     "bootstrap": "^5.3.1",
+    "esbuild": "0.19.2",
     "split.js": "^1.6.5",
     "sweetalert2": "^11.7.23",
     "webpack-merge": "^5.9.0"
