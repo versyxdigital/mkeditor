@@ -12,6 +12,7 @@ import { faListOl } from '@fortawesome/free-solid-svg-icons/faListOl';
 import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
 import { faMoon } from '@fortawesome/free-solid-svg-icons/faMoon';
 import { faQuestionCircle } from '@fortawesome/free-solid-svg-icons/faQuestionCircle';
+import { faRefresh } from '@fortawesome/free-solid-svg-icons/faRefresh';
 import { faSave } from '@fortawesome/free-solid-svg-icons/faSave';
 import { faStrikethrough } from '@fortawesome/free-solid-svg-icons/faStrikethrough';
 import { faTasks } from '@fortawesome/free-solid-svg-icons/faTasks';
@@ -31,6 +32,7 @@ library.add(
     faListOl,
     faMoon,
     faQuestionCircle,
+    faRefresh,
     faSave,
     faStrikethrough,
     faTasks,

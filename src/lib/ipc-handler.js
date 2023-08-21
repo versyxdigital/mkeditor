@@ -19,7 +19,7 @@ module.exports = class IpcHandler {
     register (context) {
         this.ipc.on('to:set:title', (event, title = null) => {
             if (title) {
-                this.contextWindowTitle = `${this.contextWindowTitle} - ${title}`;
+                this.contextWindowTitle = `MKEditor - ${title}`;
             }
 
             context.setTitle(this.contextWindowTitle);

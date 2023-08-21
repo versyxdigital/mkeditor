@@ -52,65 +52,60 @@
         <nav class="navbar navbar-light bg-light fixed-bottom border-top p-2">
             <div class="d-flex justify-content-start align-items-center" id="editor-functions">
                 <div class="btn-group me-2">
-                    <a class="btn btn-sm btn-outline-secondary" id="saveFile" class="btn btn-sm btn-success px-3">
+                    <button class="btn btn-sm btn-outline-secondary" id="saveFile" class="btn btn-sm btn-success px-3">
                         <i class="fas fa-save"></i>
-                    </a>
+                    </button>
                 </div>
                 <div class="btn-group me-2">
-                    <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="B" data-op="bold" data-ch="**" href="#">
+                    <button class="btn btn-sm btn-outline-secondary shortcut" data-op="bold" data-syntax="**">
                         <i class="fa fa-bold"></i>
-                    </a>
-                    <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="I" data-op="italic" data-ch="_" href="#">
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary shortcut" data-op="italic" data-syntax="_">
                         <i class="fa fa-italic"></i>
-                    </a>
-                    <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="G" data-op="strikethrough" data-ch="~~"
-                        href="#">
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary shortcut" data-op="strikethrough" data-syntax="~~">
                         <i class="fa fa-strikethrough"></i>
-                    </a>
+                    </button>
                 </div>
                 <div class="btn-group me-2">
-                    <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="1" data-op="unorderedList"
-                        href="#">
+                    <button class="btn btn-sm btn-outline-secondary shortcut" data-op="unorderedList">
                         <i class="fa fa-list-ul"></i>
-                    </a>
-                    <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="2" data-op="orderedList" href="#">
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary shortcut" data-op="orderedList">
                         <i class="fa fa-list-ol"></i>
-                    </a>
-                    <a class="btn btn-sm btn-outline-secondary shortcut" data-shortcut="3" data-op="orderedListToTaskList"
-                        href="#">
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary shortcut" data-op="orderedListToTaskList">
                         <i class="fa fa-tasks"></i>
-                    </a>
+                    </button>
                 </div>
                 <div class="btn-group dropup me-2">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeBlockMenuButton" data-shortcut="K"
-                            data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeBlockMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-code"></i>
                     </button>
                     <div class="dropdown-menu" id="codeBlockMenu" aria-labelledby="codeBlockMenuButton">
-                        <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="sh"><i class="fas fa-terminal"></i> <u>S</u>hell</a>
+                        <button class="dropdown-item md-editor-btn" data-op="codeblock" data-language="sh"><i class="fas fa-terminal"></i> <u>S</u>hell</button>
                         <div class="dropdown-divider"></div>
-                        <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="javascript"><i class="fas fa-code"></i> <u>J</u>avascript</a>
-                        <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="csharp"><i class="fas fa-code"></i> <u>C</u>#</a>
-                        <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="python"><i class="fas fa-code"></i> <u>P</u>ython</a>
+                        <button class="dropdown-item md-editor-btn" data-op="codeblock" data-language="javascript"><i class="fas fa-code"></i> <u>J</u>avascript</button>
+                        <button class="dropdown-item md-editor-btn" data-op="codeblock" data-language="csharp"><i class="fas fa-code"></i> <u>C</u>#</button>
+                        <button class="dropdown-item md-editor-btn" data-op="codeblock" data-language="python"><i class="fas fa-code"></i> <u>P</u>ython</button>
                         <div class="dropdown-divider"></div>
-                        <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="xml"><i class="fas fa-code"></i> <u>X</u>ML</a>
-                        <a class="dropdown-item md-editor-btn" href="#" data-op="codeblock" data-language="sql"><i class="fas fa-database"></i> S<u>Q</u>L</a>
+                        <button class="dropdown-item md-editor-btn" data-op="codeblock" data-language="xml"><i class="fas fa-code"></i> <u>X</u>ML</button>
+                        <button class="dropdown-item md-editor-btn" data-op="codeblock" data-language="sql"><i class="fas fa-database"></i> S<u>Q</u>L</button>
                     </div>
                 </div>
                 <div class="dropup mr-2">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="alertMenuButton" data-shortcut="L"
-                            data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="alertMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-exclamation-circle"></i>
                     </button>
                     <div class="dropdown-menu" id="alertMenu" aria-labelledby="alertMenuButton">
-                        <a class="dropdown-item alert-primary md-editor-btn" href="#" data-shortcut="P" data-op="alert" data-type="primary"><u>P</u>rimary</a>
-                        <a class="dropdown-item alert-secondary md-editor-btn" href="#" data-shortcut="E" data-op="alert" data-type="secondary">S<u>e</u>condary</a>
-                        <a class="dropdown-item alert-success md-editor-btn" href="#" data-shortcut="S" data-op="alert" data-type="success"><u>S</u>uccess</a>
-                        <a class="dropdown-item alert-danger md-editor-btn" href="#" data-shortcut="D" data-op="alert" data-type="danger"><u>D</u>anger</a>
-                        <a class="dropdown-item alert-warning md-editor-btn" href="#" data-shortcut="W" data-op="alert" data-type="warning"><u>W</u>arning</a>
-                        <a class="dropdown-item alert-info md-editor-btn" href="#" data-shortcut="I" data-op="alert" data-type="info"><u>I</u>nformation</a>
-                        <a class="dropdown-item alert-light md-editor-btn" href="#" data-shortcut="L" data-op="alert" data-type="light"><u>L</u>ight</a>
-                        <a class="dropdown-item alert-dark md-editor-btn" href="#" data-shortcut="R" data-op="alert" data-type="dark">Da<u>r</u>k</a>
+                        <button class="dropdown-item md-editor-btn" data-op="alert" data-type="primary"><u>P</u>rimary</button>
+                        <button class="dropdown-item md-editor-btn" data-op="alert" data-type="secondary">S<u>e</u>condary</button>
+                        <button class="dropdown-item md-editor-btn" data-op="alert" data-type="success"><u>S</u>uccess</button>
+                        <button class="dropdown-item md-editor-btn" data-op="alert" data-type="danger"><u>D</u>anger</button>
+                        <button class="dropdown-item md-editor-btn" data-op="alert" data-type="warning"><u>W</u>arning</button>
+                        <button class="dropdown-item md-editor-btn" data-op="alert" data-type="info"><u>I</u>nformation</button>
+                        <button class="dropdown-item md-editor-btn" data-op="alert" data-type="light"><u>L</u>ight</button>
+                        <button class="dropdown-item md-editor-btn" data-op="alert" data-type="dark">Da<u>r</u>k</button>
                     </div>
                 </div>
             </div>

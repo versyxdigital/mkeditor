@@ -94,7 +94,8 @@ module.exports = class MenuHandler {
                                 product_name: 'MKEditor',
                                 copyright: '© 2021 - ' + new Date().getFullYear() + ' Chris Rowles. All rights reserved.',
                                 package_json_dir: path.join(__dirname, '../../'),
-                                use_version_info: false
+                                use_version_info: false,
+                                bug_report_url: 'https://github.com/mkeditorOSS/mkeditor/issues'
                             });
                         }
                     }

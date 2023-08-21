@@ -22,18 +22,21 @@ const md = new MarkdownIt({
     code: false,
     breaks: true,
     linkify: true,
-    highlight: (str, lang) => {
-        const escape = md.utils.escapeHtml;
-        if (lang && hljs.getLanguage(lang)) {
+    highlight: (content, language) => {
+        const { escapeHtml } = md.utils;
+        if (language && hljs.getLanguage(language)) {
             try {
-                return '<pre class="hljs"><code class="hljs language-' + lang + '">' +
-                hljs.highlight(lang, str, {
+                const code = hljs.highlight(content, {
+                    language,
                     ignoreIllegals: true
-                }).value +
+                }).value;
+
+                return '<pre class="hljs"><code class="hljs language-' + language + '">' +
+                    code +
                 '</code></pre>';
             } catch (__) {}
         } else {
-            return '<pre class="hljs"><code>' + escape(str) + '</code></pre>';
+            return '<pre class="hljs"><code>' + escapeHtml(content) + '</code></pre>';
         }
     }
 });

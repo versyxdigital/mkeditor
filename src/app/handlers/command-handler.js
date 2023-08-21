@@ -80,15 +80,18 @@ class CommandHandler {
         }
 
         // Map monaco editor commands to editor UI buttons (e.g. bold, alertblock etc.)
-        const ops = document.getElementById('editor-functions').querySelectorAll('a');
-        if (ops) {
-            ops.forEach((op) => {
-                op.addEventListener('click', (event) => {
-                    const target = event.currentTarget;
+        const toolbarButtons = document.getElementById('editor-functions').querySelectorAll('button');
+        if (toolbarButtons) {
+            toolbarButtons.forEach((btn) => {
+                btn.addEventListener('click', (event) => {
+                    const target = event.currentTarget || event.target;
                     if (Object.prototype.hasOwnProperty.call(target.dataset, 'op')) {
-                        target.dataset.ch && !(commands[target.dataset.op] instanceof Function)
-                            ? this.execute(target.dataset.ch)
-                            : commands[target.dataset.op](target);
+                        const { op } = target.dataset;
+                        target.dataset.syntax && !(commands[op] instanceof Function)
+                            // If function contains data-syntax
+                            ? this.execute(target.dataset.syntax)
+                            // Otherwise
+                            : this[op](target);
 
                         this.instance.focus();
                     }
@@ -124,7 +127,10 @@ class CommandHandler {
 
     orderedListToTaskList () {
         let i = 0;
-        this.do(this.model().replace(/^([0-9]+)\.\s+(?!\[)/gm, (match) => `${++i}. [ ] ${match}`));
+        this.do(this.model().replace(
+            /^([0-9]+)\.\s+(?!\[)/gm,
+            (match) => `${++i}. [ ] ${match.replace(/^([0-9]+)\.\s+(?!\[)/, '')}`)
+        );
     }
 
     alert (params, content = null) {

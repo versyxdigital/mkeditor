@@ -2,7 +2,7 @@ const path = require('path');
 const webpack = require('webpack');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const TerserWebpackPlugin = require('terser-webpack-plugin');
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+// const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = {
     mode: 'production',
@@ -62,7 +62,7 @@ module.exports = {
         }),
         new webpack.optimize.LimitChunkCountPlugin({
             maxChunks: 1
-        }),
-        new BundleAnalyzerPlugin()
+        })
+        // new BundleAnalyzerPlugin()
     ]
 };
