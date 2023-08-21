@@ -58,5 +58,7 @@ const contextBridgeChannel = () => {
 *
 * When contextIsolation is enabled in webPreferences, the preload scripts run in an
 * "Isolated World" that is exposed to the "Main World" through the contextBridge.
+*
+* Docs: https://electronjs.org/docs/api/context-bridge
 */
-contextBridge.exposeInMainWorld('api', contextBridgeChannel());
+contextBridge.exposeInMainWorld('executionBridge', contextBridgeChannel());

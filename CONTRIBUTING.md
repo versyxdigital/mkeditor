@@ -124,7 +124,7 @@ saveBtn.addEventListener('click', () => {
 })
 ```
 
-`this.context` is the IPC renderer process which is exposed to the browser window as `window.api` through the preloader.
+`this.context` is the IPC renderer process which is exposed to the browser window as `window.executionBridge` through the preloader.
 
 When the save button is clicked, a check is performed to see if the user is editing an existing file, if so, the IPC renderer triggers a `to:request:save` event, otherwise it triggers a `to:request:saveas` event.
 

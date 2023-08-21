@@ -44,8 +44,8 @@ mkeditor.registerSettingsHandler(
 
 // If running within electron app, register IPC handler for communication
 // between execution contexts.
-if (Object.prototype.hasOwnProperty.call(window, 'api')) {
-    const context = window.api;
+if (Object.prototype.hasOwnProperty.call(window, 'executionBridge')) {
+    const context = window.executionBridge;
     mkeditor.registerIpcHandler(
         new IpcHandler(mkeditor, instance, context, dispatcher, true)
     );
