@@ -114,24 +114,24 @@ For example, here is an event listener within the mkeditor application that is a
 ```javascript
 saveBtn.addEventListener('click', () => {
     if (this.activeFile) {
-        this.context.send('to:request:save', {
+        this.context.send('to:file:save', {
             content: this.app.getValue(),
             file: this.activeFile
         })
     } else {
-        this.context.send('to:request:saveas', this.app.getValue())
+        this.context.send('to:file:saveas', this.app.getValue())
     }
 })
 ```
 
 `this.context` is the IPC renderer process which is exposed to the browser window as `window.executionBridge` through the preloader.
 
-When the save button is clicked, a check is performed to see if the user is editing an existing file, if so, the IPC renderer triggers a `to:request:save` event, otherwise it triggers a `to:request:saveas` event.
+When the save button is clicked, a check is performed to see if the user is editing an existing file, if so, the IPC renderer triggers a `to:file:save` event, otherwise it triggers a `to:file:saveas` event.
 
 The IPC handler contains listeners for these events:
 
 ```javascript
-this.ipc.on('to:request:save', (event, { content, file }) => {
+this.ipc.on('to:file:save', (event, { content, file }) => {
     storage.save(context, {
         id: event.sender.id,
         data: content,
@@ -139,7 +139,7 @@ this.ipc.on('to:request:save', (event, { content, file }) => {
     })
 })
 
-this.ipc.on('to:request:saveas', (event, data) => {
+this.ipc.on('to:file:saveas', (event, data) => {
     storage.save(context, {
         id: event.sender.id,
         data,

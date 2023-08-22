@@ -1,5 +1,5 @@
 const path = require('path');
-const { app, ipcMain, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, nativeTheme } = require('electron');
 const ContextMenu = require('./lib/context-menu');
 const DialogHandler = require('./lib/dialog-handler');
 const IpcHandler = require('./lib/ipc-handler');
@@ -39,6 +39,7 @@ function createWindow () {
     const dialogHandler = new DialogHandler(context);
 
     context.webContents.on('did-finish-load', () => {
+        context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors);
         context.webContents.send('from:settings:set', settingsHandler.loadSettingsFile());
     });
 

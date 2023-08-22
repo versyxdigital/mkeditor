@@ -17,7 +17,7 @@ module.exports = class IpcHandler {
      * @param {*} context
      */
     register (context) {
-        this.ipc.on('to:set:title', (event, title = null) => {
+        this.ipc.on('to:title:set', (event, title = null) => {
             if (title) {
                 this.contextWindowTitle = `MKEditor - ${title}`;
             }
@@ -39,7 +39,7 @@ module.exports = class IpcHandler {
             this.settingsHandler.saveSettingsToFile(settings);
         });
 
-        this.ipc.on('to:request:new', (event, { content, file }) => {
+        this.ipc.on('to:file:new', (event, { content, file }) => {
             storage.newFile(context, {
                 id: event.sender.id,
                 data: content,
@@ -49,7 +49,7 @@ module.exports = class IpcHandler {
             });
         });
 
-        this.ipc.on('to:request:save', (event, { content, file }) => {
+        this.ipc.on('to:file:save', (event, { content, file }) => {
             storage.save(context, {
                 id: event.sender.id,
                 data: content,
@@ -59,7 +59,7 @@ module.exports = class IpcHandler {
             });
         });
 
-        this.ipc.on('to:request:saveas', (event, data) => {
+        this.ipc.on('to:file:saveas', (event, data) => {
             storage.save(context, {
                 id: event.sender.id,
                 data

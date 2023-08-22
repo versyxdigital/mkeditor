@@ -11,22 +11,21 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 const senderWhitelist = [
-    'to:set:title',
+    'to:title:set',
     'to:editor:state',
     'to:settings:save',
-    'to:request:new',
-    'to:request:save',
-    'to:request:saveas'
+    'to:file:new',
+    'to:file:save',
+    'to:file:saveas'
 ];
 
 const receiverWhitelist = [
-    'from:set:title',
     'from:theme:set',
     'from:settings:set',
-    'from:request:new',
-    'from:request:open',
-    'from:request:save',
-    'from:request:saveas',
+    'from:file:new',
+    'from:file:open',
+    'from:file:save',
+    'from:file:saveas',
     'from:command:palette',
     'from:notification:display'
 ];

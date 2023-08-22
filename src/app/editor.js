@@ -145,8 +145,6 @@ class Editor {
         this.minimap = settings.toggleMinimap ? { enabled: true } : { enabled: 'false' };
         this.foldingControls = settings.showFoldingControls ? 'always' : 'never';
 
-        editor.setTheme(this.toggleDarkMode ? 'vs-dark' : 'gdmTheme');
-
         this.instance.updateOptions({ wordWrap: this.wordWrap });
         this.instance.updateOptions({ autoIndent: this.autoIndent });
         this.instance.updateOptions({ renderWhitespace: this.whitespace });

@@ -16,7 +16,7 @@ const setActiveFile = (context, file = null) => {
     const filename = file ? file.split('\\').slice(-1).pop() : '';
     const content = file ? fs.readFileSync(file, { encoding: 'utf-8' }) : '';
 
-    context.webContents.send('from:request:open', {
+    context.webContents.send('from:file:open', {
         file,
         filename,
         content
