@@ -107,15 +107,15 @@ class CommandHandler {
             toolbarButtons.forEach((btn) => {
                 btn.addEventListener('click', (event) => {
                     const target = event.currentTarget || event.target;
-                    if (Object.prototype.hasOwnProperty.call(target.dataset, 'op')) {
-                        const { op } = target.dataset;
-                        target.dataset.syntax && !(commands[op] instanceof Function)
+                    if (Object.prototype.hasOwnProperty.call(target.dataset, 'cmd')) {
+                        const { cmd } = target.dataset;
+                        target.dataset.syntax && !(commands[cmd] instanceof Function)
                             // If function contains data-syntax then execute the command,
                             // passing the markdown syntax to be used (inline)
                             ? this.inline(target.dataset.syntax)
                             // Otherwise if there is no syntax provided then call the
                             // defined renderer function instead (fenced)
-                            : this[op](target);
+                            : this[cmd](target);
 
                         this.instance.focus();
                     }
@@ -127,16 +127,16 @@ class CommandHandler {
     /**
      * Execute inline command
      *
-     * @param {*} op
+     * @param {string} syntax
      */
-    inline (op) {
-        this.execute(op + this.model() + op);
+    inline (syntax) {
+        this.execute(syntax + this.model() + syntax);
     }
 
     /**
      * Perform editor changes from executed command
      *
-     * @param {*} text
+     * @param {string} text
      */
     execute (text) {
         this.instance.executeEdits(null, [{
