@@ -2,7 +2,7 @@
   "name": "mkeditor",
   "productName": "MKEditor",
   "license": "MIT",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "author": "Chris Rowles <christopher.rowles@outlook.com>",
   "description": "Markdown Editor - Desktop",
   "main": "src/main.js",
@@ -23,6 +23,13 @@
     "@fortawesome/free-brands-svg-icons": "^6.4.2",
     "@fortawesome/free-regular-svg-icons": "^6.4.2",
     "@fortawesome/free-solid-svg-icons": "^6.4.2",
+    "bootstrap": "^5.3.1",
+    "highlight.js": "^11.8.0",
+    "markdown-it": "^13.0.1",
+    "markdown-it-container": "^3.0.0",
+    "monaco-editor": "^0.41.0",
+    "split.js": "^1.6.5",
+    "sweetalert2": "^11.7.27",
     "css-loader": "^6.8.1",
     "electron": "^26.0.0",
     "electron-builder": "^24.6.3",
@@ -46,14 +53,7 @@
     "webpack-merge": "^5.9.0"
   },
   "dependencies": {
-    "about-window": "^1.15.2",
-    "bootstrap": "^5.3.1",
-    "highlight.js": "^11.8.0",
-    "markdown-it": "^13.0.1",
-    "markdown-it-container": "^3.0.0",
-    "monaco-editor": "^0.41.0",
-    "split.js": "^1.6.5",
-    "sweetalert2": "^11.7.27"
+    "about-window": "^1.15.2"
   },
   "build": {
     "appId": "com.mkeditor.app",
