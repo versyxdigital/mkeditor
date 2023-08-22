@@ -66,7 +66,7 @@ class SettingsHandler {
 
         if (this.persistSettings) {
             this.addPersistSettingsHandlerForWeb()
-                .setActiveSettingsState();
+                .setState();
         }
     }
 
@@ -75,8 +75,17 @@ class SettingsHandler {
      *
      * @returns {*} settings
      */
-    getActiveSettings () {
+    getSettings () {
         return this.settings;
+    }
+
+    /**
+     * Set settings to be applied
+     *
+     * @param {*} settings
+     */
+    setSettings (settings) {
+        this.settings = settings;
     }
 
     /**
@@ -84,7 +93,7 @@ class SettingsHandler {
      *
      * @returns {void}
      */
-    setActiveSettingsState () {
+    setState () {
         const targets = document.querySelectorAll('#settings .setting');
         if (targets) {
             targets.forEach((target) => {

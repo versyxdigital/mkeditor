@@ -1,6 +1,5 @@
 import notify from '../utilities/notify';
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import SettingsHandler from './settings-handler';
 
 /**
  * IPC Handler
@@ -10,6 +9,14 @@ import SettingsHandler from './settings-handler';
  * execution contexts.
  */
 export default class IpcHandler {
+    /**
+     * @var {object}
+     */
+    handler = {
+        settings: null,
+        command: null
+    };
+
     /**
      * Create a new IpcHandler instance
      *
@@ -29,6 +36,16 @@ export default class IpcHandler {
         if (register) {
             this.register();
         }
+    }
+
+    /**
+     * Attach handlers
+     *
+     * @param {string} handler
+     * @param {object} instance
+     */
+    attach (handler, instance) {
+        this.handler[handler] = instance;
     }
 
     /**
@@ -71,13 +88,8 @@ export default class IpcHandler {
         // Set settings from stored settings file (%HOME%/.mkeditor/settings.json)
         this.context.receive('from:settings:set', (settings) => {
             this.mkeditor.applySettingsFromIpcStorage(settings);
-
-            const handler = new SettingsHandler(this.instance, {
-                persistSettings: true,
-                storedSettings: settings
-            });
-
-            handler.register();
+            this.handler.settings.setSettings(settings);
+            this.handler.settings.register();
         });
 
         // Enable new files from outside of the browser window execution context.

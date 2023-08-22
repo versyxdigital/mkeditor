@@ -9,6 +9,15 @@ import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
  */
 class Editor {
     /**
+     * @var {object}
+     */
+    handlers = {
+        command: null,
+        ipc: null,
+        settings: null
+    };
+
+    /**
      * Create a Editor instance.
      *
      * @param {*} editor the HTML element for the editor
@@ -23,16 +32,20 @@ class Editor {
         this.editor = editor;
         this.preview = preview;
 
-        // Access to handlers
-        this.commandHandler = null;
-        this.settingsHandler = null;
-        this.ipcHandler = null;
-
         // Track initial editor value for comparison to current value
         this.loadedInitialEditorValue = null;
 
         // Event dispatcher
         this.dispatcher = dispatcher;
+    }
+
+    /**
+     * Attach handler
+     * @param {string} handler
+     * @param {object} instance
+     */
+    attach (handler, instance) {
+        this.handlers[handler] = instance;
     }
 
     /**
@@ -65,14 +78,15 @@ class Editor {
             if (saveButton) {
                 saveButton.addEventListener('click', (event) => {
                     event.preventDefault();
-                    if (this.ipcHandler && this.settingsHandler) {
-                        this.ipcHandler.saveSettingsToFile(
-                            this.settingsHandler.getActiveSettings()
-                        );
+                    const { ipc, settings } = this.handlers;
+                    if (ipc && settings) {
+                        ipc.saveSettingsToFile(settings.getSettings());
                     }
                 });
             }
 
+            // Resize listeners.
+            window.onload = () => this.instance.layout();
             window.onresize = () => this.instance.layout();
             this.preview.onresize = () => this.instance.layout();
 
@@ -96,8 +110,8 @@ class Editor {
      */
     watch () {
         this.instance.onDidChangeModelContent(() => {
-            if (this.ipcHandler) {
-                this.ipcHandler.trackEditorStateBetweenExecutionContext(
+            if (this.handlers.ipc) {
+                this.handlers.ipc.trackEditorStateBetweenExecutionContext(
                     this.loadedInitialEditorValue,
                     this.instance.getValue()
                 );
@@ -150,36 +164,6 @@ class Editor {
         this.instance.updateOptions({ renderWhitespace: this.whitespace });
         this.instance.updateOptions({ minimap: this.minimap });
         this.instance.updateOptions({ showFoldingControls: this.foldingControls });
-    }
-
-    /**
-     * Register a command handler.
-     *
-     * @param {*} handler
-     * @returns
-     */
-    registerCommandHandler (handler) {
-        this.commandHandler = handler;
-    }
-
-    /**
-     * Register a settings handler.
-     *
-     * @param {*} handler
-     * @returns
-     */
-    registerSettingsHandler (handler) {
-        this.settingsHandler = handler;
-    }
-
-    /**
-     * Register an IPC handler.
-     *
-     * @param {*} handler
-     * @returns
-     */
-    registerIpcHandler (handler) {
-        this.ipcHandler = handler;
     }
 }
 
