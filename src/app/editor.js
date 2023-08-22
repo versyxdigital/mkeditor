@@ -1,10 +1,20 @@
 import md from './markdown';
-import copyCodeBlocks from './extensions/code-blocks';
+import { copyableCodeBlocks } from './extensions/code-blocks';
 import { wordCount, characterCount } from './extensions/word-count';
 import { scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync';
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 
+/**
+ * Editor
+ */
 class Editor {
+    /**
+     * Create a Editor instance.
+     *
+     * @param {*} editor the HTML element for the editor
+     * @param {*} preview the HTML element for the preview
+     * @param {*} dispatcher the custom event dispatcher for the editor
+     */
     constructor (editor, preview, dispatcher) {
         // Active editor
         this.instance = null;
@@ -25,6 +35,12 @@ class Editor {
         this.dispatcher = dispatcher;
     }
 
+    /**
+     * Create a new editor instance.
+     *
+     * @param {*} options
+     * @returns {editor.IStandaloneCodeEditor|null}
+     */
     init (options = { watch: false }) {
         try {
             this.instance = editor.create(this.editor, {
@@ -73,6 +89,11 @@ class Editor {
         return this.instance;
     }
 
+    /**
+     * Watch the editor for changes.
+     *
+     * @returns
+     */
     watch () {
         this.instance.onDidChangeModelContent(() => {
             if (this.ipcHandler) {
@@ -84,25 +105,39 @@ class Editor {
 
             setTimeout(() => {
                 this.render();
-            }, 500);
+            }, 250);
         });
 
         this.instance.onDidScrollChange(() => {
             const visibleRange = this.instance.getVisibleRanges()[0];
             if (visibleRange) {
-                scrollPreviewToEditorVisibleRange(visibleRange.startLineNumber, this.preview);
+                scrollPreviewToEditorVisibleRange(
+                    visibleRange.startLineNumber,
+                    this.preview
+                );
             }
         });
     }
 
+    /**
+     * Render editor content to the preview.
+     *
+     * @returns
+     */
     render () {
         this.preview.innerHTML = md.render(this.instance.getValue());
 
-        copyCodeBlocks();
+        copyableCodeBlocks();
         wordCount(this.preview);
         characterCount(this.preview);
     }
 
+    /**
+     * Apply settings from IPC.
+     *
+     * @param {*} settings
+     * @returns
+     */
     applySettingsFromIpcStorage (settings) {
         this.wordWrap = settings.toggleWordWrap ? 'on' : 'off';
         this.autoIndent = settings.toggleAutoIndent ? 'advanced' : 'none';
@@ -119,14 +154,32 @@ class Editor {
         this.instance.updateOptions({ showFoldingControls: this.foldingControls });
     }
 
+    /**
+     * Register a command handler.
+     *
+     * @param {*} handler
+     * @returns
+     */
     registerCommandHandler (handler) {
         this.commandHandler = handler;
     }
 
+    /**
+     * Register a settings handler.
+     *
+     * @param {*} handler
+     * @returns
+     */
     registerSettingsHandler (handler) {
         this.settingsHandler = handler;
     }
 
+    /**
+     * Register an IPC handler.
+     *
+     * @param {*} handler
+     * @returns
+     */
     registerIpcHandler (handler) {
         this.ipcHandler = handler;
     }

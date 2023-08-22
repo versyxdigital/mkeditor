@@ -24,7 +24,7 @@ MKeditor is a cross-platform markdown editor application built primarily in Java
 
 The application structure is as follows:
 
-```txt
+```sh
 .
 ├── build                   # Package build assets (icon, license)
 ├── dist                    # Bundled mkeditor package
