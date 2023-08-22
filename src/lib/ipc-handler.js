@@ -1,14 +1,14 @@
 const storage = require('./storage');
 
 module.exports = class IpcHandler {
-    constructor (ipc, settingsHandler) {
+    constructor (ipc, handlers = { settings: null, dialog: null }) {
         this.ipc = ipc;
         this.contextWindowTitle = 'MKEditor';
         this.contextBridgedContent = {
             original: null,
             current: null
         };
-        this.settingsHandler = settingsHandler;
+        this.handlers = handlers;
     }
 
     /**
@@ -36,7 +36,7 @@ module.exports = class IpcHandler {
         });
 
         this.ipc.on('to:settings:save', (event, { settings }) => {
-            this.settingsHandler.saveSettingsToFile(settings);
+            this.handlers.settings.saveSettingsToFile(settings);
         });
 
         this.ipc.on('to:file:new', (event, { content, file }) => {
@@ -67,6 +67,12 @@ module.exports = class IpcHandler {
                 this.resetContextBridgedContent();
             });
         });
+    }
+
+    promptForChangedContextBridgeContent (event = null) {
+        if (this.contextBridgedContentHasChanged()) {
+            return this.handlers.dialog.promptUserForUnsavedChanges(event);
+        }
     }
 
     contextBridgedContentHasChanged () {

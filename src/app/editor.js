@@ -9,6 +9,16 @@ import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
  */
 class Editor {
     /**
+     * @var {editor.IStandaloneCodeEditor|null}
+     */
+    instance = null;
+
+    /**
+     * @var {string|null}
+     */
+    loadedInitialEditorValue = null;
+
+    /**
      * @var {object}
      */
     handlers = {
@@ -25,15 +35,9 @@ class Editor {
      * @param {*} dispatcher the custom event dispatcher for the editor
      */
     constructor (editor, preview, dispatcher) {
-        // Active editor
-        this.instance = null;
-
         // Editor and preview DOM
         this.editor = editor;
         this.preview = preview;
-
-        // Track initial editor value for comparison to current value
-        this.loadedInitialEditorValue = null;
 
         // Event dispatcher
         this.dispatcher = dispatcher;
@@ -57,12 +61,12 @@ class Editor {
     init (options = { watch: false }) {
         try {
             this.instance = editor.create(this.editor, {
-                value: '',
+                value: '# Write something cool...',
                 language: 'markdown',
                 wordBasedSuggestions: false,
-                autoIndent: this.autoIndent,
-                wordWrap: this.wordWrap,
-                renderWhitespace: this.whitespace,
+                autoIndent: 'advanced',
+                wordWrap: 'on',
+                renderWhitespace: 'all',
                 renderLineHighlight: 'gutter',
                 smoothScrolling: 'true',
                 roundedSelection: false,
@@ -153,17 +157,35 @@ class Editor {
      * @returns
      */
     applySettingsFromIpcStorage (settings) {
-        this.wordWrap = settings.toggleWordWrap ? 'on' : 'off';
-        this.autoIndent = settings.toggleAutoIndent ? 'advanced' : 'none';
-        this.whitespace = settings.toggleWhitespace ? 'all' : 'none';
-        this.minimap = settings.toggleMinimap ? { enabled: true } : { enabled: 'false' };
-        this.foldingControls = settings.showFoldingControls ? 'always' : 'never';
+        this.instance.updateOptions({
+            autoIndent: settings.toggleAutoIndent
+                ? 'advanced'
+                : 'none'
+        });
 
-        this.instance.updateOptions({ wordWrap: this.wordWrap });
-        this.instance.updateOptions({ autoIndent: this.autoIndent });
-        this.instance.updateOptions({ renderWhitespace: this.whitespace });
-        this.instance.updateOptions({ minimap: this.minimap });
-        this.instance.updateOptions({ showFoldingControls: this.foldingControls });
+        this.instance.updateOptions({
+            wordWrap: settings.toggleWordWrap
+                ? 'on'
+                : 'off'
+        });
+
+        this.instance.updateOptions({
+            renderWhitespace: settings.toggleWhitespace
+                ? 'all'
+                : 'none'
+        });
+
+        this.instance.updateOptions({
+            minimap: settings.toggleMinimap
+                ? { enabled: true }
+                : { enabled: 'false' }
+        });
+
+        this.instance.updateOptions({
+            showFoldingControls: settings.showFoldingControls
+                ? 'always'
+                : 'never'
+        });
     }
 }
 

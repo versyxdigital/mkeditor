@@ -12,10 +12,15 @@ export default class IpcHandler {
     /**
      * @var {object}
      */
-    handler = {
+    handlers = {
         settings: null,
         command: null
     };
+
+    /**
+     * @var {string}
+     */
+    activeFile = null;
 
     /**
      * Create a new IpcHandler instance
@@ -31,8 +36,6 @@ export default class IpcHandler {
         this.context = context;
         this.dispatcher = dispatcher;
 
-        this.activeFile = null;
-
         if (register) {
             this.register();
         }
@@ -45,7 +48,7 @@ export default class IpcHandler {
      * @param {object} instance
      */
     attach (handler, instance) {
-        this.handler[handler] = instance;
+        this.handlers[handler] = instance;
     }
 
     /**
@@ -88,8 +91,8 @@ export default class IpcHandler {
         // Set settings from stored settings file (%HOME%/.mkeditor/settings.json)
         this.context.receive('from:settings:set', (settings) => {
             this.mkeditor.applySettingsFromIpcStorage(settings);
-            this.handler.settings.setSettings(settings);
-            this.handler.settings.register();
+            this.handlers.settings.setSettings(settings);
+            this.handlers.settings.register();
         });
 
         // Enable new files from outside of the browser window execution context.

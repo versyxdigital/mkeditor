@@ -8,16 +8,6 @@ import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
  */
 class SettingsHandler {
     /**
-     * @var {object|null}
-     */
-    instance = null;
-
-    /**
-     * @var {boolean}
-     */
-    persistSettings = false;
-
-    /**
      * @var {object}
      */
     settings = {
