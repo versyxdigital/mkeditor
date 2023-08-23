@@ -1,6 +1,6 @@
 const path = require('path');
 const { app, BrowserWindow, ipcMain, Menu, nativeTheme } = require('electron');
-const ContextMenu = require('./lib/context-menu');
+const AppMenu = require('./lib/app-menu');
 const DialogHandler = require('./lib/dialog-handler');
 const IpcHandler = require('./lib/ipc-handler');
 const SettingsHandler = require('./lib/settings-handler');
@@ -37,8 +37,8 @@ function createWindow () {
     });
     ipcHandler.register(context);
 
-    const contextMenu = new ContextMenu(app, Menu);
-    contextMenu.register(context);
+    const appMenu = new AppMenu(app, Menu);
+    appMenu.register(context);
 
     context.webContents.on('did-finish-load', () => {
         context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors);

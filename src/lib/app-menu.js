@@ -2,7 +2,7 @@ const path = require('path');
 const storage = require('./storage');
 const openAboutWindow = require('about-window').default;
 
-module.exports = class MenuHandler {
+module.exports = class AppMenu {
     constructor (app, menu) {
         this.app = app;
         this.menu = menu;

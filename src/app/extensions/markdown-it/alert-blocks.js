@@ -42,13 +42,14 @@ function setupContainer (name) {
 }
 
 function setupLinks () {
-    const defaultRender = md.renderer.rules.link_open || selfRender;
+    const render = md.renderer.rules.link_open || selfRender;
+
     md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
         if (isContainerOpen()) {
             tokens[idx].attrPush(['class', 'alert-link']);
         }
 
-        return defaultRender(tokens, idx, options, env, self);
+        return render(tokens, idx, options, env, self);
     };
 }
 
