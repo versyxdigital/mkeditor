@@ -96,7 +96,9 @@ class Editor {
                 exportPreviewButton.addEventListener('click', (event) => {
                     event.preventDefault();
                     if (this.handlers.ipc) {
+                        const styled = document.querySelector('#export-preview-styled').checked;
                         const html = generateExportHTML(this.preview.innerHTML, {
+                            styled,
                             providers: ['bootstrap', 'fontawesome']
                         });
 

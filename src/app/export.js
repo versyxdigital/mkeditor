@@ -27,7 +27,7 @@ export const cdn = {
     }
 };
 
-export function generateExportHTML (content, { providers }) {
+export function generateExportHTML (content, { styled = true, providers = ['bootstrap', 'fontawesome'] }) {
     const document = (new DOMParser()).parseFromString(
         '<div class="container py-5">' +
             content +
@@ -59,14 +59,14 @@ export function generateExportHTML (content, { providers }) {
         for (const elem of elems) {
             if (elem.hasAttribute('class')) {
                 elem.classList.remove(removeClass);
-                if (!elem.classList || elem.classList.length === 0) {
+                if (elem.classList.length === 0) {
                     elem.removeAttribute('class');
                 }
             }
         }
     }
 
-    if (providers) {
+    if (styled && providers) {
         for (const provider of providers) {
             if (Object.prototype.hasOwnProperty.call(cdn, provider)) {
                 const { css, js } = cdn[provider];

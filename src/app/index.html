@@ -51,40 +51,30 @@
         <!-- bottom editor toolbar -->
         <nav class="navbar navbar-light bg-light fixed-bottom border-top p-2">
             <div class="d-flex justify-content-start align-items-center" id="editor-functions">
-                <div class="btn-group me-2">
-                    <button class="btn btn-sm btn-outline-secondary" id="save-editor-markdown" class="btn btn-sm btn-success px-3">
-                        <i class="fas fa-save"></i>
-                    </button>
-                </div>
-                <div class="btn-group me-2">
-                    <button class="btn btn-sm btn-outline-secondary" id="export-preview-html" class="btn btn-sm btn-success px-3">
-                        <i class="fas fa-file-export"></i>
-                    </button>
-                </div>
-                <div class="btn-group me-2">
-                    <button class="btn btn-sm btn-outline-secondary shortcut" data-cmd="bold" data-syntax="**">
+                <div class="btn-group btn-group-sm me-2">
+                    <button class="btn btn-outline-secondary shortcut" data-cmd="bold" data-syntax="**">
                         <i class="fa fa-bold"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary shortcut" data-cmd="italic" data-syntax="_">
+                    <button class="btn btn-outline-secondary shortcut" data-cmd="italic" data-syntax="_">
                         <i class="fa fa-italic"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary shortcut" data-cmd="strikethrough" data-syntax="~~">
+                    <button class="btn btn-outline-secondary shortcut" data-cmd="strikethrough" data-syntax="~~">
                         <i class="fa fa-strikethrough"></i>
                     </button>
                 </div>
-                <div class="btn-group me-2">
-                    <button class="btn btn-sm btn-outline-secondary shortcut" data-cmd="unorderedList">
+                <div class="btn-group btn-group-sm me-2">
+                    <button class="btn btn-outline-secondary shortcut" data-cmd="unorderedList">
                         <i class="fa fa-list-ul"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary shortcut" data-cmd="orderedList">
+                    <button class="btn btn-outline-secondary shortcut" data-cmd="orderedList">
                         <i class="fa fa-list-ol"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary shortcut" data-cmd="orderedListToTaskList">
+                    <button class="btn btn-outline-secondary shortcut" data-cmd="orderedListToTaskList">
                         <i class="fa fa-tasks"></i>
                     </button>
                 </div>
-                <div class="btn-group dropup me-2">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeBlockMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                <div class="btn-group btn-group-sm dropup me-2">
+                    <button class="btn btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeBlockMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-code"></i>
                     </button>
                     <div class="dropdown-menu" id="codeBlockMenu" aria-labelledby="codeBlockMenuButton">
@@ -98,7 +88,7 @@
                         <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="sql"><i class="fas fa-database"></i> S<u>Q</u>L</button>
                     </div>
                 </div>
-                <div class="dropup mr-2">
+                <div class="dropup me-2">
                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="alertMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-exclamation-circle"></i>
                     </button>
@@ -112,6 +102,28 @@
                         <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="light"><u>L</u>ight</button>
                         <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="dark">Da<u>r</u>k</button>
                     </div>
+                </div>
+                <div class="btn-group btn-group-sm me-2">
+                    <button class="btn btn-outline-secondary" id="save-editor-markdown">
+                        <i class="fas fa-save me-1"></i>
+                        <span class="d-none d-md-inline">Save</span>
+                        <span class="d-none d-lg-inline">Markdown</span>
+                    </button>
+                </div>
+                <div class="btn-group btn-group-sm me-2">
+                    <button class="btn btn-outline-secondary" id="export-preview-html">
+                        <i class="fas fa-file-export me-1"></i>
+                        <small class="d-none d-md-inline">
+                            <span class="d-none d-md-inline">Export</span>
+                            <span class="d-none d-lg-inline">to HTML</span>
+                        </small>
+                    </button>
+                </div>
+                <div class="form-check">
+                    <input id="export-preview-styled" class="form-check-input me-2" type="checkbox" checked />
+                    <label class="form-check-label" for="export-preview-styled">
+                        <small>Export with styles</small>
+                    </label>
                 </div>
             </div>
             <ul class="navbar-nav ms-auto">
