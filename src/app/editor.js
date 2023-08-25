@@ -55,10 +55,10 @@ class Editor {
     /**
      * Create a new editor instance.
      *
-     * @param {*} options
+     * @param {boolean} watch
      * @returns {editor.IStandaloneCodeEditor|null}
      */
-    init (options = { watch: false }) {
+    create ({ watch = false }) {
         try {
             this.instance = editor.create(this.editor, {
                 value: '# Write something cool...',
@@ -78,13 +78,28 @@ class Editor {
                 this.loadedInitialEditorValue = event.message;
             });
 
-            const saveButton = document.querySelector('#save-settings-ipc');
-            if (saveButton) {
-                saveButton.addEventListener('click', (event) => {
+            const saveSettingsButton = document.querySelector('#save-settings-ipc');
+            if (saveSettingsButton) {
+                saveSettingsButton.addEventListener('click', (event) => {
                     event.preventDefault();
                     const { ipc, settings } = this.handlers;
                     if (ipc && settings) {
                         ipc.saveSettingsToFile(settings.getSettings());
+                    }
+                });
+            }
+
+            const exportPreviewButton = document.querySelector('#export-preview-html');
+            if (exportPreviewButton) {
+                exportPreviewButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    if (this.handlers.ipc) {
+                        const document = (new DOMParser()).parseFromString(
+                            this.preview.innerHTML, 'text/html'
+                        );
+
+                        const { outerHTML } = document.documentElement;
+                        this.handlers.ipc.exportPreviewToFile(`<!DOCTYPE html>${outerHTML}`);
                     }
                 });
             }
@@ -96,7 +111,7 @@ class Editor {
 
             this.render();
 
-            if (options.watch) {
+            if (watch) {
                 this.watch();
             }
         } catch (error) {

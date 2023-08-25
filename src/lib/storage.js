@@ -51,6 +51,13 @@ module.exports = {
             ]
         };
 
+        if (data.startsWith('<!DOCTYPE html>')) {
+            options.filters.unshift({
+                name: 'html',
+                extensions: ['html']
+            });
+        }
+
         if (file) {
             let check;
 

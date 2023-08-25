@@ -39,6 +39,13 @@ module.exports = class IpcHandler {
             this.handlers.settings.saveSettingsToFile(settings);
         });
 
+        this.ipc.on('to:html:export', (event, { content }) => {
+            storage.save(context, {
+                id: event.sender.id,
+                data: content
+            });
+        });
+
         this.ipc.on('to:file:new', (event, { content, file }) => {
             storage.newFile(context, {
                 id: event.sender.id,
