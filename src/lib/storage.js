@@ -51,7 +51,9 @@ module.exports = {
             ]
         };
 
-        if (data.startsWith('<!DOCTYPE html>')) {
+        const isExport = data && data.startsWith('<!DOCTYPE html>');
+
+        if (isExport) {
             options.filters.unshift({
                 name: 'html',
                 extensions: ['html']
@@ -73,10 +75,12 @@ module.exports = {
 
                     context.webContents.send('from:notification:display', {
                         status: 'success',
-                        message: 'File saved.'
+                        message: 'File ' + isExport ? 'exported' : 'saved'
                     });
 
-                    setActiveFile(context, file);
+                    if (!isExport) {
+                        setActiveFile(context, file);
+                    }
                 } catch (error) {
                     context.webContents.send('from:notification:display', {
                         status: 'error',
@@ -97,14 +101,16 @@ module.exports = {
 
                         context.webContents.send('from:notification:display', {
                             status: 'success',
-                            message: 'File saved.'
+                            message: 'File ' + isExport ? 'exported' : 'saved'
                         });
 
                         if (reset) {
                             filePath = null;
                         }
 
-                        setActiveFile(context, filePath);
+                        if (!isExport) {
+                            setActiveFile(context, filePath);
+                        }
                     } catch (error) {
                         if (error.code !== 'ENOENT') {
                             context.webContents.send('from:notification:display', {
