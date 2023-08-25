@@ -35,6 +35,37 @@ export function generateExportHTML (content, { providers }) {
         'text/html'
     );
 
+    const removals = {
+        attrs: [
+            'data-line-start',
+            'data-line-end'
+        ],
+        classes: [
+            'has-line-data'
+        ]
+    };
+
+    for (const removeAttr of removals.attrs) {
+        const elems = document.querySelectorAll(`[${removeAttr}]`);
+        for (const elem of elems) {
+            if (elem.hasAttribute(removeAttr)) {
+                elem.removeAttribute(removeAttr);
+            }
+        }
+    }
+
+    for (const removeClass of removals.classes) {
+        const elems = document.querySelectorAll(`.${removeClass}`);
+        for (const elem of elems) {
+            if (elem.hasAttribute('class')) {
+                elem.classList.remove(removeClass);
+                if (!elem.classList || elem.classList.length === 0) {
+                    elem.removeAttribute('class');
+                }
+            }
+        }
+    }
+
     if (providers) {
         for (const provider of providers) {
             if (Object.prototype.hasOwnProperty.call(cdn, provider)) {
