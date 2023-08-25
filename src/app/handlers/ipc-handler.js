@@ -166,7 +166,6 @@ export default class IpcHandler {
      * @param {string} content
      */
     exportPreviewToFile (content) {
-        console.log({ content });
         this.context.send('to:html:export', { content });
     }
 
