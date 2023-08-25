@@ -47,7 +47,7 @@ module.exports = class IpcHandler {
         });
 
         this.ipc.on('to:file:new', (event, { content, file }) => {
-            storage.newFile(context, {
+            storage.create(context, {
                 id: event.sender.id,
                 data: content,
                 file
