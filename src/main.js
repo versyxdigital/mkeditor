@@ -1,6 +1,6 @@
 const path = require('path');
-const { app, ipcMain, BrowserWindow, Menu } = require('electron');
-const ContextMenu = require('./lib/context-menu');
+const { app, BrowserWindow, ipcMain, Menu, nativeTheme } = require('electron');
+const AppMenu = require('./lib/app-menu');
 const DialogHandler = require('./lib/dialog-handler');
 const IpcHandler = require('./lib/ipc-handler');
 const SettingsHandler = require('./lib/settings-handler');
@@ -28,24 +28,25 @@ function createWindow () {
     context.webContents.on('will-navigate', event => event.preventDefault());
     context.loadFile(path.join(__dirname, '../dist/index.html'));
 
+    const dialogHandler = new DialogHandler(context);
     const settingsHandler = new SettingsHandler(context);
 
-    const ipcHandler = new IpcHandler(ipcMain, settingsHandler);
+    const ipcHandler = new IpcHandler(ipcMain, {
+        settings: settingsHandler,
+        dialog: dialogHandler
+    });
     ipcHandler.register(context);
 
-    const contextMenu = new ContextMenu(app, Menu);
-    contextMenu.register(context);
-
-    const dialogHandler = new DialogHandler(context);
+    const appMenu = new AppMenu(app, Menu);
+    appMenu.register(context);
 
     context.webContents.on('did-finish-load', () => {
+        context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors);
         context.webContents.send('from:settings:set', settingsHandler.loadSettingsFile());
     });
 
     context.on('close', (event) => {
-        if (ipcHandler.contextBridgedContentHasChanged()) {
-            dialogHandler.promptUserForUnsavedChanges(event);
-        }
+        ipcHandler.promptForChangedContextBridgeContent(event);
     });
 
     context.on('closed', () => {

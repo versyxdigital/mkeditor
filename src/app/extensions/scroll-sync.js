@@ -1,29 +1,5 @@
 const codeLineClass = 'has-line-data';
 
-export function getEditorLineNumberForPreviewOffset (lineCount, preview) {
-    const offset = preview.scrollTop;
-    const { previous, next } = getLineElementsAtPreviewOffset(offset, preview);
-
-    if (previous) {
-        const previousBounds = getElementBounds(previous);
-        const offsetFromPrevious = (offset - preview.scrollTop - previousBounds.top);
-
-        if (next) {
-            const progressBetweenElements = offsetFromPrevious / (getElementBounds(next).top - previousBounds.top);
-            const line = previous.line + progressBetweenElements * (next.line - previous.line);
-
-            return clampLine(line, lineCount);
-        } else {
-            const progressWithinElement = offsetFromPrevious / (previousBounds.height);
-            const line = previous.line + progressWithinElement;
-
-            return clampLine(line, lineCount);
-        }
-    }
-
-    return null;
-}
-
 export async function scrollPreviewToEditorVisibleRange (line, preview) {
     return new Promise((resolve) => {
         if (line <= 0) {
@@ -57,40 +33,6 @@ export async function scrollPreviewToEditorVisibleRange (line, preview) {
         return resolve(preview);
     });
 }
-
-const getLineElementsAtPreviewOffset = (offset, preview) => {
-    const lines = getCodeLineElements();
-    const position = offset - preview.scrollTop;
-
-    let low = -1;
-    let high = lines.length - 1;
-
-    while (low + 1 < high) {
-        const mid = Math.floor((low + high) / 2);
-        const bounds = getElementBounds(lines[mid]);
-
-        if (bounds.top + bounds.height >= position) {
-            high = mid;
-        } else {
-            low = mid;
-        }
-    }
-
-    const highElement = lines[high];
-    const highBounds = getElementBounds(highElement);
-
-    if (high >= 1 && highBounds.top > position) {
-        const lowElement = lines[low];
-
-        return { previous: lowElement, next: highElement };
-    }
-
-    if (high > 1 && high < lines.length && highBounds.top + highBounds.height > position) {
-        return { previous: highElement, next: lines[high + 1] };
-    }
-
-    return { previous: highElement };
-};
 
 const getElementsForSourceLine = (targetLine) => {
     const lineNumber = Math.floor(targetLine);
@@ -152,12 +94,4 @@ const getElementBounds = ({ element }) => {
     }
 
     return myBounds;
-};
-
-const clampLine = (line, lineCount) => {
-    return clamp(0, lineCount - 1, line);
-};
-
-const clamp = (min, max, value) => {
-    return Math.min(max, Math.max(min, value));
 };

@@ -8,16 +8,6 @@ import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
  */
 class SettingsHandler {
     /**
-     * @var {object|null}
-     */
-    instance = null;
-
-    /**
-     * @var {boolean}
-     */
-    persistSettings = false;
-
-    /**
      * @var {object}
      */
     settings = {
@@ -66,7 +56,7 @@ class SettingsHandler {
 
         if (this.persistSettings) {
             this.addPersistSettingsHandlerForWeb()
-                .setActiveSettingsState();
+                .setState();
         }
     }
 
@@ -75,8 +65,17 @@ class SettingsHandler {
      *
      * @returns {*} settings
      */
-    getActiveSettings () {
+    getSettings () {
         return this.settings;
+    }
+
+    /**
+     * Set settings to be applied
+     *
+     * @param {*} settings
+     */
+    setSettings (settings) {
+        this.settings = settings;
     }
 
     /**
@@ -84,7 +83,7 @@ class SettingsHandler {
      *
      * @returns {void}
      */
-    setActiveSettingsState () {
+    setState () {
         const targets = document.querySelectorAll('#settings .setting');
         if (targets) {
             targets.forEach((target) => {
@@ -152,7 +151,6 @@ class SettingsHandler {
         const toggleDarkMode = document.querySelector('#toggleDarkMode');
         const toggleDarkModeIcon = document.querySelector('#darkModeIcon');
         if (toggleDarkMode) {
-            document.body.setAttribute('data-theme', 'light');
             toggleDarkMode.addEventListener('click', (event) => {
                 let theme;
                 if (event.target.checked) {
@@ -163,7 +161,7 @@ class SettingsHandler {
                     this.settings.toggleDarkMode = true;
                 } else {
                     theme = 'gdmTheme';
-                    document.body.removeAttribute('data-theme');
+                    document.body.setAttribute('data-theme', 'light');
                     toggleDarkModeIcon.classList.remove('text-warning');
                     toggleDarkModeIcon.classList.add('text-dark');
                     this.settings.toggleDarkMode = false;

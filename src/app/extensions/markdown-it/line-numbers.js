@@ -8,7 +8,8 @@ const lineNumbers = (md) => {
     ];
 
     lineNumberRendererRuleNames.forEach((rule) => {
-        const original = md.renderer.rules[rule];
+        const render = md.renderer.rules[rule] || selfRender;
+
         md.renderer.rules[rule] = (tokens, idx, options, env, self) => {
             const token = tokens[idx];
             if (token.map && token.map.length) {
@@ -17,13 +18,13 @@ const lineNumbers = (md) => {
                 token.attrPush(['data-line-end', token.map[1]]);
             }
 
-            if (original) {
-                return original(tokens, idx, options, env, self);
-            } else {
-                return self.renderToken(tokens, idx, options, env, self);
-            }
+            return render(tokens, idx, options, env, self);
         };
     });
 };
+
+function selfRender (tokens, idx, options, env, self) {
+    return self.renderToken(tokens, idx, options, env, self);
+}
 
 export default lineNumbers;

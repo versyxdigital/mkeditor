@@ -1,14 +1,14 @@
 const storage = require('./storage');
 
 module.exports = class IpcHandler {
-    constructor (ipc, settingsHandler) {
+    constructor (ipc, handlers = { settings: null, dialog: null }) {
         this.ipc = ipc;
         this.contextWindowTitle = 'MKEditor';
         this.contextBridgedContent = {
             original: null,
             current: null
         };
-        this.settingsHandler = settingsHandler;
+        this.handlers = handlers;
     }
 
     /**
@@ -17,7 +17,7 @@ module.exports = class IpcHandler {
      * @param {*} context
      */
     register (context) {
-        this.ipc.on('to:set:title', (event, title = null) => {
+        this.ipc.on('to:title:set', (event, title = null) => {
             if (title) {
                 this.contextWindowTitle = `MKEditor - ${title}`;
             }
@@ -36,11 +36,18 @@ module.exports = class IpcHandler {
         });
 
         this.ipc.on('to:settings:save', (event, { settings }) => {
-            this.settingsHandler.saveSettingsToFile(settings);
+            this.handlers.settings.saveSettingsToFile(settings);
         });
 
-        this.ipc.on('to:request:new', (event, { content, file }) => {
-            storage.newFile(context, {
+        this.ipc.on('to:html:export', (event, { content }) => {
+            storage.save(context, {
+                id: event.sender.id,
+                data: content
+            });
+        });
+
+        this.ipc.on('to:file:new', (event, { content, file }) => {
+            storage.create(context, {
                 id: event.sender.id,
                 data: content,
                 file
@@ -49,7 +56,7 @@ module.exports = class IpcHandler {
             });
         });
 
-        this.ipc.on('to:request:save', (event, { content, file }) => {
+        this.ipc.on('to:file:save', (event, { content, file }) => {
             storage.save(context, {
                 id: event.sender.id,
                 data: content,
@@ -59,7 +66,7 @@ module.exports = class IpcHandler {
             });
         });
 
-        this.ipc.on('to:request:saveas', (event, data) => {
+        this.ipc.on('to:file:saveas', (event, data) => {
             storage.save(context, {
                 id: event.sender.id,
                 data
@@ -67,6 +74,12 @@ module.exports = class IpcHandler {
                 this.resetContextBridgedContent();
             });
         });
+    }
+
+    promptForChangedContextBridgeContent (event = null) {
+        if (this.contextBridgedContentHasChanged()) {
+            return this.handlers.dialog.promptUserForUnsavedChanges(event);
+        }
     }
 
     contextBridgedContentHasChanged () {

@@ -16,7 +16,7 @@ const setActiveFile = (context, file = null) => {
     const filename = file ? file.split('\\').slice(-1).pop() : '';
     const content = file ? fs.readFileSync(file, { encoding: 'utf-8' }) : '';
 
-    context.webContents.send('from:request:open', {
+    context.webContents.send('from:file:open', {
         file,
         filename,
         content
@@ -24,7 +24,7 @@ const setActiveFile = (context, file = null) => {
 };
 
 module.exports = {
-    async newFile (context, { data, file, encoding = 'utf-8' }) {
+    async create (context, { data, file, encoding = 'utf-8' }) {
         const check = await saveChangesToExisting();
         if (check) {
             await this.save(context, {
@@ -51,6 +51,19 @@ module.exports = {
             ]
         };
 
+        const isHTMLExport = data && data.startsWith('<!DOCTYPE html>');
+        const errorAction = isHTMLExport ? 'Unable to export preview' : 'Unable to save markdown';
+        const successAction = isHTMLExport ? 'Preview exported to HTML' : 'Markdown file saved';
+
+        if (isHTMLExport) {
+            options.filters.unshift({
+                name: 'html',
+                extensions: ['html']
+            });
+
+            options.defaultPath = `export-${id}`;
+        }
+
         if (file) {
             let check;
 
@@ -66,20 +79,22 @@ module.exports = {
 
                     context.webContents.send('from:notification:display', {
                         status: 'success',
-                        message: 'File saved.'
+                        message: successAction
                     });
 
-                    setActiveFile(context, file);
+                    if (!isHTMLExport) {
+                        setActiveFile(context, file);
+                    }
                 } catch (error) {
                     context.webContents.send('from:notification:display', {
                         status: 'error',
-                        message: `Unable to save file, please check ${file}`
+                        message: errorAction
                     });
                 }
             } else {
                 context.webContents.send('from:notification:display', {
                     status: 'error',
-                    message: `Unable to save file, please check ${file}.`
+                    message: errorAction
                 });
             }
         } else {
@@ -90,14 +105,16 @@ module.exports = {
 
                         context.webContents.send('from:notification:display', {
                             status: 'success',
-                            message: 'File saved.'
+                            message: successAction
                         });
 
                         if (reset) {
                             filePath = null;
                         }
 
-                        setActiveFile(context, filePath);
+                        if (!isHTMLExport) {
+                            setActiveFile(context, filePath);
+                        }
                     } catch (error) {
                         if (error.code !== 'ENOENT') {
                             context.webContents.send('from:notification:display', {
@@ -142,7 +159,6 @@ module.exports = {
                         content
                     });
                 }).catch((error) => {
-                    console.log(error.code);
                     if (error.message !== 'noselection') {
                         context.webContents.send('from:notification:display', {
                             status: 'error',

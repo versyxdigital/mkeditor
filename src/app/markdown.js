@@ -6,10 +6,10 @@ import sql from 'highlight.js/lib/languages/sql';
 import csharp from 'highlight.js/lib/languages/csharp';
 import xml from 'highlight.js/lib/languages/xml';
 import MarkdownIt from 'markdown-it';
-import taskLists from './extensions/task-lists';
-import alertBlocks from './extensions/alert-blocks';
-import tableStyles from './extensions/table-styles';
-import lineNumbers from './extensions/line-numbers';
+import alertBlocks from './extensions/markdown-it/alert-blocks';
+import lineNumbers from './extensions/markdown-it/line-numbers';
+import tableStyles from './extensions/markdown-it/table-styles';
+import taskLists from './extensions/markdown-it/task-lists';
 
 hljs.registerLanguage('javascript', javascript);
 hljs.registerLanguage('python', python);

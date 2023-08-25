@@ -1,6 +1,5 @@
 import notify from '../utilities/notify';
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import SettingsHandler from './settings-handler';
 
 /**
  * IPC Handler
@@ -10,6 +9,19 @@ import SettingsHandler from './settings-handler';
  * execution contexts.
  */
 export default class IpcHandler {
+    /**
+     * @var {object}
+     */
+    handlers = {
+        settings: null,
+        command: null
+    };
+
+    /**
+     * @var {string}
+     */
+    activeFile = null;
+
     /**
      * Create a new IpcHandler instance
      *
@@ -24,11 +36,19 @@ export default class IpcHandler {
         this.context = context;
         this.dispatcher = dispatcher;
 
-        this.activeFile = null;
-
         if (register) {
             this.register();
         }
+    }
+
+    /**
+     * Attach handlers
+     *
+     * @param {string} handler
+     * @param {object} instance
+     */
+    attach (handler, instance) {
+        this.handlers[handler] = instance;
     }
 
     /**
@@ -39,16 +59,16 @@ export default class IpcHandler {
      */
     register () {
         // Enable saving from within the browser window execution context
-        const saveBtn = document.querySelector('#saveFile');
-        if (saveBtn) {
-            saveBtn.addEventListener('click', () => {
+        const saveMarkdownButton = document.querySelector('#save-editor-markdown');
+        if (saveMarkdownButton) {
+            saveMarkdownButton.addEventListener('click', () => {
                 if (this.activeFile) {
-                    this.context.send('to:request:save', {
+                    this.context.send('to:file:save', {
                         content: this.instance.getValue(),
                         file: this.activeFile
                     });
                 } else {
-                    this.context.send('to:request:saveas', this.instance.getValue());
+                    this.context.send('to:file:saveas', this.instance.getValue());
                 }
             });
         }
@@ -63,28 +83,22 @@ export default class IpcHandler {
                 const toggle = document.querySelector('#toggleDarkMode');
                 toggle.checked = true;
 
-                editor.setTheme('vs-dark');
                 document.body.setAttribute('data-theme', 'dark');
+                editor.setTheme('vs-dark');
             }
         });
 
         // Set settings from stored settings file (%HOME%/.mkeditor/settings.json)
         this.context.receive('from:settings:set', (settings) => {
             this.mkeditor.applySettingsFromIpcStorage(settings);
-
-            this.context.send('from:theme:set', settings.toggleDarkMode);
-
-            const handler = new SettingsHandler(this.instance, {
-                persistSettings: true,
-                storedSettings: settings
-            });
-
-            handler.register();
+            this.handlers.settings.setSettings(settings);
+            this.handlers.settings.register();
         });
 
         // Enable new files from outside of the browser window execution context.
         // Provides access to browser window data and emits it to the ipc channel.
-        this.context.receive('from:request:new', (channel) => {
+        this.context.receive('from:file:new', (channel) => {
+            this.context.send('to:title:set', '');
             this.context.send(channel, {
                 content: this.instance.getValue(),
                 file: this.activeFile
@@ -93,20 +107,20 @@ export default class IpcHandler {
 
         // Enable saving files from outside of the browser window execution context.
         // Provides access to browser window data and emits it to the ipc channel.
-        this.context.receive('from:request:save', (channel) => {
+        this.context.receive('from:file:save', (channel) => {
             this.context.send(channel, {
                 content: this.instance.getValue(),
                 file: this.activeFile
             });
         });
 
-        this.context.receive('from:request:saveas', (channel) => {
+        this.context.receive('from:file:saveas', (channel) => {
             this.context.send(channel, this.instance.getValue());
         });
 
         // Enable opening files from outside of the browser window execution context.
         // Provides access to browser window data and emits it to the ipc channel.
-        this.context.receive('from:request:open', ({ content, filename, file }) => {
+        this.context.receive('from:file:open', ({ content, filename, file }) => {
             this.instance.focus();
             this.instance.setValue(content);
             this.activeFile = file;
@@ -121,7 +135,7 @@ export default class IpcHandler {
 
             document.querySelector('#active-file').innerText = filename;
 
-            this.context.send('to:set:title', filename);
+            this.context.send('to:title:set', filename);
         });
 
         // Enable access to the monaco editor command palette from outside the browser
@@ -138,12 +152,21 @@ export default class IpcHandler {
     }
 
     /**
-     * Save settings to te settings file.
+     * Save settings to the settings file.
      *
      * @param {*} settings
      */
     saveSettingsToFile (settings) {
         this.context.send('to:settings:save', { settings });
+    }
+
+    /**
+     * Export preview to html file.
+     *
+     * @param {string} content
+     */
+    exportPreviewToFile (content) {
+        this.context.send('to:html:export', { content });
     }
 
     /**

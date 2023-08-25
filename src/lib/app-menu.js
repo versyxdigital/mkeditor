@@ -2,7 +2,7 @@ const path = require('path');
 const storage = require('./storage');
 const openAboutWindow = require('about-window').default;
 
-module.exports = class MenuHandler {
+module.exports = class AppMenu {
     constructor (app, menu) {
         this.app = app;
         this.menu = menu;
@@ -19,7 +19,7 @@ module.exports = class MenuHandler {
                     {
                         label: 'New File...',
                         click: () => {
-                            context.webContents.send('from:request:new', 'to:request:new');
+                            context.webContents.send('from:file:new', 'to:file:new');
                         },
                         accelerator: 'Ctrl+N'
                     },
@@ -27,7 +27,7 @@ module.exports = class MenuHandler {
                         label: 'Open File...',
                         click: () => {
                             storage.open(context).then(response => {
-                                context.webContents.send('from:request:open', response);
+                                context.webContents.send('from:file:open', response);
                             });
                         },
                         accelerator: 'Ctrl+O'
@@ -35,14 +35,14 @@ module.exports = class MenuHandler {
                     {
                         label: 'Save',
                         click: () => {
-                            context.webContents.send('from:request:save', 'to:request:save');
+                            context.webContents.send('from:file:save', 'to:file:save');
                         },
                         accelerator: 'Ctrl+S'
                     },
                     {
                         label: 'Save As...',
                         click: () => {
-                            context.webContents.send('from:request:saveas', 'to:request:saveas');
+                            context.webContents.send('from:file:saveas', 'to:file:saveas');
                         },
                         accelerator: 'Ctrl+Shift+S'
                     },

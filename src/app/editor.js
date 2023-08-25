@@ -1,39 +1,74 @@
 import md from './markdown';
-import copyCodeBlocks from './extensions/code-blocks';
+import { generateExportHTML } from './export';
+import { formatHTML } from './utilities/format';
+import { copyableCodeBlocks } from './extensions/code-blocks';
 import { wordCount, characterCount } from './extensions/word-count';
 import { scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync';
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 
+/**
+ * Editor
+ */
 class Editor {
-    constructor (editor, preview, dispatcher) {
-        // Active editor
-        this.instance = null;
+    /**
+     * @var {editor.IStandaloneCodeEditor|null}
+     */
+    instance = null;
 
+    /**
+     * @var {string|null}
+     */
+    loadedInitialEditorValue = null;
+
+    /**
+     * @var {object}
+     */
+    handlers = {
+        command: null,
+        ipc: null,
+        settings: null
+    };
+
+    /**
+     * Create a Editor instance.
+     *
+     * @param {*} editor the HTML element for the editor
+     * @param {*} preview the HTML element for the preview
+     * @param {*} dispatcher the custom event dispatcher for the editor
+     */
+    constructor (editor, preview, dispatcher) {
         // Editor and preview DOM
         this.editor = editor;
         this.preview = preview;
-
-        // Access to handlers
-        this.commandHandler = null;
-        this.settingsHandler = null;
-        this.ipcHandler = null;
-
-        // Track initial editor value for comparison to current value
-        this.loadedInitialEditorValue = null;
 
         // Event dispatcher
         this.dispatcher = dispatcher;
     }
 
-    init (options = { watch: false }) {
+    /**
+     * Attach handler
+     * @param {string} handler
+     * @param {object} instance
+     */
+    attach (handler, instance) {
+        this.handlers[handler] = instance;
+    }
+
+    /**
+     * Create a new editor instance.
+     *
+     * @param {boolean} watch
+     * @returns {editor.IStandaloneCodeEditor|null}
+     */
+    create ({ watch = false }) {
         try {
             this.instance = editor.create(this.editor, {
-                value: '',
+                value: '# Write something cool...',
                 language: 'markdown',
                 wordBasedSuggestions: false,
-                autoIndent: this.autoIndent,
-                wordWrap: this.wordWrap,
-                renderWhitespace: this.whitespace,
+                autoIndent: 'advanced',
+                wordWrap: 'on',
+                renderWhitespace: 'all',
                 renderLineHighlight: 'gutter',
                 smoothScrolling: 'true',
                 roundedSelection: false,
@@ -45,24 +80,43 @@ class Editor {
                 this.loadedInitialEditorValue = event.message;
             });
 
-            const saveButton = document.querySelector('#save-settings-ipc');
-            if (saveButton) {
-                saveButton.addEventListener('click', (event) => {
+            const saveSettingsButton = document.querySelector('#save-settings-ipc');
+            if (saveSettingsButton) {
+                saveSettingsButton.addEventListener('click', (event) => {
                     event.preventDefault();
-                    if (this.ipcHandler && this.settingsHandler) {
-                        this.ipcHandler.saveSettingsToFile(
-                            this.settingsHandler.getActiveSettings()
+                    const { ipc, settings } = this.handlers;
+                    if (ipc && settings) {
+                        ipc.saveSettingsToFile(settings.getSettings());
+                    }
+                });
+            }
+
+            const exportPreviewButton = document.querySelector('#export-preview-html');
+            if (exportPreviewButton) {
+                exportPreviewButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    if (this.handlers.ipc) {
+                        const styled = document.querySelector('#export-preview-styled').checked;
+                        const html = generateExportHTML(this.preview.innerHTML, {
+                            styled,
+                            providers: ['bootstrap', 'fontawesome']
+                        });
+
+                        this.handlers.ipc.exportPreviewToFile(
+                            formatHTML(`<!DOCTYPE html>${html}`)
                         );
                     }
                 });
             }
 
+            // Resize listeners.
+            window.onload = () => this.instance.layout();
             window.onresize = () => this.instance.layout();
             this.preview.onresize = () => this.instance.layout();
 
             this.render();
 
-            if (options.watch) {
+            if (watch) {
                 this.watch();
             }
         } catch (error) {
@@ -73,10 +127,15 @@ class Editor {
         return this.instance;
     }
 
+    /**
+     * Watch the editor for changes.
+     *
+     * @returns
+     */
     watch () {
         this.instance.onDidChangeModelContent(() => {
-            if (this.ipcHandler) {
-                this.ipcHandler.trackEditorStateBetweenExecutionContext(
+            if (this.handlers.ipc) {
+                this.handlers.ipc.trackEditorStateBetweenExecutionContext(
                     this.loadedInitialEditorValue,
                     this.instance.getValue()
                 );
@@ -84,51 +143,69 @@ class Editor {
 
             setTimeout(() => {
                 this.render();
-            }, 500);
+            }, 250);
         });
 
         this.instance.onDidScrollChange(() => {
             const visibleRange = this.instance.getVisibleRanges()[0];
             if (visibleRange) {
-                scrollPreviewToEditorVisibleRange(visibleRange.startLineNumber, this.preview);
+                scrollPreviewToEditorVisibleRange(
+                    visibleRange.startLineNumber,
+                    this.preview
+                );
             }
         });
     }
 
+    /**
+     * Render editor content to the preview.
+     *
+     * @returns
+     */
     render () {
         this.preview.innerHTML = md.render(this.instance.getValue());
 
-        copyCodeBlocks();
+        copyableCodeBlocks();
         wordCount(this.preview);
         characterCount(this.preview);
     }
 
+    /**
+     * Apply settings from IPC.
+     *
+     * @param {*} settings
+     * @returns
+     */
     applySettingsFromIpcStorage (settings) {
-        this.wordWrap = settings.toggleWordWrap ? 'on' : 'off';
-        this.autoIndent = settings.toggleAutoIndent ? 'advanced' : 'none';
-        this.whitespace = settings.toggleWhitespace ? 'all' : 'none';
-        this.minimap = settings.toggleMinimap ? { enabled: true } : { enabled: 'false' };
-        this.foldingControls = settings.showFoldingControls ? 'always' : 'never';
+        this.instance.updateOptions({
+            autoIndent: settings.toggleAutoIndent
+                ? 'advanced'
+                : 'none'
+        });
 
-        editor.setTheme(this.toggleDarkMode ? 'vs-dark' : 'gdmTheme');
+        this.instance.updateOptions({
+            wordWrap: settings.toggleWordWrap
+                ? 'on'
+                : 'off'
+        });
 
-        this.instance.updateOptions({ wordWrap: this.wordWrap });
-        this.instance.updateOptions({ autoIndent: this.autoIndent });
-        this.instance.updateOptions({ renderWhitespace: this.whitespace });
-        this.instance.updateOptions({ minimap: this.minimap });
-        this.instance.updateOptions({ showFoldingControls: this.foldingControls });
-    }
+        this.instance.updateOptions({
+            renderWhitespace: settings.toggleWhitespace
+                ? 'all'
+                : 'none'
+        });
 
-    registerCommandHandler (handler) {
-        this.commandHandler = handler;
-    }
+        this.instance.updateOptions({
+            minimap: settings.toggleMinimap
+                ? { enabled: true }
+                : { enabled: 'false' }
+        });
 
-    registerSettingsHandler (handler) {
-        this.settingsHandler = handler;
-    }
-
-    registerIpcHandler (handler) {
-        this.ipcHandler = handler;
+        this.instance.updateOptions({
+            showFoldingControls: settings.showFoldingControls
+                ? 'always'
+                : 'never'
+        });
     }
 }
 
