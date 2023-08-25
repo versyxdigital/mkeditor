@@ -51,13 +51,15 @@ module.exports = {
             ]
         };
 
-        const isExport = data && data.startsWith('<!DOCTYPE html>');
+        const isHTMLExport = data && data.startsWith('<!DOCTYPE html>');
 
-        if (isExport) {
+        if (isHTMLExport) {
             options.filters.unshift({
                 name: 'html',
                 extensions: ['html']
             });
+
+            data = this.formatHTML(data);
         }
 
         if (file) {
@@ -75,10 +77,10 @@ module.exports = {
 
                     context.webContents.send('from:notification:display', {
                         status: 'success',
-                        message: 'File ' + isExport ? 'exported' : 'saved'
+                        message: 'File ' + (isHTMLExport ? 'exported' : 'saved')
                     });
 
-                    if (!isExport) {
+                    if (!isHTMLExport) {
                         setActiveFile(context, file);
                     }
                 } catch (error) {
@@ -101,14 +103,14 @@ module.exports = {
 
                         context.webContents.send('from:notification:display', {
                             status: 'success',
-                            message: 'File ' + isExport ? 'exported' : 'saved'
+                            message: 'File ' + (isHTMLExport ? 'exported' : 'saved')
                         });
 
                         if (reset) {
                             filePath = null;
                         }
 
-                        if (!isExport) {
+                        if (!isHTMLExport) {
                             setActiveFile(context, filePath);
                         }
                     } catch (error) {
@@ -164,5 +166,24 @@ module.exports = {
                     }
                 });
         });
+    },
+
+    formatHTML (html) {
+        const tab = '    ';
+        let result = '';
+        let indent = '';
+        html.split(/>\s*</).forEach((element) => {
+            if (element.match(/^\/\w/)) {
+                indent = indent.substring(tab.length);
+            }
+
+            result += indent + '<' + element + '>\r\n';
+
+            if (element.match(/^<?\w[^>]*[^/]$/) && !element.startsWith('input')) {
+                indent += tab;
+            }
+        });
+
+        return result.substring(1, result.length - 3);
     }
 };
