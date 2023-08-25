@@ -1,4 +1,6 @@
 import md from './markdown';
+import { generateExportHTML } from './export';
+import { formatHTML } from './utilities/format';
 import { copyableCodeBlocks } from './extensions/code-blocks';
 import { wordCount, characterCount } from './extensions/word-count';
 import { scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync';
@@ -55,10 +57,10 @@ class Editor {
     /**
      * Create a new editor instance.
      *
-     * @param {*} options
+     * @param {boolean} watch
      * @returns {editor.IStandaloneCodeEditor|null}
      */
-    init (options = { watch: false }) {
+    create ({ watch = false }) {
         try {
             this.instance = editor.create(this.editor, {
                 value: '# Write something cool...',
@@ -78,13 +80,31 @@ class Editor {
                 this.loadedInitialEditorValue = event.message;
             });
 
-            const saveButton = document.querySelector('#save-settings-ipc');
-            if (saveButton) {
-                saveButton.addEventListener('click', (event) => {
+            const saveSettingsButton = document.querySelector('#save-settings-ipc');
+            if (saveSettingsButton) {
+                saveSettingsButton.addEventListener('click', (event) => {
                     event.preventDefault();
                     const { ipc, settings } = this.handlers;
                     if (ipc && settings) {
                         ipc.saveSettingsToFile(settings.getSettings());
+                    }
+                });
+            }
+
+            const exportPreviewButton = document.querySelector('#export-preview-html');
+            if (exportPreviewButton) {
+                exportPreviewButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    if (this.handlers.ipc) {
+                        const styled = document.querySelector('#export-preview-styled').checked;
+                        const html = generateExportHTML(this.preview.innerHTML, {
+                            styled,
+                            providers: ['bootstrap', 'fontawesome']
+                        });
+
+                        this.handlers.ipc.exportPreviewToFile(
+                            formatHTML(`<!DOCTYPE html>${html}`)
+                        );
                     }
                 });
             }
@@ -96,7 +116,7 @@ class Editor {
 
             this.render();
 
-            if (options.watch) {
+            if (watch) {
                 this.watch();
             }
         } catch (error) {

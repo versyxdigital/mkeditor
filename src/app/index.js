@@ -16,7 +16,7 @@ const dispatcher = new EditorDispatcher();
 
 // Create new editor instance.
 const mkeditor = new Editor(editor, preview, dispatcher);
-const instance = mkeditor.init({ watch: true });
+const instance = mkeditor.create({ watch: true });
 
 // Register new command handler for the editor instance to provide
 // and handle editor commands and actions (e.g. bold, alertblock etc.)

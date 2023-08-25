@@ -59,9 +59,9 @@ export default class IpcHandler {
      */
     register () {
         // Enable saving from within the browser window execution context
-        const saveBtn = document.querySelector('#saveFile');
-        if (saveBtn) {
-            saveBtn.addEventListener('click', () => {
+        const saveMarkdownButton = document.querySelector('#save-editor-markdown');
+        if (saveMarkdownButton) {
+            saveMarkdownButton.addEventListener('click', () => {
                 if (this.activeFile) {
                     this.context.send('to:file:save', {
                         content: this.instance.getValue(),
@@ -152,12 +152,21 @@ export default class IpcHandler {
     }
 
     /**
-     * Save settings to te settings file.
+     * Save settings to the settings file.
      *
      * @param {*} settings
      */
     saveSettingsToFile (settings) {
         this.context.send('to:settings:save', { settings });
+    }
+
+    /**
+     * Export preview to html file.
+     *
+     * @param {string} content
+     */
+    exportPreviewToFile (content) {
+        this.context.send('to:html:export', { content });
     }
 
     /**

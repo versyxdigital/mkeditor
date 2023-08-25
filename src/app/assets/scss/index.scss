@@ -9,8 +9,13 @@
 @import "_copycode.scss";
 @import "_darkmode.scss";
 
+.form-check-input:checked {
+  background-color: #8694a9;
+  border-color: #8694a9;
+}
+
 .btn-sm {
-  font-size: .675rem;
+  font-size: .75rem;
 }
 
 .alert p {
