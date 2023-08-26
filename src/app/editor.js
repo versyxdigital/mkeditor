@@ -20,7 +20,7 @@ class Editor {
     loadedInitialEditorValue = null;
 
     /**
-     * @var {object}
+     * @var {{command: *, ipc: *, settings: *}}
      */
     handlers = {
         command: null,
@@ -61,6 +61,7 @@ class Editor {
      */
     create ({ watch = false }) {
         try {
+            // Create the underlying monaco editor instance.
             this.instance = editor.create(this.editor, {
                 value: '# Write something cool...',
                 language: 'markdown',
@@ -74,11 +75,20 @@ class Editor {
                 accessibilityPageSize: 1000
             });
 
+            // Set loadedInitialEditorValue for tracking; this value is used
+            // to compare to the current editor content to see if changes have
+            // occurred, the result of this comparison is used for various things
+            // such as modifying the title to notify the user of unsaved changes,
+            // prompting the user to save before opening new files, etc.
             this.loadedInitialEditorValue = this.instance.getValue();
             this.dispatcher.addEventListener('editor:state', (event) => {
                 this.loadedInitialEditorValue = event.message;
             });
 
+            // Register the event listener for editor UI save settings button; this button
+            // is executed from within the web context, and uses the IPC handler to fire an
+            // event to the main process, which has access to the filesystem.
+            // The main process receives the current settings and saves them to file.
             const saveSettingsButton = document.querySelector('#save-settings-ipc');
             if (saveSettingsButton) {
                 saveSettingsButton.addEventListener('click', (event) => {
@@ -90,6 +100,10 @@ class Editor {
                 });
             }
 
+            // Register the event listener for the editor UI export preview button; this
+            // button is also executed from within the web context, and also uses the IPC
+            // handler to fire an event to the main process, which in turn handles the action
+            // of opening the save dialog, saving the HTML to file etc.
             const exportPreviewButton = document.querySelector('#export-preview-html');
             if (exportPreviewButton) {
                 exportPreviewButton.addEventListener('click', (event) => {
@@ -105,14 +119,18 @@ class Editor {
                 });
             }
 
-            // Resize listeners.
+            // Resize listeners to resize the editor.
             window.onload = () => this.instance.layout();
             window.onresize = () => this.instance.layout();
             this.preview.onresize = () => this.instance.layout();
 
+            // Render the editor content to preview; also initialises editor
+            // extensions.
             this.render();
 
             if (watch) {
+                // Watch the editor for changes, updates the preview and and copntains
+                // various event listeners.
                 this.watch();
             }
         } catch (error) {
@@ -129,19 +147,29 @@ class Editor {
      * @returns
      */
     watch () {
+        // When the editor content changes, update the main process through the IPC handler
+        // so that it can do things such as set the title notifying the user of unsaved changes,
+        // prompt the user to save if they try to close the app or open a new file, etc.
         this.instance.onDidChangeModelContent(() => {
             if (this.handlers.ipc) {
                 this.handlers.ipc.trackEditorStateBetweenExecutionContext(
+                    // The initial editor content
                     this.loadedInitialEditorValue,
+                    // The current editor content
                     this.instance.getValue()
                 );
             }
 
+            // Add a small timeout for the render.
             setTimeout(() => {
+                // Update the rendered content in the preview.
                 this.render();
             }, 250);
         });
 
+        // Track the editor scroll state and update the preview scroll position to match.
+        // Note: this method isn't perfect, for example, in cases of large images there is
+        // a slight discrepancy of about 20-30px, but for the most part it works.
         this.instance.onDidScrollChange(() => {
             const visibleRange = this.instance.getVisibleRanges()[0];
             if (visibleRange) {
@@ -159,9 +187,13 @@ class Editor {
      * @returns
      */
     render () {
+        // Render the editor markdown to HTML.
         this.preview.innerHTML = md.render(this.instance.getValue());
 
+        // Track code blocks and make them copyable.
         copyableCodeBlocks();
+
+        // Track word cound and charactcer count.
         wordCount(this.preview);
         characterCount(this.preview);
     }
