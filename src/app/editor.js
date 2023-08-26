@@ -31,9 +31,9 @@ class Editor {
     /**
      * Create a Editor instance.
      *
-     * @param {*} editor the HTML element for the editor
-     * @param {*} preview the HTML element for the preview
-     * @param {*} dispatcher the custom event dispatcher for the editor
+     * @param {HTMLDivElement} editor the HTML element for the editor
+     * @param {HTMLDivElement} preview the HTML element for the preview
+     * @param {EventDispatcher} dispatcher the custom event dispatcher for the editor
      */
     constructor (editor, preview, dispatcher) {
         // Editor and preview DOM
