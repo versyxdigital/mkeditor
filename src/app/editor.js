@@ -1,6 +1,5 @@
 import md from './markdown';
 import { generateExportHTML } from './export';
-import { formatHTML } from './utilities/format';
 import { copyableCodeBlocks } from './extensions/code-blocks';
 import { wordCount, characterCount } from './extensions/word-count';
 import { scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync';
@@ -57,8 +56,8 @@ class Editor {
     /**
      * Create a new editor instance.
      *
-     * @param {boolean} watch
-     * @returns {editor.IStandaloneCodeEditor|null}
+     * @param {{watch: boolean}} watch
+     * @returns {editor.IStandaloneCodeEditor}
      */
     create ({ watch = false }) {
         try {
@@ -96,14 +95,11 @@ class Editor {
                 exportPreviewButton.addEventListener('click', (event) => {
                     event.preventDefault();
                     if (this.handlers.ipc) {
-                        const styled = document.querySelector('#export-preview-styled').checked;
-                        const html = generateExportHTML(this.preview.innerHTML, {
-                            styled,
-                            providers: ['bootstrap', 'fontawesome']
-                        });
-
                         this.handlers.ipc.exportPreviewToFile(
-                            formatHTML(`<!DOCTYPE html>${html}`)
+                            generateExportHTML(this.preview.innerHTML, {
+                                styled: document.querySelector('#export-preview-styled').checked,
+                                providers: ['bootstrap', 'fontawesome', 'highlightjs']
+                            })
                         );
                     }
                 });

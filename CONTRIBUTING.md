@@ -80,55 +80,118 @@ context.loadFile(path.join(__dirname, '../dist/index.html'))
 The `preload` option that is passed when creating a new browser window specifies the [preload script](https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts) that will be loaded before other scripts run in the page. This script will always have access to node APIs no matter whether node integration is turned on or off.
 
 ```javascript
-/**
- * The contextBridge module provides a safe, bi-directional, synchronous
- * bridge across isolated contexts.
- */
-const { contextBridge } = require('electron')
+const { contextBridge, ipcRenderer } = require('electron');
 
-/**
- * contextBridgeChannel utilises the ipcRenderer module to provide methods for
- * sending synchronous and asynchronous messages accross different execution contexts
- */
-const { contextBridgeChannel } = require('./lib/context-bridge')
+const senderWhitelist = [
+    ...
+];
 
+const receiverWhitelist = [
+    ...
+];
 
-contextBridge.exposeInMainWorld('api', contextBridgeChannel())
+const contextBridgeChannel = () => {
+    return {
+        send: (channel, data) => {
+            if (senderWhitelist.includes(channel)) {
+                ipcRenderer.send(channel, data);
+            }
+        },
+        receive: (channel, func) => {
+            if (receiverWhitelist.includes(channel)) {
+                ipcRenderer.on(channel, (event, ...args) => {
+                    func(...args);
+                });
+            }
+        }
+    };
+};
+
+contextBridge.exposeInMainWorld('executionBridge', contextBridgeChannel());
 ```
 
 ### Context Isolation and ICP
 
 The preloader facilitates [context-isolated](https://www.electronjs.org/docs/latest/tutorial/context-isolation) [communication](https://www.electronjs.org/docs/latest/tutorial/ipc) between the renderer and the main process via [IPC channels](https://www.electronjs.org/docs/latest/tutorial/ipc#ipc-channels).
 
-The IPC handler is instantiated from the entry point - `src/main.js`:
+The IPC handler for the main context, located at `src/lib/ipc-handler.js`, is instantiated from the main process entry point - `src/main.js`:
 
 ```javascript
-const ipcHandler = new IpcHandler(ipcMain)
-ipcHandler.register(context)
+const ipcHandler = new IpcHandler(ipcMain, {
+    settings: settingsHandler,
+    dialog: dialogHandler
+});
+ipcHandler.register(context);
 ```
 
-The IPC handler  - `lib/ipc-handler.js` - registers event listeners to listen to events fired from the renderer process.
-
-For example, here is an event listener within the mkeditor application that is attached to the "save" HTML button.
+The IPC handler for the web context, located at `src/app/handlers/ipc-handler.js`, is instantiated from the web context entry point - `src/app/index.js`:
 
 ```javascript
-saveBtn.addEventListener('click', () => {
+// If running within electron app, register IPC handler for communication
+// between node and browser execution contexts.
+if (Object.prototype.hasOwnProperty.call(window, 'executionBridge')) {
+    const context = window.executionBridge;
+    const ipcHandler = new IpcHandler(mkeditor, instance, context, dispatcher, true);
+
+    ipcHandler.attach('settings', mkeditor.handlers.settings);
+    mkeditor.attach('ipc', ipcHandler);
+}
+```
+
+`this.context` is the main context exposed to the browser window as `window.executionBridge`, through the preloader.
+
+
+#### How it works
+
+##### Web
+
+For example, here is an event listener within the web context that is attached to the editor UI toolbar save button.
+
+
+```javascript
+saveMarkdownButton.addEventListener('click', () => {
     if (this.activeFile) {
         this.context.send('to:file:save', {
-            content: this.app.getValue(),
+            content: this.instance.getValue(),
             file: this.activeFile
-        })
+        });
     } else {
-        this.context.send('to:file:saveas', this.app.getValue())
+        this.context.send('to:file:saveas', this.instance.getValue());
     }
-})
+});
 ```
 
-`this.context` is the IPC renderer process which is exposed to the browser window as `window.executionBridge` through the preloader.
+When the user clicks the save button on the editor UI toolbar, it will trigger an event on the `to:file:save` channel, the listener for this channel is defined in the main context's IPC handler, as it requires access to the filesystem.
 
-When the save button is clicked, a check is performed to see if the user is editing an existing file, if so, the IPC renderer triggers a `to:file:save` event, otherwise it triggers a `to:file:saveas` event.
+You will see how the `to:file:save` listener handles the event further below.
 
-The IPC handler contains listeners for these events:
+###### Main
+
+Here is an event lisener within the main context that is attached to the electron app menu file > save button.
+```javascript
+{
+    label: 'Save',
+    click: () => {
+        context.webContents.send('from:file:save', 'to:file:save');
+    },
+    accelerator: 'Ctrl+S'
+},
+```
+
+In the case of saving via file > save from the app menu, the main context makes a round trip. It sends a request to the `from:file:save` channel along with a second parameter specifying the channel to forward on to from the `from:file:save` listener.
+
+The `from:file:save` listener is defined in the web context's IPC handler. It is defined here because saving a file requires access to this context to retrieve the editor content to save, and also the current active file in the case of editing existing files.
+
+```javascript
+this.context.receive('from:file:save', (channel) => {
+    this.context.send(channel, {
+        content: this.instance.getValue(),
+        file: this.activeFile
+    });
+});
+```
+
+The listener receives the request from the main context, and forwards it on to `to:file:save`, which is defined in the main context, where we have access to the filesystem.
 
 ```javascript
 this.ipc.on('to:file:save', (event, { content, file }) => {
@@ -136,20 +199,13 @@ this.ipc.on('to:file:save', (event, { content, file }) => {
         id: event.sender.id,
         data: content,
         file
-    })
-})
-
-this.ipc.on('to:file:saveas', (event, data) => {
-    storage.save(context, {
-        id: event.sender.id,
-        data,
-    })
-})
+    }).then(() => {
+        this.resetContextBridgedContent();
+    });
+});
 ```
 
-`this.ipc` is the IPC main process which communicates asynchronously to renderer processes.
-
-As you can see, both events triggered from the renderer process are handled by the main process. In this instance, the IPC handler facilitates the passage of data from the renderer - id, editor content and in the case of exsting files, destination file - to our node storage access logic.
+The listener receives the editor content and the file if an existing file is being edited, and invokes the storage handler to save the file.
 
 ## Building
 
