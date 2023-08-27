@@ -1,5 +1,6 @@
 import md from './markdown';
 import { generateExportHTML } from './export';
+import { welcomeMarkdown } from './utilities/intro';
 import { copyableCodeBlocks } from './extensions/code-blocks';
 import { wordCount, characterCount } from './extensions/word-count';
 import { scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync';
@@ -64,7 +65,7 @@ class Editor {
             // Create the underlying monaco editor instance.
             // See https://microsoft.github.io/monaco-editor/
             this.instance = editor.create(this.editor, {
-                value: '# Write something cool...',
+                value: welcomeMarkdown.trim(),
                 language: 'markdown',
                 wordBasedSuggestions: false,
                 autoIndent: 'advanced',

@@ -13,7 +13,7 @@
     "build:executable": "npm run build:mkeditor && electron-builder --dir",
     "build:installer": "npm run build:mkeditor && electron-builder",
     "dev:execute": "node ./node_modules/electron/cli.js .",
-    "dev:web": "http-server ./dist",
+    "serve:web": "http-server ./dist",
     "github:page": "http-server ./docs"
   },
   "devDependencies": {

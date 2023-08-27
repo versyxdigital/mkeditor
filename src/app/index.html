@@ -121,8 +121,9 @@
                 </div>
                 <div class="form-check">
                     <input id="export-preview-styled" class="form-check-input me-2" type="checkbox" checked />
-                    <label class="form-check-label" for="export-preview-styled">
-                        <small>Export with styles</small>
+                    <label class="form-check-label small text-muted" for="export-preview-styled">
+                        <span class="d-none d-sm-inline d-md-none">styles</span>
+                        <span class="d-none d-md-inline">with styles</span>
                     </label>
                 </div>
             </div>
@@ -153,7 +154,7 @@
                     Here you can customize various editor settings according to your preferences.
                 </p>
                 <p class="text-muted">
-                    For more options, visit the <a href="#">documentation</a>.
+                    Your settings file is located at <span class="font-monospace small">~/.mkeditor/settings.json</span>.
                 </p>
                 <hr >
                 <p class="text-muted"><strong>Formatting</strong></p>
@@ -187,7 +188,7 @@
                 </div>
                 <hr >
                 <div class="form-group d-flex align-items-center gap-3 mt-4 mb-3">
-                    <button id="save-app-settings" class="btn btn-sm btn-success">
+                    <button id="save-app-settings" class="btn btn-sm btn-primary">
                         <i class="fas fa-save"></i>
                         <span class="ms-1">Save Settings</span>
                     </button>

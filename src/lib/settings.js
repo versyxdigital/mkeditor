@@ -39,20 +39,31 @@ module.exports = class Settings {
 
         if (!fs.existsSync(this.file)) {
             settings = { ...this.settings, ...settings };
-            this.saveSettingsToFile(settings);
+            this.saveSettingsToFile(settings, true);
         }
     }
 
-    saveSettingsToFile (settings) {
+    saveSettingsToFile (settings, init = false) {
         try {
             fs.writeFileSync(this.file, JSON.stringify(settings, null, 4), {
                 encoding: 'utf-8'
             });
-        } catch (error) {
-            if (error.code === 'EPERM') {
-                // Notify user that permissions has changed on the settings file
-                // On Windows, this could be due to making the directory and all children hidden.
+
+            if (!init) {
+                this.context.webContents.send('from:notification:display', {
+                    status: 'success',
+                    message: 'Settings successfully updated.'
+                });
             }
+        } catch (error) {
+            const message = error.code === 'EPERM'
+                ? 'Unable to save settings: permission denied.'
+                : 'Unable to save settings: unknown error.';
+
+            this.context.webContents.send('from:notification:display', {
+                status: 'error',
+                message
+            });
         }
     }
 };

@@ -18,6 +18,27 @@
   font-size: .75rem;
 }
 
+.btn-primary {
+  background: #519088;
+  border-color: #519088;
+  border-radius: 0;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: #457b74;
+  border-color: #457b74;
+}
+
+.btn-primary:active {
+  background: #457b74 !important;
+  border-color: #457b74 !important;
+}
+
+.btn-danger {
+  border-radius: 0;
+}
+
 .alert p {
   margin-bottom: 0;
 }

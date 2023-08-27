@@ -76,7 +76,7 @@ export default class IPCHandler {
             this.handlers.settings.register();
         });
 
-        // Enable new files from outside of the browser window execution context.
+        // Enable new files from outside of the renderer execution context.
         // Provides access to browser window data and emits it to the ipc channel.
         this.bridge.receive('from:file:new', (channel) => {
             this.bridge.send('to:title:set', '');
@@ -86,7 +86,7 @@ export default class IPCHandler {
             });
         });
 
-        // Enable saving files from outside of the browser window execution context.
+        // Enable saving files from outside of the renderer execution context.
         // Provides access to browser window data and emits it to the ipc channel.
         this.bridge.receive('from:file:save', (channel) => {
             this.bridge.send(channel, {
@@ -99,7 +99,7 @@ export default class IPCHandler {
             this.bridge.send(channel, this.instance.getValue());
         });
 
-        // Enable opening files from outside of the browser window execution context.
+        // Enable opening files from outside of the renderer execution context.
         // Provides access to browser window data and emits it to the ipc channel.
         this.bridge.receive('from:file:open', ({ content, filename, file }) => {
             this.instance.focus();
@@ -107,7 +107,6 @@ export default class IPCHandler {
             this.activeFile = file;
 
             // Dispatch contents so the editor can track it.
-            // This handler and the editor both reside within the same execution context.
             this.dispatcher.setState({
                 content: this.instance.getValue()
             });
@@ -119,14 +118,13 @@ export default class IPCHandler {
             this.bridge.send('to:title:set', filename);
         });
 
-        // Enable access to the monaco editor command palette from outside the browser
-        // window execution context.
+        // Enable access to the monaco editor command palette.
         this.bridge.receive('from:command:palette', (command) => {
             this.instance.focus();
             this.instance.trigger(command, 'editor.action.quickCommand');
         });
 
-        // Enable ipc notifications.
+        // Enable notifications from the main context.
         this.bridge.receive('from:notification:display', (event) => {
             notify.send(event.status, event.message);
         });
