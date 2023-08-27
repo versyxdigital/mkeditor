@@ -1,12 +1,12 @@
-const container = require('markdown-it-container');
+import * as container from 'markdown-it-container';
 
 let md;
-let links;
+let hasLinks;
 let containerOpenCount;
 
-const alertBlocks = function (instance, options) {
+const alertBlocks = (instance, options) => {
     containerOpenCount = 0;
-    links = options ? options.links : true;
+    hasLinks = options ? options.links : true;
     md = instance;
 
     init();
@@ -22,7 +22,7 @@ function init () {
     setupContainer('light');
     setupContainer('dark');
 
-    if (links) {
+    if (hasLinks) {
         setupLinks();
     }
 }
@@ -44,17 +44,13 @@ function setupContainer (name) {
 function setupLinks () {
     const render = md.renderer.rules.link_open || selfRender;
 
-    md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
-        if (isContainerOpen()) {
+    md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+        if (containerOpenCount > 0) {
             tokens[idx].attrPush(['class', 'alert-link']);
         }
 
         return render(tokens, idx, options, env, self);
     };
-}
-
-function isContainerOpen () {
-    return containerOpenCount > 0;
 }
 
 function selfRender (tokens, idx, options, env, self) {

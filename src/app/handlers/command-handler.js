@@ -104,7 +104,7 @@ class CommandHandler {
         // Map editor commands to editor UI buttons (e.g. bold, alertblock etc.)
         const toolbarButtons = document.getElementById('editor-functions').querySelectorAll('button');
         if (toolbarButtons) {
-            toolbarButtons.forEach((btn) => {
+            for (const btn of toolbarButtons) {
                 btn.addEventListener('click', (event) => {
                     const target = event.currentTarget || event.target;
                     if (Object.prototype.hasOwnProperty.call(target.dataset, 'cmd')) {
@@ -120,7 +120,7 @@ class CommandHandler {
                         this.instance.focus();
                     }
                 });
-            });
+            }
         }
     }
 

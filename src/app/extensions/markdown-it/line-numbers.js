@@ -1,5 +1,5 @@
 const lineNumbers = (md) => {
-    const lineNumberRendererRuleNames = [
+    const rules = [
         'paragraph_open',
         'image',
         'code_block',
@@ -7,7 +7,7 @@ const lineNumbers = (md) => {
         'list_item_open'
     ];
 
-    lineNumberRendererRuleNames.forEach((rule) => {
+    for (const rule of rules) {
         const render = md.renderer.rules[rule] || selfRender;
 
         md.renderer.rules[rule] = (tokens, idx, options, env, self) => {
@@ -20,7 +20,7 @@ const lineNumbers = (md) => {
 
             return render(tokens, idx, options, env, self);
         };
-    });
+    }
 };
 
 function selfRender (tokens, idx, options, env, self) {
