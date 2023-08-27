@@ -1,4 +1,6 @@
-export const cdn = {
+import { formatHTML } from './utilities/format';
+
+const cdn = {
     bootstrap: {
         css: {
             rel: 'stylesheet',
@@ -24,17 +26,177 @@ export const cdn = {
             integrity: 'sha512-uKQ39gEGiyUJl4AI6L+ekBdGKpGw4xJ55+xyJG7YFlJokPNYegn9KwQ3P8A7aFQAUtUsAQHep+d/lrGqrbPIDQ==',
             crossorigin: 'anonymous'
         }
+    },
+    highlightjs: {
+        css: {
+            rel: 'stylesheet',
+            href: 'https://cdn.jsdelivr.net/npm/highlightjs-themes@1.0.0/github.css',
+            integrity: 'sha256-3Kq/Y3s2zLxBaWvXF4mw18pnAfq4mSlsi/J2sa9zvSE=',
+            crossorigin: 'anonymous'
+        }
     }
 };
 
-export function generateExportHTML (content, { styled = true, providers = ['bootstrap', 'fontawesome'] }) {
-    const document = (new DOMParser()).parseFromString(
-        '<div class="container py-5">' +
-            content +
-        '</div>',
-        'text/html'
-    );
+const css = `@media print {
+    .copy-code {
+            display: none;
+    }
+}
 
+.copy-code-pre {
+    position: relative;
+}
+
+.copy-code-pre code {
+    background: #111111 !important;
+    color: #c4c4c4;
+}
+
+.copy-code {
+    display: flex;
+    flex-direction: row;
+    white-space: normal;
+    background: rgba(51, 51, 51, 0.8);
+    color: white;
+    font-size: 0.875em;
+    opacity: 0.5;
+    transition: opacity linear 0.5s;
+    border-radius: 0 0 0 5px;
+    padding: 3px 6px 3px 6px;
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+.copy-code.active {
+    opacity: 0.8;
+}
+
+.copy-code:hover {
+    opacity: .95;
+}
+
+.copy-code a,
+.copy-code a:hover {
+    text-decoration: none;
+}
+
+.copy-code-language {
+    margin-right: 10px;
+    font-weight: 600;
+    color: goldenrod;
+}
+
+.copy-code-copy-icon {
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 0 7px;
+    margin-top: 2px;
+}
+
+.fa.text-success {
+    color: limegreen !important
+}
+
+.hljs-meta .hljs-string, .hljs-regexp, .hljs-string {
+    color: #f7a857;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-variable {
+    color: #78c9e8;
+}
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+    color: #ccda59;
+}
+`;
+
+/**
+ * Generate styled or unstyled HTML export.
+ *
+ * @param {string} content
+ * @param {{styled: boolean, providers: []}} options
+ *
+ * @returns string
+ */
+export function generateExportHTML (content, { styled = true, providers = ['highlightjs'] }) {
+    // If using bootstrap styles then wrap the content inside a container with padding
+    if (styled && providers.includes('bootstrap')) {
+        content = '<div class="container py-5">' +
+            content +
+        '</div>';
+    }
+
+    // Create a full HTML document and remove unnecessary attributes and classes
+    const document = sanitizeHTML((new DOMParser()).parseFromString(content, 'text/html'));
+
+    if (styled) {
+        // Apply styles/scripts based on selected provider(s)
+        if (providers) {
+            for (const provider of providers) {
+                if (Object.prototype.hasOwnProperty.call(cdn, provider)) {
+                    const { css, js } = cdn[provider];
+
+                    if (css) {
+                        const stylesheet = document.createElement('link');
+                        stylesheet.rel = css.rel;
+                        stylesheet.href = css.href;
+                        stylesheet.integrity = css.integrity;
+                        stylesheet.crossOrigin = css.crossorigin;
+                        document.head.appendChild(stylesheet);
+                    }
+
+                    if (js) {
+                        const script = document.createElement('script');
+                        script.src = js.src;
+                        script.integrity = js.integrity;
+                        script.crossOrigin = js.crossorigin;
+                        document.body.appendChild(script);
+                    }
+                }
+            }
+        }
+
+        // Custom style for the styled copyable code blocks
+        const style = document.createElement('style');
+        style.appendChild(document.createTextNode(css));
+        document.head.appendChild(style);
+    } else {
+        // If not using styles then strip all classes
+        const elems = document.querySelectorAll('*');
+        for (const elem of elems) {
+            elem.removeAttribute('class');
+        }
+    }
+
+    // Beautify the HTML and return it
+    return formatHTML(`<!DOCTYPE html>${document.documentElement.outerHTML}`);
+}
+
+/**
+ * Strip unnecessary attrs/classes from the HTML.
+ *
+ * For example, it strips the data-line-start/data-line-end attributes
+ * and has-line-data class, which are used by mkeditor for scroll-sync
+ * between the editor content and the preview.
+ *
+ * @param {Document} document
+ * @returns {Document}
+ */
+function sanitizeHTML (document) {
+    // Define attributes and classes for removal
     const removals = {
         attrs: [
             'data-line-start',
@@ -45,6 +207,7 @@ export function generateExportHTML (content, { styled = true, providers = ['boot
         ]
     };
 
+    // Loop through and remove attributes
     for (const removeAttr of removals.attrs) {
         const elems = document.querySelectorAll(`[${removeAttr}]`);
         for (const elem of elems) {
@@ -54,6 +217,7 @@ export function generateExportHTML (content, { styled = true, providers = ['boot
         }
     }
 
+    // Loop through and remove classes
     for (const removeClass of removals.classes) {
         const elems = document.querySelectorAll(`.${removeClass}`);
         for (const elem of elems) {
@@ -66,26 +230,6 @@ export function generateExportHTML (content, { styled = true, providers = ['boot
         }
     }
 
-    if (styled && providers) {
-        for (const provider of providers) {
-            if (Object.prototype.hasOwnProperty.call(cdn, provider)) {
-                const { css, js } = cdn[provider];
-
-                const stylesheet = document.createElement('link');
-                stylesheet.rel = css.rel;
-                stylesheet.href = css.href;
-                stylesheet.integrity = css.integrity;
-                stylesheet.crossOrigin = css.crossorigin;
-                document.head.appendChild(stylesheet);
-
-                const script = document.createElement('script');
-                script.src = js.src;
-                script.integrity = js.integrity;
-                script.crossOrigin = js.crossorigin;
-                document.body.appendChild(script);
-            }
-        }
-    }
-
-    return document.documentElement.outerHTML;
+    // Return the sanitized HTML
+    return document;
 }

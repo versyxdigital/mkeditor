@@ -4,7 +4,7 @@ import Editor from './editor';
 import EditorDispatcher from './events/editor-dispatcher';
 import CommandHandler from './handlers/command-handler';
 import SettingsHandler from './handlers/settings-handler';
-import IpcHandler from './handlers/ipc-handler';
+import IPCHandler from './handlers/ipc-handler';
 
 require('file-loader?name=[name].[ext]!./index.html'); // eslint-disable-line
 
@@ -29,13 +29,20 @@ mkeditor.attach('settings', new SettingsHandler(instance, {
 }, true));
 
 // If running within electron app, register IPC handler for communication
-// between node and browser execution contexts.
+// between main and renderer execution contexts.
 if (Object.prototype.hasOwnProperty.call(window, 'executionBridge')) {
-    const context = window.executionBridge;
-    const ipcHandler = new IpcHandler(mkeditor, instance, context, dispatcher, true);
+    // The bi-directional synchronous bridge to the main execution context.
+    // Exposed on the window object through the preloader.
+    const bridge = window.executionBridge;
 
-    ipcHandler.attach('settings', mkeditor.handlers.settings);
-    mkeditor.attach('ipc', ipcHandler);
+    // Create a new IPC handler for the web execution context.
+    const ipc = new IPCHandler(instance, bridge, dispatcher, true);
+
+    // Attach settings handler to IPC handler.
+    ipc.attach('settings', mkeditor.handlers.settings);
+
+    // Attach IPC handler to mkeditor.
+    mkeditor.attach('ipc', ipc);
 }
 
 // Implement draggable splitter.
