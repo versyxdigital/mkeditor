@@ -1,9 +1,5 @@
 /**
-* Preload script to access node.js from the main renderer process.
-*
-* This script runs before the renderer process is loaded, and has
-* access to both renderer global context (e.g. window and document)
-* and a node.js environment context.
+* Preload script.
 *
 * The contextBridge module provides a safe, bi-directional, synchronous
 * bridge across isolated contexts.
@@ -34,19 +30,26 @@ const receiverWhitelist = [
 /**
 * contextBridgeChannel utilises the ipcRenderer module to provide methods for
 * sending synchronous and asynchronous messages accross different execution contexts
-* (i.e. from the render process (web page) to the main process.).
+* (i.e. from the renderer process to the main process.).
 */
 const contextBridgeChannel = () => {
     return {
         send: (channel, data) => {
             if (senderWhitelist.includes(channel)) {
+                // Send an async message to te main process via whitelisted channel,
+                // along with data.
+                //
+                // Note, arguments will be serialized with the Structured Clone Algorithm,
+                // so prototype chains will not be included. Sending functions, promises,
+                // symbols, weakmaps, weaksets or DOM objects will throw an exception.
                 ipcRenderer.send(channel, data);
             }
         },
-        receive: (channel, func) => {
+        receive: (channel, fn) => {
             if (receiverWhitelist.includes(channel)) {
+                // Listen to channels and execute callack when messages are received.
                 ipcRenderer.on(channel, (event, ...args) => {
-                    func(...args);
+                    fn(...args);
                 });
             }
         }
