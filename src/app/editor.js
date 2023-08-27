@@ -1,6 +1,6 @@
 import md from './markdown';
 import { generateExportHTML } from './export';
-import { formatHTML } from './utilities/format';
+import { welcomeMarkdown } from './utilities/intro';
 import { copyableCodeBlocks } from './extensions/code-blocks';
 import { wordCount, characterCount } from './extensions/word-count';
 import { scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync';
@@ -21,7 +21,7 @@ class Editor {
     loadedInitialEditorValue = null;
 
     /**
-     * @var {object}
+     * @var {{command: *, ipc: *, settings: *}}
      */
     handlers = {
         command: null,
@@ -32,9 +32,9 @@ class Editor {
     /**
      * Create a Editor instance.
      *
-     * @param {*} editor the HTML element for the editor
-     * @param {*} preview the HTML element for the preview
-     * @param {*} dispatcher the custom event dispatcher for the editor
+     * @param {HTMLDivElement} editor the HTML element for the editor
+     * @param {HTMLDivElement} preview the HTML element for the preview
+     * @param {EventDispatcher} dispatcher the custom event dispatcher for the editor
      */
     constructor (editor, preview, dispatcher) {
         // Editor and preview DOM
@@ -57,13 +57,15 @@ class Editor {
     /**
      * Create a new editor instance.
      *
-     * @param {boolean} watch
-     * @returns {editor.IStandaloneCodeEditor|null}
+     * @param {{watch: boolean}} watch
+     * @returns {editor.IStandaloneCodeEditor}
      */
     create ({ watch = false }) {
         try {
+            // Create the underlying monaco editor instance.
+            // See https://microsoft.github.io/monaco-editor/
             this.instance = editor.create(this.editor, {
-                value: '# Write something cool...',
+                value: welcomeMarkdown.trim(),
                 language: 'markdown',
                 wordBasedSuggestions: false,
                 autoIndent: 'advanced',
@@ -75,48 +77,30 @@ class Editor {
                 accessibilityPageSize: 1000
             });
 
+            // Set loadedInitialEditorValue for tracking; this value is used
+            // to compare to the current editor content to see if changes have
+            // occurred, the result of this comparison is used for various things
+            // such as modifying the title to notify the user of unsaved changes,
+            // prompting the user to save before opening new files, etc.
             this.loadedInitialEditorValue = this.instance.getValue();
             this.dispatcher.addEventListener('editor:state', (event) => {
                 this.loadedInitialEditorValue = event.message;
             });
 
-            const saveSettingsButton = document.querySelector('#save-settings-ipc');
-            if (saveSettingsButton) {
-                saveSettingsButton.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    const { ipc, settings } = this.handlers;
-                    if (ipc && settings) {
-                        ipc.saveSettingsToFile(settings.getSettings());
-                    }
-                });
-            }
+            this.registerContextListeners();
 
-            const exportPreviewButton = document.querySelector('#export-preview-html');
-            if (exportPreviewButton) {
-                exportPreviewButton.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    if (this.handlers.ipc) {
-                        const styled = document.querySelector('#export-preview-styled').checked;
-                        const html = generateExportHTML(this.preview.innerHTML, {
-                            styled,
-                            providers: ['bootstrap', 'fontawesome']
-                        });
-
-                        this.handlers.ipc.exportPreviewToFile(
-                            formatHTML(`<!DOCTYPE html>${html}`)
-                        );
-                    }
-                });
-            }
-
-            // Resize listeners.
+            // Resize listeners to resize the editor.
             window.onload = () => this.instance.layout();
             window.onresize = () => this.instance.layout();
             this.preview.onresize = () => this.instance.layout();
 
+            // Render the editor content to preview; also initialises editor
+            // extensions.
             this.render();
 
             if (watch) {
+                // Watch the editor for changes, updates the preview and and copntains
+                // various event listeners.
                 this.watch();
             }
         } catch (error) {
@@ -128,33 +112,55 @@ class Editor {
     }
 
     /**
-     * Watch the editor for changes.
-     *
-     * @returns
+     * Register editor context listeners.
      */
-    watch () {
-        this.instance.onDidChangeModelContent(() => {
-            if (this.handlers.ipc) {
-                this.handlers.ipc.trackEditorStateBetweenExecutionContext(
-                    this.loadedInitialEditorValue,
-                    this.instance.getValue()
-                );
-            }
+    registerContextListeners () {
+        // Register the event listener for editor UI save settings button; this button
+        // is executed from within the web context, and uses the IPC handler to fire an
+        // event to the main process, which has access to the filesystem.
+        // The main process receives the current settings and saves them to file.
+        const saveSettingsButton = document.querySelector('#save-app-settings');
+        if (saveSettingsButton) {
+            saveSettingsButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                const { ipc, settings } = this.handlers;
+                if (ipc && settings) {
+                    ipc.saveSettingsToFile(settings.getSettings());
+                }
+            });
+        }
 
-            setTimeout(() => {
-                this.render();
-            }, 250);
-        });
+        // Register the event listener for editor UI save file button; this button is
+        // also executed from within the web context, and also uses the IPC handler to
+        // fire an event to the main process, which in turn handles the action of opening
+        // the save dialog, saving the content to file etc.
+        const saveMarkdownButton = document.querySelector('#save-editor-markdown');
+        if (saveMarkdownButton) {
+            saveMarkdownButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (this.handlers.ipc) {
+                    this.handlers.ipc.saveContentToFile();
+                }
+            });
+        }
 
-        this.instance.onDidScrollChange(() => {
-            const visibleRange = this.instance.getVisibleRanges()[0];
-            if (visibleRange) {
-                scrollPreviewToEditorVisibleRange(
-                    visibleRange.startLineNumber,
-                    this.preview
-                );
-            }
-        });
+        // Register the event listener for the editor UI export preview button; this
+        // button is also executed from within the web context and functions in pretty
+        // much the same way as above.
+        const exportPreviewButton = document.querySelector('#export-preview-html');
+        if (exportPreviewButton) {
+            exportPreviewButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (this.handlers.ipc) {
+                    this.handlers.ipc.exportPreviewToFile(
+                        generateExportHTML(this.preview.innerHTML, {
+                            styled: document.querySelector('#export-preview-styled').checked,
+                            providers: ['bootstrap', 'fontawesome', 'highlightjs']
+                        })
+                    );
+                }
+            });
+        }
     }
 
     /**
@@ -163,48 +169,54 @@ class Editor {
      * @returns
      */
     render () {
+        // Render the editor markdown to HTML.
         this.preview.innerHTML = md.render(this.instance.getValue());
 
+        // Track code blocks and make them copyable.
         copyableCodeBlocks();
+
+        // Track word cound and charactcer count.
         wordCount(this.preview);
         characterCount(this.preview);
     }
 
     /**
-     * Apply settings from IPC.
+     * Watch the editor for changes.
      *
-     * @param {*} settings
      * @returns
      */
-    applySettingsFromIpcStorage (settings) {
-        this.instance.updateOptions({
-            autoIndent: settings.toggleAutoIndent
-                ? 'advanced'
-                : 'none'
+    watch () {
+        // When the editor content changes, update the main process through the IPC handler
+        // so that it can do things such as set the title notifying the user of unsaved changes,
+        // prompt the user to save if they try to close the app or open a new file, etc.
+        this.instance.onDidChangeModelContent(() => {
+            if (this.handlers.ipc) {
+                this.handlers.ipc.trackEditorStateBetweenExecutionContext(
+                    // The initial editor content
+                    this.loadedInitialEditorValue,
+                    // The current editor content
+                    this.instance.getValue()
+                );
+            }
+
+            // Add a small timeout for the render.
+            setTimeout(() => {
+                // Update the rendered content in the preview.
+                this.render();
+            }, 250);
         });
 
-        this.instance.updateOptions({
-            wordWrap: settings.toggleWordWrap
-                ? 'on'
-                : 'off'
-        });
-
-        this.instance.updateOptions({
-            renderWhitespace: settings.toggleWhitespace
-                ? 'all'
-                : 'none'
-        });
-
-        this.instance.updateOptions({
-            minimap: settings.toggleMinimap
-                ? { enabled: true }
-                : { enabled: 'false' }
-        });
-
-        this.instance.updateOptions({
-            showFoldingControls: settings.showFoldingControls
-                ? 'always'
-                : 'never'
+        // Track the editor scroll state and update the preview scroll position to match.
+        // Note: this method isn't perfect, for example, in cases of large images there is
+        // a slight discrepancy of about 20-30px, but for the most part it works.
+        this.instance.onDidScrollChange(() => {
+            const visibleRange = this.instance.getVisibleRanges()[0];
+            if (visibleRange) {
+                scrollPreviewToEditorVisibleRange(
+                    visibleRange.startLineNumber,
+                    this.preview
+                );
+            }
         });
     }
 }

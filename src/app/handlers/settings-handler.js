@@ -98,7 +98,7 @@ class SettingsHandler {
      * @returns {this}
      */
     addPersistSettingsHandlerForWeb () {
-        const persistSettings = document.querySelector('#save-settings-ipc');
+        const persistSettings = document.querySelector('#save-app-settings');
         if (persistSettings) {
             persistSettings.addEventListener('click', () => {
                 localStorage.setItem('settings', JSON.stringify(this.settings));

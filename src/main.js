@@ -1,19 +1,13 @@
+const { app, BrowserWindow, nativeTheme: { shouldUseDarkColors } } = require('electron');
 const path = require('path');
-const { app, BrowserWindow, ipcMain, Menu, nativeTheme } = require('electron');
-const AppMenu = require('./lib/app-menu');
-const DialogHandler = require('./lib/dialog-handler');
-const IpcHandler = require('./lib/ipc-handler');
-const SettingsHandler = require('./lib/settings-handler');
-
-app.commandLine.appendSwitch('disable-gpu');
-app.commandLine.appendSwitch('disable-software-rasterizer');
-app.commandLine.appendSwitch('disable-gpu-compositing');
-app.commandLine.appendSwitch('disable-gpu-rasterization');
-app.disableHardwareAcceleration();
+const Menu = require('./lib/menu');
+const Dialog = require('./lib/dialog');
+const IPC = require('./lib/ipc');
+const Settings = require('./lib/settings');
 
 let context;
 
-function createWindow () {
+function main () {
     context = new BrowserWindow({
         show: false,
         icon: path.join(__dirname, 'app/assets/logo.ico'),
@@ -28,25 +22,22 @@ function createWindow () {
     context.webContents.on('will-navigate', event => event.preventDefault());
     context.loadFile(path.join(__dirname, '../dist/index.html'));
 
-    const dialogHandler = new DialogHandler(context);
-    const settingsHandler = new SettingsHandler(context);
+    const dialog = new Dialog(context);
+    const settings = new Settings(context);
 
-    const ipcHandler = new IpcHandler(ipcMain, {
-        settings: settingsHandler,
-        dialog: dialogHandler
-    });
-    ipcHandler.register(context);
+    const ipc = new IPC(context, { settings, dialog });
+    ipc.register();
 
-    const appMenu = new AppMenu(app, Menu);
-    appMenu.register(context);
+    const menu = new Menu(context);
+    menu.register();
 
     context.webContents.on('did-finish-load', () => {
-        context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors);
-        context.webContents.send('from:settings:set', settingsHandler.loadSettingsFile());
+        context.webContents.send('from:theme:set', shouldUseDarkColors);
+        context.webContents.send('from:settings:set', settings.loadSettingsFile());
     });
 
     context.on('close', (event) => {
-        ipcHandler.promptForChangedContextBridgeContent(event);
+        ipc.promptForChangedContextBridgeContent(event);
     });
 
     context.on('closed', () => {
@@ -57,11 +48,11 @@ function createWindow () {
     context.show();
 }
 
-app.on('ready', createWindow);
+app.on('ready', main);
 
 app.on('activate', () => {
     if (!context) {
-        createWindow();
+        main();
     }
 });
 

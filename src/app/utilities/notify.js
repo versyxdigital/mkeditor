@@ -6,7 +6,7 @@ notify.toast = Swal.mixin({
     toast: true,
     position: 'bottom-end',
     showConfirmButton: false,
-    timer: 5000,
+    timer: 500000,
     timerProgressBar: true,
     showClass: {
         popup: ''
@@ -20,11 +20,13 @@ notify.toast = Swal.mixin({
     }
 });
 
-notify.send = async (type, msg, position = 'bottom-end') => {
+notify.send = async (icon, text, timer = 5000, position = 'bottom-end') => {
+    const title = icon.charAt(0).toUpperCase() + icon.slice(1);
     await notify.toast.fire({
-        icon: type,
-        title: type.charAt(0).toUpperCase() + type.slice(1),
-        text: msg,
+        icon,
+        title,
+        text,
+        timer,
         position
     });
 };
