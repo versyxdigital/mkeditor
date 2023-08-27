@@ -62,6 +62,7 @@ class Editor {
     create ({ watch = false }) {
         try {
             // Create the underlying monaco editor instance.
+            // See https://microsoft.github.io/monaco-editor/
             this.instance = editor.create(this.editor, {
                 value: '# Write something cool...',
                 language: 'markdown',
@@ -85,39 +86,7 @@ class Editor {
                 this.loadedInitialEditorValue = event.message;
             });
 
-            // Register the event listener for editor UI save settings button; this button
-            // is executed from within the web context, and uses the IPC handler to fire an
-            // event to the main process, which has access to the filesystem.
-            // The main process receives the current settings and saves them to file.
-            const saveSettingsButton = document.querySelector('#save-settings-ipc');
-            if (saveSettingsButton) {
-                saveSettingsButton.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    const { ipc, settings } = this.handlers;
-                    if (ipc && settings) {
-                        ipc.saveSettingsToFile(settings.getSettings());
-                    }
-                });
-            }
-
-            // Register the event listener for the editor UI export preview button; this
-            // button is also executed from within the web context, and also uses the IPC
-            // handler to fire an event to the main process, which in turn handles the action
-            // of opening the save dialog, saving the HTML to file etc.
-            const exportPreviewButton = document.querySelector('#export-preview-html');
-            if (exportPreviewButton) {
-                exportPreviewButton.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    if (this.handlers.ipc) {
-                        this.handlers.ipc.exportPreviewToFile(
-                            generateExportHTML(this.preview.innerHTML, {
-                                styled: document.querySelector('#export-preview-styled').checked,
-                                providers: ['bootstrap', 'fontawesome', 'highlightjs']
-                            })
-                        );
-                    }
-                });
-            }
+            this.registerContextListeners();
 
             // Resize listeners to resize the editor.
             window.onload = () => this.instance.layout();
@@ -139,6 +108,75 @@ class Editor {
         }
 
         return this.instance;
+    }
+
+    /**
+     * Register editor context listeners.
+     */
+    registerContextListeners () {
+        // Register the event listener for editor UI save settings button; this button
+        // is executed from within the web context, and uses the IPC handler to fire an
+        // event to the main process, which has access to the filesystem.
+        // The main process receives the current settings and saves them to file.
+        const saveSettingsButton = document.querySelector('#save-app-settings');
+        if (saveSettingsButton) {
+            saveSettingsButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                const { ipc, settings } = this.handlers;
+                if (ipc && settings) {
+                    ipc.saveSettingsToFile(settings.getSettings());
+                }
+            });
+        }
+
+        // Register the event listener for editor UI save file button; this button is
+        // also executed from within the web context, and also uses the IPC handler to
+        // fire an event to the main process, which in turn handles the action of opening
+        // the save dialog, saving the content to file etc.
+        const saveMarkdownButton = document.querySelector('#save-editor-markdown');
+        if (saveMarkdownButton) {
+            saveMarkdownButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (this.handlers.ipc) {
+                    this.handlers.ipc.saveContentToFile();
+                }
+            });
+        }
+
+        // Register the event listener for the editor UI export preview button; this
+        // button is also executed from within the web context and functions in pretty
+        // much the same way as above.
+        const exportPreviewButton = document.querySelector('#export-preview-html');
+        if (exportPreviewButton) {
+            exportPreviewButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (this.handlers.ipc) {
+                    this.handlers.ipc.exportPreviewToFile(
+                        generateExportHTML(this.preview.innerHTML, {
+                            styled: document.querySelector('#export-preview-styled').checked,
+                            providers: ['bootstrap', 'fontawesome', 'highlightjs']
+                        })
+                    );
+                }
+            });
+        }
+    }
+
+    /**
+     * Render editor content to the preview.
+     *
+     * @returns
+     */
+    render () {
+        // Render the editor markdown to HTML.
+        this.preview.innerHTML = md.render(this.instance.getValue());
+
+        // Track code blocks and make them copyable.
+        copyableCodeBlocks();
+
+        // Track word cound and charactcer count.
+        wordCount(this.preview);
+        characterCount(this.preview);
     }
 
     /**
@@ -178,61 +216,6 @@ class Editor {
                     this.preview
                 );
             }
-        });
-    }
-
-    /**
-     * Render editor content to the preview.
-     *
-     * @returns
-     */
-    render () {
-        // Render the editor markdown to HTML.
-        this.preview.innerHTML = md.render(this.instance.getValue());
-
-        // Track code blocks and make them copyable.
-        copyableCodeBlocks();
-
-        // Track word cound and charactcer count.
-        wordCount(this.preview);
-        characterCount(this.preview);
-    }
-
-    /**
-     * Apply settings from IPC.
-     *
-     * @param {*} settings
-     * @returns
-     */
-    applySettingsFromIpcStorage (settings) {
-        this.instance.updateOptions({
-            autoIndent: settings.toggleAutoIndent
-                ? 'advanced'
-                : 'none'
-        });
-
-        this.instance.updateOptions({
-            wordWrap: settings.toggleWordWrap
-                ? 'on'
-                : 'off'
-        });
-
-        this.instance.updateOptions({
-            renderWhitespace: settings.toggleWhitespace
-                ? 'all'
-                : 'none'
-        });
-
-        this.instance.updateOptions({
-            minimap: settings.toggleMinimap
-                ? { enabled: true }
-                : { enabled: 'false' }
-        });
-
-        this.instance.updateOptions({
-            showFoldingControls: settings.showFoldingControls
-                ? 'always'
-                : 'never'
         });
     }
 }

@@ -4,13 +4,11 @@ import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 /**
  * IPC Handler
  *
- * Facilitates communication between the node/browser execution contexts.
- * Here we register event listeners to listen and handle events from both
- * execution contexts.
+ * Facilitates communication between the main/renderer execution contexts.
  */
-export default class IpcHandler {
+export default class IPCHandler {
     /**
-     * @var {object}
+     * @var {{settings: *, command: *}}
      */
     handlers = {
         settings: null,
@@ -18,22 +16,21 @@ export default class IpcHandler {
     };
 
     /**
-     * @var {string}
+     * @var {string|null}
      */
     activeFile = null;
 
     /**
      * Create a new IpcHandler instance
      *
-     * @param {*} mkeditor
-     * @param {*} instance
-     * @param {*} context
-     * @param {*} dispatcher
+     * @param {*} instance the editor instance
+     * @param {*} bridge the context bridge to the main process
+     * @param {*} dispatcher the custom event dispatcher
+     * @param {boolean} register register event handlers from construcor
      */
-    constructor (mkeditor, instance, context, dispatcher, register = false) {
-        this.mkeditor = mkeditor;
+    constructor (instance, bridge, dispatcher, register = false) {
         this.instance = instance;
-        this.context = context;
+        this.bridge = bridge;
         this.dispatcher = dispatcher;
 
         if (register) {
@@ -52,29 +49,13 @@ export default class IpcHandler {
     }
 
     /**
-     * Register IPC event handlers for transmitting data between the browser window
-     * execution context and the node runtime.
+     * Register IPC event handlers.
      *
      * @return {void}
      */
     register () {
-        // Enable saving from within the browser window execution context
-        const saveMarkdownButton = document.querySelector('#save-editor-markdown');
-        if (saveMarkdownButton) {
-            saveMarkdownButton.addEventListener('click', () => {
-                if (this.activeFile) {
-                    this.context.send('to:file:save', {
-                        content: this.instance.getValue(),
-                        file: this.activeFile
-                    });
-                } else {
-                    this.context.send('to:file:saveas', this.instance.getValue());
-                }
-            });
-        }
-
         // Set the theme according to the user's system theme
-        this.context.receive('from:theme:set', (shouldUseDarkMode) => {
+        this.bridge.receive('from:theme:set', (shouldUseDarkMode) => {
             if (shouldUseDarkMode) {
                 const icon = document.querySelector('#darkModeIcon');
                 icon.classList.remove('text-dark');
@@ -89,17 +70,17 @@ export default class IpcHandler {
         });
 
         // Set settings from stored settings file (%HOME%/.mkeditor/settings.json)
-        this.context.receive('from:settings:set', (settings) => {
-            this.mkeditor.applySettingsFromIpcStorage(settings);
+        this.bridge.receive('from:settings:set', (settings) => {
+            this.loadSettingsFromStorageChannel(settings);
             this.handlers.settings.setSettings(settings);
             this.handlers.settings.register();
         });
 
         // Enable new files from outside of the browser window execution context.
         // Provides access to browser window data and emits it to the ipc channel.
-        this.context.receive('from:file:new', (channel) => {
-            this.context.send('to:title:set', '');
-            this.context.send(channel, {
+        this.bridge.receive('from:file:new', (channel) => {
+            this.bridge.send('to:title:set', '');
+            this.bridge.send(channel, {
                 content: this.instance.getValue(),
                 file: this.activeFile
             });
@@ -107,20 +88,20 @@ export default class IpcHandler {
 
         // Enable saving files from outside of the browser window execution context.
         // Provides access to browser window data and emits it to the ipc channel.
-        this.context.receive('from:file:save', (channel) => {
-            this.context.send(channel, {
+        this.bridge.receive('from:file:save', (channel) => {
+            this.bridge.send(channel, {
                 content: this.instance.getValue(),
                 file: this.activeFile
             });
         });
 
-        this.context.receive('from:file:saveas', (channel) => {
-            this.context.send(channel, this.instance.getValue());
+        this.bridge.receive('from:file:saveas', (channel) => {
+            this.bridge.send(channel, this.instance.getValue());
         });
 
         // Enable opening files from outside of the browser window execution context.
         // Provides access to browser window data and emits it to the ipc channel.
-        this.context.receive('from:file:open', ({ content, filename, file }) => {
+        this.bridge.receive('from:file:open', ({ content, filename, file }) => {
             this.instance.focus();
             this.instance.setValue(content);
             this.activeFile = file;
@@ -135,18 +116,18 @@ export default class IpcHandler {
 
             document.querySelector('#active-file').innerText = filename;
 
-            this.context.send('to:title:set', filename);
+            this.bridge.send('to:title:set', filename);
         });
 
         // Enable access to the monaco editor command palette from outside the browser
         // window execution context.
-        this.context.receive('from:command:palette', (command) => {
+        this.bridge.receive('from:command:palette', (command) => {
             this.instance.focus();
             this.instance.trigger(command, 'editor.action.quickCommand');
         });
 
         // Enable ipc notifications.
-        this.context.receive('from:notification:display', (event) => {
+        this.bridge.receive('from:notification:display', (event) => {
             notify.send(event.status, event.message);
         });
     }
@@ -157,7 +138,21 @@ export default class IpcHandler {
      * @param {*} settings
      */
     saveSettingsToFile (settings) {
-        this.context.send('to:settings:save', { settings });
+        this.bridge.send('to:settings:save', { settings });
+    }
+
+    /**
+     * Save editor content to markdown file.
+     */
+    saveContentToFile () {
+        if (this.activeFile) {
+            this.bridge.send('to:file:save', {
+                content: this.instance.getValue(),
+                file: this.activeFile
+            });
+        } else {
+            this.bridge.send('to:file:saveas', this.instance.getValue());
+        }
     }
 
     /**
@@ -166,7 +161,7 @@ export default class IpcHandler {
      * @param {string} content
      */
     exportPreviewToFile (content) {
-        this.context.send('to:html:export', { content });
+        this.bridge.send('to:html:export', { content });
     }
 
     /**
@@ -177,6 +172,44 @@ export default class IpcHandler {
      * @param {string} current
      */
     trackEditorStateBetweenExecutionContext (original, current) {
-        this.context.send('to:editor:state', { original, current });
+        this.bridge.send('to:editor:state', { original, current });
+    }
+
+    /**
+     * Apply settings from IPC.
+     *
+     * @param {*} settings
+     * @returns
+     */
+    loadSettingsFromStorageChannel (settings) {
+        this.instance.updateOptions({
+            autoIndent: settings.toggleAutoIndent
+                ? 'advanced'
+                : 'none'
+        });
+
+        this.instance.updateOptions({
+            wordWrap: settings.toggleWordWrap
+                ? 'on'
+                : 'off'
+        });
+
+        this.instance.updateOptions({
+            renderWhitespace: settings.toggleWhitespace
+                ? 'all'
+                : 'none'
+        });
+
+        this.instance.updateOptions({
+            minimap: settings.toggleMinimap
+                ? { enabled: true }
+                : { enabled: 'false' }
+        });
+
+        this.instance.updateOptions({
+            showFoldingControls: settings.showFoldingControls
+                ? 'always'
+                : 'never'
+        });
     }
 }
