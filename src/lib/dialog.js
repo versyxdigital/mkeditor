@@ -1,6 +1,6 @@
 const { dialog } = require('electron');
 
-module.exports = class DialogHandler {
+module.exports = class Dialog {
     constructor (context) {
         this.context = context;
     }

@@ -2,7 +2,7 @@ const os = require('os');
 const fs = require('fs');
 const path = require('path');
 
-module.exports = class SettingsHandler {
+module.exports = class Settings {
     path = null;
     file = null;
 
@@ -15,9 +15,11 @@ module.exports = class SettingsHandler {
         showFoldingControls: false
     };
 
-    constructor () {
+    constructor (context) {
         this.path = path.normalize(os.homedir() + '/.mkeditor/');
         this.file = this.path + 'settings.json';
+
+        this.context = context;
 
         this.initSettingsFile();
     }
@@ -42,8 +44,15 @@ module.exports = class SettingsHandler {
     }
 
     saveSettingsToFile (settings) {
-        fs.writeFileSync(this.file, JSON.stringify(settings, null, 4), {
-            encoding: 'utf-8'
-        });
+        try {
+            fs.writeFileSync(this.file, JSON.stringify(settings, null, 4), {
+                encoding: 'utf-8'
+            });
+        } catch (error) {
+            if (error.code === 'EPERM') {
+                // Notify user that permissions has changed on the settings file
+                // On Windows, this could be due to making the directory and all children hidden.
+            }
+        }
     }
 };

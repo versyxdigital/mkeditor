@@ -3,12 +3,17 @@ const storage = require('./storage');
 const openAboutWindow = require('about-window').default;
 
 module.exports = class AppMenu {
-    constructor (app, menu) {
-        this.app = app;
+    constructor (menu, app, context, register = false) {
         this.menu = menu;
+        this.app = app;
+        this.context = context;
+
+        if (register) {
+            this.register();
+        }
     }
 
-    register (context) {
+    register () {
         this.app.applicationMenu = this.menu.buildFromTemplate([
             {
                 label: ''
@@ -19,15 +24,15 @@ module.exports = class AppMenu {
                     {
                         label: 'New File...',
                         click: () => {
-                            context.webContents.send('from:file:new', 'to:file:new');
+                            this.context.webContents.send('from:file:new', 'to:file:new');
                         },
                         accelerator: 'Ctrl+N'
                     },
                     {
                         label: 'Open File...',
                         click: () => {
-                            storage.open(context).then(response => {
-                                context.webContents.send('from:file:open', response);
+                            storage.open(this.context).then(response => {
+                                this.context.webContents.send('from:file:open', response);
                             });
                         },
                         accelerator: 'Ctrl+O'
@@ -35,14 +40,14 @@ module.exports = class AppMenu {
                     {
                         label: 'Save',
                         click: () => {
-                            context.webContents.send('from:file:save', 'to:file:save');
+                            this.context.webContents.send('from:file:save', 'to:file:save');
                         },
                         accelerator: 'Ctrl+S'
                     },
                     {
                         label: 'Save As...',
                         click: () => {
-                            context.webContents.send('from:file:saveas', 'to:file:saveas');
+                            this.context.webContents.send('from:file:saveas', 'to:file:saveas');
                         },
                         accelerator: 'Ctrl+Shift+S'
                     },
@@ -67,7 +72,7 @@ module.exports = class AppMenu {
                     {
                         label: 'Command Palette...',
                         click: () => {
-                            context.webContents.send('from:command:palette', 'open');
+                            this.context.webContents.send('from:command:palette', 'open');
                         },
                         accelerator: 'F1'
                     },
@@ -78,7 +83,7 @@ module.exports = class AppMenu {
                             return process.platfom === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I';
                         }()),
                         click: () => {
-                            context.webContents.toggleDevTools();
+                            this.context.webContents.toggleDevTools();
                         }
                     }
                 ]
