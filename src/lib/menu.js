@@ -1,11 +1,10 @@
 const path = require('path');
-const storage = require('./storage');
+const { app, Menu } = require('electron');
 const openAboutWindow = require('about-window').default;
+const storage = require('./storage');
 
 module.exports = class AppMenu {
-    constructor (menu, app, context, register = false) {
-        this.menu = menu;
-        this.app = app;
+    constructor (context, register = false) {
         this.context = context;
 
         if (register) {
@@ -14,7 +13,7 @@ module.exports = class AppMenu {
     }
 
     register () {
-        this.app.applicationMenu = this.menu.buildFromTemplate([
+        app.applicationMenu = Menu.buildFromTemplate([
             {
                 label: ''
             },

@@ -1,9 +1,8 @@
+const { ipcMain } = require('electron');
 const storage = require('./storage');
 
 module.exports = class IPC {
-    constructor (ipc, context, handlers = { settings: null, dialog: null }, register = false) {
-        this.ipc = ipc;
-
+    constructor (context, handlers = { settings: null, dialog: null }, register = false) {
         this.context = context;
         this.contextWindowTitle = 'MKEditor';
         this.contextBridgedContent = {
@@ -24,7 +23,7 @@ module.exports = class IPC {
      * @param {*} context
      */
     register () {
-        this.ipc.on('to:title:set', (event, title = null) => {
+        ipcMain.on('to:title:set', (event, title = null) => {
             if (title) {
                 this.contextWindowTitle = `MKEditor - ${title}`;
             }
@@ -32,7 +31,7 @@ module.exports = class IPC {
             this.context.setTitle(this.contextWindowTitle);
         });
 
-        this.ipc.on('to:editor:state', (event, { original, current }) => {
+        ipcMain.on('to:editor:state', (event, { original, current }) => {
             this.updateContextBridgedContent(original, current);
 
             if (this.contextBridgedContentHasChanged()) {
@@ -42,18 +41,18 @@ module.exports = class IPC {
             }
         });
 
-        this.ipc.on('to:settings:save', (event, { settings }) => {
+        ipcMain.on('to:settings:save', (event, { settings }) => {
             this.handlers.settings.saveSettingsToFile(settings);
         });
 
-        this.ipc.on('to:html:export', (event, { content }) => {
+        ipcMain.on('to:html:export', (event, { content }) => {
             storage.save(this.context, {
                 id: event.sender.id,
                 data: content
             });
         });
 
-        this.ipc.on('to:file:new', (event, { content, file }) => {
+        ipcMain.on('to:file:new', (event, { content, file }) => {
             storage.create(this.context, {
                 id: event.sender.id,
                 data: content,
@@ -63,7 +62,7 @@ module.exports = class IPC {
             });
         });
 
-        this.ipc.on('to:file:save', (event, { content, file }) => {
+        ipcMain.on('to:file:save', (event, { content, file }) => {
             storage.save(this.context, {
                 id: event.sender.id,
                 data: content,
@@ -73,7 +72,7 @@ module.exports = class IPC {
             });
         });
 
-        this.ipc.on('to:file:saveas', (event, data) => {
+        ipcMain.on('to:file:saveas', (event, data) => {
             storage.save(this.context, {
                 id: event.sender.id,
                 data

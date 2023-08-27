@@ -31,8 +31,8 @@ The application structure is as follows:
 ├── docs                    # Documentation
 ├── node_modules            # Reserved for NPM
 ├── src                     # Application source
-│   ├── app                 # Mkeditor application
-│   ├── lib                 # IPC and storage
+│   ├── app                 # Mkeditor application (renderer)
+│   ├── lib                 # Native UI and storage (main)
 │   ├── main.js             # Entry point
 │   └── preload.js          # Preloader
 ├── package.json            # NPM dependencies
@@ -44,17 +44,21 @@ The application structure is as follows:
 
 The codebase is split into multiple parts:
 
-- `src/app`: The standalone mkeditor application
-- `src/lib`: Other functionality - IPC, context bridging and storage access
+- `src/app`: The standalone mkeditor application, a web app.
+- `src/lib`: Native UI, electron management, storage, IPC.
 
 ## MKeditor Application
 
-The mkeditor application is bundled via [webpack](https://webpack.js.org/) and output to `dist/`, once you've built the application, you can run mkeditor directly in the browser, either through a server or simply by opening `dist/index.html`.
+The mkeditor application is bundled via [webpack](https://webpack.js.org/) and output to `dist/`, once you've built the application, you can run mkeditor directly in the browser:
+
+```sh
+npm run serve:web
+```
 
 
 ## Electron Application
 
-The electron application entry point - `src/main.js` - creates the browser window:
+From the electron application entry point - `src/main.js` - the browser window is created:
 
 ```javascript
 context = new BrowserWindow({
@@ -69,7 +73,7 @@ context = new BrowserWindow({
 })
 ```
 
-The mkeditor application is then loaded into the execution context:
+The mkeditor application is then loaded:
 
 ```javascript
 context.loadFile(path.join(__dirname, '../dist/index.html'))
@@ -97,10 +101,10 @@ const contextBridgeChannel = () => {
                 ipcRenderer.send(channel, data);
             }
         },
-        receive: (channel, func) => {
+        receive: (channel, fn) => {
             if (receiverWhitelist.includes(channel)) {
                 ipcRenderer.on(channel, (event, ...args) => {
-                    func(...args);
+                    fn(...args);
                 });
             }
         }
@@ -114,88 +118,99 @@ contextBridge.exposeInMainWorld('executionBridge', contextBridgeChannel());
 
 The preloader facilitates [context-isolated](https://www.electronjs.org/docs/latest/tutorial/context-isolation) [communication](https://www.electronjs.org/docs/latest/tutorial/ipc) between the renderer and the main process via [IPC channels](https://www.electronjs.org/docs/latest/tutorial/ipc#ipc-channels).
 
-The IPC handler for the main context, located at `src/lib/ipc-handler.js`, is instantiated from the main process entry point - `src/main.js`:
+The IPC handler for the main context, located at `src/lib/ipc.js`, is instantiated from the main process entry point - `src/main.js`:
 
 ```javascript
-const ipcHandler = new IpcHandler(ipcMain, {
-    settings: settingsHandler,
-    dialog: dialogHandler
-});
-ipcHandler.register(context);
+const ipc = new IPC(context, { settings, dialog });
+ipc.register();
 ```
 
-The IPC handler for the web context, located at `src/app/handlers/ipc-handler.js`, is instantiated from the web context entry point - `src/app/index.js`:
+The IPC handler for the renderer context, located at `src/app/handlers/ipc-handler.js`, is instantiated from the web entry point - `src/app/index.js`:
 
 ```javascript
 // If running within electron app, register IPC handler for communication
-// between node and browser execution contexts.
+// between main and renderer execution contexts.
 if (Object.prototype.hasOwnProperty.call(window, 'executionBridge')) {
-    const context = window.executionBridge;
-    const ipcHandler = new IpcHandler(mkeditor, instance, context, dispatcher, true);
+    // The bi-directional synchronous bridge to the main execution context.
+    // Exposed on the window object through the preloader.
+    const bridge = window.executionBridge;
 
-    ipcHandler.attach('settings', mkeditor.handlers.settings);
-    mkeditor.attach('ipc', ipcHandler);
+    // Create a new IPC handler for the renderer execution context.
+    const ipc = new IPCHandler(instance, bridge, dispatcher, true);
+
+    // Attach settings handler to IPC handler.
+    ipc.attach('settings', mkeditor.handlers.settings);
+
+    // Attach IPC handler to mkeditor.
+    mkeditor.attach('ipc', ipc);
 }
 ```
 
-`this.context` is the main context exposed to the browser window as `window.executionBridge`, through the preloader.
+#### In Practice
 
+IPC is needed due to different requirements in different parts of the application. For example, consider saving a file, multiple things need to happen:
 
-#### How it works
+- The save action needs to be performed
+- The editor content needs to be retrieved
+- The filesystem needs to be accessed
+- Checks need to be performed such as whether or not an existing file is beind edited
 
-##### Web
+Let's focus on the first point. The save action can be performed from two locations when using MKEditor:
 
-For example, here is an event listener within the web context that is attached to the editor UI toolbar save button.
+1. The application menu:
+2. The editor toolbar:
 
+The first option is triggered from the main context, while the second option is triggered from the renderer context.
+
+The main context is where we have access to node APIs such as the fs API for working with filesystems, native UI elements etc.
+
+The renderer context is where the editor UI (HTML/CSS) is executed, here we can perform actions and do things such as retrieve the editor content, retrieve DOM elements, values etc.
+
+##### The Renderer Context
+
+The save action using the editor toolbar is fairly simple; because it is performed within the renderer context, we already have access to the editor. 
+
+Here is the listener, located at `src/app/editor.js`:
 
 ```javascript
-saveMarkdownButton.addEventListener('click', () => {
+const saveMarkdownButton = document.querySelector('#save-editor-markdown');
+if (saveMarkdownButton) {
+    saveMarkdownButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (this.handlers.ipc) {
+            this.handlers.ipc.saveContentToFile();
+        }
+    });
+}
+```
+
+When the editor toolbar button is clicked, the listener uses the renderer context's IPC handler to save the content to file.
+
+Here is the method, located at `src/app/handlers/ipc-handler.js`:
+
+```javascript
+saveContentToFile () {
     if (this.activeFile) {
-        this.context.send('to:file:save', {
+        this.bridge.send('to:file:save', {
             content: this.instance.getValue(),
             file: this.activeFile
         });
     } else {
-        this.context.send('to:file:saveas', this.instance.getValue());
+        this.bridge.send('to:file:saveas', this.instance.getValue());
     }
-});
+}
 ```
+This method does the following:
 
-When the user clicks the save button on the editor UI toolbar, it will trigger an event on the `to:file:save` channel, the listener for this channel is defined in the main context's IPC handler, as it requires access to the filesystem.
+- Checks to see if an active file is being edited
+- If so, uses the context bridge to send the content and the active file details to the main process on the `to:file:save` channel.
+- Otherwise, uses the context bridge to send the content to the main process on the `to:file:saveas` channel.
 
-You will see how the `to:file:save` listener handles the event further below.
-
-###### Main
-
-Here is an event lisener within the main context that is attached to the electron app menu file > save button.
-```javascript
-{
-    label: 'Save',
-    click: () => {
-        context.webContents.send('from:file:save', 'to:file:save');
-    },
-    accelerator: 'Ctrl+S'
-},
-```
-
-In the case of saving via file > save from the app menu, the main context makes a round trip. It sends a request to the `from:file:save` channel along with a second parameter specifying the channel to forward on to from the `from:file:save` listener.
-
-The `from:file:save` listener is defined in the web context's IPC handler. It is defined here because saving a file requires access to this context to retrieve the editor content to save, and also the current active file in the case of editing existing files.
+Here are the listeners defined in the main context's IPC handler, located at `src/lib/ipc.js`:
 
 ```javascript
-this.context.receive('from:file:save', (channel) => {
-    this.context.send(channel, {
-        content: this.instance.getValue(),
-        file: this.activeFile
-    });
-});
-```
-
-The listener receives the request from the main context, and forwards it on to `to:file:save`, which is defined in the main context, where we have access to the filesystem.
-
-```javascript
-this.ipc.on('to:file:save', (event, { content, file }) => {
-    storage.save(context, {
+ipcMain.on('to:file:save', (event, { content, file }) => {
+    storage.save(this.context, {
         id: event.sender.id,
         data: content,
         file
@@ -203,9 +218,66 @@ this.ipc.on('to:file:save', (event, { content, file }) => {
         this.resetContextBridgedContent();
     });
 });
+
+ipcMain.on('to:file:saveas', (event, data) => {
+    storage.save(this.context, {
+        id: event.sender.id,
+        data
+    }).then(() => {
+        this.resetContextBridgedContent();
+    });
+});
 ```
 
-The listener receives the editor content and the file if an existing file is being edited, and invokes the storage handler to save the file.
+These listeners receive the data on their respective channels, and then use the storage handler to perform the necesary actions.
+
+##### The Main Context
+
+Saving from the application menu is a slightly more complex process. Because the action is peformed from outside the renderer context, we do not immediately have access to the editor content, we therefore need to make a "trip" into the renderer context to retrieve the data to save.
+
+Here are the event listeners for the application menu options, located at `src/lib/menu.js`:
+
+```javascript
+{
+    label: 'Save',
+    click: () => {
+        this.context.webContents.send('from:file:save', 'to:file:save');
+    },
+    accelerator: 'Ctrl+S'
+},
+{
+    label: 'Save As...',
+    click: () => {
+        this.context.webContents.send('from:file:saveas', 'to:file:saveas');
+    },
+    accelerator: 'Ctrl+Shift+S'
+},
+```
+
+The listeners are simple, when the Save or Save As button is clicked, an event is sent to the renderer context on the `from:file:save` or `from:file:saveas` channel, along with a payload which is a string containing another channel.
+
+This payload, i.e. this other channel, will be used to _forward_ the event received from the main context back to the main context.
+
+Here are the renderer context listeners for the application menu IPC events, located at `src/app/handlers/ipc-handler.js`:
+
+```javascript
+this.bridge.receive('from:file:save', (channel) => {
+    this.bridge.send(channel, {
+        content: this.instance.getValue(),
+        file: this.activeFile
+    });
+});
+
+this.bridge.receive('from:file:saveas', (channel) => {
+    this.bridge.send(channel, this.instance.getValue());
+});
+```
+
+In summary, in the case of saving using the application menu, i.e. saving from the main context, the following happens:
+
+1. An event is sent from the main context to the renderer context on the `from:file:save` or `from:file:saveas` channel, the payload is another channel, `to:file:save` or `to:file:saveas`.
+2. The event is received by the listener defined in the renderer context's IPC handler.
+3. The listener, which has access to the editor in the same context, retrieves the content to save and sends an event back to the main context using the payload channel it received in the step above, `to:file:save` or `to:file:saveas`.
 
 ## Building
 

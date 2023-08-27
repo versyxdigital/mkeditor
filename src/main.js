@@ -1,6 +1,6 @@
+const { app, BrowserWindow, nativeTheme: { shouldUseDarkColors } } = require('electron');
 const path = require('path');
-const { app, BrowserWindow, ipcMain, Menu, nativeTheme } = require('electron');
-const AppMenu = require('./lib/app-menu');
+const Menu = require('./lib/menu');
 const Dialog = require('./lib/dialog');
 const IPC = require('./lib/ipc');
 const Settings = require('./lib/settings');
@@ -25,14 +25,14 @@ function main () {
     const dialog = new Dialog(context);
     const settings = new Settings(context);
 
-    const ipc = new IPC(ipcMain, context, { settings, dialog });
+    const ipc = new IPC(context, { settings, dialog });
     ipc.register();
 
-    const menu = new AppMenu(Menu, app, context);
+    const menu = new Menu(context);
     menu.register();
 
     context.webContents.on('did-finish-load', () => {
-        context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors);
+        context.webContents.send('from:theme:set', shouldUseDarkColors);
         context.webContents.send('from:settings:set', settings.loadSettingsFile());
     });
 
