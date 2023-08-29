@@ -10,7 +10,7 @@ module.exports = {
         mkeditor: ['./src/app/index.js', './src/app/assets/scss/index.scss']
     },
     output: {
-        globalObject: 'this',
+        globalObject: 'self',
         filename: 'mkeditor.bundle.js',
         path: path.resolve(__dirname, 'dist')
     },
@@ -38,7 +38,7 @@ module.exports = {
             },
             {
                 test: /\.ttf$/,
-                use: ['file-loader']
+                type: 'asset/resource'
             }
         ]
     },
@@ -47,6 +47,8 @@ module.exports = {
             languages: ['markdown'],
             features: [
                 'clipboard',
+                'codeAction',
+                'contextmenu',
                 'cursorUndo',
                 'find',
                 'fontZoom',

@@ -5,7 +5,7 @@ const taskLists = (md, options) => {
         liClass: 'task-list-item'
     };
 
-    options = Object.assign({}, defaults, options);
+    options = { ...defaults, ...options };
 
     md.core.ruler.after('inline', 'github-task-lists', (state) => {
         const tokens = state.tokens;
@@ -18,12 +18,12 @@ const taskLists = (md, options) => {
         }
 
         let group = 1;
-        tokens.forEach((token) => {
+        for (const token of tokens) {
             if (token.attrs && token.attrs[0][1] === 'task-list') {
                 attrSet(token, 'data-group', group);
                 group++;
             }
-        });
+        }
     });
 };
 

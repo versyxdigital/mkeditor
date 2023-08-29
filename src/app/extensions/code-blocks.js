@@ -1,4 +1,4 @@
-export const copyableCodeBlocks = (instance, options) => {
+const copyableCodeBlocks = (options) => {
     const defaults = {
         templateSelector: '#copyCode',
         contentSelector: 'body',
@@ -10,23 +10,19 @@ export const copyableCodeBlocks = (instance, options) => {
         onBeforeCodeCopied: null
     };
 
-    options = Object.assign({}, defaults, options);
+    options = { ...defaults, ...options };
 
     function init (config) {
         Object.assign(options, config);
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', load);
-        } else {
-            load();
-        }
+        document.readyState === 'loading'
+            ? document.addEventListener('DOMContentLoaded', load)
+            : load();
     }
 
     function load () {
-        if (options.loadDelay) {
-            setTimeout(addButton, options.loadDelay);
-        } else {
-            addButton();
-        }
+        options.loadDelay
+            ? setTimeout(addButton, options.loadDelay)
+            : addButton();
     }
 
     function addButton () {
@@ -174,3 +170,5 @@ export const copyableCodeBlocks = (instance, options) => {
 
     init(options);
 };
+
+export { copyableCodeBlocks };

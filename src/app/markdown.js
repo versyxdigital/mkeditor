@@ -43,7 +43,7 @@ const md = new MarkdownIt({
 
 md.use(alertBlocks);
 md.use(lineNumbers);
-md.use(taskLists, { labelClass: 'ml-2' });
-md.use(tableStyles, { tableClass: ['table', 'table-sm', 'table-bordered', 'table-striped'] });
+md.use(taskLists);
+md.use(tableStyles, { tableClassList: ['table', 'table-sm', 'table-bordered', 'table-striped'] });
 
 export default md;

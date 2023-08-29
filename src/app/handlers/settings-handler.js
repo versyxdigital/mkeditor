@@ -86,9 +86,9 @@ class SettingsHandler {
     setState () {
         const targets = document.querySelectorAll('#settings .setting');
         if (targets) {
-            targets.forEach((target) => {
+            for (const target of targets) {
                 target.checked = this.settings[target.id];
-            });
+            }
         }
     }
 

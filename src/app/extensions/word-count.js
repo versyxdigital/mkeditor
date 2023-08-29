@@ -1,4 +1,4 @@
-const wordCount = function (preview) {
+const wordCount = (preview) => {
     let count = countWords(getTextInElement(preview));
 
     if (count < 0) {
@@ -8,7 +8,7 @@ const wordCount = function (preview) {
     document.querySelector('#word-count').innerText = count;
 };
 
-const characterCount = function (preview) {
+const characterCount = (preview) => {
     let count = countCharacters(getTextInElement(preview)) - 1;
 
     if (count < 0) {
