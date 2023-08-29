@@ -1,4 +1,4 @@
-const { app, BrowserWindow, nativeTheme: { shouldUseDarkColors } } = require('electron');
+const { app, BrowserWindow, nativeTheme: { shouldUseDarkColors }, shell } = require('electron');
 const path = require('path');
 const Menu = require('./lib/menu');
 const Dialog = require('./lib/dialog');
@@ -30,6 +30,13 @@ function main () {
 
     const menu = new Menu(context);
     menu.register();
+
+    context.webContents.setWindowOpenHandler(({ url }) => {
+        shell.openExternal(url);
+        return {
+            action: 'deny'
+        };
+    });
 
     context.webContents.on('did-finish-load', () => {
         context.webContents.send('from:theme:set', shouldUseDarkColors);

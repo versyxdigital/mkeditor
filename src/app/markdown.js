@@ -8,6 +8,7 @@ import xml from 'highlight.js/lib/languages/xml';
 import MarkdownIt from 'markdown-it';
 import alertBlocks from './extensions/markdown-it/alert-blocks';
 import lineNumbers from './extensions/markdown-it/line-numbers';
+import linksTarget from './extensions/markdown-it/links-target';
 import tableStyles from './extensions/markdown-it/table-styles';
 import taskLists from './extensions/markdown-it/task-lists';
 
@@ -19,7 +20,7 @@ hljs.registerLanguage('csharp', csharp);
 hljs.registerLanguage('xml', xml);
 
 const md = new MarkdownIt({
-    code: false,
+    html: true,
     breaks: true,
     linkify: true,
     highlight: (content, language) => {
@@ -43,6 +44,7 @@ const md = new MarkdownIt({
 
 md.use(alertBlocks);
 md.use(lineNumbers);
+md.use(linksTarget);
 md.use(taskLists);
 md.use(tableStyles, { tableClassList: ['table', 'table-sm', 'table-bordered', 'table-striped'] });
 
