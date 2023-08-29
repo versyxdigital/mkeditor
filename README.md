@@ -6,83 +6,42 @@ Download for Windows or Linux from the [website](https://mkeditoross.github.io/m
 
 ![MKEditor](./docs/demo.png)
 
-### Features
+# Welcome
 
-#### Basic Editing
+Thank you for choosing MKEditor 😊, I hope you find this tool useful for all your markdown needs!
 
-| **Shortcut**             | Description                 |
-|--------------------------|-----------------------------|
-| **Ctrl + X**             | Cut line (empty selection)  |
-| **Ctrl + C**             | Copy line (empty selection) |
-| **Alt + ↑ / ↓**          | Move line up/down           |
-| **Shift + Alt + ↑ / ↓**  | Copy line up/down           |
-| **Ctrl + Shift + K**     | Delete line                 |
-| **Ctrl + Enter**         | Insert line below           |
-| **Ctrl + Shift + Enter** | Insert line above           |
-| **Ctrl + ] / [**         | Indent/outdent line         |
-| **Home / End**           | Go to beginning/end of line |
-| **Ctrl + Home**          | Go to beginning of file     |
-| **Ctrl + End**           | Go to end of file           |
-| **Ctrl + ↑ / ↓**         | Scroll line up/down         |
-| **Alt + PgUp / PgDn**    | Scroll page up/down         |
+If you have any issues or questions, please feel free to submit an [issue](https://github.com/mkeditorOSS/mkeditor/issues).
 
-#### Find and Replace
+---
 
-| **Shortcut**        | Description                                |
-|---------------------|--------------------------------------------|
-| **Ctrl + F**        | Find                                       |
-| **Ctrl + H**        | Replace                                    |
-| **F3 / Shift + F3** | Find next/previous                         |
-| **Alt + Enter**     | Select all occurrences of find match       |
-| **Alt + C / R / W** | Toggle case-sensitive / regex / whole word |
+Open the help menu using the button at the top right for a complete list of editor shortcuts. You can also view a cheatsheet [here](https://mkeditoross.github.io/mkeditor/shortcuts).
 
-#### Multi-cursor and Selection
+MKEditor fully supports the [CommonMark](https://commonmark.org/) spec and comes with a few additional goodies.
 
-| **Shortcut**                           | Description                                |
-|----------------------------------------|--------------------------------------------|
-| **Alt + Click**                        | Insert cursor                              |
-| **Ctrl + Alt + ↑ / ↓**                 | Insert cursor above/below                  |
-| **Shift + Alt + I**                    | Insert cursor at end of each line selected |
-| **Ctrl + L**                           | Select current line                        |
-| **Ctrl + F2**                          | Select all occurrences of current word     |
-| **Shift + Alt + (Drag mouse)**         | Column (box) selection                     |
-| **Ctrl + Shift + Alt + ↑ / ↓**         | Column (box) selection                     |
-| **Ctrl + Shift + Alt + PgUp / PgDn**   | Column (box) selection                     |
-| **(Mousewheel pressed + drag cursor)** | Column (box) selection                     |
+**Great** support for _custom_ styling with:
 
-#### Alerts
+- Bootstrap
+- Fontawesome
+- Highlight.js
 
-| **Shortcut**             | Description                   |
-|--------------------------|-------------------------------|
-| **Ctrl + L**             | Toggle alert block menu       |
-| **Ctrl + L, P**          | Insert primary alert block    |
-| **Ctrl + L, E**          | Insert secondary alert block  |
-| **Ctrl + L, S**          | Insert success alert block    |
-| **Ctrl + L, D**          | Insert danger alert block     |
-| **Ctrl + L, W**          | Insert warning alert block    |
-| **Ctrl + L, I**          | Insert info alert block       |
-| **Ctrl + L, L**          | Insert light alert block      |
-| **Ctrl + L, R**          | Insert dark alert block       |
+Create alerts:
 
+```md
+::: primary
+✨ Create alerts
+:::
+```
 
-#### Codeblocks
+Format some code:
 
-| **Shortcut**             | Description                  |
-|--------------------------|------------------------------|
-| **Ctrl + K**             | Toggle code block menu       |
-| **Ctrl + K, S**          | Insert shell code block      |
-| **Ctrl + K, J**          | Insert javascript code block |
-| **Ctrl + K, C**          | Insert C# code block         |
-| **Ctrl + K, P**          | Insert python code block     |
-| **Ctrl + K, X**          | Insert XML code block        |
-| **Ctrl + K, Q**          | Insert SQL code block        |
+```javascript
+document.addEventListener('DOMContentLoaded', () => {
+    document.body.write('Syntax-highlighted, copyable codeblock!')
+})
+```
 
+MKEditor also includes a built-in, resizable preview renderer and support for exporting your markdown to HTML, with or without styles 🚀.
 
-#### Misc
+Customize your settings, switch between light mode and dark mode, write some documents and have fun!
 
-| **Shortcut**             | Description                 |
-|--------------------------|-----------------------------|
-| **F1**                   | Open command pallette       |
-| **Ctrl + ;**             | Open settings               |
-| **Ctrl + S**             | Save file                   |
-| **Ctrl + Shift + S**     | Save as                     |
+Built with ❤️ by [Chris Rowles](https://github.com/sentrychris)
