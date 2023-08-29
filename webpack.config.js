@@ -38,7 +38,7 @@ module.exports = {
             },
             {
                 test: /\.ttf$/,
-                use: ['file-loader']
+                type: 'asset/resource'
             }
         ]
     },
@@ -47,6 +47,8 @@ module.exports = {
             languages: ['markdown'],
             features: [
                 'clipboard',
+                'codeAction',
+                'contextmenu',
                 'cursorUndo',
                 'find',
                 'fontZoom',
