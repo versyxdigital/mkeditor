@@ -1,6 +1,4 @@
-const codeLineClass = 'has-line-data';
-
-export async function scrollPreviewToEditorVisibleRange (line, preview) {
+const scrollPreviewToEditorVisibleRange = async (line, preview) => {
     return new Promise((resolve) => {
         if (line <= 0) {
             preview.scroll(preview.scrollTop, 0);
@@ -32,7 +30,9 @@ export async function scrollPreviewToEditorVisibleRange (line, preview) {
 
         return resolve(preview);
     });
-}
+};
+
+const codeLineClass = 'has-line-data';
 
 const getElementsForSourceLine = (targetLine) => {
     const lineNumber = Math.floor(targetLine);
@@ -95,3 +95,5 @@ const getElementBounds = ({ element }) => {
 
     return myBounds;
 };
+
+export { scrollPreviewToEditorVisibleRange };

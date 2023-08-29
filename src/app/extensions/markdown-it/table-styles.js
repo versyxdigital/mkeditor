@@ -1,14 +1,14 @@
-const tableStyles = function (md, options) {
+const tableStyles = (md, options) => {
     const defaults = {
-        tableClass: []
+        tableClassList: []
     };
 
-    options = Object.assign({}, defaults, options);
+    options = { ...defaults, ...options };
 
-    md.renderer.rules.table_open = function (tokens, idx, opts, env, self) {
+    md.renderer.rules.table_open = (tokens, idx, opts, env, self) => {
         const token = tokens[idx];
-        if (options.tableClass.length > 0) {
-            token.attrPush(['class', options.tableClass.join(' ')]);
+        if (options.tableClassList.length > 0) {
+            token.attrPush(['class', options.tableClassList.join(' ')]);
         }
 
         return self.renderToken(tokens, idx, opts);
