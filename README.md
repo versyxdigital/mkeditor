@@ -4,7 +4,7 @@ The simple markdown editor.
 
 Download for Windows or Linux from the [website](https://mkeditoross.github.io/mkeditor/).
 
-![MKEditor](https://i.imgur.com/gTHbJne.png)
+![MKEditor](./docs/demo.png)
 
 ### Features
 
