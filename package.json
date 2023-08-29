@@ -2,7 +2,7 @@
   "name": "mkeditor",
   "productName": "MKEditor",
   "license": "MIT",
-  "version": "1.4.1",
+  "version": "1.6.0",
   "author": "Chris Rowles <christopher.rowles@outlook.com>",
   "description": "Markdown Editor - Desktop",
   "main": "src/main.js",
