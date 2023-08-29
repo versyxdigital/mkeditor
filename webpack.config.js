@@ -10,7 +10,7 @@ module.exports = {
         mkeditor: ['./src/app/index.js', './src/app/assets/scss/index.scss']
     },
     output: {
-        globalObject: 'this',
+        globalObject: 'self',
         filename: 'mkeditor.bundle.js',
         path: path.resolve(__dirname, 'dist')
     },

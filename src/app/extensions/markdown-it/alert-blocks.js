@@ -1,30 +1,32 @@
 import * as container from 'markdown-it-container';
 
 let md;
-let hasLinks;
 let containerOpenCount;
 
-const alertBlocks = (instance, options) => {
+const alertBlocks = (instance) => {
     containerOpenCount = 0;
-    hasLinks = options ? options.links : true;
     md = instance;
 
     init();
 };
 
 function init () {
-    setupContainer('success');
-    setupContainer('info');
-    setupContainer('warning');
-    setupContainer('danger');
-    setupContainer('primary');
-    setupContainer('secondary');
-    setupContainer('light');
-    setupContainer('dark');
+    const alerts = [
+        'success',
+        'info',
+        'warning',
+        'danger',
+        'primary',
+        'secondary',
+        'light',
+        'dark'
+    ];
 
-    if (hasLinks) {
-        setupLinks();
+    for (const alert of alerts) {
+        setupContainer(alert);
     }
+
+    setupLinks();
 }
 
 function setupContainer (name) {
