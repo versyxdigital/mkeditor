@@ -17,8 +17,9 @@ class CommandHandler {
     constructor (instance, register = false) {
         this.instance = instance;
         this.settings = new Modal(document.getElementById('settings'));
-        this.alerts = new Dropdown(document.getElementById('alertMenuButton'));
-        this.codeblocks = new Dropdown(document.getElementById('codeBlockMenuButton'));
+        this.shortcuts = new Modal(document.getElementById('editor-shortcuts'));
+        this.alerts = new Dropdown(document.getElementById('alert-menu-button'));
+        this.codeblocks = new Dropdown(document.getElementById('codeblock-menu-button'));
 
         if (register) {
             this.register();

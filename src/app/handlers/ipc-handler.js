@@ -124,6 +124,13 @@ export default class IPCHandler {
             this.instance.trigger(command, 'editor.action.quickCommand');
         });
 
+        // Enable access to the monaco editor shortcuts modal.
+        this.bridge.receive('from:modal:open', (modal) => {
+            if (this.handlers.command && Object.prototype.hasOwnProperty.call(this.handlers.command, modal)) {
+                this.handlers.command[modal].toggle();
+            }
+        });
+
         // Enable notifications from the main context.
         this.bridge.receive('from:notification:display', (event) => {
             notify.send(event.status, event.message);

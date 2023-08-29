@@ -23,6 +23,7 @@ const receiverWhitelist = [
     'from:file:open',
     'from:file:save',
     'from:file:saveas',
+    'from:modal:open',
     'from:command:palette',
     'from:notification:display'
 ];

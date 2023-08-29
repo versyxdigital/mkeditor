@@ -40,6 +40,7 @@ if (Object.prototype.hasOwnProperty.call(window, 'executionBridge')) {
 
     // Attach settings handler to IPC handler.
     ipc.attach('settings', mkeditor.handlers.settings);
+    ipc.attach('command', mkeditor.handlers.command);
 
     // Attach IPC handler to mkeditor.
     mkeditor.attach('ipc', ipc);

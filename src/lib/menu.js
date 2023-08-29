@@ -15,9 +15,6 @@ module.exports = class AppMenu {
     register () {
         app.applicationMenu = Menu.buildFromTemplate([
             {
-                label: ''
-            },
-            {
                 label: 'File',
                 submenu: [
                     {
@@ -51,6 +48,13 @@ module.exports = class AppMenu {
                         accelerator: 'Ctrl+Shift+S'
                     },
                     { type: 'separator' },
+                    {
+                        label: 'Settings...',
+                        click: () => {
+                            this.context.webContents.send('from:modal:open', 'settings');
+                        }
+                    },
+                    { type: 'separator' },
                     { role: 'quit' }
                 ]
             },
@@ -75,6 +79,7 @@ module.exports = class AppMenu {
                         },
                         accelerator: 'F1'
                     },
+                    { type: 'separator' },
                     { role: 'togglefullscreen' },
                     {
                         label: 'Toggle Developer Tools',
@@ -101,6 +106,13 @@ module.exports = class AppMenu {
                                 use_version_info: true,
                                 bug_report_url: 'https://github.com/mkeditorOSS/mkeditor/issues'
                             });
+                        }
+                    },
+                    { type: 'separator' },
+                    {
+                        label: 'Shortcuts...',
+                        click: () => {
+                            this.context.webContents.send('from:modal:open', 'shortcuts');
                         }
                     }
                 ]
