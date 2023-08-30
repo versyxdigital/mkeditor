@@ -15,7 +15,8 @@ export const codeblocks = [
     { type: 'Sh', key: 'S' },
     { type: 'Javascript', key: 'J' },
     { type: 'CSharp', key: 'C' },
-    { type: 'Python', key: 'P' },
+    { type: 'PHP', key: 'P' },
+    { type: 'Python', key: 'Y' },
     { type: 'SQL', key: 'Q' },
     { type: 'XML', key: 'X' }
 ];
