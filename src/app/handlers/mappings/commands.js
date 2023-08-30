@@ -28,6 +28,7 @@ export const commands = {
         contextMenuGroupId: 'navigation',
         contextMenuOrder: 1,
         keybindings: [KeyMod.CtrlCmd | KeyCode.KeyB],
+        isInline: true,
         syntax: '**'
     },
     italic: {
@@ -36,6 +37,7 @@ export const commands = {
         contextMenuGroupId: 'navigation',
         contextMenuOrder: 2,
         keybindings: [KeyMod.CtrlCmd | KeyCode.KeyI],
+        isInline: true,
         syntax: '_'
     },
     strikethrough: {
@@ -44,6 +46,7 @@ export const commands = {
         contextMenuGroupId: 'navigation',
         contextMenuOrder: 3,
         keybindings: [KeyMod.CtrlCmd | KeyCode.KeyG],
+        isInline: true,
         syntax: '~~'
     },
     unorderedList: {
@@ -51,20 +54,23 @@ export const commands = {
         label: 'Convert To Unordered List',
         contextMenuGroupId: 'cutcopypaste',
         contextMenuOrder: 4,
-        keybindings: [KeyMod.CtrlCmd | KeyCode.KEY_2]
+        keybindings: [KeyMod.CtrlCmd | KeyCode.KEY_2],
+        isInline: false
     },
     orderedList: {
         id: 'ordered-list',
         label: 'Convert To Ordered List',
         contextMenuGroupId: 'cutcopypaste',
         contextMenuOrder: 5,
-        keybindings: [KeyMod.CtrlCmd | KeyCode.KEY_3]
+        keybindings: [KeyMod.CtrlCmd | KeyCode.KEY_3],
+        isInline: false
     },
     orderedListToTaskList: {
         id: 'ordered-list-to-task-list',
         label: 'Convert Ordered List To Task List',
         contextMenuGroupId: 'cutcopypaste',
         contextMenuOrder: 6,
-        keybindings: [KeyMod.CtrlCmd | KeyCode.KEY_4]
+        keybindings: [KeyMod.CtrlCmd | KeyCode.KEY_4],
+        isInline: false
     }
 };

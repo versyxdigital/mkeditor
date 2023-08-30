@@ -146,7 +146,7 @@ export function generateExportHTML (content, { styled = true, providers = ['high
         // Apply styles/scripts based on selected provider(s)
         if (providers) {
             for (const provider of providers) {
-                if (Object.prototype.hasOwnProperty.call(cdn, provider)) {
+                if (cdn[provider]) {
                     const { css, js } = cdn[provider];
 
                     if (css) {
