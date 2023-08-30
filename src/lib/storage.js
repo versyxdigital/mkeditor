@@ -12,17 +12,6 @@ const saveChangesToExisting = async () => {
     return check.response === 0;
 };
 
-const setActiveFile = (context, file = null) => {
-    const filename = file ? file.split('\\').slice(-1).pop() : '';
-    const content = file ? fs.readFileSync(file, { encoding: 'utf-8' }) : '';
-
-    context.webContents.send('from:file:open', {
-        file,
-        filename,
-        content
-    });
-};
-
 module.exports = {
     async create (context, { data, file, encoding = 'utf-8' }) {
         const check = await saveChangesToExisting();
@@ -36,7 +25,7 @@ module.exports = {
             });
         }
 
-        setActiveFile(context, null, '');
+        this.setActiveFile(context, null, '');
     },
 
     async save (context, { id, data, file = null, encoding = 'utf-8', reset = false }) {
@@ -83,7 +72,7 @@ module.exports = {
                     });
 
                     if (!isHTMLExport) {
-                        setActiveFile(context, file);
+                        this.setActiveFile(context, file);
                     }
                 } catch (error) {
                     context.webContents.send('from:notification:display', {
@@ -113,7 +102,7 @@ module.exports = {
                         }
 
                         if (!isHTMLExport) {
-                            setActiveFile(context, filePath);
+                            this.setActiveFile(context, filePath);
                         }
                     } catch (error) {
                         if (error.code !== 'ENOENT') {
@@ -166,6 +155,17 @@ module.exports = {
                         });
                     }
                 });
+        });
+    },
+
+    setActiveFile (context, file = null) {
+        const filename = file ? file.split('\\').slice(-1).pop() : '';
+        const content = file ? fs.readFileSync(file, { encoding: 'utf-8' }) : '';
+
+        context.webContents.send('from:file:open', {
+            file,
+            filename,
+            content
         });
     }
 };

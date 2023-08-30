@@ -1,5 +1,6 @@
 const { app, BrowserWindow, nativeTheme: { shouldUseDarkColors }, shell } = require('electron');
 const path = require('path');
+const storage = require('./lib/storage');
 const Menu = require('./lib/menu');
 const Dialog = require('./lib/dialog');
 const IPC = require('./lib/ipc');
@@ -7,7 +8,7 @@ const Settings = require('./lib/settings');
 
 let context;
 
-function main () {
+function main (file = null) {
     context = new BrowserWindow({
         show: false,
         icon: path.join(__dirname, 'app/assets/logo.ico'),
@@ -41,6 +42,10 @@ function main () {
     context.webContents.on('did-finish-load', () => {
         context.webContents.send('from:theme:set', shouldUseDarkColors);
         context.webContents.send('from:settings:set', settings.loadSettingsFile());
+
+        if (file) {
+            storage.setActiveFile(context, file);
+        }
     });
 
     context.on('close', (event) => {
@@ -55,7 +60,13 @@ function main () {
     context.show();
 }
 
-app.on('ready', main);
+app.on('ready', () => {
+    let file = null;
+    if (process.platform === 'win32' && process.argv.length >= 2) {
+        file = process.argv[1];
+    }
+    main(file);
+});
 
 app.on('activate', () => {
     if (!context) {
