@@ -43,7 +43,7 @@ function main (file = null) {
         context.webContents.send('from:theme:set', shouldUseDarkColors);
         context.webContents.send('from:settings:set', settings.loadSettingsFile());
 
-        if (file) {
+        if (file && file !== '.') {
             storage.setActiveFile(context, file);
         }
     });
@@ -60,6 +60,22 @@ function main (file = null) {
     context.show();
 }
 
+// MacOS - open with... Also handle files using the same runnning instance
+app.on('open-file', (event) => {
+    event.preventDefault();
+
+    let file = null;
+    if (process.platform === 'win32' && process.argv.length >= 2) {
+        file = process.argv[1];
+    }
+
+    if (!context) {
+        main(file);
+    } else if (file && file !== '.') {
+        storage.setActiveFile(context, file);
+    }
+});
+
 app.on('ready', () => {
     let file = null;
     if (process.platform === 'win32' && process.argv.length >= 2) {
@@ -73,6 +89,21 @@ app.on('activate', () => {
         main();
     }
 });
+
+if (!app.requestSingleInstanceLock()) {
+    app.quit();
+} else {
+    app.on('second-instance', (event, commandLine, workingDirectory, additionalData) => {
+        app.focus();
+        if (commandLine.length >= 2) {
+            const file = commandLine[2];
+            if (file && file !== '.') {
+                // TODO prompt for unsaved changes
+                storage.setActiveFile(context, commandLine[2]);
+            }
+        }
+    });
+}
 
 app.on('window-all-closed', () => {
     app.quit();

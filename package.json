@@ -2,7 +2,7 @@
   "name": "mkeditor",
   "productName": "MKEditor",
   "license": "MIT",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "author": "Chris Rowles <christopher.rowles@outlook.com>",
   "description": "Markdown Editor - Desktop",
   "main": "src/main.js",
@@ -10,8 +10,8 @@
     "lint": "eslint --ext .js .",
     "lint:fix": "eslint --fix --ext .js .",
     "build:mkeditor": "webpack --config webpack.config.js",
-    "build:executable": "npm run build:mkeditor && electron-builder --dir",
-    "build:installer": "npm run build:mkeditor && electron-builder",
+    "build:executable": "electron-builder --dir",
+    "build:installer": "electron-builder",
     "dev:execute": "node ./node_modules/electron/cli.js .",
     "serve:web": "http-server ./dist",
     "github:page": "http-server ./docs"
@@ -60,6 +60,13 @@
     "directories": {
       "output": "releases/${platform}/${arch}"
     },
+    "fileAssociations": [
+      {
+          "ext": ["md"],
+          "name": "Plain Text",
+          "role": "Editor"
+      }
+    ],
     "linux": {
       "target": "deb",
       "icon": "build/resources/icon256x256.png",
