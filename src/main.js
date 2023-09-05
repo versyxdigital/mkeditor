@@ -1,17 +1,17 @@
 const { app, BrowserWindow, nativeTheme: { shouldUseDarkColors }, shell } = require('electron');
 const path = require('path');
-const storage = require('./lib/storage');
-const Menu = require('./lib/menu');
-const Dialog = require('./lib/dialog');
-const IPC = require('./lib/ipc');
-const Settings = require('./lib/settings');
+const storage = require('./app/storage');
+const Menu = require('./app/menu');
+const Dialog = require('./app/dialog');
+const IPC = require('./app/ipc');
+const Settings = require('./app/settings');
 
 let context;
 
 function main (file = null) {
     context = new BrowserWindow({
         show: false,
-        icon: path.join(__dirname, 'app/assets/logo.ico'),
+        icon: path.join(__dirname, 'shared/assets/logo.ico'),
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
