@@ -17,8 +17,9 @@ class CommandHandler {
     constructor (instance, register = false) {
         this.instance = instance;
         this.settings = new Modal(document.getElementById('settings'));
-        this.alerts = new Dropdown(document.getElementById('alertMenuButton'));
-        this.codeblocks = new Dropdown(document.getElementById('codeBlockMenuButton'));
+        this.shortcuts = new Modal(document.getElementById('editor-shortcuts'));
+        this.alerts = new Dropdown(document.getElementById('alert-menu-button'));
+        this.codeblocks = new Dropdown(document.getElementById('codeblock-menu-button'));
 
         if (register) {
             this.register();
@@ -43,21 +44,16 @@ class CommandHandler {
             this.instance.focus();
         });
 
+        // Map editor commands to actions
         for (const cmd in commands) {
-            if (Object.prototype.hasOwnProperty.call(commands[cmd], 'syntax')) {
-                // If command has "syntax", then it is inline e.g single-line, bold, italic.
-                //
+            commands[cmd].run = () => (commands[cmd].isInline && commands[cmd].syntax)
                 // Inline commands are performed by passing the relevant syntax into this class'
                 // inline method, which in turn grabs the editor value within range and executes
                 // the edit.
-                commands[cmd].run = () => this.inline(commands[cmd].syntax);
-            } else {
-                // Otherwise it is fenced e.g. multi-line, list, codeblock.
-                //
+                ? this.inline(commands[cmd].syntax)
                 // Fenced commands have their own renderer functions defined in this class,
                 // for example, unorderedList, orderedList etc.
-                commands[cmd].run = () => this[cmd]();
-            }
+                : this[cmd]();
 
             this.instance.addAction(commands[cmd]);
         }
@@ -102,17 +98,18 @@ class CommandHandler {
         }
 
         // Map editor commands to editor UI buttons (e.g. bold, alertblock etc.)
-        const toolbarButtons = document.getElementById('editor-functions').querySelectorAll('button');
+        const toolbarButtons = document.getElementById('editor-functions')
+            .querySelectorAll('button');
         if (toolbarButtons) {
             for (const btn of toolbarButtons) {
                 btn.addEventListener('click', (event) => {
                     const target = event.currentTarget || event.target;
-                    if (Object.prototype.hasOwnProperty.call(target.dataset, 'cmd')) {
-                        const { cmd } = target.dataset;
-                        target.dataset.syntax && !(commands[cmd] instanceof Function)
+                    if (target.dataset.cmd) {
+                        const { cmd, syntax } = target.dataset;
+                        (commands[cmd].isInline && syntax)
                             // If function contains data-syntax then execute the command,
                             // passing the markdown syntax to be used (inline)
-                            ? this.inline(target.dataset.syntax)
+                            ? this.inline(syntax)
                             // Otherwise if there is no syntax provided then call the
                             // defined renderer function instead (fenced)
                             : this[cmd](target);

@@ -15,9 +15,6 @@ module.exports = class AppMenu {
     register () {
         app.applicationMenu = Menu.buildFromTemplate([
             {
-                label: ''
-            },
-            {
                 label: 'File',
                 submenu: [
                     {
@@ -51,6 +48,13 @@ module.exports = class AppMenu {
                         accelerator: 'Ctrl+Shift+S'
                     },
                     { type: 'separator' },
+                    {
+                        label: 'Settings...',
+                        click: () => {
+                            this.context.webContents.send('from:modal:open', 'settings');
+                        }
+                    },
+                    { type: 'separator' },
                     { role: 'quit' }
                 ]
             },
@@ -75,6 +79,7 @@ module.exports = class AppMenu {
                         },
                         accelerator: 'F1'
                     },
+                    { type: 'separator' },
                     { role: 'togglefullscreen' },
                     {
                         label: 'Toggle Developer Tools',
@@ -94,13 +99,20 @@ module.exports = class AppMenu {
                         label: 'About...',
                         click: () => {
                             openAboutWindow({
-                                icon_path: path.join(__dirname, '../app/assets/logo.ico'),
+                                icon_path: path.join(__dirname, '../shared/assets/logo.ico'),
                                 product_name: 'MKEditor',
                                 copyright: '© 2021 - ' + new Date().getFullYear() + ' Chris Rowles. All rights reserved.',
                                 package_json_dir: path.join(__dirname, '../../'),
                                 use_version_info: true,
                                 bug_report_url: 'https://github.com/mkeditorOSS/mkeditor/issues'
                             });
+                        }
+                    },
+                    { type: 'separator' },
+                    {
+                        label: 'Shortcuts...',
+                        click: () => {
+                            this.context.webContents.send('from:modal:open', 'shortcuts');
                         }
                     }
                 ]

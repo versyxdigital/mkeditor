@@ -7,7 +7,7 @@ const TerserWebpackPlugin = require('terser-webpack-plugin');
 module.exports = {
     mode: 'production',
     entry: {
-        mkeditor: ['./src/app/index.js', './src/app/assets/scss/index.scss']
+        mkeditor: ['./src/browser/index.js', './src/browser/assets/scss/index.scss']
     },
     output: {
         globalObject: 'self',

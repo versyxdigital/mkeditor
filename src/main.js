@@ -1,16 +1,17 @@
-const { app, BrowserWindow, nativeTheme: { shouldUseDarkColors } } = require('electron');
+const { app, BrowserWindow, nativeTheme: { shouldUseDarkColors }, shell } = require('electron');
 const path = require('path');
-const Menu = require('./lib/menu');
-const Dialog = require('./lib/dialog');
-const IPC = require('./lib/ipc');
-const Settings = require('./lib/settings');
+const storage = require('./app/storage');
+const Menu = require('./app/menu');
+const Dialog = require('./app/dialog');
+const IPC = require('./app/ipc');
+const Settings = require('./app/settings');
 
 let context;
 
-function main () {
+function main (file = null) {
     context = new BrowserWindow({
         show: false,
-        icon: path.join(__dirname, 'app/assets/logo.ico'),
+        icon: path.join(__dirname, 'shared/assets/logo.ico'),
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -31,9 +32,20 @@ function main () {
     const menu = new Menu(context);
     menu.register();
 
+    context.webContents.setWindowOpenHandler(({ url }) => {
+        shell.openExternal(url);
+        return {
+            action: 'deny'
+        };
+    });
+
     context.webContents.on('did-finish-load', () => {
         context.webContents.send('from:theme:set', shouldUseDarkColors);
         context.webContents.send('from:settings:set', settings.loadSettingsFile());
+
+        if (file && file !== '.') {
+            storage.setActiveFile(context, file);
+        }
     });
 
     context.on('close', (event) => {
@@ -48,13 +60,50 @@ function main () {
     context.show();
 }
 
-app.on('ready', main);
+// MacOS - open with... Also handle files using the same runnning instance
+app.on('open-file', (event) => {
+    event.preventDefault();
+
+    let file = null;
+    if (process.platform === 'win32' && process.argv.length >= 2) {
+        file = process.argv[1];
+    }
+
+    if (!context) {
+        main(file);
+    } else if (file && file !== '.') {
+        storage.setActiveFile(context, file);
+    }
+});
+
+app.on('ready', () => {
+    let file = null;
+    if (process.platform === 'win32' && process.argv.length >= 2) {
+        file = process.argv[1];
+    }
+    main(file);
+});
 
 app.on('activate', () => {
     if (!context) {
         main();
     }
 });
+
+if (!app.requestSingleInstanceLock()) {
+    app.quit();
+} else {
+    app.on('second-instance', (event, commandLine, workingDirectory, additionalData) => {
+        app.focus();
+        if (commandLine.length >= 2) {
+            const file = commandLine[2];
+            if (file && file !== '.') {
+                // TODO prompt for unsaved changes
+                storage.setActiveFile(context, commandLine[2]);
+            }
+        }
+    });
+}
 
 app.on('window-all-closed', () => {
     app.quit();

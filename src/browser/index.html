@@ -26,7 +26,7 @@
             </a>
         </li>
         <li class="nav-item">
-            <a class="text-muted hover-fade mx-3" href="#" data-bs-toggle="modal" data-bs-target="#editor-show-help">
+            <a class="text-muted hover-fade mx-3" href="#" data-bs-toggle="modal" data-bs-target="#editor-shortcuts">
                 <i class="fa fa-question-circle hover-fade"></i>
             </a>
         </li>
@@ -74,25 +74,26 @@
                     </button>
                 </div>
                 <div class="btn-group btn-group-sm dropup me-2">
-                    <button class="btn btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeBlockMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeblock-menu-button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-code"></i>
                     </button>
-                    <div class="dropdown-menu" id="codeBlockMenu" aria-labelledby="codeBlockMenuButton">
+                    <div class="dropdown-menu" id="codeBlockMenu" aria-labelledby="codeblock-menu-button">
                         <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="sh"><i class="fas fa-terminal"></i> <u>S</u>hell</button>
                         <div class="dropdown-divider"></div>
-                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="javascript"><i class="fas fa-code"></i> <u>J</u>avascript</button>
                         <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="csharp"><i class="fas fa-code"></i> <u>C</u>#</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="python"><i class="fas fa-code"></i> <u>P</u>ython</button>
+                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="javascript"><i class="fas fa-code"></i> <u>J</u>avascript</button>
+                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="php"><i class="fas fa-code"></i> <u>P</u>HP</button>
+                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="python"><i class="fas fa-code"></i> P<u>y</u>thon</button>
                         <div class="dropdown-divider"></div>
-                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="xml"><i class="fas fa-code"></i> <u>X</u>ML</button>
                         <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="sql"><i class="fas fa-database"></i> S<u>Q</u>L</button>
+                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="xml"><i class="fas fa-code"></i> <u>X</u>ML</button>
                     </div>
                 </div>
                 <div class="dropup me-2">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="alertMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="alert-menu-button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-exclamation-circle"></i>
                     </button>
-                    <div class="dropdown-menu" id="alertMenu" aria-labelledby="alertMenuButton">
+                    <div class="dropdown-menu" id="alertMenu" aria-labelledby="alert-menu-button">
                         <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="primary"><u>P</u>rimary</button>
                         <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="secondary">S<u>e</u>condary</button>
                         <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="success"><u>S</u>uccess</button>
@@ -203,7 +204,7 @@
 </div>
 
 <!-- help modal -->
-<div class="modal" tabindex="-1" id="editor-show-help">
+<div class="modal" tabindex="-1" id="editor-shortcuts">
     <div class="modal-dialog mw-100 w-75" role="document">
         <div class="modal-content">
             <div class="modal-header border-bottom-0">

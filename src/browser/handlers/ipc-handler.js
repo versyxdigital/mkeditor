@@ -115,13 +115,20 @@ export default class IPCHandler {
 
             document.querySelector('#active-file').innerText = filename;
 
-            this.bridge.send('to:title:set', filename);
+            this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
         });
 
         // Enable access to the monaco editor command palette.
         this.bridge.receive('from:command:palette', (command) => {
             this.instance.focus();
             this.instance.trigger(command, 'editor.action.quickCommand');
+        });
+
+        // Enable access to the monaco editor shortcuts modal.
+        this.bridge.receive('from:modal:open', (modal) => {
+            if (this.handlers.command && this.handlers.command[modal]) {
+                this.handlers.command[modal].toggle();
+            }
         });
 
         // Enable notifications from the main context.

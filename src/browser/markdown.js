@@ -1,25 +1,42 @@
 import hljs from 'highlight.js/lib/core';
+import csharp from 'highlight.js/lib/languages/csharp';
 import javascript from 'highlight.js/lib/languages/javascript';
+import php from 'highlight.js/lib/languages/php';
 import python from 'highlight.js/lib/languages/python';
 import shell from 'highlight.js/lib/languages/shell';
 import sql from 'highlight.js/lib/languages/sql';
-import csharp from 'highlight.js/lib/languages/csharp';
 import xml from 'highlight.js/lib/languages/xml';
 import MarkdownIt from 'markdown-it';
 import alertBlocks from './extensions/markdown-it/alert-blocks';
 import lineNumbers from './extensions/markdown-it/line-numbers';
+import linksTarget from './extensions/markdown-it/links-target';
 import tableStyles from './extensions/markdown-it/table-styles';
 import taskLists from './extensions/markdown-it/task-lists';
 
-hljs.registerLanguage('javascript', javascript);
-hljs.registerLanguage('python', python);
-hljs.registerLanguage('sh', shell);
-hljs.registerLanguage('sql', sql);
 hljs.registerLanguage('csharp', csharp);
+
+hljs.registerLanguage('javascript', javascript);
+hljs.registerAliases('js', {
+    languageName: 'javascript'
+});
+
+hljs.registerLanguage('php', php);
+
+hljs.registerLanguage('python', python);
+hljs.registerAliases('py', {
+    languageName: 'python'
+});
+
+hljs.registerLanguage('shell', shell);
+hljs.registerAliases('sh', {
+    languageName: 'shell'
+});
+
+hljs.registerLanguage('sql', sql);
 hljs.registerLanguage('xml', xml);
 
 const md = new MarkdownIt({
-    code: false,
+    html: true,
     breaks: true,
     linkify: true,
     highlight: (content, language) => {
@@ -43,6 +60,7 @@ const md = new MarkdownIt({
 
 md.use(alertBlocks);
 md.use(lineNumbers);
+md.use(linksTarget);
 md.use(taskLists);
 md.use(tableStyles, { tableClassList: ['table', 'table-sm', 'table-bordered', 'table-striped'] });
 
