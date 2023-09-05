@@ -115,7 +115,7 @@ export default class IPCHandler {
 
             document.querySelector('#active-file').innerText = filename;
 
-            this.bridge.send('to:title:set', filename);
+            this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
         });
 
         // Enable access to the monaco editor command palette.
