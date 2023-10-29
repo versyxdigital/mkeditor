@@ -7,7 +7,11 @@ If you have any issues or questions, please feel free to submit an issue over at
 
 ---
 
-Open the help menu using the button at the top right for a complete list of editor shortcuts. You can also view a cheatsheet [here](https://mkeditoross.github.io/mkeditor/shortcuts).
+Open the help menu using the button at the top right for a complete list of editor shortcuts.
+
+You can also view a cheatsheet [here](https://mkeditoross.github.io/mkeditor/shortcuts).
+
+---
 
 MKEditor fully supports the [CommonMark](https://commonmark.org/) spec and comes with a few additional goodies.
 
