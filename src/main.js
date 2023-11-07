@@ -93,13 +93,13 @@ app.on('activate', () => {
 if (!app.requestSingleInstanceLock()) {
     app.quit();
 } else {
-    app.on('second-instance', (event, commandLine, workingDirectory, additionalData) => {
+    app.on('second-instance', (event, args) => {
         app.focus();
-        if (commandLine.length >= 2) {
-            const file = commandLine[2];
-            if (file && file !== '.') {
+        if (args.length >= 2) {
+            const file = args[2];
+            if (file && file !== '.' && file.indexOf('MKEditor.lnk') === -1) {
                 // TODO prompt for unsaved changes
-                storage.setActiveFile(context, commandLine[2]);
+                storage.setActiveFile(context, file);
             }
         }
     });
