@@ -1,6 +1,6 @@
 import md from './markdown';
-import { generateExportHTML } from './export';
 import { welcomeMarkdown } from './utilities/intro';
+import { generateExportHTML, webExportToFile } from './export';
 import { copyableCodeBlocks } from './extensions/code-blocks';
 import { wordCount, characterCount } from './extensions/word-count';
 import { scrollPreviewToEditorVisibleRange } from './extensions/scroll-sync';
@@ -140,6 +140,8 @@ class Editor {
                 event.preventDefault();
                 if (this.handlers.ipc) {
                     this.handlers.ipc.saveContentToFile();
+                } else {
+                    webExportToFile(this.instance.getValue(), 'text/plain', '.md');
                 }
             });
         }
@@ -151,13 +153,15 @@ class Editor {
         if (exportPreviewButton) {
             exportPreviewButton.addEventListener('click', (event) => {
                 event.preventDefault();
+                const html = generateExportHTML(this.preview.innerHTML, {
+                    styled: document.querySelector('#export-preview-styled').checked,
+                    providers: ['bootstrap', 'fontawesome', 'highlightjs']
+                });
+
                 if (this.handlers.ipc) {
-                    this.handlers.ipc.exportPreviewToFile(
-                        generateExportHTML(this.preview.innerHTML, {
-                            styled: document.querySelector('#export-preview-styled').checked,
-                            providers: ['bootstrap', 'fontawesome', 'highlightjs']
-                        })
-                    );
+                    this.handlers.ipc.exportPreviewToFile(html);
+                } else {
+                    webExportToFile(html, 'text/html', '.html');
                 }
             });
         }

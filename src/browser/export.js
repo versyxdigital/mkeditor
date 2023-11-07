@@ -195,7 +195,7 @@ export function generateExportHTML (content, { styled = true, providers = ['high
  * @param {Document} document
  * @returns {Document}
  */
-function sanitizeHTML (document) {
+export function sanitizeHTML (document) {
     // Define attributes and classes for removal
     const removals = {
         attrs: [
@@ -232,4 +232,27 @@ function sanitizeHTML (document) {
 
     // Return the sanitized HTML
     return document;
+}
+
+/**
+ * Export from web to file.
+ */
+export function webExportToFile (content, type = 'text/plain', extension = '.md') {
+    const blob = new Blob([content], { type });
+
+    async function createHandle () {
+        return await window.showSaveFilePicker({
+            types: [{
+                description: 'MKEditor export',
+                accept: { [type]: [extension] }
+            }]
+        });
+    }
+
+    createHandle().then((handle) => {
+        handle.createWritable().then(async (writable) => {
+            await writable.write(blob);
+            await writable.close();
+        });
+    });
 }
