@@ -84,11 +84,11 @@
             font-size: .75rem;
             margin-bottom: 0;
         }
-        .release-info a {
+        a {
             color: #40746d;
         }
-        .release-info a:hover {
-            color: #83ecde;
+        a:hover {
+            color: #709f87;
         }
         .text-left {
             text-align: left;
@@ -113,18 +113,38 @@
             transform: scale(1.025);
             box-shadow: 0px 16px 30px rgba(0, 0, 0, 0.1);
         }
+        .btn-edit {
+            background: transparent;
+            box-shadow: none;
+            color: #519088;
+            font-weight: bold;
+            text-decoration: none;
+            letter-spacing: 1px;
+            padding: 15px;
+            transition: all .2s ease-in-out;
+        }
+        .btn-edit:hover {
+            color: #709f87;
+        }
     </style>
     <script src="https://kit.fontawesome.com/5475e8a6de.js" crossorigin="anonymous"></script>
 </head>
 <body>
     <a class="github-fork-ribbon d-none d-md-block" href="https://github.com/mkeditorOSS/mkeditor/" data-ribbon="Fork me on GitHub" title="Fork me on GitHub">Fork me on GitHub</a>
     <div class="col-lg-10 mx-auto p-3 py-md-5">
-        <header class="d-flex align-items-center pb-1 mb-5 border-bottom">
+        <header class="d-flex align-items-center justify-content-between pb-1 mb-5 border-bottom">
             <a href="/mkeditor" class="d-flex align-items-center text-dark text-decoration-none">
                 <img src="logo.png" class="img-fluid rounded me-2" width="50" alt="">
                 <div>
                     <span class="fs-2">MKEditor</span>
                     <span> - A simple markdown editor.</span>
+                </div>
+            </a>
+            <a href="/edit" target="_blank" class="d-flex flex-row align-items-center gap-2 btn-edit">
+                <i class="fa-solid fa-2xl fa-external-link me-2"></i>
+                <div>
+                    <p class="release-info">Use web browser edition</p>
+                    <p class="release-info">current release: v1.7.2</p>
                 </div>
             </a>
         </header>
@@ -134,7 +154,8 @@
                 <div class="col-sm-12 col-lg-6">
                     <h1 class="heading">Get started with MKEditor</h1>
                     <p class="heading__sub-heading">Quickly and easily get started writing your markdown documents with MKEditor's rich set of features.</p>
-                    <p class="heading__sub-heading">Download for...</p>
+                    <p class="heading__sub-heading mt-3">Download for desktop below, or start writing documents now
+                        <a class="text-decoration-none" href="/edit">through your browser</a>.</p>
 
                     <div class="d-flex flex-row align-items-center gap-2 gap-md-3 pt-2 pb-3 mt-md-0">
                         <a href="https://github.com/mkeditorOSS/mkeditor/releases/download/v1.7.2/mkeditor-setup-v1.7.2-x86_64.zip" download class="d-flex flex-row align-items-center gap-2 btn-download">
