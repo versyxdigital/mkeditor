@@ -21,15 +21,15 @@ export default class IPCHandler {
     activeFile = null;
 
     /**
-     * Create a new IpcHandler instance
+     * Create a new IPC handler
      *
-     * @param {*} instance the editor instance
+     * @param {*} editor the editor
      * @param {*} bridge the context bridge to the main process
      * @param {*} dispatcher the custom event dispatcher
      * @param {boolean} register register event handlers from construcor
      */
-    constructor (instance, bridge, dispatcher, register = false) {
-        this.instance = instance;
+    constructor (editor, bridge, dispatcher, register = false) {
+        this.editor = editor;
         this.bridge = bridge;
         this.dispatcher = dispatcher;
 
@@ -81,7 +81,7 @@ export default class IPCHandler {
         this.bridge.receive('from:file:new', (channel) => {
             this.bridge.send('to:title:set', '');
             this.bridge.send(channel, {
-                content: this.instance.getValue(),
+                content: this.editor.getValue(),
                 file: this.activeFile
             });
         });
@@ -90,25 +90,25 @@ export default class IPCHandler {
         // Provides access to browser window data and emits it to the ipc channel.
         this.bridge.receive('from:file:save', (channel) => {
             this.bridge.send(channel, {
-                content: this.instance.getValue(),
+                content: this.editor.getValue(),
                 file: this.activeFile
             });
         });
 
         this.bridge.receive('from:file:saveas', (channel) => {
-            this.bridge.send(channel, this.instance.getValue());
+            this.bridge.send(channel, this.editor.getValue());
         });
 
         // Enable opening files from outside of the renderer execution context.
         // Provides access to browser window data and emits it to the ipc channel.
         this.bridge.receive('from:file:open', ({ content, filename, file }) => {
-            this.instance.focus();
-            this.instance.setValue(content);
+            this.editor.focus();
+            this.editor.setValue(content);
             this.activeFile = file;
 
             // Dispatch contents so the editor can track it.
             this.dispatcher.setState({
-                content: this.instance.getValue()
+                content: this.editor.getValue()
             });
 
             this.trackEditorStateBetweenExecutionContext(content, content);
@@ -120,8 +120,8 @@ export default class IPCHandler {
 
         // Enable access to the monaco editor command palette.
         this.bridge.receive('from:command:palette', (command) => {
-            this.instance.focus();
-            this.instance.trigger(command, 'editor.action.quickCommand');
+            this.editor.focus();
+            this.editor.trigger(command, 'editor.action.quickCommand');
         });
 
         // Enable access to the monaco editor shortcuts modal.
@@ -152,11 +152,11 @@ export default class IPCHandler {
     saveContentToFile () {
         if (this.activeFile) {
             this.bridge.send('to:file:save', {
-                content: this.instance.getValue(),
+                content: this.editor.getValue(),
                 file: this.activeFile
             });
         } else {
-            this.bridge.send('to:file:saveas', this.instance.getValue());
+            this.bridge.send('to:file:saveas', this.editor.getValue());
         }
     }
 
@@ -187,31 +187,31 @@ export default class IPCHandler {
      * @returns
      */
     loadSettingsFromStorageChannel (settings) {
-        this.instance.updateOptions({
+        this.editor.updateOptions({
             autoIndent: settings.toggleAutoIndent
                 ? 'advanced'
                 : 'none'
         });
 
-        this.instance.updateOptions({
+        this.editor.updateOptions({
             wordWrap: settings.toggleWordWrap
                 ? 'on'
                 : 'off'
         });
 
-        this.instance.updateOptions({
+        this.editor.updateOptions({
             renderWhitespace: settings.toggleWhitespace
                 ? 'all'
                 : 'none'
         });
 
-        this.instance.updateOptions({
+        this.editor.updateOptions({
             minimap: settings.toggleMinimap
                 ? { enabled: true }
                 : { enabled: 'false' }
         });
 
-        this.instance.updateOptions({
+        this.editor.updateOptions({
             showFoldingControls: settings.showFoldingControls
                 ? 'always'
                 : 'never'

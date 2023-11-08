@@ -14,17 +14,17 @@ const preview = document.getElementById('preview');
 // Create new custom event dispatcher.
 const dispatcher = new EditorDispatcher();
 
-// Create new editor instance.
+// Create new editor.
 const mkeditor = new Editor(editor, preview, dispatcher);
-const instance = mkeditor.create({ watch: true });
+const model = mkeditor.create({ watch: true });
 
-// Register new command handler for the editor instance to provide
-// and handle editor commands and actions (e.g. bold, alertblock etc.)
-mkeditor.attach('command', new CommandHandler(instance, true));
+// Register new command handler for the editor to provide and handle
+// editor commands and actions (e.g. bold, alertblock etc.)
+mkeditor.attach('command', new CommandHandler(model, true));
 
-// Register new settings handler for the editor instance to provide local
+// Register new settings handler for the editor model to provide local
 // settings with persistence (with support for localStorage/filesystem).
-mkeditor.attach('settings', new SettingsHandler(instance, {
+mkeditor.attach('settings', new SettingsHandler(model, {
     persistSettings: true
 }, true));
 
@@ -36,7 +36,7 @@ if (Object.prototype.hasOwnProperty.call(window, 'executionBridge')) {
     const bridge = window.executionBridge;
 
     // Create a new IPC handler for the web execution context.
-    const ipc = new IPCHandler(instance, bridge, dispatcher, true);
+    const ipc = new IPCHandler(model, bridge, dispatcher, true);
 
     // Attach settings handler to IPC handler.
     ipc.attach('settings', mkeditor.handlers.settings);
@@ -48,5 +48,5 @@ if (Object.prototype.hasOwnProperty.call(window, 'executionBridge')) {
 
 // Implement draggable splitter.
 Split(['#editor-split', '#preview-split'], {
-    onDrag () { instance.layout(); }
+    onDrag () { model.layout(); }
 });

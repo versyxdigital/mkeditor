@@ -13,7 +13,7 @@ class Editor {
     /**
      * @var {editor.IStandaloneCodeEditor|null}
      */
-    instance = null;
+    model = null;
 
     /**
      * @var {string|null}
@@ -30,7 +30,7 @@ class Editor {
     };
 
     /**
-     * Create a Editor instance.
+     * Create a Editor model.
      *
      * @param {HTMLDivElement} editor the HTML element for the editor
      * @param {HTMLDivElement} preview the HTML element for the preview
@@ -55,16 +55,16 @@ class Editor {
     }
 
     /**
-     * Create a new editor instance.
+     * Create a new editor model.
      *
      * @param {{watch: boolean}} watch
      * @returns {editor.IStandaloneCodeEditor}
      */
     create ({ watch = false }) {
         try {
-            // Create the underlying monaco editor instance.
+            // Create the underlying monaco editor.
             // See https://microsoft.github.io/monaco-editor/
-            this.instance = editor.create(this.editor, {
+            this.model = editor.create(this.editor, {
                 value: welcomeMarkdown.trim(),
                 language: 'markdown',
                 wordBasedSuggestions: false,
@@ -82,7 +82,7 @@ class Editor {
             // occurred, the result of this comparison is used for various things
             // such as modifying the title to notify the user of unsaved changes,
             // prompting the user to save before opening new files, etc.
-            this.loadedInitialEditorValue = this.instance.getValue();
+            this.loadedInitialEditorValue = this.model.getValue();
             this.dispatcher.addEventListener('editor:state', (event) => {
                 this.loadedInitialEditorValue = event.message;
             });
@@ -90,9 +90,9 @@ class Editor {
             this.registerContextListeners();
 
             // Resize listeners to resize the editor.
-            window.onload = () => this.instance.layout();
-            window.onresize = () => this.instance.layout();
-            this.preview.onresize = () => this.instance.layout();
+            window.onload = () => this.model.layout();
+            window.onresize = () => this.model.layout();
+            this.preview.onresize = () => this.model.layout();
 
             // Render the editor content to preview; also initialises editor
             // extensions.
@@ -104,11 +104,11 @@ class Editor {
                 this.watch();
             }
         } catch (error) {
-            this.instance = null;
+            this.model = null;
             console.log(error);
         }
 
-        return this.instance;
+        return this.model;
     }
 
     /**
@@ -141,7 +141,7 @@ class Editor {
                 if (this.handlers.ipc) {
                     this.handlers.ipc.saveContentToFile();
                 } else {
-                    webExportToFile(this.instance.getValue(), 'text/plain', '.md');
+                    webExportToFile(this.model.getValue(), 'text/plain', '.md');
                 }
             });
         }
@@ -174,7 +174,7 @@ class Editor {
      */
     render () {
         // Render the editor markdown to HTML.
-        this.preview.innerHTML = md.render(this.instance.getValue());
+        this.preview.innerHTML = md.render(this.model.getValue());
 
         // Track code blocks and make them copyable.
         copyableCodeBlocks();
@@ -193,13 +193,13 @@ class Editor {
         // When the editor content changes, update the main process through the IPC handler
         // so that it can do things such as set the title notifying the user of unsaved changes,
         // prompt the user to save if they try to close the app or open a new file, etc.
-        this.instance.onDidChangeModelContent(() => {
+        this.model.onDidChangeModelContent(() => {
             if (this.handlers.ipc) {
                 this.handlers.ipc.trackEditorStateBetweenExecutionContext(
                     // The initial editor content
                     this.loadedInitialEditorValue,
                     // The current editor content
-                    this.instance.getValue()
+                    this.model.getValue()
                 );
             }
 
@@ -213,8 +213,8 @@ class Editor {
         // Track the editor scroll state and update the preview scroll position to match.
         // Note: this method isn't perfect, for example, in cases of large images there is
         // a slight discrepancy of about 20-30px, but for the most part it works.
-        this.instance.onDidScrollChange(() => {
-            const visibleRange = this.instance.getVisibleRanges()[0];
+        this.model.onDidScrollChange(() => {
+            const visibleRange = this.model.getVisibleRanges()[0];
             if (visibleRange) {
                 scrollPreviewToEditorVisibleRange(
                     visibleRange.startLineNumber,

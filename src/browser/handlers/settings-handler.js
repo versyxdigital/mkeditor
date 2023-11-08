@@ -3,8 +3,8 @@ import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 /**
  * Settings Handler
  *
- * Designed to work with both localStorage for web browser-based instances
- * and IPC for electron app instances.
+ * Designed to work with both localStorage for web browser-based editors
+ * and IPC for electron app editors.
  */
 class SettingsHandler {
     /**
@@ -19,17 +19,17 @@ class SettingsHandler {
     };
 
     /**
-     * Create a new SettingsHandler instance.
+     * Create a new Settings Handler.
      *
      * The settings handler manages settings for both web and electron runtime environments.
      * Web uses localStorage, electron uses a file stored at %HOME%/.mkeditor/settings.json.
      *
-     * @param {object} instance the editor instance created through mkeditor.init({...})
+     * @param {object} editor the editor created through mkeditor.create({...})
      * @param {boolean} persistSettings choose to persist settings through localStorage
      * @param {object|null} storedSettings  Load stored settings from a settings file
      */
-    constructor (instance, { persistSettings = false, storedSettings = null }, register = false) {
-        this.instance = instance;
+    constructor (editor, { persistSettings = false, storedSettings = null }, register = false) {
+        this.editor = editor;
         this.persistSettings = persistSettings;
 
         if (localStorage.getItem('settings')) {
@@ -131,7 +131,7 @@ class SettingsHandler {
                     this.settings.toggleAutoIndent = false;
                 }
 
-                this.instance.updateOptions({ autoIndent: option });
+                this.editor.updateOptions({ autoIndent: option });
             });
         }
 
@@ -196,7 +196,7 @@ class SettingsHandler {
                     this.settings.toggleWordWrap = false;
                 }
 
-                this.instance.updateOptions({ wordWrap: option });
+                this.editor.updateOptions({ wordWrap: option });
             });
         }
 
@@ -225,7 +225,7 @@ class SettingsHandler {
                     this.settings.toggleWhitespace = false;
                 }
 
-                this.instance.updateOptions({ renderWhitespace: option });
+                this.editor.updateOptions({ renderWhitespace: option });
             });
         }
 
@@ -254,7 +254,7 @@ class SettingsHandler {
                     this.settings.toggleMinimap = false;
                 }
 
-                this.instance.updateOptions({ minimap: option });
+                this.editor.updateOptions({ minimap: option });
             });
         }
 

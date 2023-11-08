@@ -9,13 +9,13 @@ import { commands, alertblocks, codeblocks } from './mappings/commands';
  */
 class CommandHandler {
     /**
-     * Create a new CommandHandler instance.
+     * Create a new CommandHandler.
      *
-     * @param {*} instance
+     * @param {*} editor
      * @param {*} register
      */
-    constructor (instance, register = false) {
-        this.instance = instance;
+    constructor (editor, register = false) {
+        this.editor = editor;
         this.settings = new Modal(document.getElementById('settings'));
         this.shortcuts = new Modal(document.getElementById('editor-shortcuts'));
         this.alerts = new Dropdown(document.getElementById('alert-menu-button'));
@@ -32,7 +32,7 @@ class CommandHandler {
      * @return
      */
     register () {
-        this.instance.onKeyDown((e) => {
+        this.editor.onKeyDown((e) => {
             if (e.ctrlKey && e.keyCode === 42 /* L */) {
                 this.alerts.toggle();
             }
@@ -41,7 +41,7 @@ class CommandHandler {
                 this.codeblocks.toggle();
             }
 
-            this.instance.focus();
+            this.editor.focus();
         });
 
         // Map editor commands to actions
@@ -55,10 +55,10 @@ class CommandHandler {
                 // for example, unorderedList, orderedList etc.
                 : this[cmd]();
 
-            this.instance.addAction(commands[cmd]);
+            this.editor.addAction(commands[cmd]);
         }
 
-        this.instance.addAction({
+        this.editor.addAction({
             id: 'settings',
             label: 'Open Settings Dialog',
             keybindings: [KeyMod.CtrlCmd | KeyCode.Semicolon],
@@ -68,7 +68,7 @@ class CommandHandler {
         });
 
         for (const block of alertblocks) {
-            this.instance.addAction({
+            this.editor.addAction({
                 id: `alert-${block.type}`,
                 label: `Insert ${block.type} Alert`,
                 keybindings: [KeyMod.chord(
@@ -83,7 +83,7 @@ class CommandHandler {
         }
 
         for (const block of codeblocks) {
-            this.instance.addAction({
+            this.editor.addAction({
                 id: `codeblock-${block.type}`,
                 label: `Insert ${block.type.charAt(0).toUpperCase() + block.type.slice(1)} Codeblock`,
                 keybindings: [KeyMod.chord(
@@ -114,7 +114,7 @@ class CommandHandler {
                             // defined renderer function instead (fenced)
                             : this[cmd](target);
 
-                        this.instance.focus();
+                        this.editor.focus();
                     }
                 });
             }
@@ -136,8 +136,8 @@ class CommandHandler {
      * @param {string} text
      */
     execute (text) {
-        this.instance.executeEdits(null, [{
-            range: this.instance.getSelection(),
+        this.editor.executeEdits(null, [{
+            range: this.editor.getSelection(),
             text,
             forceMoveMarkers: true
         }]);
@@ -149,7 +149,7 @@ class CommandHandler {
      * @returns
      */
     model () {
-        return this.instance.getModel().getValueInRange(this.instance.getSelection());
+        return this.editor.getModel().getValueInRange(this.editor.getSelection());
     }
 
     /**

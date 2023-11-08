@@ -3,10 +3,9 @@ import * as container from 'markdown-it-container';
 let md;
 let containerOpenCount;
 
-const alertBlocks = (instance) => {
+const alertBlocks = (markdown) => {
     containerOpenCount = 0;
-    md = instance;
-
+    md = markdown;
     init();
 };
 
