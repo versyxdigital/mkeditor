@@ -2,7 +2,33 @@
 
 The simple markdown editor.
 
-Download for Windows MacOS, or Linux from the [website](https://mkeditoross.github.io/mkeditor/).
+Use it through your [browser](https://mkeditoross.github.io/mkeditor/edit/), or download for desktop below:
+
+<div style="display:flex;align-items:center;gap: 20px;margin-bottom: 20px">
+<a href="https://github.com/mkeditorOSS/mkeditor/releases/download/v1.7.2/mkeditor-setup-v1.7.2-x86_64.zip" download style="display:flex;align-items:center;gap:12px;background: #519088;background: linear-gradient(-70deg, #519088, #709f87);box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);color: white;text-decoration: none;letter-spacing: 1px;padding: 15px;transition: all .2s ease-in-out;">
+    <i class="fa-brands fa-2xl fa-windows me-2"></i>
+    <div>
+        <p style="margin-bottom: 0px;">Windows</p>
+        <p style="margin-bottom: 0px;">(exe) v1.7.2</p>
+    </div>
+</a>
+
+<a href="https://github.com/mkeditorOSS/mkeditor/releases/download/v1.7.2/mkeditor-setup-v1.7.2-x86_64.pkg" download style="display:flex;align-items:center;gap:12px;background: #519088;background: linear-gradient(-70deg, #519088, #709f87);box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);color: white;text-decoration: none;letter-spacing: 1px;padding: 15px;transition: all .2s ease-in-out;">
+    <i class="fa-brands fa-2xl fa-apple me-2"></i>
+    <div>
+        <p style="margin-bottom: 0px;">MacOS</p>
+        <p style="margin-bottom: 0px;">(pkg) v1.7.2</p>
+    </div>
+</a>
+
+<a href="https://github.com/mkeditorOSS/mkeditor/releases/download/v1.7.1/mkeditor-setup-v1.7.1_amd64.deb" download style="display:flex;align-items:center;gap:12px;background: #519088;background: linear-gradient(-70deg, #519088, #709f87);box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);color: white;text-decoration: none;letter-spacing: 1px;padding: 15px;transition: all .2s ease-in-out;">
+    <i class="fa-brands fa-2xl fa-linux me-2"></i>
+    <div>
+        <p style="margin-bottom: 0px;">Linux</p>
+        <p style="margin-bottom: 0px;">(deb) v1.7.1</p>
+    </div>
+</a>
+</div>
 
 ![MKEditor](./docs/demo.png)
 
