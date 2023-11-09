@@ -50,7 +50,7 @@ export class AppMenu {
           },
           { type: 'separator' },
           {
-            label: 'Settings...',
+            label: 'Editor Settings...',
             click: () => {
               this.context.webContents.send('from:modal:open', 'settings'); // channel / provider
             }
@@ -74,7 +74,7 @@ export class AppMenu {
         label: 'View',
         submenu: [
           {
-            label: 'Command Palette...',
+            label: 'Open Command Palette',
             click: () => {
               this.context.webContents.send('from:command:palette', 'open');
             },
@@ -97,7 +97,13 @@ export class AppMenu {
         label: 'Help',
         submenu: [
           {
-            label: 'Shortcuts...',
+            label: 'About MKEditor',
+            click: () => {
+              this.context.webContents.send('from:modal:open', 'about'); // channel / provider
+            }
+          },
+          {
+            label: 'Editor Shortcuts',
             click: () => {
               this.context.webContents.send('from:modal:open', 'shortcuts'); // channel / provider
             }

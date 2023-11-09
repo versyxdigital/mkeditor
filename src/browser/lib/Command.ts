@@ -22,6 +22,8 @@ export class Command {
 
   private shortcuts: Modal|  null = null;
 
+  private about: Modal | null = null;
+
   private toolbar = dom.commands.toolbar;
 
   constructor (
@@ -36,6 +38,7 @@ export class Command {
 
     this.settings = new Modal(dom.settings.modal);
     this.shortcuts = new Modal(dom.shortcuts.modal);
+    this.about = new Modal(dom.about.modal);
 
     const { dropdowns } = dom.commands;
     this.alerts = new Dropdown(dropdowns.alertblocks);
@@ -69,6 +72,13 @@ export class Command {
       label: 'Open Shortcuts Help',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Backquote],
       run: () => this.shortcuts?.toggle()
+    });
+
+    this.model.addAction({
+      id: 'About',
+      label: 'Open About Information',
+      keybindings: [KeyMod.CtrlCmd | KeyCode.Slash],
+      run: () => this.about?.toggle()
     });
 
     // Map editor commands to actions

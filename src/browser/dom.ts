@@ -1,4 +1,8 @@
 export const dom = {
+  about: {
+    modal: <HTMLDivElement>document.querySelector('#app-about'),
+    version: <HTMLSpanElement>document.querySelector('#app-version')
+  },
   shortcuts: {
     modal: <HTMLDivElement>document.querySelector('#app-shortcuts')
   },

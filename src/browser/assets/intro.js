@@ -1,5 +1,4 @@
-export const welcomeMarkdown = `
-# Welcome to MKEditor
+export const welcomeMarkdown = `# Welcome to MKEditor
 
 Thank you for choosing MKEditor 😊, I hope you find this tool useful for all your markdown needs!
 

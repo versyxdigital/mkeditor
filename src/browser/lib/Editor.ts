@@ -6,6 +6,7 @@ import { ScrollSync } from '../extensions/ScrollSync';
 import { welcomeMarkdown } from '../assets/intro';
 import { Markdown } from './Markdown';
 import { Exporter } from './Exporter';
+import { APP_VERSION } from '../version';
 import { dom } from '../dom';
 
 export class Editor {
@@ -33,6 +34,7 @@ export class Editor {
     this.dispatcher = dispatcher;
     this.editorHTMLElement = dom.editor.dom;
     this.previewHTMLElement = dom.preview.dom;
+    dom.about.version.innerHTML = APP_VERSION;
   }
 
   provide<T>(provider: string, instance: T) {
