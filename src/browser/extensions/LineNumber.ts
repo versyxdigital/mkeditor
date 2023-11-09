@@ -1,5 +1,5 @@
-import MarkdownIt, { Token } from 'markdown-it';
-import Renderer from 'markdown-it/lib/renderer';
+import MarkdownIt from 'markdown-it';
+import { selfRender } from '../util';
 
 const LineNumber = (md: MarkdownIt) => {
   const rules = [
@@ -25,9 +25,5 @@ const LineNumber = (md: MarkdownIt) => {
     };
   }
 };
-
-function selfRender (tokens: Token[], idx: number, options: MarkdownIt.Options, env: any, self: Renderer) {
-  return self.renderToken(tokens, idx, options);
-}
 
 export default LineNumber;
