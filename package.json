@@ -14,7 +14,8 @@
     "build:app": "tsc src/app/*.ts --outDir ./dist/app",
     "build:installer": "electron-builder",
     "serve:web": "http-server dist",
-    "serve:app": "electron ."
+    "serve:app": "electron .",
+    "serve:docs": "http-server docs"
   },
   "devDependencies": {
     "@electron/asar": "^3.2.8",
