@@ -76,7 +76,6 @@ app.on('open-file', (event) => {
 
 app.on('ready', () => {
   let file = null;
-  console.log(process.argv);
   if (process.platform === 'win32' && process.argv.length >= 2) {
     file = process.argv[1];
   }

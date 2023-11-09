@@ -121,7 +121,6 @@ export class Bridge {
     
     // Enable notifications from the main context.
     this.bridge.receive('from:notification:display', (event: { status: string, message: string }) => {
-      console.log(event.message);
       Notify.send(event.status, event.message);
     });
   }

@@ -225,7 +225,6 @@ export class Exporter {
     const blob = new Blob([content], { type });
   
     async function createHandle () {
-      console.log(window);
       return await window.showSaveFilePicker({
         types: [{
           description: 'MKEditor export',
