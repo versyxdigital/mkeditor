@@ -1,0 +1,101 @@
+{
+  "name": "mkeditor-ts",
+  "productName": "MKEditor",
+  "version": "2.0.0",
+  "license": "MIT",
+  "author": "Chris Rowles <christopher.rowles@outlook.com>",
+  "description": "Markdown Editor",
+  "main": "dist/app/main.js",
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "build:editor": "webpack --config webpack.config.js",
+    "build:app": "tsc src/app/*.ts --outDir ./dist/app",
+    "build:installer": "electron-builder",
+    "serve:web": "http-server dist",
+    "serve:app": "electron ."
+  },
+  "devDependencies": {
+    "@electron/asar": "^3.2.8",
+    "@fortawesome/fontawesome-svg-core": "^6.4.2",
+    "@fortawesome/free-brands-svg-icons": "^6.4.2",
+    "@fortawesome/free-regular-svg-icons": "^6.4.2",
+    "@fortawesome/free-solid-svg-icons": "^6.4.2",
+    "@popperjs/core": "^2.11.8",
+    "@types/bootstrap": "^5.2.9",
+    "@types/markdown-it": "^13.0.6",
+    "@types/markdown-it-container": "^2.0.9",
+    "@types/node": "^20.9.0",
+    "@types/wicg-file-system-access": "^2023.10.3",
+    "@typescript-eslint/eslint-plugin": "^6.2",
+    "@typescript-eslint/parser": "^6.2",
+    "bootstrap": "^5.3.2",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.8.1",
+    "electron": "^27.0.3",
+    "electron-builder": "^24.6.4",
+    "eslint": "^8.45.0",
+    "file-loader": "^6.2.0",
+    "highlight.js": "^11.9.0",
+    "html-webpack-plugin": "^5.5.3",
+    "markdown-it": "^13.0.2",
+    "markdown-it-container": "^3.0.0",
+    "monaco-editor": "^0.44.0",
+    "monaco-editor-webpack-plugin": "^7.1.0",
+    "sass": "^1.69.5",
+    "sass-loader": "^13.3.2",
+    "split.js": "^1.6.5",
+    "style-loader": "^3.3.3",
+    "sweetalert2": "^11.9.0",
+    "terser-webpack-plugin": "^5.3.9",
+    "ts-loader": "^9.5.0",
+    "typescript": "^5.2.2",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "build": {
+    "appId": "com.mkeditor.app",
+    "directories": {
+      "output": "releases/${platform}/${arch}"
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "md"
+        ],
+        "name": "Plain Text",
+        "role": "Editor"
+      }
+    ],
+    "linux": {
+      "target": "deb",
+      "icon": "build/resources/icon256x256.png",
+      "category": "Utility"
+    },
+    "mac": {
+      "target": "pkg",
+      "icon": "build/resources/icon512x512.png"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": true,
+      "installerIcon": "build/resources/icon.ico",
+      "license": "build/resources/license.txt"
+    },
+    "msi": {
+      "oneClick": false,
+      "perMachine": true,
+      "runAfterFinish": true
+    },
+    "pkg": {
+      "license": "build/resources/license.txt"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+.swal2-title,
+.swal2-html-container {
+  margin: 0.25rem !important;
+}
+
+.swal2-popup.swal2-toast .swal2-title {
+  margin: 5px 0 0 0 !important;
+  font-size: .75rem !important;
+}
+
+.swal2-popup.swal2-toast .swal2-html-container {
+  margin: 0 !important;
+  font-size: .75rem !important;
+}
+
+div:where(.swal2-container) div:where(.swal2-popup) {
+  border-radius: 0 !important;   
+}
