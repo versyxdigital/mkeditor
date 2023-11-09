@@ -1,13 +1,19 @@
+@use "sass:meta";
 @import "~bootstrap/scss/bootstrap";
-@import "~highlight.js/scss/github";
 
 @import "_base.scss";
 @import "_editor.scss";
 @import "_preview.scss";
 @import "_notify.scss";
-@import "_highlight.scss";
-@import "_copycode.scss";
 @import "_darkmode.scss";
+
+body[data-theme="light"] {
+  @include meta.load-css("highlight.js/styles/github");
+}
+
+body[data-theme="dark"] {
+  @include meta.load-css("highlight.js/styles/github-dark");
+}
 
 .form-check-input:checked {
   background-color: #8694a9;
@@ -44,7 +50,7 @@
 }
 
 .gutter {
-  background-color: #eee;
+  background-color: #eeeeee;
   background-repeat: no-repeat;
   background-position: 50%;
 }

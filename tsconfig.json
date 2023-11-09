@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "types": ["@types/wicg-file-system-access"],
+    "outDir": "./dist",
+    "target": "esnext",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "baseUrl": ".",
+  },
+  "files": [
+    "./@types/index.d.ts"
+  ],
+  "include": [
+    "src"
+  ]
+}
