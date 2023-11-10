@@ -1,4 +1,4 @@
-name: CI
+name: Release
 
 on:
   pull_request:
@@ -18,7 +18,6 @@ jobs:
         uses: anothrNick/github-tag-action@1.61.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEFAULT_BUMP: minor
           WITH_V: true
       - name: Create Release
         id: create_release
