@@ -133,17 +133,13 @@ export class AppStorage {
           if (filePaths.length === 0) {
             throw new Error('noselection');
           }
-        
-          const content = readFileSync(filePaths[0], {
-            encoding: 'utf-8'
-          });
-        
-          const filename = filePaths[0].split('\\').slice(-1).pop();
+
+          const file = AppStorage.setActiveFile(context, filePaths[0]);
         
           return resolve({
             file: filePaths[0],
-            filename,
-            content
+            filename: file.filename,
+            content: file.content
           });
         }).catch((err) => {
           if (err.message !== 'noselection') {
@@ -167,5 +163,10 @@ export class AppStorage {
       filename,
       content
     });
+
+    return {
+      filename,
+      content
+    };
   }
 }

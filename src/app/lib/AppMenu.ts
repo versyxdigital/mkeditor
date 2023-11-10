@@ -28,9 +28,7 @@ export class AppMenu {
           {
             label: 'Open File...',
             click: () => {
-              AppStorage.open(this.context).then(response => {
-                this.context.webContents.send('from:file:open', response);
-              });
+              AppStorage.open(this.context);
             },
             accelerator: 'Ctrl+O'
           },

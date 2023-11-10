@@ -15,7 +15,7 @@
     "build:app": "tsc src/app/*.ts --outDir ./dist/app",
     "build:installer": "electron-builder",
     "serve:web": "http-server dist",
-    "serve:app": "electron .",
+    "serve:app": "electron --inspect=5858 .",
     "serve:docs": "http-server docs"
   },
   "devDependencies": {
