@@ -9,6 +9,7 @@ export interface EditorSettings {
   wordwrap: boolean;
   whitespace: boolean;
   minimap: boolean;
+  systemtheme: boolean;
 }
 
 export interface EditorProviders {

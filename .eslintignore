@@ -5,3 +5,4 @@ dist/
 release/
 docs/
 build/
+webpack.config.js

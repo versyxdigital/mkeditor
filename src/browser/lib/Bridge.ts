@@ -43,15 +43,10 @@ export class Bridge {
   register () {
     // Set the theme according to the user's system theme
     this.bridge.receive('from:theme:set', (shouldUseDarkMode: boolean) => {
-      if (shouldUseDarkMode) {
-        const icon = dom.icons.darkmode;
-        icon.classList.remove('text-dark');
-        icon.classList.add('text-warning');
-        
-        dom.settings.darkmode.checked = true;
-        
-        document.body.setAttribute('data-theme', 'dark');
-        editor.setTheme('vs-dark');
+      if (shouldUseDarkMode) { 
+        this.providers.settings?.setSetting('darkmode', shouldUseDarkMode);
+        this.providers.settings?.setTheme();
+        this.providers.settings?.setUIState();
       }
     });
     

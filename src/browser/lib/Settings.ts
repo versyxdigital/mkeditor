@@ -16,6 +16,8 @@ export class Settings {
 
   public settings: EditorSettings = settings;
 
+  public theme: 'light' | 'dark' = 'light';
+
   constructor (
     mode: 'web' | 'desktop' = 'web',
     model: editor.IStandaloneCodeEditor,
@@ -66,7 +68,8 @@ export class Settings {
       .setAudoIndent()
       .setMinimap()
       .setWhitespace()
-      .setWordWrap();
+      .setWordWrap()
+      .setSystemThemeOverride();
   }
 
   loadSettingsFromLocalStorage () {
@@ -94,6 +97,7 @@ export class Settings {
     this.registerMinimapChangeListener(toggler.minimap);
     this.registerWordWrapChangeListener(toggler.wordwrap);
     this.registerWhitespaceChangeListener(toggler.whitespace);
+    this.registerSystemThemeOverrideChangeListener(toggler.systemtheme);
 
     this.setUIState();
   }
@@ -134,6 +138,8 @@ export class Settings {
       this.settings.darkmode ? 'vs-dark' : 'vs'
     );
 
+    this.theme = this.settings.darkmode ? 'dark' : 'light';
+    
     return this;
   }
 
@@ -194,13 +200,39 @@ export class Settings {
     return this;
   }
 
+  registerSystemThemeOverrideChangeListener (handler: Element) {
+    handler.addEventListener('click', (event) => {
+      const target = <HTMLInputElement>event.target;
+      this.setSetting('systemtheme', target.checked);
+      this.setSystemThemeOverride();
+      this.persist();
+    });
+
+    return this;
+  }
+
+  setSystemThemeOverride () {
+    // handled by the bridge
+    return this;
+  }
+
   setUIState () {
-    const { settings } = dom;
+    const { settings, icons } = dom;
     settings.autoindent.checked = this.settings.autoindent;
-    settings.darkmode.checked = this.settings.darkmode;
     settings.minimap.checked = this.settings.minimap;
     settings.wordwrap.checked = this.settings.wordwrap;
     settings.whitespace.checked = this.settings.whitespace;
+    settings.systemtheme.checked = this.settings.systemtheme;
+
+    settings.darkmode.checked = this.theme === 'dark';
+
+    if (this.theme === 'dark') {
+      icons.darkmode.classList.remove('text-dark');
+      icons.darkmode.classList.add('text-warning');
+    } else {
+      icons.darkmode.classList.remove('text-warning');
+      icons.darkmode.classList.add('text-dark');
+    }
   }
 
   persist () {
