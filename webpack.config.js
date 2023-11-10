@@ -84,9 +84,8 @@ module.exports = {
     }),
     new CopyWebpackPlugin({
       patterns: [
-        { from: './src/shared/assets' },
         {
-          from: './src/shared/assets/img/favicon.ico',
+          from: './src/browser/assets/favicon.ico',
           to: './favicon.ico'
         },
         { from: './src/browser/views'}

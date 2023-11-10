@@ -11,16 +11,14 @@ import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
+import { iconBase64 } from './assets/icon';
 
 let context: BrowserWindow | null;
 
 function main (file: string | null = null) {
-  const ico = join(__dirname, 'assets/icon.ico');
-  const png = join(__dirname, 'assets/icon.png');
-
   context = new BrowserWindow({
     show: false,
-    icon: ico,
+    icon: join(__dirname, 'assets/icon.ico'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -40,7 +38,7 @@ function main (file: string | null = null) {
   const menu = new AppMenu(context);
   menu.register();
 
-  const tray = new Tray(nativeImage.createFromPath(png));
+  const tray = new Tray(nativeImage.createFromDataURL(iconBase64()));
   tray.setContextMenu(menu.buildTrayContextMenu(context));
   tray.setToolTip('Markdown editing made simple');
   tray.setTitle('MKEditor');
