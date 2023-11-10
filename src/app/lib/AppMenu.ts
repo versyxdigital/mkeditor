@@ -50,7 +50,7 @@ export class AppMenu {
           },
           { type: 'separator' },
           {
-            label: 'Editor Settings...',
+            label: 'Settings...',
             click: () => {
               this.context.webContents.send('from:modal:open', 'settings'); // channel / provider
             }
@@ -111,5 +111,36 @@ export class AppMenu {
         ]
       }
     ]);
+  }
+
+  buildTrayContextMenu (context: BrowserWindow) {
+    return Menu.buildFromTemplate([
+      {
+        label: 'Show Window',
+        click: () => {
+          app.focus();
+          context.maximize();
+        }
+      },
+      {
+        label: 'Open Recent',
+        role: 'recentDocuments',
+        submenu: [
+          {
+            label: 'Clear Recent',
+            role: 'clearRecentDocuments'
+          }
+        ]
+      },
+      { type: 'separator' },
+      {
+        label: 'Quit',
+        click: () => app.quit()
+      },
+    ]);
+  }
+
+  setAppContext(context: BrowserWindow) {
+    this.context = context;
   }
 }

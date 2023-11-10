@@ -1,4 +1,11 @@
-import { app, BrowserWindow, nativeTheme, shell } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  nativeImage,
+  nativeTheme,
+  shell,
+  Tray
+} from 'electron';
 import { join } from 'path';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
@@ -8,9 +15,12 @@ import { AppStorage } from './lib/AppStorage';
 let context: BrowserWindow | null;
 
 function main (file: string | null = null) {
+  const ico = join(__dirname, 'assets/icon.ico');
+  const png = join(__dirname, 'assets/icon.png');
+
   context = new BrowserWindow({
     show: false,
-    icon: join(__dirname, 'shared/assets/logo.ico'),
+    icon: ico,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -21,7 +31,6 @@ function main (file: string | null = null) {
   context.webContents.on('will-navigate', event => event.preventDefault());
   context.loadFile(join(__dirname, '../index.html'));
 
-  // const dialog = new Dialog(context);
   const settings = new AppSettings(context);
 
   const bridge = new AppBridge(context);
@@ -30,6 +39,11 @@ function main (file: string | null = null) {
 
   const menu = new AppMenu(context);
   menu.register();
+
+  const tray = new Tray(nativeImage.createFromPath(png));
+  tray.setContextMenu(menu.buildTrayContextMenu(context));
+  tray.setToolTip('Markdown editing made simple');
+  tray.setTitle('MKEditor');
 
   context.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -106,5 +120,6 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.on('window-all-closed', () => {
+  app.clearRecentDocuments();
   app.quit();
 });

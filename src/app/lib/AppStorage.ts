@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import { statSync, readFileSync, writeFileSync,  } from 'fs';
 import { CreateFileOptions, SaveFileOptions } from '../interfaces/Storage';
 
@@ -159,6 +159,8 @@ export class AppStorage {
   static setActiveFile (context: BrowserWindow, file: string | null = null) {
     const filename = file ? file.split('\\').slice(-1).pop() : '';
     const content = file ? readFileSync(file, { encoding: 'utf-8' }) : '';
+    
+    if (file) app.addRecentDocument(file);
 
     context.webContents.send('from:file:open', {
       file,
