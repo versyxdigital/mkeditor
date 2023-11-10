@@ -58,7 +58,7 @@ function main (file: string | null = null) {
 
       context.webContents.send('from:settings:set', settings.loadFile());
 
-      if (file && file !== '.') {
+      if (file && file !== '.' && ! file.startsWith('--')) {
         AppStorage.setActiveFile(context, file);
       }
     }
@@ -79,20 +79,20 @@ function main (file: string | null = null) {
 // MacOS - open with... Also handle files using the same runnning instance
 app.on('open-file', (event) => {
   event.preventDefault();
-  let file = null;
+  let file: string | null = null;
   if (process.platform === 'win32' && process.argv.length >= 2) {
     file = process.argv[1];
   }
 
   if (!context) {
     main(file);
-  } else if (file && file !== '.') {
+  } else if (file && file !== '.' && ! file.startsWith('--')) {
     AppStorage.setActiveFile(context, file);
   }
 });
 
 app.on('ready', () => {
-  let file = null;
+  let file: string | null = null;
   if (process.platform === 'win32' && process.argv.length >= 2) {
     file = process.argv[1];
   }
@@ -110,7 +110,7 @@ if (!app.requestSingleInstanceLock()) {
     app.focus();
     if (args.length >= 2) {
       const file = args[2];
-      if (file && file !== '.' && file.indexOf('MKEditor.lnk') === -1) {
+      if (file && file !== '.' && ! file.startsWith('--') && file.indexOf('MKEditor.lnk') === -1) {
         if (context) AppStorage.setActiveFile(context, file);
       }
     }
