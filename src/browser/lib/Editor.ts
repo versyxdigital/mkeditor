@@ -144,45 +144,51 @@ export class Editor {
     // is executed from within the web context, and uses the IPC handler to fire an
     // event to the main process, which has access to the filesystem.
     // The main process receives the current settings and saves them to file.
-    dom.buttons.save.settings.addEventListener('click', (event) => {
-      event.preventDefault();
-      const { bridge, settings } = this.providers;
-      if (bridge && settings) {
-        bridge.saveSettingsToFile(settings.getSettings());
-      }
-    });
+    if (dom.buttons.save.settings) {
+      dom.buttons.save.settings.addEventListener('click', (event) => {
+        event.preventDefault();
+        const { bridge, settings } = this.providers;
+        if (bridge && settings) {
+          bridge.saveSettingsToFile(settings.getSettings());
+        }
+      });
+    }
 
     // Register the event listener for editor UI save file button; this button is
     // also executed from within the web context, and also uses the IPC handler to
     // fire an event to the main process, which in turn handles the action of opening
     // the save dialog, saving the content to file etc.
-    dom.buttons.save.markdown.addEventListener('click', (event) => {
-      event.preventDefault();
-      if (this.model) {
-        if (this.providers.bridge) {
-          this.providers.bridge.saveContentToFile();
-        } else {
-          Exporter.webExportToFile(this.model.getValue(), 'text/plain', '.md');
+    if (dom.buttons.save.markdown) {
+      dom.buttons.save.markdown.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (this.model) {
+          if (this.providers.bridge) {
+            this.providers.bridge.saveContentToFile();
+          } else {
+            Exporter.webExportToFile(this.model.getValue(), 'text/plain', '.md');
+          }
         }
-      }
-    });
+      });
+    }
 
     // Register the event listener for the editor UI export preview button; this
     // button is also executed from within the web context and functions in pretty
     // much the same way as above.
-    dom.buttons.save.preview.addEventListener('click', (event) => {
-      event.preventDefault();
-      const styled = <HTMLInputElement>dom.buttons.save.styled;
-      const html = Exporter.generateExportHTML(this.previewHTMLElement.innerHTML, {
-        styled: styled.checked,
-        providers: ['bootstrap', 'fontawesome', 'highlightjs']
+    if (dom.buttons.save.preview) {
+      dom.buttons.save.preview.addEventListener('click', (event) => {
+        event.preventDefault();
+        const styled = <HTMLInputElement>dom.buttons.save.styled;
+        const html = Exporter.generateExportHTML(this.previewHTMLElement.innerHTML, {
+          styled: styled.checked,
+          providers: ['bootstrap', 'fontawesome', 'highlightjs']
+        });
+  
+        if (this.providers.bridge) {
+          this.providers.bridge.exportPreviewToFile(html);
+        } else {
+          Exporter.webExportToFile(html, 'text/html', '.html');
+        }
       });
-
-      if (this.providers.bridge) {
-        this.providers.bridge.exportPreviewToFile(html);
-      } else {
-        Exporter.webExportToFile(html, 'text/html', '.html');
-      }
-    });
+    }
   }
 }
