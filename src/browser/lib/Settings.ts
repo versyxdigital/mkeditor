@@ -16,6 +16,8 @@ export class Settings {
 
   public settings: EditorSettings = settings;
 
+  public theme: 'light' | 'dark' = 'light';
+
   constructor (
     mode: 'web' | 'desktop' = 'web',
     model: editor.IStandaloneCodeEditor,
@@ -136,6 +138,8 @@ export class Settings {
       this.settings.darkmode ? 'vs-dark' : 'vs'
     );
 
+    this.theme = this.settings.darkmode ? 'dark' : 'light';
+    
     return this;
   }
 
@@ -213,13 +217,22 @@ export class Settings {
   }
 
   setUIState () {
-    const { settings } = dom;
+    const { settings, icons } = dom;
     settings.autoindent.checked = this.settings.autoindent;
-    settings.darkmode.checked = this.settings.darkmode;
     settings.minimap.checked = this.settings.minimap;
     settings.wordwrap.checked = this.settings.wordwrap;
     settings.whitespace.checked = this.settings.whitespace;
     settings.systemtheme.checked = this.settings.systemtheme;
+
+    settings.darkmode.checked = this.theme === 'dark';
+
+    if (this.theme === 'dark') {
+      icons.darkmode.classList.remove('text-dark');
+      icons.darkmode.classList.add('text-warning');
+    } else {
+      icons.darkmode.classList.remove('text-warning');
+      icons.darkmode.classList.add('text-dark');
+    }
   }
 
   persist () {
