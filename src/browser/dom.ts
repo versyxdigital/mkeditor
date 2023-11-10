@@ -12,7 +12,8 @@ export const dom = {
     darkmode: <HTMLInputElement>document.querySelector('#darkmode-setting'),
     wordwrap: <HTMLInputElement>document.querySelector('#wordwrap-setting'),
     whitespace: <HTMLInputElement>document.querySelector('#whitespace-setting'),
-    minimap: <HTMLInputElement>document.querySelector('#minimap-setting')
+    minimap: <HTMLInputElement>document.querySelector('#minimap-setting'),
+    systemtheme: <HTMLInputElement>document.querySelector('#systemtheme-setting')
   },
   icons: {
     darkmode: <HTMLLabelElement>document.querySelector('#darkmode-icon')
