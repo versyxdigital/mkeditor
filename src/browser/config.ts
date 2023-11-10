@@ -7,5 +7,6 @@ export const settings: EditorSettings = {
   darkmode: false,
   wordwrap: true,
   whitespace: false,
-  minimap: true
+  minimap: true,
+  systemtheme: true,
 };

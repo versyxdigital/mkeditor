@@ -66,7 +66,8 @@ export class Settings {
       .setAudoIndent()
       .setMinimap()
       .setWhitespace()
-      .setWordWrap();
+      .setWordWrap()
+      .setSystemThemeOverride();
   }
 
   loadSettingsFromLocalStorage () {
@@ -94,6 +95,7 @@ export class Settings {
     this.registerMinimapChangeListener(toggler.minimap);
     this.registerWordWrapChangeListener(toggler.wordwrap);
     this.registerWhitespaceChangeListener(toggler.whitespace);
+    this.registerSystemThemeOverrideChangeListener(toggler.systemtheme);
 
     this.setUIState();
   }
@@ -194,6 +196,23 @@ export class Settings {
     return this;
   }
 
+  registerSystemThemeOverrideChangeListener (handler: Element) {
+    handler.addEventListener('click', (event) => {
+      const target = <HTMLInputElement>event.target;
+      this.setSetting('whitespace', target.checked);
+      this.setWhitespace();
+      this.persist();
+    });
+
+    return this;
+  }
+
+  setSystemThemeOverride () {
+    // Set property to override setTheme()
+
+    return this;
+  }
+
   setUIState () {
     const { settings } = dom;
     settings.autoindent.checked = this.settings.autoindent;
@@ -201,6 +220,7 @@ export class Settings {
     settings.minimap.checked = this.settings.minimap;
     settings.wordwrap.checked = this.settings.wordwrap;
     settings.whitespace.checked = this.settings.whitespace;
+    settings.systemtheme.checked = this.settings.systemtheme;
   }
 
   persist () {
