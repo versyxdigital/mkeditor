@@ -18,8 +18,11 @@ export class AppSettings {
     darkmode: false,
     wordwrap: true,
     whitespace: false,
-    minimap: true
+    minimap: true,
+    systemtheme: true,
   };
+
+  public applied: EditorSettings | null = null;
 
   constructor (context: BrowserWindow) {
     this.context = context;
@@ -27,6 +30,8 @@ export class AppSettings {
     this.filePath = this.appPath + 'settings.json';
 
     this.createFileIfNotExists(this.settings);
+
+    this.applied = (this.loadFile() as EditorSettings);
   }
 
   loadFile () {

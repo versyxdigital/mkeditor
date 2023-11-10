@@ -38,10 +38,12 @@ function main (file: string | null = null) {
 
   context.webContents.on('did-finish-load', () => {
     if (context) {
-      // TODO: this overrides the user's settings file, add an option to allow the user
-      //       to choose between using system theme override or their own preferred
-      //       setting.
-      context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors);
+      if (settings.applied && settings.applied.systemtheme) {
+        context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors);
+      } else {
+        context.webContents.send('from:theme:set', settings.applied?.darkmode);
+      }
+
       context.webContents.send('from:settings:set', settings.loadFile());
 
       if (file && file !== '.') {

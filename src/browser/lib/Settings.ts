@@ -199,8 +199,8 @@ export class Settings {
   registerSystemThemeOverrideChangeListener (handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
-      this.setSetting('whitespace', target.checked);
-      this.setWhitespace();
+      this.setSetting('systemtheme', target.checked);
+      this.setSystemThemeOverride();
       this.persist();
     });
 
@@ -208,8 +208,7 @@ export class Settings {
   }
 
   setSystemThemeOverride () {
-    // Set property to override setTheme()
-
+    // handled by the bridge
     return this;
   }
 
