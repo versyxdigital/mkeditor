@@ -218,6 +218,10 @@ export class Settings {
 
   setUIState () {
     const { settings, icons } = dom;
+    if (this.mode === 'web') {
+      settings.fileinfo.style.display = 'none';
+    }
+
     settings.autoindent.checked = this.settings.autoindent;
     settings.minimap.checked = this.settings.minimap;
     settings.wordwrap.checked = this.settings.wordwrap;

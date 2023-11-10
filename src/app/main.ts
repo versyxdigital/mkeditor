@@ -40,7 +40,7 @@ function main (file: string | null = null) {
 
   const tray = new Tray(nativeImage.createFromDataURL(iconBase64()));
   tray.setContextMenu(menu.buildTrayContextMenu(context));
-  tray.setToolTip('Markdown editing made simple');
+  tray.setToolTip('MKEditor');
   tray.setTitle('MKEditor');
 
   context.webContents.setWindowOpenHandler(({ url }) => {

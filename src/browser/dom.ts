@@ -13,7 +13,8 @@ export const dom = {
     wordwrap: <HTMLInputElement>document.querySelector('#wordwrap-setting'),
     whitespace: <HTMLInputElement>document.querySelector('#whitespace-setting'),
     minimap: <HTMLInputElement>document.querySelector('#minimap-setting'),
-    systemtheme: <HTMLInputElement>document.querySelector('#systemtheme-setting')
+    systemtheme: <HTMLInputElement>document.querySelector('#systemtheme-setting'),
+    fileinfo: <HTMLParagraphElement>document.querySelector('#app-settings-file-info')
   },
   icons: {
     darkmode: <HTMLLabelElement>document.querySelector('#darkmode-icon')
