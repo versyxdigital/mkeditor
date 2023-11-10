@@ -1,6 +1,6 @@
-import MarkdownIt, { Token } from 'markdown-it';
+import MarkdownIt from 'markdown-it';
 import MarkdownItContainer from 'markdown-it-container';
-import Renderer from 'markdown-it/lib/renderer';
+import { selfRender } from '../util';
 
 let handler: MarkdownIt;
 let containerOpenCount: number;
@@ -24,13 +24,13 @@ function setup () {
   ];
 
   for (const alert of alerts) {
-    setupContainer(alert);
+    container(alert);
   }
 
-  setupLinks();
+  links();
 }
 
-function setupContainer (name: string) {
+function container (name: string) {
   handler.use(MarkdownItContainer, name, {
     render: function (tokens: any, i: number) {
       if (tokens[i].nesting === 1) {
@@ -44,7 +44,7 @@ function setupContainer (name: string) {
   });
 }
 
-function setupLinks () {
+function links () {
   const render = handler.renderer.rules.link_open || selfRender;
 
   handler.renderer.rules.link_open = (tokens, idx, options, env, self) => {
@@ -54,10 +54,6 @@ function setupLinks () {
 
     return render(tokens, idx, options, env, self);
   };
-}
-
-function selfRender (tokens: Token[], idx: number, options: MarkdownIt.Options, env: any, self: Renderer) {
-  return self.renderToken(tokens, idx, options);
 }
 
 export default AlertBlock;

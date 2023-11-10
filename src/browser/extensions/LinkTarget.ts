@@ -1,5 +1,5 @@
-import MarkdownIt, { Token } from 'markdown-it';
-import Renderer from 'markdown-it/lib/renderer';
+import MarkdownIt from 'markdown-it';
+import { selfRender } from '../util';
 
 const LinkTarget = (md: MarkdownIt) => {
   const render = md.renderer.rules.link_open || selfRender;
@@ -21,9 +21,5 @@ const LinkTarget = (md: MarkdownIt) => {
     return render(tokens, idx, options, env, self);
   };
 };
-
-function selfRender (tokens: Token[], idx: number, options: MarkdownIt.Options, env: any, self: Renderer) {
-  return self.renderToken(tokens, idx, options);
-}
 
 export default LinkTarget;

@@ -1,4 +1,6 @@
+import MarkdownIt, { Token } from 'markdown-it';
 import { ContextBridgeAPI } from './interfaces/Bridge';
+import Renderer from 'markdown-it/lib/renderer';
 
 export function randomNumber (min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1) + min);
@@ -39,4 +41,14 @@ export function getExecutionBridge () {
   }
 
   return 'web';
+}
+
+export function selfRender (
+  tokens: Token[],
+  idx: number,
+  options: MarkdownIt.Options,
+  env: any,
+  self: Renderer
+) {
+  return self.renderToken(tokens, idx, options);
 }
