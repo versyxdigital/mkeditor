@@ -1,3 +1,5 @@
+import { Tooltip } from 'bootstrap';
+
 export const dom = {
   about: {
     modal: <HTMLDivElement>document.querySelector('#app-about'),
@@ -46,3 +48,11 @@ export const dom = {
     }
   }
 };
+
+export function setupTooltips () {
+  [].slice.call(
+    document.querySelectorAll('[data-bs-toggle="tooltip"]')
+  ).map((tooltip) => {
+    return new Tooltip(tooltip);
+  });
+}
