@@ -212,12 +212,22 @@ export class Settings {
   }
 
   setSystemThemeOverride () {
-    // handled by the bridge
+    dom.settings.darkmode.checked = this.theme === 'dark';
+
     return this;
   }
 
   setUIState () {
     const { settings, icons } = dom;
+    
+    if (this.mode === 'web') {
+      settings.fileinfo.style.display = 'none';
+      const systemThemeToggle = settings.systemtheme.parentElement;
+      if (systemThemeToggle) {
+        systemThemeToggle.style.display = 'none';
+      }
+    }
+
     settings.autoindent.checked = this.settings.autoindent;
     settings.minimap.checked = this.settings.minimap;
     settings.wordwrap.checked = this.settings.wordwrap;
@@ -225,6 +235,7 @@ export class Settings {
     settings.systemtheme.checked = this.settings.systemtheme;
 
     settings.darkmode.checked = this.theme === 'dark';
+    settings.darkmode.disabled = this.settings.systemtheme;
 
     if (this.theme === 'dark') {
       icons.darkmode.classList.remove('text-dark');

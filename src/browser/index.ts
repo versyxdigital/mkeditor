@@ -5,6 +5,7 @@ import { EditorDispatcher } from './events/EditorDispatcher';
 import { Command } from './lib/Command';
 import { Settings } from './lib/Settings';
 import { Bridge } from './lib/Bridge';
+import { setupTooltips } from './dom';
 import { getExecutionBridge } from './util';
 
 // The bi-directional synchronous bridge to the main execution context.
@@ -29,7 +30,7 @@ if (model) {
   // commands and actions (e.g. bold, alertblock etc.)
   mkeditor.provide('command', new Command(mode, model, dispatcher, true));
 
-  // Register a new settings handler for the model to provide editor settings
+  // Register a new settings handler for the model to provide editor settings.
   mkeditor.provide('settings', new Settings(mode, model, dispatcher, true));
 
   // If running within electron app, register IPC handler for communication between
@@ -38,11 +39,14 @@ if (model) {
     // Create a new bridge communication handler.
     const bridge = new Bridge(api, model, dispatcher, true);
     
-    // Attach providers
+    // Attach providers.
     bridge.provide('settings', mkeditor.providers.settings);
     bridge.provide('command', mkeditor.providers.command);
     mkeditor.provide('bridge', bridge);
   }
+
+  // Setup application tooltips.
+  setupTooltips();
   
   // Implement draggable splitter.
   Split(['#editor-split', '#preview-split'], {

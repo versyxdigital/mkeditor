@@ -12,6 +12,7 @@ const senderWhitelist = [
   'to:settings:save',
   'to:html:export',
   'to:file:new',
+  'to:file:open',
   'to:file:save',
   'to:file:saveas'
 ];
@@ -21,6 +22,7 @@ const receiverWhitelist = [
   'from:settings:set',
   'from:file:new',
   'from:file:open',
+  'from:file:opened',
   'from:file:save',
   'from:file:saveas',
   'from:modal:open',

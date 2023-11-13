@@ -1,3 +1,5 @@
+import { Tooltip } from 'bootstrap';
+
 export const dom = {
   about: {
     modal: <HTMLDivElement>document.querySelector('#app-about'),
@@ -13,7 +15,8 @@ export const dom = {
     wordwrap: <HTMLInputElement>document.querySelector('#wordwrap-setting'),
     whitespace: <HTMLInputElement>document.querySelector('#whitespace-setting'),
     minimap: <HTMLInputElement>document.querySelector('#minimap-setting'),
-    systemtheme: <HTMLInputElement>document.querySelector('#systemtheme-setting')
+    systemtheme: <HTMLInputElement>document.querySelector('#systemtheme-setting'),
+    fileinfo: <HTMLParagraphElement>document.querySelector('#app-settings-file-info')
   },
   icons: {
     darkmode: <HTMLLabelElement>document.querySelector('#darkmode-icon')
@@ -45,3 +48,11 @@ export const dom = {
     }
   }
 };
+
+export function setupTooltips () {
+  [].slice.call(
+    document.querySelectorAll('[data-bs-toggle="tooltip"]')
+  ).map((tooltip) => {
+    return new Tooltip(tooltip);
+  });
+}

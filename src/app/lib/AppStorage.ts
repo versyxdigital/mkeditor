@@ -1,12 +1,11 @@
-import { BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import { statSync, readFileSync, writeFileSync,  } from 'fs';
 import { CreateFileOptions, SaveFileOptions } from '../interfaces/Storage';
 
 export class AppStorage {
 
   static async create (context: BrowserWindow, { data, filePath, encoding = 'utf-8' }: CreateFileOptions) {
-    const check = await AppStorage.saveChangesToExisting(context);
-    if (check) {
+    if (await AppStorage.promptUserActionConfirmed(context)) {
       await AppStorage.save(context, {
         id: 'new',
         data,
@@ -19,7 +18,11 @@ export class AppStorage {
     AppStorage.setActiveFile(context, null);
   }
 
-  static async saveChangesToExisting (context: BrowserWindow) {
+  static async promptUserActionConfirmed (context: BrowserWindow, shouldShowPrompt = true) {
+    if (! shouldShowPrompt) {
+      return true;
+    }
+
     const check = await dialog.showMessageBox(context, {
       type: 'question',
       buttons: ['Yes', 'No'],
@@ -133,17 +136,13 @@ export class AppStorage {
           if (filePaths.length === 0) {
             throw new Error('noselection');
           }
-        
-          const content = readFileSync(filePaths[0], {
-            encoding: 'utf-8'
-          });
-        
-          const filename = filePaths[0].split('\\').slice(-1).pop();
+
+          const file = AppStorage.setActiveFile(context, filePaths[0]);
         
           return resolve({
             file: filePaths[0],
-            filename,
-            content
+            filename: file.filename,
+            content: file.content
           });
         }).catch((err) => {
           if (err.message !== 'noselection') {
@@ -160,10 +159,17 @@ export class AppStorage {
     const filename = file ? file.split('\\').slice(-1).pop() : '';
     const content = file ? readFileSync(file, { encoding: 'utf-8' }) : '';
 
-    context.webContents.send('from:file:open', {
+    if (file) app.addRecentDocument(file);
+
+    context.webContents.send('from:file:opened', {
       file,
       filename,
       content
     });
+
+    return {
+      filename,
+      content
+    };
   }
 }

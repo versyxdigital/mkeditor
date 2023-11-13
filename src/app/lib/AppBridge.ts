@@ -1,5 +1,6 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
-import { BridgeProviders, BridgedEditorContent } from '../interfaces/Bridge';
+import { BridgedEditorContent } from '../interfaces/Bridge';
+import { SettingsProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
 
 export class AppBridge {
@@ -13,7 +14,7 @@ export class AppBridge {
     current: null
   };
 
-  private providers: BridgeProviders = {
+  private providers: SettingsProviders = {
     settings: null
   };
 
@@ -70,16 +71,25 @@ export class AppBridge {
         this.resetContextBridgedContent();
       });
     });
+
+    ipcMain.on('to:file:open', () => {
+      AppStorage.open(this.context);
+    });
     
-    ipcMain.on('to:file:save', (event, { content, file }) => {
-      AppStorage.save(this.context, {
-        id: event.sender.id,
-        data: content,
-        filePath: file,
-        encoding: 'utf-8'
-      }).then(() => {
-        this.resetContextBridgedContent();
-      });
+    ipcMain.on('to:file:save', async (event, { content, file, prompt = false, fromOpen = false }) => {
+      if (await AppStorage.promptUserActionConfirmed(this.context, prompt)) {
+        AppStorage.save(this.context, {
+          id: event.sender.id,
+          data: content,
+          filePath: file,
+          encoding: 'utf-8'
+        }).then(() => {
+          if (fromOpen) AppStorage.open(this.context);
+          this.resetContextBridgedContent();
+        });
+      } else {
+        if (fromOpen) AppStorage.open(this.context);
+      }
     });
     
     ipcMain.on('to:file:saveas', (event, data) => {
