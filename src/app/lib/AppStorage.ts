@@ -21,7 +21,7 @@ export class AppStorage {
 
   static async saveChangesToExisting (context: BrowserWindow, shouldShowPrompt = true) {
     if (! shouldShowPrompt) {
-      return;
+      return true;
     }
 
     const check = await dialog.showMessageBox(context, {
