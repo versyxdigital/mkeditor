@@ -16,13 +16,20 @@ export class Bridge {
   private dispatcher: EditorDispatcher;
 
   private activeFile: string | null = null;
+
+  private contentHasChanged: boolean = false;
   
   private providers: BridgeProviders = {
     settings: null,
     command: null
   };
 
-  constructor (bridge: ContextBridgeAPI, model: editor.IStandaloneCodeEditor, dispatcher: EditorDispatcher, register = false) {
+  constructor (
+    bridge: ContextBridgeAPI,
+    model: editor.IStandaloneCodeEditor,
+    dispatcher: EditorDispatcher,
+    register = false
+  ) {
     this.bridge = bridge;
     this.model = model;
     this.dispatcher = dispatcher;
@@ -81,8 +88,22 @@ export class Bridge {
     });
     
     // Enable opening files from outside of the renderer execution context.
-    // Provides access to browser window data and emits it to the ipc channel.
-    this.bridge.receive('from:file:open', ({ content, filename, file }: ContextBridgedFile) => {
+    // If there are changes to the current file, user will be prompted and
+    // the open event will be handled through this bridge channel's handler.
+    this.bridge.receive('from:file:open', (channel: string) => {
+      if (this.contentHasChanged) {
+        this.bridge.send('to:file:save', {
+          content: this.model.getValue(),
+          file: this.activeFile,
+          prompt: true,
+          fromOpen: true
+        });
+      } else {
+        this.bridge.send(channel, true);
+      }
+    });
+
+    this.bridge.receive('from:file:opened', ({ content, filename, file }: ContextBridgedFile) => {
       this.model.focus();
       this.model.setValue(content);
       this.activeFile = file;
@@ -141,6 +162,7 @@ export class Bridge {
   
   trackEditorStateBetweenExecutionContext (original: string, current: string) {
     this.bridge.send('to:editor:state', { original, current });
+    this.contentHasChanged = original !== current;
   }
   
   loadSettingsFromStorageChannel (settings: EditorSettings) {

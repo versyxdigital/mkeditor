@@ -1,9 +1,13 @@
 import { app, BrowserWindow, Menu } from 'electron';
-import { AppStorage } from './AppStorage';
+import { BridgeProviders } from '../interfaces/Providers';
 
 export class AppMenu {
   
   private context: BrowserWindow;
+
+  private providers: BridgeProviders = {
+    bridge: null
+  };
   
   constructor (context: BrowserWindow, register = false) {
     this.context = context;
@@ -11,6 +15,10 @@ export class AppMenu {
     if (register) {
       this.register();
     }
+  }
+
+  provide<T>(provider: string, instance: T) {
+    this.providers[provider] = instance;
   }
   
   register () {
@@ -28,9 +36,7 @@ export class AppMenu {
           {
             label: 'Open File...',
             click: () => {
-              AppStorage.open(this.context).then(response => {
-                this.context.webContents.send('from:file:open', response);
-              });
+              this.context.webContents.send('from:file:open', 'to:file:open');
             },
             accelerator: 'Ctrl+O'
           },
@@ -50,7 +56,7 @@ export class AppMenu {
           },
           { type: 'separator' },
           {
-            label: 'Editor Settings...',
+            label: 'Settings...',
             click: () => {
               this.context.webContents.send('from:modal:open', 'settings'); // channel / provider
             }
@@ -111,5 +117,36 @@ export class AppMenu {
         ]
       }
     ]);
+  }
+
+  buildTrayContextMenu (context: BrowserWindow) {
+    return Menu.buildFromTemplate([
+      {
+        label: 'Show Window',
+        click: () => {
+          app.focus();
+          context.maximize();
+        }
+      },
+      {
+        label: 'Open Recent',
+        role: 'recentDocuments',
+        submenu: [
+          {
+            label: 'Clear Recent',
+            role: 'clearRecentDocuments'
+          }
+        ]
+      },
+      { type: 'separator' },
+      {
+        label: 'Quit',
+        click: () => app.quit()
+      },
+    ]);
+  }
+
+  setAppContext(context: BrowserWindow) {
+    this.context = context;
   }
 }

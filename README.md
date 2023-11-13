@@ -10,7 +10,7 @@ Use it through your [browser](https://mkeditoross.github.io/mkeditor/edit/), or 
 | Linux       | v1.7.1  | [deb](https://github.com/mkeditorOSS/mkeditor/releases/download/v1.7.1/mkeditor-setup-v1.7.1_amd64.deb)  |
 
 ![MKEditor](./docs/demo.png)
-
+   
 # Welcome
 
 Thank you for choosing MKEditor 😊, I hope you find this tool useful for all your markdown needs!
