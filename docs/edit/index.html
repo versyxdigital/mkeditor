@@ -11,7 +11,7 @@
 <nav class="navbar navbar-expand navbar-light bg-light">
     <ul class="navbar-nav mr-auto">
         <li class="nav-item">
-            <span id="active-file" class="text-muted ms-3"></span>
+            <span id="active-file" class="text-muted ms-3">MKEditor</span>
         </li>
     </ul>
     <ul class="navbar-nav ms-auto">
@@ -20,12 +20,15 @@
             <span class="mx-1 font-weight-lighter">|</span>
             <small>Word Count: <span id="word-count">0</span></small>
         </li>
-        <li class="nav-item">
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="top"
+            title="Modify your editor settings here."
+        >
             <a class="text-muted hover-fade ms-3" href="#" data-bs-toggle="modal" data-bs-target="#app-settings">
                 <i class="fas fa-cog hover-fade"></i>
             </a>
         </li>
-        <li class="nav-item">
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="top"
+        title="View all available editor shortcuts here.">
             <a class="text-muted hover-fade mx-3" href="#" data-bs-toggle="modal" data-bs-target="#app-shortcuts">
                 <i class="fa fa-question-circle hover-fade"></i>
             </a>
@@ -52,28 +55,35 @@
         <nav class="navbar navbar-light bg-light fixed-bottom border-top p-2">
             <div class="d-flex justify-content-start align-items-center" id="editor-functions">
                 <div class="btn-group btn-group-sm me-2">
-                    <button class="btn btn-outline-secondary shortcut" data-cmd="bold" data-syntax="**">
+                    <button class="btn btn-outline-secondary shortcut" data-cmd="bold" data-syntax="**"
+                        data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + B"
+                    >
                         <i class="fa fa-bold"></i>
                     </button>
-                    <button class="btn btn-outline-secondary shortcut" data-cmd="italic" data-syntax="_">
+                    <button class="btn btn-outline-secondary shortcut" data-cmd="italic" data-syntax="_"
+                        data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + I"
+                    >
                         <i class="fa fa-italic"></i>
                     </button>
-                    <button class="btn btn-outline-secondary shortcut" data-cmd="strikethrough" data-syntax="~~">
+                    <button class="btn btn-outline-secondary shortcut" data-cmd="strikethrough" data-syntax="~~"
+                        data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + G"
+                    >
                         <i class="fa fa-strikethrough"></i>
                     </button>
                 </div>
                 <div class="btn-group btn-group-sm me-2">
-                    <button class="btn btn-outline-secondary shortcut" data-cmd="unorderedList">
+                    <button class="btn btn-outline-secondary shortcut" data-cmd="unorderedList"
+                        data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + 1"
+                    >
                         <i class="fa fa-list-ul"></i>
                     </button>
-                    <button class="btn btn-outline-secondary shortcut" data-cmd="orderedList">
+                    <button class="btn btn-outline-secondary shortcut" data-cmd="orderedList"
+                        data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + 2"
+                    >
                         <i class="fa fa-list-ol"></i>
                     </button>
-                    <button class="btn btn-outline-secondary shortcut" data-cmd="orderedListToTaskList">
-                        <i class="fa fa-tasks"></i>
-                    </button>
                 </div>
-                <div class="btn-group btn-group-sm dropup me-2">
+                <div class="btn-group btn-group-sm dropup me-2" data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + K">
                     <button class="btn btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeblock-menu-button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-code"></i>
                     </button>
@@ -89,7 +99,7 @@
                         <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="xml"><i class="fas fa-code"></i> <u>X</u>ML</button>
                     </div>
                 </div>
-                <div class="dropup me-2">
+                <div class="dropup me-2" data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + L">
                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="alert-menu-button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-exclamation-circle"></i>
                     </button>
@@ -130,7 +140,9 @@
             </div>
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <div class="form-check form-switch me-2">
+                    <div class="form-check form-switch me-2" data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="This toggle is disabled if you are using your system theme."
+                    >
                         <input type="checkbox" class="form-check-input" id="darkmode-setting">
                         <label class="form-check-label ms-1" for="darkmode-setting" id="darkmode-icon">
                             <i class="fas fa-moon"></i>
