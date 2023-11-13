@@ -77,8 +77,7 @@ export class AppBridge {
     });
     
     ipcMain.on('to:file:save', async (event, { content, file, prompt = false, fromOpen = false }) => {
-      const confirmed = await AppStorage.saveChangesToExisting(this.context, prompt);
-      if (confirmed) {
+      if (await AppStorage.promptUserActionConfirmed(this.context, prompt)) {
         AppStorage.save(this.context, {
           id: event.sender.id,
           data: content,

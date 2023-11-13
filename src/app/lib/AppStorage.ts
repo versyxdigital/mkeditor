@@ -5,8 +5,7 @@ import { CreateFileOptions, SaveFileOptions } from '../interfaces/Storage';
 export class AppStorage {
 
   static async create (context: BrowserWindow, { data, filePath, encoding = 'utf-8' }: CreateFileOptions) {
-    const check = await AppStorage.saveChangesToExisting(context);
-    if (check) {
+    if (await AppStorage.promptUserActionConfirmed(context)) {
       await AppStorage.save(context, {
         id: 'new',
         data,
@@ -19,7 +18,7 @@ export class AppStorage {
     AppStorage.setActiveFile(context, null);
   }
 
-  static async saveChangesToExisting (context: BrowserWindow, shouldShowPrompt = true) {
+  static async promptUserActionConfirmed (context: BrowserWindow, shouldShowPrompt = true) {
     if (! shouldShowPrompt) {
       return true;
     }
