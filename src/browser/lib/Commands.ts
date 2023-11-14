@@ -3,9 +3,7 @@ import { Modal, Dropdown } from 'bootstrap';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { commands, alertblocks, codeblocks } from '../mappings/commands';
 import { dom } from '../dom';
-import { ModalProviders, ValidModal } from '../interfaces/Providers';
-
-type ValidCommand = keyof Commands;
+import { ModalProviders, ValidModal, ValidCommand, DropdownProviders } from '../interfaces/Providers';
 
 export class Commands {
 
@@ -15,7 +13,7 @@ export class Commands {
 
   public dispatcher: EditorDispatcher;
 
-  private dropdowns: Record<string, Dropdown | null>;
+  private dropdowns: DropdownProviders;
 
   private modals: ModalProviders;
 
@@ -37,7 +35,7 @@ export class Commands {
     };
 
     this.dropdowns = {
-      alerts: new Dropdown(dom.commands.dropdowns.alertblocks),
+      alertblocks: new Dropdown(dom.commands.dropdowns.alertblocks),
       codeblocks: new Dropdown(dom.commands.dropdowns.codeblocks)
     };
 
@@ -50,8 +48,8 @@ export class Commands {
 
   register () {
     this.model.onKeyDown((e) => {
-      if (e.ctrlKey && e.keyCode === 42 /* L */) this.dropdowns.alerts?.toggle();
-      if (e.ctrlKey && e.keyCode === 41 /* K */) this.dropdowns.codeblocks?.toggle();
+      if (e.ctrlKey && e.keyCode === 42 /* L */) this.dropdowns.alertblocks.toggle();
+      if (e.ctrlKey && e.keyCode === 41 /* K */) this.dropdowns.codeblocks.toggle();
       this.model.focus();
     });
 
@@ -134,7 +132,7 @@ export class Commands {
         )],
         run: () => {
           this.alert(block.type.toLowerCase());
-          this.dropdowns.alerts?.hide();
+          this.dropdowns.alertblocks.hide();
         }
       });
     }
@@ -150,7 +148,7 @@ export class Commands {
         )],
         run: () => {
           this.codeblock(block.type.toLowerCase());
-          this.dropdowns.codeblocks?.hide();
+          this.dropdowns.codeblocks.hide();
         }
       });
     }
@@ -190,9 +188,9 @@ export class Commands {
   }
 
   alert (params: HTMLElement | string, content?: string) {
-    const type = params instanceof HTMLElement ? params.dataset.type : params;
+    const alert = params instanceof HTMLElement ? params.dataset.type : params;
     content = content || this.getModel();
-    this.execute('::: ' + type + '\n' + content + '\n:::');
+    this.execute('::: ' + alert + '\n' + content + '\n:::');
   }
 
   codeblock (params: HTMLElement | string, content?: string) {
