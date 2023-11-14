@@ -9,7 +9,7 @@ Use it through your [browser](https://mkeditoross.github.io/mkeditor/edit/), or 
 | MacOS       | v2.3.0  | [pkg](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.3.0/mkeditor-setup-v2.3.0-x86_64.pkg) |
 | Linux       | v1.7.1  | [deb](https://github.com/mkeditorOSS/mkeditor/releases/download/v1.7.1/mkeditor-setup-v1.7.1_amd64.deb)  |
 
-![MKEditor](./docs/demo.png)
+![MKEditor](https://mkeditoross.github.io/demo.png)
 
 # Welcome
 
