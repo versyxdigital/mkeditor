@@ -1,9 +1,10 @@
 import { editor, KeyCode, KeyMod } from 'monaco-editor/esm/vs/editor/editor.api';
 import { Modal, Dropdown } from 'bootstrap';
+import { ModalProviders, ValidModal, ValidCommand, DropdownProviders } from '../interfaces/Providers';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { commands, alertblocks, codeblocks } from '../mappings/commands';
+import { getOSPlatform } from '../util';
 import { dom } from '../dom';
-import { ModalProviders, ValidModal, ValidCommand, DropdownProviders } from '../interfaces/Providers';
 
 export class Commands {
 
@@ -48,8 +49,9 @@ export class Commands {
 
   register () {
     this.model.onKeyDown((e) => {
-      if (e.ctrlKey && e.keyCode === 42 /* L */) this.dropdowns.alertblocks.toggle();
-      if (e.ctrlKey && e.keyCode === 41 /* K */) this.dropdowns.codeblocks.toggle();
+      const holdKey = getOSPlatform() !== 'MacOS' ? e.ctrlKey : e.metaKey;
+      if (holdKey && e.keyCode === 42 /* L */) this.dropdowns.alertblocks.toggle();
+      if (holdKey && e.keyCode === 41 /* K */) this.dropdowns.codeblocks.toggle();
       this.model.focus();
     });
 

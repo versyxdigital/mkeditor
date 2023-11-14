@@ -55,7 +55,7 @@ export async function setupTooltips () {
     document.querySelectorAll('[data-bs-toggle="tooltip"]')
   ).map((tooltip: HTMLElement) => {
     if (tooltip.dataset.key) {
-      if (getOSPlatform() === 'Windows') {
+      if (getOSPlatform() !== 'MacOS') {
         tooltip.title = 'Ctrl + ' + tooltip.dataset.key;
       } else { 
         tooltip.title = '⌘ + ' + tooltip.dataset.key;

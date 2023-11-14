@@ -4,8 +4,8 @@ import { ContextBridgeAPI, ContextBridgedFile } from '../interfaces/Bridge';
 import { BridgeProviders, ValidModal } from '../interfaces/Providers';
 import { EditorSettings } from '../interfaces/Editor';
 import { EditorDispatcher } from '../events/EditorDispatcher';
-import { dom } from '../dom';
 import { Notify } from './Notify';
+import { dom } from '../dom';
 
 export class Bridge {
 
