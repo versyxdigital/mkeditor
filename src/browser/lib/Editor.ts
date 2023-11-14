@@ -1,5 +1,5 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { EditorProviders } from '../interfaces/Editor';
+import { EditorProviders } from '../interfaces/Providers';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { CharacterCount, WordCount } from '../extensions/WordCount';
 import { ScrollSync } from '../extensions/ScrollSync';

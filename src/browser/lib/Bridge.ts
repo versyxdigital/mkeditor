@@ -1,6 +1,7 @@
 // import notify from '../utilities/notify';
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { BridgeProviders, ContextBridgeAPI, ContextBridgedFile } from '../interfaces/Bridge';
+import { ContextBridgeAPI, ContextBridgedFile } from '../interfaces/Bridge';
+import { BridgeProviders } from '../interfaces/Providers';
 import { EditorSettings } from '../interfaces/Editor';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { Modal } from 'bootstrap';
