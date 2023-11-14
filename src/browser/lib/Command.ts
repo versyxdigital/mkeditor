@@ -14,15 +14,9 @@ export class Command {
 
   public dispatcher: EditorDispatcher;
 
-  private alerts: Dropdown | null = null;
+  private dropdowns: Record<string, Dropdown | null>;
 
-  private codeblocks: Dropdown | null = null;
-
-  private settings: Modal | null = null;
-
-  private shortcuts: Modal|  null = null;
-
-  private about: Modal | null = null;
+  private modals: Record<string, Modal | null>;
 
   private toolbar = dom.commands.toolbar;
 
@@ -35,13 +29,16 @@ export class Command {
     this.model = model;
     this.dispatcher = dispatcher;
 
-    this.settings = new Modal(dom.settings.modal);
-    this.shortcuts = new Modal(dom.shortcuts.modal);
-    this.about = new Modal(dom.about.modal);
+    this.modals = {
+      about: new Modal(dom.about.modal),
+      settings: new Modal(dom.settings.modal),
+      shortcuts: new Modal(dom.shortcuts.modal),
+    };
 
-    const { dropdowns } = dom.commands;
-    this.alerts = new Dropdown(dropdowns.alertblocks);
-    this.codeblocks = new Dropdown(dropdowns.codeblocks);
+    this.dropdowns = {
+      alerts: new Dropdown(dom.commands.dropdowns.alertblocks),
+      codeblocks: new Dropdown(dom.commands.dropdowns.codeblocks)
+    };
 
     this.register();
   }
@@ -52,8 +49,8 @@ export class Command {
 
   register () {
     this.model.onKeyDown((e) => {
-      if (e.ctrlKey && e.keyCode === 42 /* L */) this.alerts?.toggle();
-      if (e.ctrlKey && e.keyCode === 41 /* K */) this.codeblocks?.toggle();
+      if (e.ctrlKey && e.keyCode === 42 /* L */) this.dropdowns.alerts?.toggle();
+      if (e.ctrlKey && e.keyCode === 41 /* K */) this.dropdowns.codeblocks?.toggle();
       this.model.focus();
     });
 
@@ -61,21 +58,21 @@ export class Command {
       id: 'settings',
       label: 'Open Settings Dialog',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Semicolon],
-      run: () => this.settings?.toggle()
+      run: () => this.modals.settings?.toggle()
     });
 
     this.model.addAction({
       id: 'shortcuts',
       label: 'Open Shortcuts Help',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Backquote],
-      run: () => this.shortcuts?.toggle()
+      run: () => this.modals.shortcuts?.toggle()
     });
 
     this.model.addAction({
       id: 'About',
       label: 'Open About Information',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Slash],
-      run: () => this.about?.toggle()
+      run: () => this.modals.about?.toggle()
     });
 
     // Map editor commands to actions
@@ -136,7 +133,7 @@ export class Command {
         )],
         run: () => {
           this.alert(block.type.toLowerCase());
-          this.alerts?.hide();
+          this.dropdowns.alerts?.hide();
         }
       });
     }
@@ -152,7 +149,7 @@ export class Command {
         )],
         run: () => {
           this.codeblock(block.type.toLowerCase());
-          this.codeblocks?.hide();
+          this.dropdowns.codeblocks?.hide();
         }
       });
     }
