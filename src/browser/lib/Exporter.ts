@@ -221,14 +221,14 @@ export class Exporter {
     return document;
   }
 
-  static webExportToFile (content: string, type: MIMEType = 'text/plain', extension: FileExtension = '.md') {
-    const blob = new Blob([content], { type });
+  static webExportToFile (content: string, mimeType: MIMEType = 'text/plain', extension: FileExtension = '.md') {
+    const blob = new Blob([content], { type: mimeType });
   
     async function createHandle () {
       return await window.showSaveFilePicker({
         types: [{
           description: 'MKEditor export',
-          accept: { [type]: [extension] }
+          accept: { [mimeType]: [extension] }
         }]
       });
     }

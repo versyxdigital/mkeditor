@@ -1,9 +1,9 @@
 // import notify from '../utilities/notify';
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { BridgeProviders, ContextBridgeAPI, ContextBridgedFile } from '../interfaces/Bridge';
+import { ContextBridgeAPI, ContextBridgedFile } from '../interfaces/Bridge';
+import { BridgeProviders, ValidModal } from '../interfaces/Providers';
 import { EditorSettings } from '../interfaces/Editor';
 import { EditorDispatcher } from '../events/EditorDispatcher';
-import { Modal } from 'bootstrap';
 import { dom } from '../dom';
 import { Notify } from './Notify';
 
@@ -19,26 +19,23 @@ export class Bridge {
 
   private contentHasChanged: boolean = false;
   
-  private providers: BridgeProviders = {
+  public providers: BridgeProviders = {
     settings: null,
-    command: null
+    commands: null
   };
 
   constructor (
     bridge: ContextBridgeAPI,
     model: editor.IStandaloneCodeEditor,
-    dispatcher: EditorDispatcher,
-    register = false
+    dispatcher: EditorDispatcher
   ) {
     this.bridge = bridge;
     this.model = model;
     this.dispatcher = dispatcher;
     
-    if (register) {
-      this.register();
-    }
+    this.register();
 
-    this.dispatcher.addEventListener('editor:settings:bridge', (event) => {
+    this.dispatcher.addEventListener('editor:bridge:settings', (event) => {
       this.saveSettingsToFile(event.message);
     });
   }
@@ -109,7 +106,7 @@ export class Bridge {
       this.activeFile = file;
       
       // Dispatch contents so the editor can track it.
-      this.dispatcher.setState({
+      this.dispatcher.setTrackedContent({
         content: this.model.getValue()
       });
       
@@ -127,12 +124,9 @@ export class Bridge {
     });
     
     // Enable access to the monaco editor shortcuts modal.
-    this.bridge.receive('from:modal:open', (modal: string) => {
-      type ModalCommand = keyof typeof this.providers.command;
-      if (this.providers.command && this.providers.command[modal as ModalCommand]) {
-        const handler = (this.providers.command[modal as ModalCommand] as Modal);
-        handler.toggle();
-      }
+    this.bridge.receive('from:modal:open', (modal: ValidModal) => {
+      const handler = this.providers.commands?.getModal(modal);
+      handler?.toggle();
     });
     
     // Enable notifications from the main context.

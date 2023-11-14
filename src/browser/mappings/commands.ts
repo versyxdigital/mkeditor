@@ -15,6 +15,7 @@ export const alertblocks = [
 export const codeblocks = [
   { type: 'Sh', key: 'S' },
   { type: 'Javascript', key: 'J' },
+  { type: 'Typescript', key: 'T' },
   { type: 'CSharp', key: 'C' },
   { type: 'PHP', key: 'P' },
   { type: 'Python', key: 'Y' },

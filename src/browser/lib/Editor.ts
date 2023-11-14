@@ -1,5 +1,5 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { EditorProviders } from '../interfaces/Editor';
+import { EditorProviders } from '../interfaces/Providers';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { CharacterCount, WordCount } from '../extensions/WordCount';
 import { ScrollSync } from '../extensions/ScrollSync';
@@ -11,21 +11,21 @@ import { dom } from '../dom';
 
 export class Editor {
 
-  public mode: 'web' | 'desktop' = 'web';
+  private mode: 'web' | 'desktop' = 'web';
   
-  public model: editor.IStandaloneCodeEditor | null  = null;
+  private model: editor.IStandaloneCodeEditor | null  = null;
 
-  public dispatcher: EditorDispatcher;
+  private dispatcher: EditorDispatcher;
 
-  public loadedInitialEditorValue: string | null = null;
+  private loadedInitialEditorValue: string | null = null;
 
-  public editorHTMLElement: HTMLElement;
+  private editorHTMLElement: HTMLElement;
 
-  public previewHTMLElement: HTMLElement;
+  private previewHTMLElement: HTMLElement;
 
   public providers: EditorProviders = {
     bridge: null,
-    command: null,
+    commands: null,
     settings: null
   };
   
@@ -68,7 +68,7 @@ export class Editor {
       // such as modifying the title to notify the user of unsaved changes,
       // prompting the user to save before opening new files, etc.
       this.loadedInitialEditorValue = this.model.getValue();
-      this.dispatcher.addEventListener('editor:state', (event) => {
+      this.dispatcher.addEventListener('editor:track:content', (event) => {
         this.loadedInitialEditorValue = event.message;
       });
 
@@ -137,6 +137,10 @@ export class Editor {
         ScrollSync(visibleRange.startLineNumber, this.previewHTMLElement);
       }
     });
+  }
+
+  getModel() {
+    return this.model;
   }
 
   registerContextListeners () {

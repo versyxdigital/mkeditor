@@ -1,6 +1,7 @@
 import hljs from 'highlight.js/lib/core';
 import csharp from 'highlight.js/lib/languages/csharp';
 import javascript from 'highlight.js/lib/languages/javascript';
+import typescript from 'highlight.js/lib/languages/typescript';
 import php from 'highlight.js/lib/languages/php';
 import python from 'highlight.js/lib/languages/python';
 import shell from 'highlight.js/lib/languages/shell';
@@ -12,27 +13,22 @@ import LineNumber from '../extensions/LineNumber';
 import LinkTarget from '../extensions/LinkTarget';
 import TableStyle from '../extensions/TableStyle';
 
-hljs.registerLanguage('csharp', csharp);
-
 hljs.registerLanguage('javascript', javascript);
-hljs.registerAliases('js', {
-  languageName: 'javascript'
-});
+hljs.registerAliases('js', { languageName: 'javascript' });
 
-hljs.registerLanguage('php', php);
+hljs.registerLanguage('typescript', typescript);
+hljs.registerAliases('ts', { languageName: 'typescript' });
 
 hljs.registerLanguage('python', python);
-hljs.registerAliases('py', {
-  languageName: 'python'
-});
+hljs.registerAliases('py', { languageName: 'python' });
 
 hljs.registerLanguage('shell', shell);
-hljs.registerAliases('sh', {
-  languageName: 'shell'
-});
+hljs.registerAliases('sh', { languageName: 'shell' });
 
+hljs.registerLanguage('php', php);
 hljs.registerLanguage('sql', sql);
 hljs.registerLanguage('xml', xml);
+hljs.registerLanguage('csharp', csharp);
 
 const Markdown = new MarkdownIt({
   html: true,
