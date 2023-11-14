@@ -3,6 +3,7 @@ import { Modal, Dropdown } from 'bootstrap';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { commands, alertblocks, codeblocks } from '../mappings/commands';
 import { dom } from '../dom';
+import { ModalProviders, ValidModal } from '../interfaces/Providers';
 
 type ValidCommand = keyof Commands;
 
@@ -16,7 +17,7 @@ export class Commands {
 
   private dropdowns: Record<string, Dropdown | null>;
 
-  private modals: Record<string, Modal | null>;
+  private modals: ModalProviders;
 
   private toolbar = dom.commands.toolbar;
 
@@ -58,21 +59,21 @@ export class Commands {
       id: 'settings',
       label: 'Open Settings Dialog',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Semicolon],
-      run: () => this.modals.settings?.toggle()
+      run: () => this.modals.settings.toggle()
     });
 
     this.model.addAction({
       id: 'shortcuts',
       label: 'Open Shortcuts Help',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Backquote],
-      run: () => this.modals.shortcuts?.toggle()
+      run: () => this.modals.shortcuts.toggle()
     });
 
     this.model.addAction({
       id: 'About',
       label: 'Open About Information',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Slash],
-      run: () => this.modals.about?.toggle()
+      run: () => this.modals.about.toggle()
     });
 
     // Map editor commands to actions
@@ -165,6 +166,10 @@ export class Commands {
       text: str,
       forceMoveMarkers: true
     }]);
+  }
+
+  getModal (key: ValidModal) {
+    return this.modals[key] as Modal;
   }
 
   getModel () {

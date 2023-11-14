@@ -1,10 +1,9 @@
 // import notify from '../utilities/notify';
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { ContextBridgeAPI, ContextBridgedFile } from '../interfaces/Bridge';
-import { BridgeProviders } from '../interfaces/Providers';
+import { BridgeProviders, ValidModal } from '../interfaces/Providers';
 import { EditorSettings } from '../interfaces/Editor';
 import { EditorDispatcher } from '../events/EditorDispatcher';
-import { Modal } from 'bootstrap';
 import { dom } from '../dom';
 import { Notify } from './Notify';
 
@@ -125,12 +124,9 @@ export class Bridge {
     });
     
     // Enable access to the monaco editor shortcuts modal.
-    this.bridge.receive('from:modal:open', (modal: string) => {
-      type ModalCommand = keyof typeof this.providers.commands;
-      if (this.providers.commands && this.providers.commands[modal as ModalCommand]) {
-        const handler = (this.providers.commands[modal as ModalCommand] as Modal);
-        handler.toggle();
-      }
+    this.bridge.receive('from:modal:open', (modal: ValidModal) => {
+      const handler = this.providers.commands?.getModal(modal);
+      handler?.toggle();
     });
     
     // Enable notifications from the main context.
