@@ -11,17 +11,17 @@ import { dom } from '../dom';
 
 export class Editor {
 
-  public mode: 'web' | 'desktop' = 'web';
+  private mode: 'web' | 'desktop' = 'web';
   
-  public model: editor.IStandaloneCodeEditor | null  = null;
+  private model: editor.IStandaloneCodeEditor | null  = null;
 
-  public dispatcher: EditorDispatcher;
+  private dispatcher: EditorDispatcher;
 
-  public loadedInitialEditorValue: string | null = null;
+  private loadedInitialEditorValue: string | null = null;
 
-  public editorHTMLElement: HTMLElement;
+  private editorHTMLElement: HTMLElement;
 
-  public previewHTMLElement: HTMLElement;
+  private previewHTMLElement: HTMLElement;
 
   public providers: EditorProviders = {
     bridge: null,
@@ -137,6 +137,10 @@ export class Editor {
         ScrollSync(visibleRange.startLineNumber, this.previewHTMLElement);
       }
     });
+  }
+
+  getModel() {
+    return this.model;
   }
 
   registerContextListeners () {

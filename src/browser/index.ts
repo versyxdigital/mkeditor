@@ -23,14 +23,15 @@ const mkeditor = new Editor(mode, dispatcher);
 mkeditor.create({ watch: true });
 
 // Get the editor model.
-const model = mkeditor.model;
+const model = mkeditor.getModel();
 
 if (model) {
   // Register new command handler for the model to provide and handle editor
   // commands and actions (e.g. bold, alertblock etc.)
   mkeditor.provide('commands', new Commands(mode, model, dispatcher));
 
-  // Register a new settings handler for the model to provide editor settings.
+  // Register a new settings handler for the model to provide editor settings
+  // and to persist settings either to localStorage or file depending on context.
   mkeditor.provide('settings', new Settings(mode, model, dispatcher));
 
   // If running within electron app, register IPC handler for communication between

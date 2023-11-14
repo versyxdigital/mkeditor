@@ -11,7 +11,7 @@ export class Commands {
 
   private model: editor.IStandaloneCodeEditor;
 
-  public dispatcher: EditorDispatcher;
+  private dispatcher: EditorDispatcher;
 
   private dropdowns: DropdownProviders;
 

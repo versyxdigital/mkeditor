@@ -19,7 +19,7 @@ export class Bridge {
 
   private contentHasChanged: boolean = false;
   
-  private providers: BridgeProviders = {
+  public providers: BridgeProviders = {
     settings: null,
     commands: null
   };
