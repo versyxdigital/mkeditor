@@ -2,7 +2,7 @@
 
 The simple markdown editor.
 
-Use it through your [browser](https://mkeditoross.github.io/mkeditor/edit/), or download for desktop.
+Use it through your [browser](https://mkeditoross.github.io/web/), or download for desktop.
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
 | Windows     | v2.3.1  | [exe](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.3.1/mkeditor-setup-v2.3.1-x86_64.zip) |
@@ -21,7 +21,7 @@ If you have any issues or questions, please feel free to submit an [issue](https
 
 Open the help menu using the button at the top right for a complete list of editor shortcuts.
 
-You can also view a cheatsheet [here](https://mkeditoross.github.io/mkeditor/shortcuts).
+You can also view a cheatsheet [here](https://mkeditoross.github.io/shortcuts).
 
 ---
 
