@@ -231,7 +231,9 @@ export class Settings {
     }
 
     settings.darkmode.checked = this.theme === 'dark';
-    settings.darkmode.disabled = this.settings.systemtheme;
+    if (this.mode !== 'web') {
+      settings.darkmode.disabled = this.settings.systemtheme;
+    }
 
     if (this.theme === 'dark') {
       icons.darkmode.classList.remove('text-dark');
