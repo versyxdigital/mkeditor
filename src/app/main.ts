@@ -94,7 +94,9 @@ app.on('ready', () => {
 });
 
 app.on('activate', () => {
-  if (! context) main();
+  if (! context) {
+    main();
+  }
 });
 
 if (!app.requestSingleInstanceLock()) {
@@ -104,8 +106,8 @@ if (!app.requestSingleInstanceLock()) {
     app.focus();
     if (args.length >= 2) {
       const file: string = args[2];
-      if (file && file !== '.' && ! file.startsWith('-') && file.indexOf('MKEditor.lnk') === -1) {
-        if (context) AppStorage.setActiveFile(context, file);
+      if (file && file !== '.' && ! file.startsWith('-') && file.indexOf('MKEditor.lnk') === -1 && context) {
+        AppStorage.setActiveFile(context, file);
       }
     }
   });
