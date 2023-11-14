@@ -59,7 +59,7 @@ function main (file: string | null = null) {
   });
 
   context.on('close', (event) => {
-    bridge.promptForChangedContextBridgeContent(<Event>event);
+    bridge.promptUserBeforeQuit(<Event>event);
   });
 
   context.on('closed', () => {

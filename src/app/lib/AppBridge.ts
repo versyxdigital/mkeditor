@@ -14,6 +14,8 @@ export class AppBridge {
     current: null
   };
 
+  private contextBridgedContentHasChanged: boolean = false;
+
   private providers: SettingsProviders = {
     settings: null
   };
@@ -31,6 +33,7 @@ export class AppBridge {
   }
   
   register () {
+    // Set the app window title
     ipcMain.on('to:title:set', (event, title = null) => {
       if (title) {
         this.contextWindowTitle = `MKEditor - ${title}`;
@@ -39,20 +42,23 @@ export class AppBridge {
       this.context.setTitle(this.contextWindowTitle);
     });
     
+    // Set the editor state to track content changes in the main process.
     ipcMain.on('to:editor:state', (event, { original, current }) => {
       this.updateContextBridgedContent(original, current);
       
-      if (this.contextBridgedContentHasChanged()) {
+      if (this.contextBridgedContentHasChanged) {
         this.context.setTitle(`${this.contextWindowTitle} - *(Unsaved Changes)*`);
       } else {
         this.context.setTitle(this.contextWindowTitle);
       }
     });
     
+    // Save editor settings to file (~/.mkeditor/settings.json)
     ipcMain.on('to:settings:save', (event, { settings }) => {
       this.providers.settings?.saveSettingsToFile(settings);
     });
     
+    // Export rendered HTML, triggered from the renderer process
     ipcMain.on('to:html:export', (event, { content }) => {
       AppStorage.save(this.context, {
         id: event.sender.id,
@@ -61,6 +67,7 @@ export class AppBridge {
       });
     });
     
+    // Create a new file, linked to the application menu
     ipcMain.on('to:file:new', (event, { content, file }) => {
       AppStorage.create(this.context, {
         id: event.sender.id,
@@ -72,10 +79,16 @@ export class AppBridge {
       });
     });
 
+    // Open a new file, forwarded from the renderer process
+    // via received from:file:open event.
     ipcMain.on('to:file:open', () => {
       AppStorage.open(this.context);
     });
     
+    // Save an existing file, this is also used by the renderer bridge "from:file:open" listener, if
+    // editor content changes are detected by logic in the renderer process, the renderer bridge will 
+    // submit a save event to this channel with prompt and fromOpen both defined, otherwise it'll just
+    // submit an open event directly to the "to:file:open" channel instead.
     ipcMain.on('to:file:save', async (event, { content, file, prompt = false, fromOpen = false }) => {
       if (await AppStorage.promptUserActionConfirmed(this.context, prompt)) {
         AppStorage.save(this.context, {
@@ -92,6 +105,10 @@ export class AppBridge {
       }
     });
     
+    // Save as event, doesn't require checks on "activeFile",
+    // this will simply just call AppStorage save and triger
+    // the dialog for the user to save the file to the location
+    // of their choice.
     ipcMain.on('to:file:saveas', (event, data) => {
       AppStorage.save(this.context, {
         id: event.sender.id,
@@ -103,18 +120,22 @@ export class AppBridge {
     });
   }
   
-  promptForChangedContextBridgeContent (event: Event) {
-    if (this.contextBridgedContentHasChanged()) {
-      return this.promptUserForUnsavedChanges(event);
+  promptUserBeforeQuit (event: Event) {
+    if (this.contextBridgedContentHasChanged) {
+      return this.displayPrompt(
+        event,
+        'Confirm',
+        'You have unsaved changes, are you sure you want to quit?'
+      );
     }
   }
 
-  promptUserForUnsavedChanges (event: Event, message = null) {
+  displayPrompt (event: Event, title: string, message: string) {
     const choice = dialog.showMessageBoxSync(this.context, {
       type: 'question',
       buttons: ['Yes', 'No'],
-      title: 'Confirm',
-      message: message ?? 'You have unsaved changes, are you sure you want to quit?'
+      title,
+      message
     });
 
     if (choice) {
@@ -122,17 +143,15 @@ export class AppBridge {
     }
   }
   
-  contextBridgedContentHasChanged () {
-    return this.contextBridgedContent.current !== this.contextBridgedContent.original;
-  }
-  
-  updateContextBridgedContent (orginal: string, current: string) {
-    this.contextBridgedContent.original = orginal;
+  updateContextBridgedContent (original: string, current: string) {
+    this.contextBridgedContent.original = original;
     this.contextBridgedContent.current = current;
+    this.contextBridgedContentHasChanged = original !== current;
   }
   
   resetContextBridgedContent () {
     this.contextBridgedContent.original = null;
     this.contextBridgedContent.current = null;
+    this.contextBridgedContentHasChanged = false;
   }
 }
