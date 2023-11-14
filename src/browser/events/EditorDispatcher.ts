@@ -9,9 +9,9 @@ export class EditorDispatcher extends BaseDispatcher {
     });
   }
 
-  setState ({ content }: { content: string }) {
+  setTrackedContent ({ content }: { content: string }) {
     this.dispatchEvent({
-      type: 'editor:state',
+      type: 'editor:track:content',
       message: content
     });
   }

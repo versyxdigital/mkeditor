@@ -109,7 +109,7 @@ export class Bridge {
       this.activeFile = file;
       
       // Dispatch contents so the editor can track it.
-      this.dispatcher.setState({
+      this.dispatcher.setTrackedContent({
         content: this.model.getValue()
       });
       

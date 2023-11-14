@@ -68,7 +68,7 @@ export class Editor {
       // such as modifying the title to notify the user of unsaved changes,
       // prompting the user to save before opening new files, etc.
       this.loadedInitialEditorValue = this.model.getValue();
-      this.dispatcher.addEventListener('editor:state', (event) => {
+      this.dispatcher.addEventListener('editor:track:content', (event) => {
         this.loadedInitialEditorValue = event.message;
       });
 

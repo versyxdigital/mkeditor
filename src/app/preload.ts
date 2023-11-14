@@ -1,11 +1,16 @@
 /**
 * Preload script.
 *
+* Main Bridge: AppBridge
+* Renderer Bridge: Bridge
+*
 * The contextBridge module provides a safe, bi-directional, synchronous
-* bridge across isolated contexts.
+* bridge across the isolated contexts.
 */
 import { contextBridge, ipcRenderer } from 'electron';
 
+// Can be sent from the renderer process and
+// received by the main process
 const senderWhitelist = [
   'to:title:set',
   'to:editor:state',
@@ -17,6 +22,8 @@ const senderWhitelist = [
   'to:file:saveas'
 ];
 
+// Can be sent from the main process and received
+// by the renderer process
 const receiverWhitelist = [
   'from:theme:set',
   'from:settings:set',
@@ -42,7 +49,7 @@ const contextBridgeChannel = () => {
         // Send an async message to te main process via whitelisted channel,
         // along with data.
         //
-        // Note, arguments will be serialized with the Structured Clone Algorithm,
+        // Note, arguments will be serialized with the structured clone algorithm,
         // so prototype chains will not be included. Sending functions, promises,
         // symbols, weakmaps, weaksets or DOM objects will throw an exception.
         ipcRenderer.send(channel, data);
