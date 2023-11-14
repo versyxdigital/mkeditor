@@ -244,7 +244,10 @@ export class Settings {
 
   persist () {
     this.setUIState();
-    if (this.mode === 'web') this.updateSettingsInLocalStorage();
-    else this.dispatcher.bridgeSettings({ settings: this.settings });
+    if (this.mode === 'web') {
+      this.updateSettingsInLocalStorage();
+    } else {
+      this.dispatcher.bridgeSettings({ settings: this.settings });
+    }
   }
 }
