@@ -1,22 +1,20 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { EditorSettings } from '../interfaces/Editor';
+import { EditorSettings, ValidSetting } from '../interfaces/Editor';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { settings } from '../config';
 import { dom } from '../dom';
 
-type ValidSetting = keyof typeof settings;
-
 export class Settings {
   
-  public mode: 'web' | 'desktop' = 'web';
+  private mode: 'web' | 'desktop' = 'web';
   
-  public model: editor.IStandaloneCodeEditor;
+  private model: editor.IStandaloneCodeEditor;
 
-  public dispatcher: EditorDispatcher;
+  private dispatcher: EditorDispatcher;
 
-  public settings: EditorSettings = settings;
+  private settings: EditorSettings = settings;
 
-  public theme: 'light' | 'dark' = 'light';
+  private theme: 'light' | 'dark' = 'light';
 
   constructor (
     mode: 'web' | 'desktop' = 'web',
@@ -225,11 +223,12 @@ export class Settings {
       }
     }
 
-    settings.autoindent.checked = this.settings.autoindent;
-    settings.minimap.checked = this.settings.minimap;
-    settings.wordwrap.checked = this.settings.wordwrap;
-    settings.whitespace.checked = this.settings.whitespace;
-    settings.systemtheme.checked = this.settings.systemtheme;
+    for (const k of Object.keys(settings)) {
+      const key = (k as ValidSetting);
+      if (key !== 'darkmode') {
+        settings[key].checked = this.settings[key]; 
+      }
+    }
 
     settings.darkmode.checked = this.theme === 'dark';
     settings.darkmode.disabled = this.settings.systemtheme;

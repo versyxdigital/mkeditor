@@ -12,6 +12,8 @@ export interface EditorSettings {
   systemtheme: boolean;
 }
 
+export type ValidSetting = keyof EditorSettings;
+
 export interface EditorProviders {
   bridge: Bridge|null;
   command: Command|null;
