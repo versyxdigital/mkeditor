@@ -27,16 +27,13 @@ export class Bridge {
   constructor (
     bridge: ContextBridgeAPI,
     model: editor.IStandaloneCodeEditor,
-    dispatcher: EditorDispatcher,
-    register = false
+    dispatcher: EditorDispatcher
   ) {
     this.bridge = bridge;
     this.model = model;
     this.dispatcher = dispatcher;
     
-    if (register) {
-      this.register();
-    }
+    this.register();
 
     this.dispatcher.addEventListener('editor:bridge:settings', (event) => {
       this.saveSettingsToFile(event.message);

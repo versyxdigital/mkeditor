@@ -29,8 +29,7 @@ export class Command {
   constructor (
     mode: 'web' | 'desktop' = 'web',
     model: editor.IStandaloneCodeEditor,
-    dispatcher: EditorDispatcher,
-    register = false
+    dispatcher: EditorDispatcher
   ) {
     this.mode = mode;
     this.model = model;
@@ -44,9 +43,7 @@ export class Command {
     this.alerts = new Dropdown(dropdowns.alertblocks);
     this.codeblocks = new Dropdown(dropdowns.codeblocks);
 
-    if (register) {
-      this.register();
-    }
+    this.register();
   }
 
   setAppMode (mode: 'web' | 'desktop') {

@@ -21,8 +21,7 @@ export class Settings {
   constructor (
     mode: 'web' | 'desktop' = 'web',
     model: editor.IStandaloneCodeEditor,
-    dispatcher: EditorDispatcher,
-    register = false
+    dispatcher: EditorDispatcher
   ) {
     this.mode = mode;
     this.model = model;
@@ -30,9 +29,7 @@ export class Settings {
 
     this.loadSettings();
 
-    if (register) {
-      this.registerDOMListeners();
-    }
+    this.registerDOMListeners();
   }
 
   setAppMode (mode: 'web' | 'desktop') {
