@@ -1,10 +1,10 @@
 import { Bridge } from '../lib/Bridge';
-import { Command } from '../lib/Command';
+import { Commands } from '../lib/Commands';
 import { Settings } from '../lib/Settings';
 
 export interface Providers {
   bridge: Bridge | null;
-  command: Command | null;
+  commands: Commands | null;
   settings: Settings | null;
 }
 

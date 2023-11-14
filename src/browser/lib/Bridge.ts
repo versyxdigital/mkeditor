@@ -22,7 +22,7 @@ export class Bridge {
   
   private providers: BridgeProviders = {
     settings: null,
-    command: null
+    commands: null
   };
 
   constructor (
@@ -126,9 +126,9 @@ export class Bridge {
     
     // Enable access to the monaco editor shortcuts modal.
     this.bridge.receive('from:modal:open', (modal: string) => {
-      type ModalCommand = keyof typeof this.providers.command;
-      if (this.providers.command && this.providers.command[modal as ModalCommand]) {
-        const handler = (this.providers.command[modal as ModalCommand] as Modal);
+      type ModalCommand = keyof typeof this.providers.commands;
+      if (this.providers.commands && this.providers.commands[modal as ModalCommand]) {
+        const handler = (this.providers.commands[modal as ModalCommand] as Modal);
         handler.toggle();
       }
     });

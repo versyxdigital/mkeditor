@@ -4,9 +4,9 @@ import { EditorDispatcher } from '../events/EditorDispatcher';
 import { commands, alertblocks, codeblocks } from '../mappings/commands';
 import { dom } from '../dom';
 
-type ValidCommand = keyof Command;
+type ValidCommand = keyof Commands;
 
-export class Command {
+export class Commands {
 
   private mode: 'web' | 'desktop' = 'web';
 

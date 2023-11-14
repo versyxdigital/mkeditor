@@ -25,7 +25,7 @@ export class Editor {
 
   public providers: EditorProviders = {
     bridge: null,
-    command: null,
+    commands: null,
     settings: null
   };
   
