@@ -5,8 +5,8 @@ The simple markdown editor.
 Use it through your [browser](https://mkeditoross.github.io/mkeditor/edit/), or download for desktop.
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
-| Windows     | v2.3.0  | [exe](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.3.0/mkeditor-setup-v2.3.0-x86_64.zip) |
-| MacOS       | v2.3.0  | [pkg](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.3.0/mkeditor-setup-v2.3.0-x86_64.pkg) |
+| Windows     | v2.3.1  | [exe](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.3.1/mkeditor-setup-v2.3.1-x86_64.zip) |
+| MacOS       | v2.3.1  | [pkg](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.3.1/mkeditor-setup-v2.3.1-x86_64.pkg) |
 | Linux       | v1.7.1  | [deb](https://github.com/mkeditorOSS/mkeditor/releases/download/v1.7.1/mkeditor-setup-v1.7.1_amd64.deb)  |
 
 ![MKEditor](https://mkeditoross.github.io/demo.png)
