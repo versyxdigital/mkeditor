@@ -38,7 +38,7 @@ export class Bridge {
       this.register();
     }
 
-    this.dispatcher.addEventListener('editor:settings:bridge', (event) => {
+    this.dispatcher.addEventListener('editor:bridge:settings', (event) => {
       this.saveSettingsToFile(event.message);
     });
   }

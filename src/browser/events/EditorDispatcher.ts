@@ -18,7 +18,7 @@ export class EditorDispatcher extends BaseDispatcher {
 
   bridgeSettings ({ settings }: { settings: EditorSettings }) {
     this.dispatchEvent({
-      type: 'editor:settings:bridge',
+      type: 'editor:bridge:settings',
       message: settings
     });
   }
