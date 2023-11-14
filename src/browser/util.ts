@@ -34,6 +34,13 @@ export function formatHTML (html: string) {
   return result.substring(1, result.length - 3);
 }
 
+export function getOSPlatform () {
+  const { userAgent } = window.navigator;
+  if (userAgent.indexOf("Win") != -1) return 'Windows';
+  if (userAgent.indexOf("Mac") != -1) return 'MacOS';
+  if (userAgent.indexOf("Linux") != -1) return 'Linux';
+}
+
 export function getExecutionBridge () {
   if (Object.prototype.hasOwnProperty.call(window, 'executionBridge')
   && window.executionBridge !== null) {

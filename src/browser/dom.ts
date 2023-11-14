@@ -1,4 +1,5 @@
 import { Tooltip } from 'bootstrap';
+import { getOSPlatform } from './util';
 
 export const dom = {
   about: {
@@ -49,10 +50,17 @@ export const dom = {
   }
 };
 
-export function setupTooltips () {
+export async function setupTooltips () {
   [].slice.call(
     document.querySelectorAll('[data-bs-toggle="tooltip"]')
-  ).map((tooltip) => {
+  ).map((tooltip: HTMLElement) => {
+    if (tooltip.dataset.key) {
+      if (getOSPlatform() !== 'MacOS') {
+        tooltip.title = 'Ctrl + ' + tooltip.dataset.key;
+      } else { 
+        tooltip.title = '⌘ + ' + tooltip.dataset.key;
+      }
+    }
     return new Tooltip(tooltip);
   });
 }

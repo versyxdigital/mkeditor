@@ -31,28 +31,28 @@ export class AppMenu {
             click: () => {
               this.context.webContents.send('from:file:new', 'to:file:new');
             },
-            accelerator: 'Ctrl+N'
+            accelerator: process.platform === 'darwin' ? 'Cmd+N' : 'Ctrl+N'
           },
           {
             label: 'Open File...',
             click: () => {
               this.context.webContents.send('from:file:open', 'to:file:open');
             },
-            accelerator: 'Ctrl+O'
+            accelerator: process.platform === 'darwin' ? 'Cmd+O' : 'Ctrl+O'
           },
           {
             label: 'Save',
             click: () => {
               this.context.webContents.send('from:file:save', 'to:file:save');
             },
-            accelerator: 'Ctrl+S'
+            accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S'
           },
           {
             label: 'Save As...',
             click: () => {
               this.context.webContents.send('from:file:saveas', 'to:file:saveas');
             },
-            accelerator: 'Ctrl+Shift+S'
+            accelerator: process.platform === 'darwin' ? 'Cmd+Shift+S' : 'Ctrl+Shift+S'
           },
           { type: 'separator' },
           {
@@ -106,13 +106,15 @@ export class AppMenu {
             label: 'About MKEditor',
             click: () => {
               this.context.webContents.send('from:modal:open', 'about'); // channel / provider
-            }
+            },
+            accelerator: process.platform === 'darwin' ? 'Cmd+/' : 'Ctrl+/'
           },
           {
             label: 'Editor Shortcuts',
             click: () => {
               this.context.webContents.send('from:modal:open', 'shortcuts'); // channel / provider
-            }
+            },
+            accelerator: process.platform === 'darwin' ? 'Cmd+;' : 'Ctrl+;'
           }
         ]
       }
