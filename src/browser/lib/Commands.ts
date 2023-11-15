@@ -48,13 +48,7 @@ export class Commands {
   }
 
   register () {
-    this.model.onKeyDown((e) => {
-      const holdKey = getOSPlatform() !== 'MacOS' ? e.ctrlKey : e.metaKey;
-      if (holdKey && e.keyCode === 42 /* L */) this.dropdowns.alertblocks.toggle();
-      if (holdKey && e.keyCode === 41 /* K */) this.dropdowns.codeblocks.toggle();
-      this.model.focus();
-    });
-
+    // Register command keybinding for displaying settings modal action
     this.model.addAction({
       id: 'settings',
       label: 'Open Settings Dialog',
@@ -62,6 +56,7 @@ export class Commands {
       run: () => this.modals.settings.toggle()
     });
 
+    // Register command keybinding for displaying shortcuts modal action
     this.model.addAction({
       id: 'shortcuts',
       label: 'Open Shortcuts Help',
@@ -69,6 +64,7 @@ export class Commands {
       run: () => this.modals.shortcuts.toggle()
     });
 
+    // Register command keybinding for displaying about modal action
     this.model.addAction({
       id: 'About',
       label: 'Open About Information',
@@ -76,18 +72,33 @@ export class Commands {
       run: () => this.modals.about.toggle()
     });
 
-    // Map editor commands to actions
+    // Register separate keybindings for displaying alertblocks and codeblocks dropdowns.
+    // The reason for this is because alertblocks and codeblocks are "2-stage" commands.
+    // For example, the user presses Ctrl+K, to display the codeblocks dropdown, and then
+    // presses J to insert a Javascript codeblock.
+    this.model.onKeyDown((e) => {
+      const holdKey = getOSPlatform() !== 'MacOS' ? e.ctrlKey : e.metaKey;
+      if (holdKey && e.keyCode === 42 /* L */) this.dropdowns.alertblocks.toggle();
+      if (holdKey && e.keyCode === 41 /* K */) this.dropdowns.codeblocks.toggle();
+      this.model.focus();
+    });
+
+    // Register command keybindings for editor actions i.e. bold, italic, strikethrough.
+    // These commands are mapped from their own file in mappings/commands.ts
     for (const cmd in commands) {
       if (commands[cmd].isInline && commands[cmd].syntax) {
-        // Inline commands are performed by passing the relevant syntax into this class'
-        // inline method, which in turn grabs the editor value within range and executes
-        // the edit.
+        // Inline edits are performed by passing the command's syntax into this class' inline()
+        // method, which in turn grabs the text selection within range and executes the edit, i.e.
+        // for bold, the attached syntax is "**", therefore the edit will be **<text>**.
         commands[cmd].run = () => this.inline(<string>commands[cmd].syntax);
       } else {
         if (cmd in this && typeof this[cmd as ValidCommand] === 'function') {
-          // Fenced commands have their own renderer functions defined in this class,
-          // for example, unorderedList, orderedList etc.
-          commands[cmd].run = () => (this[cmd as ValidCommand] as Function)();
+          // Fenced blocks have their own renderer functions explicitly defined in this class,
+          // for example, alert(), codeblock(), unorderedList(), orderedList(). Fenced blocks
+          // are edits that begin with their own syntax on the first line, and then end with
+          // their own syntax on the last line, with the text occupying the lines in-between.
+          // For examle, codeblocks (```).
+          commands[cmd].run = () => (this[cmd as ValidCommand] as Function)();                             
         }
       }
 
@@ -96,7 +107,7 @@ export class Commands {
       );
     }
 
-    // Map editor commands to editor UI buttons (e.g. bold, alertblock etc.)
+    // Map editor commands to editor UI buttons
     const toolbarButtons = this.toolbar.querySelectorAll('button');
     if (toolbarButtons) {
       for (const btn of toolbarButtons) {
@@ -105,12 +116,10 @@ export class Commands {
           if (target && target instanceof HTMLElement && target.dataset.cmd) {
             const { cmd, syntax } = target.dataset;
             if (commands[cmd] && commands[cmd].isInline && syntax) {
-              // If function contains data-syntax then execute the command, passing the
-              // markdown syntax to be used (inline)
+              // Same inline edit functionality explained in the loop above.
               this.inline(syntax);
             } else {
-              // Otherwise if there is no syntax provided then call the renderer function
-              // defined in this class instead (fenced).
+              // Same fenced block edit functionality explained in the loop above.
               (this[cmd as ValidCommand] as Function)(target);
             }
             this.model.focus();
@@ -120,10 +129,7 @@ export class Commands {
     }
 
     for (const block of alertblocks) {
-      // The reason we use keyof typeof KeyCode instead of just as keyof KeyCode is due
-      // to the fact that enum values are not guaranteed to be keys. Enum values can be
-      // any string or numeric literal, and they are not automatically treated as keys
-      // of the enum type.
+      // Register command keybindings for each alertblock type.
       const binding = (`Key${block.key}` as keyof typeof KeyCode);
       this.model.addAction({
         id: `alert-${block.type}`,
@@ -140,6 +146,7 @@ export class Commands {
     }
 
     for (const block of codeblocks) {
+      // Register command keybinding for each codeblock language.
       const binding = (`Key${block.key}` as keyof typeof KeyCode);
       this.model.addAction({
         id: `codeblock-${block.type}`,
