@@ -66,3 +66,37 @@ export async function setupTooltips () {
     return new Tooltip(tooltip);
   });
 }
+
+export function splash() {
+  setTimeout(() => fade(dom.splash, 'out'), 1000);
+  setTimeout(() => fade(dom.app, 'in'), 2000);
+}
+
+export function fade(element: HTMLElement, direction: 'in' | 'out') {
+  direction === 'in' ? fadeIn(element) : fadeOut(element);
+}
+
+export function fadeOut(element: HTMLElement) {
+  let alpha = 1;
+  const timer = setInterval(() => {
+    if (alpha <= 0.1){
+      clearInterval(timer);
+      element.style.display = 'none';
+    }
+    element.style.opacity = alpha.toString();
+    element.style.filter = 'alpha(opacity=' + alpha * 100 + ')';
+    alpha -= alpha * 0.1;
+  }, 50);
+}
+
+export function fadeIn(element: HTMLElement) {
+  let alpha = 0.1;
+  const timer = setInterval(() => {
+    if (alpha >= 1){
+      clearInterval(timer);
+    }
+    element.style.opacity = alpha.toString();
+    element.style.filter = 'alpha(opacity=' + alpha * 100 + ')';
+    alpha += alpha * 0.1;
+  }, 50);
+}

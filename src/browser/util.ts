@@ -50,31 +50,6 @@ export function getExecutionBridge () {
   return 'web';
 }
 
-export function fadeOut(element: HTMLElement) {
-  let alpha = 1;
-  const timer = setInterval(() => {
-    if (alpha <= 0.1){
-      clearInterval(timer);
-      element.style.display = 'none';
-    }
-    element.style.opacity = alpha.toString();
-    element.style.filter = 'alpha(opacity=' + alpha * 100 + ')';
-    alpha -= alpha * 0.1;
-  }, 50);
-}
-
-export function fadeIn(element: HTMLElement) {
-  let alpha = 0.1;
-  const timer = setInterval(() => {
-    if (alpha >= 1){
-      clearInterval(timer);
-    }
-    element.style.opacity = alpha.toString();
-    element.style.filter = 'alpha(opacity=' + alpha * 100 + ')';
-    alpha += alpha * 0.1;
-  }, 50);
-}
-
 export function selfRender (
   tokens: Token[],
   idx: number,
