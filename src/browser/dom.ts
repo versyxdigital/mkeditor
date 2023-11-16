@@ -1,4 +1,6 @@
+import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { Tooltip } from 'bootstrap';
+import Split from 'split.js';
 import { getOSPlatform } from './util';
 
 export const dom = {
@@ -67,7 +69,7 @@ export async function setupTooltips () {
   });
 }
 
-export function splash() {
+export function splashScreen() {
   setTimeout(() => fade(dom.splash, 'out'), 1000);
   setTimeout(() => fade(dom.app, 'in'), 2000);
 }
@@ -99,4 +101,10 @@ export function fadeIn(element: HTMLElement) {
     element.style.filter = 'alpha(opacity=' + alpha * 100 + ')';
     alpha += alpha * 0.1;
   }, 50);
+}
+
+export function draggableSplit (model: editor.IStandaloneCodeEditor){
+  Split(['#editor-split', '#preview-split'], {
+    onDrag () { model.layout(); }
+  });
 }

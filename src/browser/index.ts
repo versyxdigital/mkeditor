@@ -1,11 +1,10 @@
 import './mappings/icons';
-import Split from 'split.js';
 import { Editor } from './lib/Editor';
 import { EditorDispatcher } from './events/EditorDispatcher';
 import { Commands } from './lib/Commands';
 import { Settings } from './lib/Settings';
 import { Bridge } from './lib/Bridge';
-import { splash, setupTooltips } from './dom';
+import { splashScreen, setupTooltips, draggableSplit } from './dom';
 import { getExecutionBridge } from './util';
 
 // The bi-directional synchronous bridge to the main execution context.
@@ -49,11 +48,9 @@ if (model) {
   // Setup application tooltips.
   setupTooltips();
   
-  // Implement draggable splitter.
-  Split(['#editor-split', '#preview-split'], {
-    onDrag () { model.layout(); }
-  });
+  // Implement draggable split.
+  draggableSplit(model);
 
   // Display splash screen
-  splash();
+  splashScreen();
 }
