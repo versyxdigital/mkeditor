@@ -90,7 +90,7 @@ export class Commands {
         // Inline edits are performed by passing the command's syntax into this class' inline()
         // method, which in turn grabs the text selection within range and executes the edit, i.e.
         // for bold, the attached syntax is "**", therefore the edit will be **<text>**.
-        commands[cmd].run = () => this.inline(<string>commands[cmd].syntax);
+        commands[cmd].run = () => this.editInline(<string>commands[cmd].syntax);
       } else {
         if (cmd in this && typeof this[cmd as ValidCommand] === 'function') {
           // Fenced blocks have their own renderer functions explicitly defined in this class,
@@ -117,7 +117,7 @@ export class Commands {
             const { cmd, syntax } = target.dataset;
             if (commands[cmd] && commands[cmd].isInline && syntax) {
               // Same inline edit functionality explained in the loop above.
-              this.inline(syntax);
+              this.editInline(syntax);
             } else {
               // Same fenced block edit functionality explained in the loop above.
               (this[cmd as ValidCommand] as Function)(target);
@@ -163,11 +163,11 @@ export class Commands {
     }
   }
 
-  inline (syntax: string) {
-    this.execute(syntax + this.getModel() + syntax);
+  editInline (syntax: string) {
+    this.executeEdit(syntax + this.getModel() + syntax);
   }
 
-  execute (str: string) {
+  executeEdit (str: string) {
     this.model.executeEdits(null, [{
       range: this.getRange(),
       text: str,
@@ -199,21 +199,21 @@ export class Commands {
   alert (params: HTMLElement | string, content?: string) {
     const alert = params instanceof HTMLElement ? params.dataset.type : params;
     content = content || this.getModel();
-    this.execute('::: ' + alert + '\n' + content + '\n:::');
+    this.executeEdit('::: ' + alert + '\n' + content + '\n:::');
   }
 
   codeblock (params: HTMLElement | string, content?: string) {
     const language = params instanceof HTMLElement ? params.dataset.language : params;
     content = content || this.getModel();
-    this.execute('```' + language + '\n' + content + '\n```');
+    this.executeEdit('```' + language + '\n' + content + '\n```');
   }
 
   unorderedList () {
-    this.execute(this.getModel().replace(/^[a-zA-Z]+?/gm, (match) => `- ${match}`));
+    this.executeEdit(this.getModel().replace(/^[a-zA-Z]+?/gm, (match) => `- ${match}`));
   }
 
   orderedList () {
     let i = 0;
-    this.execute(this.getModel().replace(/^[a-zA-Z]+?/gm, (match) => `${++i}. ${match}`));
+    this.executeEdit(this.getModel().replace(/^[a-zA-Z]+?/gm, (match) => `${++i}. ${match}`));
   }
 }
