@@ -5,8 +5,11 @@ import { EditorDispatcher } from './events/EditorDispatcher';
 import { Commands } from './lib/Commands';
 import { Settings } from './lib/Settings';
 import { Bridge } from './lib/Bridge';
-import { setupTooltips } from './dom';
-import { getExecutionBridge } from './util';
+import { dom, setupTooltips } from './dom';
+import { fadeIn, fadeOut, getExecutionBridge } from './util';
+
+setTimeout(() => fadeOut(dom.splash), 1000);
+setTimeout(() => fadeIn(dom.app), 2000);
 
 // The bi-directional synchronous bridge to the main execution context.
 // Exposed on the window object through the preloader.

@@ -7,6 +7,13 @@
 </head>
 <body data-theme="light">
 
+<div id="splashscreen" class="position-absolute top-0 bottom-0 h-100 w-100 align-items-center text-center">
+    <div class="w-100">
+        <h1>mkeditor</h1>
+        <small>markdown made simple</small>
+    </div>
+</div>
+
 <!-- sub-menu bar -->
 <nav class="navbar navbar-expand navbar-light bg-light">
     <ul class="navbar-nav mr-auto">
@@ -37,7 +44,7 @@
 </nav>
 
 <!-- main content -->
-<div class="d-flex flex-row h-100">
+<div id="app" class="d-flex flex-row h-100">
     <div class="w-100 border-top">
         <div id="wrapper" class="d-flex flex-row">
             <!-- editor pane -->
@@ -237,7 +244,6 @@
         </div>
     </div>
 </div>
-
 
 <!-- shortcuts modal -->
 <div class="modal" tabindex="-1" id="app-shortcuts">
@@ -442,7 +448,6 @@
         </div>
     </div>
 </div>
-
 <script type="text/javascript" src="./mkeditor.bundle.js"></script>
 </body>
 </html>

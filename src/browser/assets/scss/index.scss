@@ -15,6 +15,22 @@ body[data-theme="dark"] {
   @include meta.load-css("highlight.js/styles/github-dark");
 }
 
+#app {
+  opacity: 0;
+}
+
+#splashscreen {
+  z-index: 9999;
+  background: #222222;
+  color: #FFFFFF;
+  display: flex;
+  h1 {
+    font-size: 3.5em;
+    letter-spacing: 10px;
+    text-transform: uppercase;
+  }
+}
+
 .form-check-input:checked {
   background-color: #8694a9;
   border-color: #8694a9;

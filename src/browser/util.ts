@@ -36,9 +36,9 @@ export function formatHTML (html: string) {
 
 export function getOSPlatform () {
   const { userAgent } = window.navigator;
-  if (userAgent.indexOf("Win") != -1) return 'Windows';
-  if (userAgent.indexOf("Mac") != -1) return 'MacOS';
-  if (userAgent.indexOf("Linux") != -1) return 'Linux';
+  if (userAgent.indexOf('Win') != -1) return 'Windows';
+  if (userAgent.indexOf('Mac') != -1) return 'MacOS';
+  if (userAgent.indexOf('Linux') != -1) return 'Linux';
 }
 
 export function getExecutionBridge () {
@@ -48,6 +48,31 @@ export function getExecutionBridge () {
   }
 
   return 'web';
+}
+
+export function fadeOut(element: HTMLElement) {
+  let alpha = 1;
+  const timer = setInterval(() => {
+    if (alpha <= 0.1){
+      clearInterval(timer);
+      element.style.display = 'none';
+    }
+    element.style.opacity = alpha.toString();
+    element.style.filter = 'alpha(opacity=' + alpha * 100 + ')';
+    alpha -= alpha * 0.1;
+  }, 50);
+}
+
+export function fadeIn(element: HTMLElement) {
+  let alpha = 0.1;
+  const timer = setInterval(() => {
+    if (alpha >= 1){
+      clearInterval(timer);
+    }
+    element.style.opacity = alpha.toString();
+    element.style.filter = 'alpha(opacity=' + alpha * 100 + ')';
+    alpha += alpha * 0.1;
+  }, 50);
 }
 
 export function selfRender (

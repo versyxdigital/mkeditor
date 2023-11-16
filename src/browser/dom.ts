@@ -2,6 +2,8 @@ import { Tooltip } from 'bootstrap';
 import { getOSPlatform } from './util';
 
 export const dom = {
+  splash: <HTMLDivElement>document.querySelector('#splashscreen'),
+  app: <HTMLDivElement>document.querySelector('#app'),
   about: {
     modal: <HTMLDivElement>document.querySelector('#app-about'),
     version: <HTMLSpanElement>document.querySelector('#app-version')
