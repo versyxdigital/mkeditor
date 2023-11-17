@@ -10,6 +10,8 @@ export class Completion
 
   private matchers: Record<string, Matcher> = {};
 
+  public modelTrackValues: Array<string> = [];
+
   constructor (dispatcher: EditorDispatcher) {
     // TODO use the dispatcher to update registered completion provider on-the-fly
     this.dispatcher = dispatcher;
@@ -27,21 +29,23 @@ export class Completion
         proposals: this.alertBlockProposals
       },
       codeblocks: {
-        regex: new RegExp(/^```\s/m),
+        regex: new RegExp(/^```\w/m),
         proposals: this.codeBlockProposals
       },
     };
 
-    this.dispatcher.addEventListener('editor:completions:load', (event) => {
+    this.dispatcher.addEventListener('editor:completion:load', (event) => {
       const key = event.message as keyof typeof this.matchers;
       this.updateCompletionProvider(key);
     });
   }
 
-  async disposeCompletionProvider () {
-    if (this.provider) {
-      this.provider.dispose();
-      this.provider = null;
+  changeProviderOnValidProposal (value: string) {
+    const availableProposal = this.trackValuesUntilProposalAvailable(value);
+    if (availableProposal === '```') {
+      this.updateCompletionProvider('codeblocks');
+    } else if (availableProposal === ':::') {
+      this.updateCompletionProvider('alertblocks');
     }
   }
 
@@ -56,7 +60,15 @@ export class Completion
     );
   }
 
+  async disposeCompletionProvider () {
+    if (this.provider) {
+      this.provider.dispose();
+      this.provider = null;
+    }
+  }
+
   registerCompletionProvider (regex: RegExp, proposeAt: (range: IRange) => CompletionItem[]) {
+    console.log(this);
     return languages.registerCompletionItemProvider('markdown', {
       provideCompletionItems: (model: editor.ITextModel, position: Position) => {
         const textUntilPosition = this.getTextUntilPosition(model, position);
@@ -73,6 +85,22 @@ export class Completion
         };
       }
     });
+  }
+
+  trackValuesUntilProposalAvailable (value: string) {
+    if (this.modelTrackValues.length > 5) {
+      this.modelTrackValues = [];
+    }
+
+    if (value === '') {
+      this.modelTrackValues.pop();
+    } else {
+      this.modelTrackValues.push(value);
+    }
+
+    return this.modelTrackValues.slice(
+      Math.max(this.modelTrackValues.length - 3, 1)
+    ).join('');
   }
 
   getTextUntilPosition (model: editor.ITextModel, position: Position) {
@@ -134,7 +162,7 @@ export class Completion
     const proposals: CompletionItem[] = [];
     for (const lang of langs) {
       proposals.push({
-        label: '"``` '+lang+'"',
+        label: '``` '+lang,
         kind: languages.CompletionItemKind.Function,
         documentation: `${lang} code block`,
         insertText: lang+'\n<your code here>\n```',

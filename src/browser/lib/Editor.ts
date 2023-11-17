@@ -26,6 +26,7 @@ export class Editor {
   public providers: EditorProviders = {
     bridge: null,
     commands: null,
+    completion: null,
     settings: null
   };
   
@@ -110,7 +111,7 @@ export class Editor {
     // When the editor content changes, update the main process through the IPC handler
     // so that it can do things such as set the title notifying the user of unsaved changes,
     // prompt the user to save if they try to close the app or open a new file, etc.
-    this.model?.onDidChangeModelContent(() => {
+    this.model?.onDidChangeModelContent((event: editor.IModelContentChangedEvent) => {
       if (this.providers.bridge) {
         this.providers.bridge.trackEditorStateBetweenExecutionContext(
           // The initial editor content
@@ -119,6 +120,10 @@ export class Editor {
           <string>this.model?.getValue()
         );
       }
+
+      // Register dynamic completions provider to provide completion suggestions based on
+      // user input.
+      this.providers.completion?.changeProviderOnValidProposal(event.changes[0].text);      
       
       // Add a small timeout for the render.
       setTimeout(() => {

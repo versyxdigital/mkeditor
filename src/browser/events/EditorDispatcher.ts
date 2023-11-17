@@ -16,6 +16,13 @@ export class EditorDispatcher extends BaseDispatcher {
     });
   }
 
+  updateCompletionProvider ({ matcher }: { matcher: string }) {
+    this.dispatchEvent({
+      type: 'editor:completion:load',
+      message: matcher
+    });
+  }
+
   bridgeSettings ({ settings }: { settings: EditorSettings }) {
     this.dispatchEvent({
       type: 'editor:bridge:settings',
