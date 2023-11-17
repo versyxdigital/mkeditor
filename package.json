@@ -34,7 +34,7 @@
     "bootstrap": "^5.3.2",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.8.1",
-    "electron": "^27.0.3",
+    "electron": "^27.1.0",
     "electron-builder": "^24.6.4",
     "eslint": "^8.45.0",
     "file-loader": "^6.2.0",
