@@ -121,6 +121,17 @@ export class AppMenu {
     ]);
   }
 
+  setJumpListTasks () {
+    app.setUserTasks([{
+      program: process.execPath,
+      arguments: '--new-window',
+      iconPath: process.execPath,
+      iconIndex: 0,
+      title: 'New Window',
+      description: 'Create a new window'
+    }]);
+  } 
+
   buildTrayContextMenu (context: BrowserWindow) {
     return Menu.buildFromTemplate([
       {

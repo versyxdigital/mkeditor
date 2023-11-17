@@ -15,6 +15,19 @@ body[data-theme="dark"] {
   @include meta.load-css("highlight.js/styles/github-dark");
 }
 
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #eeeeee; 
+}
+::-webkit-scrollbar-thumb {
+  background: #bbbbbb; 
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #aaaaaa; 
+}
+
 #app {
   opacity: 0;
 }
