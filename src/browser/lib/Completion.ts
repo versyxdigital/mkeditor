@@ -12,6 +12,8 @@ export class Completion {
 
   public modelTrackValues: Array<string> = [];
 
+  public latestTokenIdentifier: string = '';
+
   constructor (dispatcher: EditorDispatcher) {
 
     this.dispatcher = dispatcher;
@@ -29,7 +31,7 @@ export class Completion {
         proposals: this.alertBlockProposals
       },
       codeblocks: {
-        regex: new RegExp(/\u0060\u0060\u0060/),
+        regex: new RegExp(/^\u0060\u0060\u0060/m),
         proposals: this.codeBlockProposals
       },
     };
@@ -40,35 +42,36 @@ export class Completion {
     });
   }
 
-  changeOnValidProposal (value: string) {
+  async changeOnValidProposal (value: string) {
     const availableProposal = this.trackValuesUntilProposalAvailable(value);
-    if (availableProposal === '```') {
-      this.updateCompletionProvider('codeblocks');
-    } else if (availableProposal === ':::') {
-      this.updateCompletionProvider('alertblocks');
+    console.log(this.latestTokenIdentifier);
+    if (this.matchers.codeblocks.regex.test(availableProposal)) {
+      await this.updateCompletionProvider('codeblocks');
+    } else if (this.matchers.alertblocks.regex.test(availableProposal)) {
+      await this.updateCompletionProvider('alertblocks');
     }
   }
 
   async updateCompletionProvider (type: keyof typeof this.matchers) {
-    if (this.provider) {
-      await this.disposeCompletionProvider();
-    }
-
-    this.registerCompletionProvider(
+    await this.disposeCompletionProvider();
+    
+    console.log(this);
+    this.provider = this.registerCompletionProvider(
       this.matchers[type].regex,
       this.matchers[type].proposals
     );
+    console.log(this);
   }
 
   async disposeCompletionProvider () {
     if (this.provider) {
+      console.log('disposing...');
       this.provider.dispose();
       this.provider = null;
     }
   }
 
   registerCompletionProvider (regex: RegExp, proposeAt: (range: IRange) => CompletionItem[]) {
-    console.log(this);
     return languages.registerCompletionItemProvider('markdown', {
       provideCompletionItems: (model: editor.ITextModel, position: Position) => {
         const textUntilPosition = this.getTextUntilPosition(model, position);
@@ -98,9 +101,11 @@ export class Completion {
       this.modelTrackValues.push(value);
     }
 
-    return this.modelTrackValues.slice(
+    this.latestTokenIdentifier = this.modelTrackValues.slice(
       Math.max(this.modelTrackValues.length - 3, 1)
     ).join('');
+
+    return this.latestTokenIdentifier;
   }
 
   getTextUntilPosition (model: editor.ITextModel, position: Position) {

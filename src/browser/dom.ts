@@ -77,8 +77,8 @@ export async function setupTooltips () {
 }
 
 export function splashScreen() {
-  setTimeout(() => fade(dom.splash, 'out'), 1500);
-  setTimeout(() => fade(dom.app, 'in'), 1000);
+  setTimeout(() => fade(dom.splash, 'out'), 750);
+  setTimeout(() => fade(dom.app, 'in'), 500);
 }
 
 export function fade(element: HTMLElement, direction: 'in' | 'out') {

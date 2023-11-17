@@ -56,30 +56,30 @@ module.exports = {
   plugins: [
     new MonacoWebpackPlugin({
       languages: ['markdown'],
-      // features: [
-      //   'bracketMatching',
-      //   'caretOperations',
-      //   'clipboard',
-      //   'codeAction',
-      //   'contextmenu',
-      //   'cursorUndo',
-      //   'find',
-      //   'folding',
-      //   'fontZoom',
-      //   'inlineCompletions',
-      //   'inPlaceReplace',
-      //   'indentation',
-      //   'lineSelection',
-      //   'linesOperations',
-      //   'links',
-      //   'multicursor',
-      //   'quickCommand',
-      //   'referenceSearch',
-      //   'suggest',
-      //   'wordHighlighter',
-      //   'wordOperations',
-      //   'wordPartOperations'
-      // ]
+      features: [
+        'bracketMatching',
+        'caretOperations',
+        'clipboard',
+        'codeAction',
+        'contextmenu',
+        'cursorUndo',
+        'find',
+        'folding',
+        'fontZoom',
+        'inlineCompletions',
+        'inPlaceReplace',
+        'indentation',
+        'lineSelection',
+        'linesOperations',
+        'links',
+        'multicursor',
+        'quickCommand',
+        'referenceSearch',
+        'suggest',
+        'wordHighlighter',
+        'wordOperations',
+        'wordPartOperations'
+      ]
     }),
     new webpack.optimize.LimitChunkCountPlugin({
       maxChunks: 1
