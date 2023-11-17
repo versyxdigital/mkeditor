@@ -1,6 +1,7 @@
 import './mappings/icons';
 import { Editor } from './lib/Editor';
 import { EditorDispatcher } from './events/EditorDispatcher';
+import { Completion } from './lib/Completion';
 import { Commands } from './lib/Commands';
 import { Settings } from './lib/Settings';
 import { Bridge } from './lib/Bridge';
@@ -32,6 +33,9 @@ if (model) {
   // Register a new settings handler for the model to provide editor settings
   // and to persist settings either to localStorage or file depending on context.
   mkeditor.provide('settings', new Settings(mode, model, dispatcher));
+
+  // Register a new completion provider for the editor auto-completion
+  mkeditor.provide('completion', new Completion(dispatcher));
 
   // If running within electron app, register IPC handler for communication between
   // main and renderer execution contexts.
