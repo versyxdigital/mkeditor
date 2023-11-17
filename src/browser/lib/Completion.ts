@@ -1,26 +1,63 @@
-import { IRange, Position, editor, languages } from 'monaco-editor/esm/vs/editor/editor.api';
+import { IDisposable, IRange, Position, editor, languages } from 'monaco-editor/esm/vs/editor/editor.api';
+import { CompletionItem, Matcher } from '../interfaces/Completion';
 import { EditorDispatcher } from '../events/EditorDispatcher';
-
-interface CompletionItem {
-  label: string;
-  kind: languages.CompletionItemKind.Function;
-  documentation: string;
-  insertText: string;
-  range: IRange;
-}
 
 export class Completion
 {
   private dispatcher: EditorDispatcher;
 
+  private provider: IDisposable | null;
+
+  private matchers: Record<string, Matcher> = {};
+
   constructor (dispatcher: EditorDispatcher) {
-    this.dispatcher = dispatcher; // TODO use the dispatcher to update registered completion provider on-the-fly
+    // TODO use the dispatcher to update registered completion provider on-the-fly
+    this.dispatcher = dispatcher;
     
-    this.registerCompletionProvider(new RegExp(/^:::\s/m), this.alertBlockProposals);
+    // Use alertblocks to initalise the first completion provider. New providers will be registered
+    // afterwards depending on what the user types.
+    this.provider = this.registerCompletionProvider(
+      new RegExp(/^:::\s/m),
+      this.alertBlockProposals
+    );
+
+    this.matchers = {
+      alertblocks: {
+        regex: new RegExp(/^:::\s/m),
+        proposals: this.alertBlockProposals
+      },
+      codeblocks: {
+        regex: new RegExp(/^```\s/m),
+        proposals: this.codeBlockProposals
+      },
+    };
+
+    this.dispatcher.addEventListener('editor:completions:load', (event) => {
+      const key = event.message as keyof typeof this.matchers;
+      this.updateCompletionProvider(key);
+    });
   }
 
-  registerCompletionProvider(regex: RegExp, proposeAt: (range: IRange) => CompletionItem[]) {
-    languages.registerCompletionItemProvider('markdown', {
+  async disposeCompletionProvider () {
+    if (this.provider) {
+      this.provider.dispose();
+      this.provider = null;
+    }
+  }
+
+  async updateCompletionProvider (type: keyof typeof this.matchers) {
+    if (this.provider) {
+      await this.disposeCompletionProvider();
+    }
+
+    this.registerCompletionProvider(
+      this.matchers[type].regex,
+      this.matchers[type].proposals
+    );
+  }
+
+  registerCompletionProvider (regex: RegExp, proposeAt: (range: IRange) => CompletionItem[]) {
+    return languages.registerCompletionItemProvider('markdown', {
       provideCompletionItems: (model: editor.ITextModel, position: Position) => {
         const textUntilPosition = this.getTextUntilPosition(model, position);
         const match = textUntilPosition.match(regex);
