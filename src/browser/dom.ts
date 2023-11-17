@@ -50,6 +50,13 @@ export const dom = {
   meta: {
     file: {
       active: <HTMLSpanElement>document.querySelector('#active-file')
+    },
+    scroll:{
+      line: {
+        class: 'has-line-data',
+        start: 'data-line-start',
+        end: 'data-line-end'
+      }
     }
   }
 };

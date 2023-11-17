@@ -1,4 +1,5 @@
 import { formatHTML } from '../util';
+import { dom } from '../dom';
 
 const cdn = {
   bootstrap: {
@@ -186,11 +187,11 @@ export class Exporter {
     // Define attributes and classes for removal
     const removals = {
       attrs: [
-        'data-line-start',
-        'data-line-end'
+        dom.meta.scroll.line.start,
+        dom.meta.scroll.line.end
       ],
       classes: [
-        'has-line-data'
+        dom.meta.scroll.line.class
       ]
     };
 
