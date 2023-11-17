@@ -14,13 +14,12 @@ export class Completion
   private dispatcher: EditorDispatcher;
 
   constructor (dispatcher: EditorDispatcher) {
-    this.dispatcher = dispatcher;
+    this.dispatcher = dispatcher; // TODO use the dispatcher to update registered completion provider on-the-fly
     
     this.registerCompletionProvider(new RegExp(/^:::\s/m), this.alertBlockProposals);
-    this.registerCompletionProvider(new RegExp(/^```\w/m), this.codeBlockProposals);
   }
 
-  registerCompletionProvider(regex: RegExp, generate: (range: IRange) => CompletionItem[]) {
+  registerCompletionProvider(regex: RegExp, proposeAt: (range: IRange) => CompletionItem[]) {
     languages.registerCompletionItemProvider('markdown', {
       provideCompletionItems: (model: editor.ITextModel, position: Position) => {
         const textUntilPosition = this.getTextUntilPosition(model, position);
@@ -31,9 +30,10 @@ export class Completion
         }
 
         const word = model.getWordUntilPosition(position);
-        const range = this.getRange(word, position);
 
-        return { suggestions: generate(range) };
+        return { 
+          suggestions: proposeAt(this.getRange(word, position))
+        };
       }
     });
   }
@@ -71,7 +71,7 @@ export class Completion
     const proposals: CompletionItem[] = [];
     for (const alert of alerts) {
       proposals.push({
-        label: '"::: '+alert+'"',
+        label: `::: ${alert}`,
         kind: languages.CompletionItemKind.Function,
         documentation: `${alert} alertblock`,
         insertText: `${alert}\n<your text here>\n:::`,
