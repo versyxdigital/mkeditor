@@ -2,8 +2,8 @@ import { IDisposable, IRange, Position, editor, languages } from 'monaco-editor/
 import { CompletionItem, Matcher } from '../interfaces/Completion';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 
-export class Completion
-{
+export class Completion {
+
   private dispatcher: EditorDispatcher;
 
   private provider: IDisposable | null;
@@ -13,7 +13,7 @@ export class Completion
   public modelTrackValues: Array<string> = [];
 
   constructor (dispatcher: EditorDispatcher) {
-    // TODO use the dispatcher to update registered completion provider on-the-fly
+
     this.dispatcher = dispatcher;
     
     // Use alertblocks to initalise the first completion provider. New providers will be registered
@@ -29,7 +29,7 @@ export class Completion
         proposals: this.alertBlockProposals
       },
       codeblocks: {
-        regex: new RegExp(/^```\w/m),
+        regex: new RegExp(/\u0060\u0060\u0060/),
         proposals: this.codeBlockProposals
       },
     };
@@ -40,7 +40,7 @@ export class Completion
     });
   }
 
-  changeProviderOnValidProposal (value: string) {
+  changeOnValidProposal (value: string) {
     const availableProposal = this.trackValuesUntilProposalAvailable(value);
     if (availableProposal === '```') {
       this.updateCompletionProvider('codeblocks');
