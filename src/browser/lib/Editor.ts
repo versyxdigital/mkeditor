@@ -123,7 +123,7 @@ export class Editor {
 
       // Register dynamic completions provider to provide completion suggestions based on
       // user input.
-      this.providers.completion?.changeOnValidProposal(event.changes[0].text);      
+      // this.providers.completion?.changeOnValidProposal(event.changes[0].text);      
       
       // Add a small timeout for the render.
       setTimeout(() => {

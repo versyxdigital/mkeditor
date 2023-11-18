@@ -18,20 +18,17 @@ export class Completion {
 
     this.dispatcher = dispatcher;
     
-    // Use alertblocks to initalise the first completion provider. New providers will be registered
-    // afterwards depending on what the user types.
-    this.provider = this.registerCompletionProvider(
-      new RegExp(/^:::\s/m),
-      this.alertBlockProposals
-    );
+    // Use alertblocks to initalise the first completion provider. New providers will be
+    // registered afterwards depending on what the user types.
+    this.provider = this.registerCompletionProvider(/^:::/, this.alertBlockProposals);
 
     this.matchers = {
       alertblocks: {
-        regex: new RegExp(/^:::\s/m),
+        regex: /^:::/,
         proposals: this.alertBlockProposals
       },
       codeblocks: {
-        regex: new RegExp(/^\u0060\u0060\u0060/m),
+        regex: /^\u0060\u0060\u0060/,
         proposals: this.codeBlockProposals
       },
     };
@@ -44,10 +41,9 @@ export class Completion {
 
   async changeOnValidProposal (value: string) {
     const availableProposal = this.trackValuesUntilProposalAvailable(value);
-    console.log(this.latestTokenIdentifier);
-    if (this.matchers.codeblocks.regex.test(availableProposal)) {
+    if (availableProposal.startsWith('```')) {
       await this.updateCompletionProvider('codeblocks');
-    } else if (this.matchers.alertblocks.regex.test(availableProposal)) {
+    } else if (availableProposal.startsWith(':::')) {
       await this.updateCompletionProvider('alertblocks');
     }
   }
@@ -55,12 +51,10 @@ export class Completion {
   async updateCompletionProvider (type: keyof typeof this.matchers) {
     await this.disposeCompletionProvider();
     
-    console.log(this);
     this.provider = this.registerCompletionProvider(
       this.matchers[type].regex,
       this.matchers[type].proposals
     );
-    console.log(this);
   }
 
   async disposeCompletionProvider () {
@@ -75,8 +69,8 @@ export class Completion {
     return languages.registerCompletionItemProvider('markdown', {
       provideCompletionItems: (model: editor.ITextModel, position: Position) => {
         const textUntilPosition = this.getTextUntilPosition(model, position);
-        const match = textUntilPosition.match(regex);
-        
+
+        const match = textUntilPosition?.match(new RegExp(regex));
         if (! match) {
           return { suggestions: [] };
         }
@@ -114,7 +108,7 @@ export class Completion {
       startColumn: 1,
       endLineNumber: position.lineNumber,
       endColumn: position.column
-    });
+    }).split('\n').pop();
   }
 
   getRange (word: editor.IWordAtPosition, position: Position): IRange {
