@@ -35,7 +35,7 @@ if (model) {
   mkeditor.provide('settings', new Settings(mode, model, dispatcher));
 
   // Register a new completion provider for the editor auto-completion
-  mkeditor.provide('completion', new Completion(dispatcher));
+  mkeditor.provide('completion', new Completion(model, dispatcher));
 
   // If running within electron app, register IPC handler for communication between
   // main and renderer execution contexts.

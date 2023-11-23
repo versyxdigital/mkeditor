@@ -6,6 +6,8 @@ import { completion } from '../mappings/completion';
 
 export class Completion {
 
+  private model: editor.IStandaloneCodeEditor;
+
   private dispatcher: EditorDispatcher;
 
   private provider: IDisposable | null;
@@ -14,7 +16,9 @@ export class Completion {
 
   private matchers: Record<string, Matcher>;
 
-  constructor (dispatcher: EditorDispatcher) {
+  constructor (model: editor.IStandaloneCodeEditor, dispatcher: EditorDispatcher) {
+
+    this.model = model;
 
     this.dispatcher = dispatcher;
     
@@ -44,8 +48,8 @@ export class Completion {
       limit: 3
     });
 
-    // (deprecated) event listener to load auto-completions from elsewhere
-    // in the application, i.e. storage, or the bridge.
+    // Event listener to load auto-completions from elsewhere in the application
+    // i.e. storage, or the bridge.
     this.dispatcher.addEventListener('editor:completion:load', (event) => {
       const key = event.message as keyof typeof this.matchers;
       this.updateCompletionProvider(key);
@@ -66,13 +70,16 @@ export class Completion {
   async updateCompletionProvider (type: keyof typeof this.matchers) {
     // Remove the existing provider (otherwise you get duplicates).
     await this.disposeCompletionProvider();
-    
+
     // Register the new provider, passing the pattern to match and proposals
     // to suggest.
     this.provider = this.registerCompletionProvider(
       this.matchers[type].regex,
       this.matchers[type].proposals
     );
+
+    this.model.trigger('completion', 'editor.action.triggerSuggest', {});
+
     console.log(`Registered new completion provider for ${type}`);
   }
 
@@ -149,7 +156,7 @@ export class Completion {
       proposals.push({
         label: `${completion.alertblocks.literal} ${alert}`,
         kind: languages.CompletionItemKind.Function,
-        documentation: `${alert} alertblock`,
+        documentation: `${alert} alert block`,
         insertText: `${alert}\n<your text here>\n${completion.alertblocks.literal}`,
         range
       });
