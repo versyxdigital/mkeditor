@@ -2,10 +2,12 @@ import { Dropdown, Modal } from 'bootstrap';
 import { Bridge } from '../lib/Bridge';
 import { Commands } from '../lib/Commands';
 import { Settings } from '../lib/Settings';
+import { Completion } from '../lib/Completion';
 
 export interface Providers {
   bridge: Bridge | null;
   commands: Commands | null;
+  completion: Completion | null;
   settings: Settings | null;
 }
 

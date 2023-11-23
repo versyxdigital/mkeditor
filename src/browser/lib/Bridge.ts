@@ -21,7 +21,8 @@ export class Bridge {
   
   public providers: BridgeProviders = {
     settings: null,
-    commands: null
+    commands: null,
+    completion: null
   };
 
   constructor (

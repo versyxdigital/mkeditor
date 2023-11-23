@@ -36,9 +36,9 @@ export function formatHTML (html: string) {
 
 export function getOSPlatform () {
   const { userAgent } = window.navigator;
-  if (userAgent.indexOf("Win") != -1) return 'Windows';
-  if (userAgent.indexOf("Mac") != -1) return 'MacOS';
-  if (userAgent.indexOf("Linux") != -1) return 'Linux';
+  if (userAgent.indexOf('Win') != -1) return 'Windows';
+  if (userAgent.indexOf('Mac') != -1) return 'MacOS';
+  if (userAgent.indexOf('Linux') != -1) return 'Linux';
 }
 
 export function getExecutionBridge () {

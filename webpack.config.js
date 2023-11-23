@@ -66,6 +66,7 @@ module.exports = {
         'find',
         'folding',
         'fontZoom',
+        'inlineCompletions',
         'inPlaceReplace',
         'indentation',
         'lineSelection',
@@ -74,6 +75,7 @@ module.exports = {
         'multicursor',
         'quickCommand',
         'referenceSearch',
+        'suggest',
         'wordHighlighter',
         'wordOperations',
         'wordPartOperations'
@@ -87,6 +89,10 @@ module.exports = {
         {
           from: './src/browser/assets/favicon.ico',
           to: './favicon.ico'
+        },
+        {
+          from: './src/browser/assets/icon.png',
+          to: './icon.png'
         },
         { from: './src/browser/views'}
       ]

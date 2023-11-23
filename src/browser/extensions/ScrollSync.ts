@@ -1,3 +1,5 @@
+import { dom } from '../dom';
+
 const ScrollSync = async (line: number, preview: HTMLElement) => {
   return new Promise((resolve) => {
     if (line <= 0) {
@@ -32,8 +34,6 @@ const ScrollSync = async (line: number, preview: HTMLElement) => {
   });
 };
 
-const codeLineClass = 'has-line-data';
-
 const getElementsForSourceLine = (targetLine: number) => {
   const lineNumber = Math.floor(targetLine);
   const lines = getCodeLineElements();
@@ -57,8 +57,8 @@ const getCodeLineElements = (() => {
   return () => {
     elements = [{ element: document.body, line: 0 }];
     
-    for (const element of document.getElementsByClassName(codeLineClass)) {
-      const line = parseInt(<string>element.getAttribute('data-line-start'));
+    for (const element of document.getElementsByClassName(dom.meta.scroll.line.class)) {
+      const line = parseInt(<string>element.getAttribute(dom.meta.scroll.line.start));
       
       if (isNaN(line)) {
         continue;
@@ -79,22 +79,22 @@ const getCodeLineElements = (() => {
 })();
 
 const getElementBounds = ({ element }: { element: HTMLElement }) => {
-  const myBounds = element.getBoundingClientRect();
+  const bounds = element.getBoundingClientRect();
   // Some code line elements may contain other code line elements.
   // In those cases, only take the height up to that child.
-  const codeLineChild = element.querySelector(`.${codeLineClass}`);
+  const child = element.querySelector(`.${dom.meta.scroll.line.class}`);
   
-  if (codeLineChild) {
-    const childBounds = codeLineChild.getBoundingClientRect();
-    const height = Math.max(1, (childBounds.top - myBounds.top));
+  if (child) {
+    const childBounds = child.getBoundingClientRect();
+    const height = Math.max(1, (childBounds.top - bounds.top));
     
     return {
-      top: myBounds.top,
+      top: bounds.top,
       height
     };
   }
   
-  return myBounds;
+  return bounds;
 };
 
 export {

@@ -7,11 +7,20 @@
 </head>
 <body data-theme="light">
 
+<div id="splashscreen" class="position-absolute top-0 bottom-0 h-100 w-100 align-items-center text-center">
+    <div class="w-100">
+        <img src="./icon.png" class="img-fluid app-logo mb-3">
+        <h1>mkeditor</h1>
+        <small>markdown made simple</small>
+    </div>
+</div>
+
 <!-- sub-menu bar -->
 <nav class="navbar navbar-expand navbar-light bg-light">
     <ul class="navbar-nav mr-auto">
-        <li class="nav-item">
-            <span id="active-file" class="text-muted ms-3">MKEditor</span>
+        <li class="nav-item d-flex align-items-center gap-2">
+            <img src="./icon.png" class="img-fluid app-logo-tiny ms-2">
+            <span id="active-file" class="text-muted">MKEditor</span>
         </li>
     </ul>
     <ul class="navbar-nav ms-auto">
@@ -37,7 +46,7 @@
 </nav>
 
 <!-- main content -->
-<div class="d-flex flex-row h-100">
+<div id="app" class="d-flex flex-row h-100">
     <div class="w-100 border-top">
         <div id="wrapper" class="d-flex flex-row">
             <!-- editor pane -->
@@ -222,35 +231,31 @@
 <!-- about modal -->
 <div class="modal" tabindex="-1" id="app-about">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header border-bottom-0">
-                <h5 class="modal-title">MKEditor</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="text-muted modal-body small pt-0">
+        <div class="modal-content text-center p-3">
+            <div class="text-muted modal-body small">
+                <img src="./icon.png" class="img-fluid app-logo mb-3">
                 <p>Version <span id="app-version"></span></p>
                 <p>Built with love by <a class="fw-bold text-primary text-decoration-none" href="https://github.com/sentrychris" target="_blank">Chris Rowles</a>.</p>
-                <p class="mb-0">MKEditor uses the following open-source libraries:</p>
+                <p class="mb-1">MKEditor uses the following open-source libraries:</p>
                 <p>monaco, bootstrap, fontawesome, markdown-it, highlight.js, split.js, sweetalert2, webpack and electron.</p>
-                <p>View the source code <a class="fw-bold text-primary text-decoration-none" href="https://github.com/mkeditorOSS/mkeditor" target="_blank">here</a>.
+                <p class="mb-0">View the source code <a class="fw-bold text-primary text-decoration-none" href="https://github.com/mkeditorOSS/mkeditor" target="_blank">here</a>.
             </div>
         </div>
     </div>
 </div>
-
 
 <!-- shortcuts modal -->
 <div class="modal" tabindex="-1" id="app-shortcuts">
     <div class="modal-dialog mw-100 w-75" role="document">
         <div class="modal-content">
             <div class="modal-header border-bottom-0">
-                <h3 class="modal-title">Editor Shortcuts</h3>
+                <h5 class="modal-title">MKEditor Shortcuts</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body px-4 py-0">
                 <div class="row">
                     <div class="col-6">
-                        <h5>Basic Editing</h5>
+                        <h6>Basic Editing</h6>
                         <table class="table table-sm table-striped small">
                             <thead>
                             <tr>
@@ -319,7 +324,7 @@
                     <div class="col-6">
                         <div class="row">
                             <div class="col-12">
-                                <h5>Text Formatting</h5>
+                                <h6>Text Formatting</h6>
                                 <table class="table table-sm table-striped small">
                                     <thead>
                                     <tr>
@@ -352,7 +357,7 @@
                                 </table>
                             </div>
                             <div class="col-12 mt-3">
-                                <h5>Search and Replace</h5>
+                                <h6>Search and Replace</h6>
                                 <table class="table table-sm table-striped small">
                                     <thead>
                                     <tr>
@@ -389,7 +394,7 @@
                 </div>
                 <div class="row">
                     <div class="col-12">
-                        <h5>Multi-cursor and selection</h5>
+                        <h6>Multi-cursor and selection</h6>
                         <table class="table table-sm table-striped small">
                             <thead>
                             <tr>
@@ -442,7 +447,6 @@
         </div>
     </div>
 </div>
-
 <script type="text/javascript" src="./mkeditor.bundle.js"></script>
 </body>
 </html>

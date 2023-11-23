@@ -1,11 +1,11 @@
 import './mappings/icons';
-import Split from 'split.js';
 import { Editor } from './lib/Editor';
 import { EditorDispatcher } from './events/EditorDispatcher';
+import { Completion } from './lib/Completion';
 import { Commands } from './lib/Commands';
 import { Settings } from './lib/Settings';
 import { Bridge } from './lib/Bridge';
-import { setupTooltips } from './dom';
+import { splashScreen, setupTooltips, draggableSplit } from './dom';
 import { getExecutionBridge } from './util';
 
 // The bi-directional synchronous bridge to the main execution context.
@@ -34,6 +34,9 @@ if (model) {
   // and to persist settings either to localStorage or file depending on context.
   mkeditor.provide('settings', new Settings(mode, model, dispatcher));
 
+  // Register a new completion provider for the editor auto-completion
+  mkeditor.provide('completion', new Completion(model, dispatcher));
+
   // If running within electron app, register IPC handler for communication between
   // main and renderer execution contexts.
   if (api !== 'web') {    
@@ -49,8 +52,9 @@ if (model) {
   // Setup application tooltips.
   setupTooltips();
   
-  // Implement draggable splitter.
-  Split(['#editor-split', '#preview-split'], {
-    onDrag () { model.layout(); }
-  });
+  // Implement draggable split.
+  draggableSplit(model);
+
+  // Display splash screen
+  splashScreen();
 }
