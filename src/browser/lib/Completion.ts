@@ -2,6 +2,7 @@ import { IDisposable, IRange, Position, editor, languages } from 'monaco-editor/
 import { CompletionItem, Matcher } from '../interfaces/Completion';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { CircularBuffer } from './Buffer';
+import { completion } from '../mappings/completion';
 
 export class Completion {
 
@@ -9,9 +10,9 @@ export class Completion {
 
   private provider: IDisposable | null;
 
-  private matchers: Record<string, Matcher> = {};
-
   private buffer: CircularBuffer;
+
+  private matchers: Record<string, Matcher>;
 
   constructor (dispatcher: EditorDispatcher) {
 
@@ -19,17 +20,20 @@ export class Completion {
     
     // Use alertblocks to initalise the first completion provider. New providers will be
     // registered afterwards depending on what the user types.
-    this.provider = this.registerCompletionProvider(/^:::/, this.alertBlockProposals);
+    this.provider = this.registerCompletionProvider(
+      completion.alertblocks.regex,
+      this.alertBlockProposals
+    );
 
     // Define matchers that will be used to match the editor value and provide
     // proposed auto-completions.
     this.matchers = {
       alertblocks: {
-        regex: /^:::/,
+        regex: completion.alertblocks.regex,
         proposals: this.alertBlockProposals
       },
       codeblocks: {
-        regex: /^```/,
+        regex: completion.codeblocks.regex,
         proposals: this.codeBlockProposals
       },
     };
@@ -52,10 +56,10 @@ export class Completion {
     // Fetch potential auto-completions proposal.
     const proposal = this.trackBufferContents(value);
     // Update the provider to provide matching auto-completions.
-    if (proposal === '```') {
-      await this.updateCompletionProvider('codeblocks');
-    } else if (proposal === ':::') {
+    if (proposal === completion.alertblocks.literal) {
       await this.updateCompletionProvider('alertblocks');
+    } else if (proposal === completion.codeblocks.literal) {
+      await this.updateCompletionProvider('codeblocks');
     }
   }
 
@@ -140,24 +144,13 @@ export class Completion {
   }
 
   alertBlockProposals (range: IRange) {
-    const alerts = [
-      'success',
-      'info',
-      'warning',
-      'danger',
-      'primary',
-      'secondary',
-      'light',
-      'dark'
-    ];
-
     const proposals: CompletionItem[] = [];
-    for (const alert of alerts) {
+    for (const alert of completion.alertblocks.types) {
       proposals.push({
-        label: `::: ${alert}`,
+        label: `${completion.alertblocks.literal} ${alert}`,
         kind: languages.CompletionItemKind.Function,
         documentation: `${alert} alertblock`,
-        insertText: `${alert}\n<your text here>\n:::`,
+        insertText: `${alert}\n<your text here>\n${completion.alertblocks.literal}`,
         range
       });
     }
@@ -166,24 +159,13 @@ export class Completion {
   }
 
   codeBlockProposals (range: IRange) {
-    const langs = [
-      'json',
-      'javascript',
-      'typescript',
-      'csharp',
-      'php',
-      'sql',
-      'shell',
-      'xml'
-    ];
-
     const proposals: CompletionItem[] = [];
-    for (const lang of langs) {
+    for (const lang of completion.codeblocks.types) {
       proposals.push({
-        label: '```'+lang,
+        label: completion.codeblocks.literal + lang,
         kind: languages.CompletionItemKind.Function,
         documentation: `${lang} code block`,
-        insertText: lang+'\n<your code here>\n```',
+        insertText: `${lang}\n<your code here>\n${completion.codeblocks.literal}`,
         range
       });
     }
