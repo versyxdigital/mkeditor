@@ -1,6 +1,7 @@
 import { IDisposable, IRange, Position, editor, languages } from 'monaco-editor/esm/vs/editor/editor.api';
 import { CompletionItem, Matcher } from '../interfaces/Completion';
 import { EditorDispatcher } from '../events/EditorDispatcher';
+import { CircularBuffer } from './Buffer';
 
 export class Completion {
 
@@ -10,9 +11,7 @@ export class Completion {
 
   private matchers: Record<string, Matcher> = {};
 
-  public modelTrackValues: Array<string> = [];
-
-  public latestTokenIdentifier: string = '';
+  private buffer: CircularBuffer;
 
   constructor (dispatcher: EditorDispatcher) {
 
@@ -32,6 +31,10 @@ export class Completion {
         proposals: this.codeBlockProposals
       },
     };
+
+    this.buffer = new CircularBuffer({
+      limit: 3
+    });
 
     this.dispatcher.addEventListener('editor:completion:load', (event) => {
       const key = event.message as keyof typeof this.matchers;
@@ -59,9 +62,9 @@ export class Completion {
 
   async disposeCompletionProvider () {
     if (this.provider) {
-      console.log('disposing...');
       this.provider.dispose();
       this.provider = null;
+      console.log('Disposed completion provider...');
     }
   }
 
@@ -85,21 +88,19 @@ export class Completion {
   }
 
   trackValuesUntilProposalAvailable (value: string) {
-    if (this.modelTrackValues.length > 5) {
-      this.modelTrackValues = [];
+    if (value === '\n') {
+      return this.buffer.get();
     }
-
-    if (value === '') {
-      this.modelTrackValues.pop();
+    
+    if (value === '' && this.buffer.get() !== '') {
+      this.buffer.rewind();
     } else {
-      this.modelTrackValues.push(value);
+      this.buffer.forward(value);
     }
 
-    this.latestTokenIdentifier = this.modelTrackValues.slice(
-      Math.max(this.modelTrackValues.length - 3, 1)
-    ).join('');
+    console.log(this.buffer.get());
 
-    return this.latestTokenIdentifier;
+    return this.buffer.get();
   }
 
   getTextUntilPosition (model: editor.ITextModel, position: Position) {
@@ -161,7 +162,7 @@ export class Completion {
     const proposals: CompletionItem[] = [];
     for (const lang of langs) {
       proposals.push({
-        label: '``` '+lang,
+        label: '```'+lang,
         kind: languages.CompletionItemKind.Function,
         documentation: `${lang} code block`,
         insertText: lang+'\n<your code here>\n```',
