@@ -1,31 +1,31 @@
-@use "sass:meta";
-@import "~bootstrap/scss/bootstrap";
+@use 'sass:meta';
+@import '~bootstrap/scss/bootstrap';
 
-@import "_base.scss";
-@import "_editor.scss";
-@import "_preview.scss";
-@import "_notify.scss";
-@import "_darkmode.scss";
+@import '_base.scss';
+@import '_editor.scss';
+@import '_preview.scss';
+@import '_notify.scss';
+@import '_darkmode.scss';
 
-body[data-theme="light"] {
-  @include meta.load-css("highlight.js/styles/github");
+body[data-theme='light'] {
+  @include meta.load-css('highlight.js/styles/github');
 }
 
-body[data-theme="dark"] {
-  @include meta.load-css("highlight.js/styles/github-dark");
+body[data-theme='dark'] {
+  @include meta.load-css('highlight.js/styles/github-dark');
 }
 
 ::-webkit-scrollbar {
   width: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #eeeeee; 
+  background: #eeeeee;
 }
 ::-webkit-scrollbar-thumb {
-  background: #bbbbbb; 
+  background: #bbbbbb;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #aaaaaa; 
+  background: #aaaaaa;
 }
 
 #app {
@@ -35,7 +35,7 @@ body[data-theme="dark"] {
 #splashscreen {
   z-index: 9999;
   background: #222222;
-  color: #FFFFFF;
+  color: #ffffff;
   display: flex;
   h1 {
     font-size: 3.5em;
@@ -58,7 +58,7 @@ body[data-theme="dark"] {
 }
 
 .btn-sm {
-  font-size: .75rem;
+  font-size: 0.75rem;
 }
 
 .btn-primary {

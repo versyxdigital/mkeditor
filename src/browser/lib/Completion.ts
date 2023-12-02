@@ -1,11 +1,16 @@
-import { IDisposable, IRange, Position, editor, languages } from 'monaco-editor/esm/vs/editor/editor.api';
+import {
+  IDisposable,
+  IRange,
+  Position,
+  editor,
+  languages,
+} from 'monaco-editor/esm/vs/editor/editor.api';
+import { CircularBuffer } from 'circle-buffer';
 import { CompletionItem, Matcher } from '../interfaces/Completion';
 import { EditorDispatcher } from '../events/EditorDispatcher';
-import { CircularBuffer } from './Buffer';
 import { completion } from '../mappings/completion';
 
 export class Completion {
-
   private model: editor.IStandaloneCodeEditor;
 
   private dispatcher: EditorDispatcher;
@@ -16,17 +21,19 @@ export class Completion {
 
   private matchers: Record<string, Matcher>;
 
-  constructor (model: editor.IStandaloneCodeEditor, dispatcher: EditorDispatcher) {
-
+  constructor(
+    model: editor.IStandaloneCodeEditor,
+    dispatcher: EditorDispatcher,
+  ) {
     this.model = model;
 
     this.dispatcher = dispatcher;
-    
+
     // Use alertblocks to initalise the first completion provider. New providers will be
     // registered afterwards depending on what the user types.
     this.provider = this.registerCompletionProvider(
       completion.alertblocks.regex,
-      this.alertBlockProposals
+      this.alertBlockProposals,
     );
 
     // Define matchers that will be used to match the editor value and provide
@@ -34,18 +41,18 @@ export class Completion {
     this.matchers = {
       alertblocks: {
         regex: completion.alertblocks.regex,
-        proposals: this.alertBlockProposals
+        proposals: this.alertBlockProposals,
       },
       codeblocks: {
         regex: completion.codeblocks.regex,
-        proposals: this.codeBlockProposals
+        proposals: this.codeBlockProposals,
       },
     };
 
     // Create a new buffer instance to track the model content to match
     // against a "matchers" regex.
     this.buffer = new CircularBuffer({
-      limit: 3
+      limit: 3,
     });
 
     // Event listener to load auto-completions from elsewhere in the application
@@ -56,7 +63,7 @@ export class Completion {
     });
   }
 
-  async changeOnValidProposal (value: string) {
+  async changeOnValidProposal(value: string) {
     // Fetch potential auto-completions proposal.
     const proposal = this.trackBufferContents(value);
     // Update the provider to provide matching auto-completions.
@@ -67,7 +74,7 @@ export class Completion {
     }
   }
 
-  async updateCompletionProvider (type: keyof typeof this.matchers) {
+  async updateCompletionProvider(type: keyof typeof this.matchers) {
     // Remove the existing provider (otherwise you get duplicates).
     await this.disposeCompletionProvider();
 
@@ -75,7 +82,7 @@ export class Completion {
     // to suggest.
     this.provider = this.registerCompletionProvider(
       this.matchers[type].regex,
-      this.matchers[type].proposals
+      this.matchers[type].proposals,
     );
 
     this.model.trigger('completion', 'editor.action.triggerSuggest', {});
@@ -83,7 +90,7 @@ export class Completion {
     console.log(`Registered new completion provider for ${type}`);
   }
 
-  async disposeCompletionProvider () {
+  async disposeCompletionProvider() {
     if (this.provider) {
       this.provider.dispose();
       this.provider = null;
@@ -91,14 +98,20 @@ export class Completion {
     }
   }
 
-  registerCompletionProvider (regex: RegExp, proposeAt: (range: IRange) => CompletionItem[]) {
+  registerCompletionProvider(
+    regex: RegExp,
+    proposeAt: (range: IRange) => CompletionItem[],
+  ) {
     return languages.registerCompletionItemProvider('markdown', {
-      provideCompletionItems: (model: editor.ITextModel, position: Position) => {
+      provideCompletionItems: (
+        model: editor.ITextModel,
+        position: Position,
+      ) => {
         // Get the text within range
         const textUntilPosition = this.getTextUntilPosition(model, position);
         // Match the auto-completion trigger
         const match = textUntilPosition?.match(new RegExp(regex));
-        if (! match) {
+        if (!match) {
           return { suggestions: [] };
         }
 
@@ -106,19 +119,19 @@ export class Completion {
         const word = model.getWordUntilPosition(position);
 
         // Propose the associated auto-completions
-        return { 
-          suggestions: proposeAt(this.getRange(word, position))
+        return {
+          suggestions: proposeAt(this.getRange(word, position)),
         };
-      }
+      },
     });
   }
 
-  trackBufferContents (value: string) {
+  trackBufferContents(value: string) {
     if (value === '\n') {
       // If the value is a newline then do nothing
       return this.buffer.get();
     }
-    
+
     if (value === '' && this.buffer.get() !== '') {
       // if it's a backspace and the buffer is not empty then remove the last
       // value added to the buffer
@@ -132,16 +145,19 @@ export class Completion {
     return this.buffer.get();
   }
 
-  getTextUntilPosition (model: editor.ITextModel, position: Position) {
-    return model.getValueInRange({
-      startLineNumber: 1,
-      startColumn: 1,
-      endLineNumber: position.lineNumber,
-      endColumn: position.column
-    }).split('\n').pop();
+  getTextUntilPosition(model: editor.ITextModel, position: Position) {
+    return model
+      .getValueInRange({
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: position.lineNumber,
+        endColumn: position.column,
+      })
+      .split('\n')
+      .pop();
   }
 
-  getRange (word: editor.IWordAtPosition, position: Position): IRange {
+  getRange(word: editor.IWordAtPosition, position: Position): IRange {
     return {
       startLineNumber: position.lineNumber,
       endLineNumber: position.lineNumber,
@@ -150,7 +166,7 @@ export class Completion {
     };
   }
 
-  alertBlockProposals (range: IRange) {
+  alertBlockProposals(range: IRange) {
     const proposals: CompletionItem[] = [];
     for (const alert of completion.alertblocks.types) {
       proposals.push({
@@ -158,14 +174,14 @@ export class Completion {
         kind: languages.CompletionItemKind.Function,
         documentation: `${alert} alert block`,
         insertText: `${alert}\n<your text here>\n${completion.alertblocks.literal}`,
-        range
+        range,
       });
     }
 
     return proposals;
   }
 
-  codeBlockProposals (range: IRange) {
+  codeBlockProposals(range: IRange) {
     const proposals: CompletionItem[] = [];
     for (const lang of completion.codeblocks.types) {
       proposals.push({
@@ -173,7 +189,7 @@ export class Completion {
         kind: languages.CompletionItemKind.Function,
         documentation: `${lang} code block`,
         insertText: `${lang}\n<your code here>\n${completion.codeblocks.literal}`,
-        range
+        range,
       });
     }
 

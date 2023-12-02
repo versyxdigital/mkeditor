@@ -1,4 +1,11 @@
-import { app, BrowserWindow, nativeImage, nativeTheme, shell, Tray } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  nativeImage,
+  nativeTheme,
+  shell,
+  Tray,
+} from 'electron';
 import { join } from 'path';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
@@ -8,18 +15,18 @@ import { iconBase64 } from './assets/icon';
 
 let context: BrowserWindow | null;
 
-function main (file: string | null = null) {
+function main(file: string | null = null) {
   context = new BrowserWindow({
     show: false,
     icon: join(__dirname, 'assets/icon.ico'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: join(__dirname, 'preload.js')
-    }
+      preload: join(__dirname, 'preload.js'),
+    },
   });
 
-  context.webContents.on('will-navigate', event => event.preventDefault());
+  context.webContents.on('will-navigate', (event) => event.preventDefault());
   context.loadFile(join(__dirname, '../index.html'));
 
   // const dialog = new Dialog(context);
@@ -45,14 +52,17 @@ function main (file: string | null = null) {
   context.webContents.on('did-finish-load', () => {
     if (context) {
       if (settings.applied && settings.applied.systemtheme) {
-        context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors);
+        context.webContents.send(
+          'from:theme:set',
+          nativeTheme.shouldUseDarkColors,
+        );
       } else {
         context.webContents.send('from:theme:set', settings.applied?.darkmode);
       }
 
       context.webContents.send('from:settings:set', settings.loadFile());
 
-      if (file && file !== '.' && ! file.startsWith('-')) {
+      if (file && file !== '.' && !file.startsWith('-')) {
         AppStorage.setActiveFile(context, file);
       }
     }
@@ -80,7 +90,7 @@ app.on('open-file', (event) => {
 
   if (!context) {
     main(file);
-  } else if (file && file !== '.' && ! file.startsWith('-')) {
+  } else if (file && file !== '.' && !file.startsWith('-')) {
     AppStorage.setActiveFile(context, file);
   }
 });
@@ -94,7 +104,7 @@ app.on('ready', () => {
 });
 
 app.on('activate', () => {
-  if (! context) {
+  if (!context) {
     main();
   }
 });
@@ -106,7 +116,13 @@ if (!app.requestSingleInstanceLock()) {
     app.focus();
     if (args.length >= 2) {
       const file: string = args[2];
-      if (file && file !== '.' && ! file.startsWith('-') && file.indexOf('MKEditor.lnk') === -1 && context) {
+      if (
+        file &&
+        file !== '.' &&
+        !file.startsWith('-') &&
+        file.indexOf('MKEditor.lnk') === -1 &&
+        context
+      ) {
         AppStorage.setActiveFile(context, file);
       }
     }

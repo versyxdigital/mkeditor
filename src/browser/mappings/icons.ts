@@ -38,7 +38,7 @@ library.add(
   faSave,
   faStrikethrough,
   faTasks,
-  faTerminal
+  faTerminal,
 );
 
 dom.watch();

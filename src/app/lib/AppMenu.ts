@@ -2,16 +2,15 @@ import { app, BrowserWindow, Menu } from 'electron';
 import { BridgeProviders } from '../interfaces/Providers';
 
 export class AppMenu {
-  
   private context: BrowserWindow;
 
   private providers: BridgeProviders = {
-    bridge: null
+    bridge: null,
   };
-  
-  constructor (context: BrowserWindow, register = false) {
+
+  constructor(context: BrowserWindow, register = false) {
     this.context = context;
-    
+
     if (register) {
       this.register();
     }
@@ -20,8 +19,8 @@ export class AppMenu {
   provide<T>(provider: string, instance: T) {
     this.providers[provider] = instance;
   }
-  
-  register () {
+
+  register() {
     app.applicationMenu = Menu.buildFromTemplate([
       {
         label: 'File',
@@ -31,39 +30,43 @@ export class AppMenu {
             click: () => {
               this.context.webContents.send('from:file:new', 'to:file:new');
             },
-            accelerator: process.platform === 'darwin' ? 'Cmd+N' : 'Ctrl+N'
+            accelerator: process.platform === 'darwin' ? 'Cmd+N' : 'Ctrl+N',
           },
           {
             label: 'Open File...',
             click: () => {
               this.context.webContents.send('from:file:open', 'to:file:open');
             },
-            accelerator: process.platform === 'darwin' ? 'Cmd+O' : 'Ctrl+O'
+            accelerator: process.platform === 'darwin' ? 'Cmd+O' : 'Ctrl+O',
           },
           {
             label: 'Save',
             click: () => {
               this.context.webContents.send('from:file:save', 'to:file:save');
             },
-            accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S'
+            accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S',
           },
           {
             label: 'Save As...',
             click: () => {
-              this.context.webContents.send('from:file:saveas', 'to:file:saveas');
+              this.context.webContents.send(
+                'from:file:saveas',
+                'to:file:saveas',
+              );
             },
-            accelerator: process.platform === 'darwin' ? 'Cmd+Shift+S' : 'Ctrl+Shift+S'
+            accelerator:
+              process.platform === 'darwin' ? 'Cmd+Shift+S' : 'Ctrl+Shift+S',
           },
           { type: 'separator' },
           {
             label: 'Settings...',
             click: () => {
               this.context.webContents.send('from:modal:open', 'settings'); // channel / provider
-            }
+            },
           },
           { type: 'separator' },
-          { role: 'quit' }
-        ]
+          { role: 'quit' },
+        ],
       },
       {
         label: 'Edit',
@@ -73,8 +76,8 @@ export class AppMenu {
           { type: 'separator' },
           { role: 'cut' },
           { role: 'copy' },
-          { role: 'paste' }
-        ]
+          { role: 'paste' },
+        ],
       },
       {
         label: 'View',
@@ -84,20 +87,22 @@ export class AppMenu {
             click: () => {
               this.context.webContents.send('from:command:palette', 'open');
             },
-            accelerator: 'F1'
+            accelerator: 'F1',
           },
           { type: 'separator' },
           { role: 'togglefullscreen' },
           {
             label: 'Toggle Developer Tools',
             accelerator: (function () {
-              return process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I';
-            }()),
+              return process.platform === 'darwin'
+                ? 'Alt+Command+I'
+                : 'Ctrl+Shift+I';
+            })(),
             click: () => {
               this.context.webContents.toggleDevTools();
-            }
-          }
-        ]
+            },
+          },
+        ],
       },
       {
         label: 'Help',
@@ -107,39 +112,41 @@ export class AppMenu {
             click: () => {
               this.context.webContents.send('from:modal:open', 'about'); // channel / provider
             },
-            accelerator: process.platform === 'darwin' ? 'Cmd+/' : 'Ctrl+/'
+            accelerator: process.platform === 'darwin' ? 'Cmd+/' : 'Ctrl+/',
           },
           {
             label: 'Editor Shortcuts',
             click: () => {
               this.context.webContents.send('from:modal:open', 'shortcuts'); // channel / provider
             },
-            accelerator: process.platform === 'darwin' ? 'Cmd+;' : 'Ctrl+;'
-          }
-        ]
-      }
+            accelerator: process.platform === 'darwin' ? 'Cmd+;' : 'Ctrl+;',
+          },
+        ],
+      },
     ]);
   }
 
-  setJumpListTasks () {
-    app.setUserTasks([{
-      program: process.execPath,
-      arguments: '--new-window',
-      iconPath: process.execPath,
-      iconIndex: 0,
-      title: 'New Window',
-      description: 'Create a new window'
-    }]);
-  } 
+  setJumpListTasks() {
+    app.setUserTasks([
+      {
+        program: process.execPath,
+        arguments: '--new-window',
+        iconPath: process.execPath,
+        iconIndex: 0,
+        title: 'New Window',
+        description: 'Create a new window',
+      },
+    ]);
+  }
 
-  buildTrayContextMenu (context: BrowserWindow) {
+  buildTrayContextMenu(context: BrowserWindow) {
     return Menu.buildFromTemplate([
       {
         label: 'Show Window',
         click: () => {
           app.focus();
           context.maximize();
-        }
+        },
       },
       {
         label: 'Open Recent',
@@ -147,14 +154,14 @@ export class AppMenu {
         submenu: [
           {
             label: 'Clear Recent',
-            role: 'clearRecentDocuments'
-          }
-        ]
+            role: 'clearRecentDocuments',
+          },
+        ],
       },
       { type: 'separator' },
       {
         label: 'Quit',
-        click: () => app.quit()
+        click: () => app.quit(),
       },
     ]);
   }

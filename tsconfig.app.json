@@ -1,9 +1,7 @@
 {
   "compilerOptions": {
-    "types": ["@types/wicg-file-system-access"],
-    "outDir": "./dist",
+    "outDir": "./dist/app",
     "target": "esnext",
-    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
@@ -12,12 +10,10 @@
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "ES6",
+    "module": "CommonJS",
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "isolatedModules": true,
-    "baseUrl": "."
+    "isolatedModules": true
   },
-  "files": ["./@types/index.d.ts"],
-  "include": ["src"]
+  "include": ["src/app/**/*.ts"]
 }

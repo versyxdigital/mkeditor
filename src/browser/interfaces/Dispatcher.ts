@@ -3,10 +3,10 @@ export interface Dispatcher {
     [index: string]: ListenerEventCallback[];
   };
 
-  addEventListener(type: string, listener: ListenerEventCallback) : void;
-  hasEventListener(type: string, listener: ListenerEventCallback) : boolean;
-  removeEventListener(type: string, listener: ListenerEventCallback) : void;
-  dispatchEvent(event: ListenerEvent) : void;
+  addEventListener(type: string, listener: ListenerEventCallback): void;
+  hasEventListener(type: string, listener: ListenerEventCallback): boolean;
+  removeEventListener(type: string, listener: ListenerEventCallback): void;
+  dispatchEvent(event: ListenerEvent): void;
 }
 
 export interface ListenerEvent {
@@ -15,4 +15,4 @@ export interface ListenerEvent {
   message: any;
 }
 
-export type ListenerEventCallback = ((event: ListenerEvent) => any);
+export type ListenerEventCallback = (event: ListenerEvent) => any;

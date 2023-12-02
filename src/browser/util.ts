@@ -2,19 +2,20 @@ import MarkdownIt, { Token } from 'markdown-it';
 import { ContextBridgeAPI } from './interfaces/Bridge';
 import Renderer from 'markdown-it/lib/renderer';
 
-export function randomNumber (min: number, max: number) {
+export function randomNumber(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-export function getTimestamp (condense = false) {
-  const date = (new Date()).toISOString()
+export function getTimestamp(condense = false) {
+  const date = new Date()
+    .toISOString()
     .slice(0, 19)
     .replace('T', condense ? '' : ' ');
 
   return condense ? date.replace(/[:-]/g, '') : date;
 }
 
-export function formatHTML (html: string) {
+export function formatHTML(html: string) {
   const tab = '\t';
   let result = '';
   let indent = '';
@@ -34,28 +35,30 @@ export function formatHTML (html: string) {
   return result.substring(1, result.length - 3);
 }
 
-export function getOSPlatform () {
+export function getOSPlatform() {
   const { userAgent } = window.navigator;
   if (userAgent.indexOf('Win') != -1) return 'Windows';
   if (userAgent.indexOf('Mac') != -1) return 'MacOS';
   if (userAgent.indexOf('Linux') != -1) return 'Linux';
 }
 
-export function getExecutionBridge () {
-  if (Object.prototype.hasOwnProperty.call(window, 'executionBridge')
-  && window.executionBridge !== null) {
-    return (window.executionBridge as ContextBridgeAPI);
+export function getExecutionBridge() {
+  if (
+    Object.prototype.hasOwnProperty.call(window, 'executionBridge') &&
+    window.executionBridge !== null
+  ) {
+    return window.executionBridge as ContextBridgeAPI;
   }
 
   return 'web';
 }
 
-export function selfRender (
+export function selfRender(
   tokens: Token[],
   idx: number,
   options: MarkdownIt.Options,
   env: any,
-  self: Renderer
+  self: Renderer,
 ) {
   return self.renderToken(tokens, idx, options);
 }

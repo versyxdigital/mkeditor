@@ -5,9 +5,8 @@ import { settings } from '../config';
 import { dom } from '../dom';
 
 export class Settings {
-  
   private mode: 'web' | 'desktop' = 'web';
-  
+
   private model: editor.IStandaloneCodeEditor;
 
   private dispatcher: EditorDispatcher;
@@ -16,10 +15,10 @@ export class Settings {
 
   private theme: 'light' | 'dark' = 'light';
 
-  constructor (
+  constructor(
     mode: 'web' | 'desktop' = 'web',
     model: editor.IStandaloneCodeEditor,
-    dispatcher: EditorDispatcher
+    dispatcher: EditorDispatcher,
   ) {
     this.mode = mode;
     this.model = model;
@@ -30,31 +29,31 @@ export class Settings {
     this.registerDOMListeners();
   }
 
-  setAppMode (mode: 'web' | 'desktop') {
+  setAppMode(mode: 'web' | 'desktop') {
     this.mode = mode;
   }
 
-  getSettings () {
+  getSettings() {
     return this.settings;
   }
 
-  getDefaultSettings () {
+  getDefaultSettings() {
     return settings;
   }
 
-  setSettings (settings: EditorSettings) {
+  setSettings(settings: EditorSettings) {
     this.settings = settings;
   }
 
-  setSetting (key: string, value: boolean) {
+  setSetting(key: string, value: boolean) {
     this.settings[key as ValidSetting] = value;
   }
 
-  setDefaultSettings () {
+  setDefaultSettings() {
     this.settings = settings;
   }
 
-  loadSettings () {
+  loadSettings() {
     if (this.mode === 'web') {
       this.loadSettingsFromLocalStorage();
     }
@@ -67,10 +66,10 @@ export class Settings {
       .setSystemThemeOverride();
   }
 
-  loadSettingsFromLocalStorage () {
+  loadSettingsFromLocalStorage() {
     const storage = localStorage.getItem('mkeditor-settings');
     if (storage) {
-      const settings = (JSON.parse(storage) as EditorSettings);
+      const settings = JSON.parse(storage) as EditorSettings;
       this.setSettings(settings);
     } else {
       this.setDefaultSettings();
@@ -78,14 +77,11 @@ export class Settings {
     }
   }
 
-  updateSettingsInLocalStorage () {
-    localStorage.setItem(
-      'mkeditor-settings',
-      JSON.stringify(this.settings)
-    );
+  updateSettingsInLocalStorage() {
+    localStorage.setItem('mkeditor-settings', JSON.stringify(this.settings));
   }
 
-  registerDOMListeners () {
+  registerDOMListeners() {
     const toggler = dom.settings;
     this.registerAutoIndentChangeListener(toggler.autoindent);
     this.registerDarkModeChangeListener(toggler.darkmode);
@@ -97,7 +93,7 @@ export class Settings {
     this.setUIState();
   }
 
-  registerAutoIndentChangeListener (handler: Element) {
+  registerAutoIndentChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('autoindent', target.checked);
@@ -108,15 +104,15 @@ export class Settings {
     return this;
   }
 
-  setAudoIndent () {
+  setAudoIndent() {
     this.model.updateOptions({
-      autoIndent: this.settings.autoindent ? 'advanced' : 'none'
+      autoIndent: this.settings.autoindent ? 'advanced' : 'none',
     });
 
     return this;
   }
 
-  registerDarkModeChangeListener (handler: Element) {
+  registerDarkModeChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('darkmode', target.checked);
@@ -127,18 +123,19 @@ export class Settings {
     return this;
   }
 
-  setTheme () {
-    document.body.setAttribute('data-theme', this.settings.darkmode ? 'dark' : 'light');
-    editor.setTheme(
-      this.settings.darkmode ? 'vs-dark' : 'vs'
+  setTheme() {
+    document.body.setAttribute(
+      'data-theme',
+      this.settings.darkmode ? 'dark' : 'light',
     );
+    editor.setTheme(this.settings.darkmode ? 'vs-dark' : 'vs');
 
     this.theme = this.settings.darkmode ? 'dark' : 'light';
-    
+
     return this;
   }
 
-  registerMinimapChangeListener (handler: Element) {
+  registerMinimapChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('minimap', target.checked);
@@ -149,15 +146,15 @@ export class Settings {
     return this;
   }
 
-  setMinimap () {
+  setMinimap() {
     this.model.updateOptions({
-      minimap: { enabled: this.settings.minimap }
+      minimap: { enabled: this.settings.minimap },
     });
 
     return this;
   }
 
-  registerWordWrapChangeListener (handler: Element) {
+  registerWordWrapChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('wordwrap', target.checked);
@@ -168,15 +165,15 @@ export class Settings {
     return this;
   }
 
-  setWordWrap () {
+  setWordWrap() {
     this.model.updateOptions({
-      wordWrap: this.settings.wordwrap ? 'on' : 'off'
+      wordWrap: this.settings.wordwrap ? 'on' : 'off',
     });
 
     return this;
   }
 
-  registerWhitespaceChangeListener (handler: Element) {
+  registerWhitespaceChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('whitespace', target.checked);
@@ -187,15 +184,15 @@ export class Settings {
     return this;
   }
 
-  setWhitespace () {
+  setWhitespace() {
     this.model.updateOptions({
-      renderWhitespace: this.settings.whitespace ? 'all' : 'none'
+      renderWhitespace: this.settings.whitespace ? 'all' : 'none',
     });
 
     return this;
   }
 
-  registerSystemThemeOverrideChangeListener (handler: Element) {
+  registerSystemThemeOverrideChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('systemtheme', target.checked);
@@ -206,15 +203,15 @@ export class Settings {
     return this;
   }
 
-  setSystemThemeOverride () {
+  setSystemThemeOverride() {
     dom.settings.darkmode.checked = this.theme === 'dark';
 
     return this;
   }
 
-  setUIState () {
+  setUIState() {
     const { settings, icons } = dom;
-    
+
     if (this.mode === 'web') {
       settings.fileinfo.style.display = 'none';
       const systemThemeToggle = settings.systemtheme.parentElement;
@@ -224,9 +221,9 @@ export class Settings {
     }
 
     for (const k of Object.keys(settings)) {
-      const key = (k as ValidSetting);
+      const key = k as ValidSetting;
       if (key !== 'darkmode') {
-        settings[key].checked = this.settings[key]; 
+        settings[key].checked = this.settings[key];
       }
     }
 
@@ -244,7 +241,7 @@ export class Settings {
     }
   }
 
-  persist () {
+  persist() {
     this.setUIState();
     if (this.mode === 'web') {
       this.updateSettingsInLocalStorage();

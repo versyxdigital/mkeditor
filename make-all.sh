@@ -7,12 +7,12 @@ echo "Cleaning previous installers..."
 rm -rf ./releases
 
 echo "Building mkeditor distribution..."
-npm run build:editor
+npm run build-editor
 
 echo "Building electron wrapper..."
 npx tsc src/app/*.ts --outDir ./dist/app
 
 echo "Building installer..."
-npm run build:installer
+npm run build-installer
 
 echo "Build complete!"

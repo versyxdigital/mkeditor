@@ -2,31 +2,31 @@ import { EditorSettings } from '../interfaces/Editor';
 import { BaseDispatcher } from './Dispatcher';
 
 export class EditorDispatcher extends BaseDispatcher {
-  message ({ message }: { message: string }) {
+  message({ message }: { message: string }) {
     this.dispatchEvent({
       type: 'message',
-      message: message
+      message: message,
     });
   }
 
-  setTrackedContent ({ content }: { content: string }) {
+  setTrackedContent({ content }: { content: string }) {
     this.dispatchEvent({
       type: 'editor:track:content',
-      message: content
+      message: content,
     });
   }
 
-  updateCompletionProvider ({ matcher }: { matcher: string }) {
+  updateCompletionProvider({ matcher }: { matcher: string }) {
     this.dispatchEvent({
       type: 'editor:completion:load',
-      message: matcher
+      message: matcher,
     });
   }
 
-  bridgeSettings ({ settings }: { settings: EditorSettings }) {
+  bridgeSettings({ settings }: { settings: EditorSettings }) {
     this.dispatchEvent({
       type: 'editor:bridge:settings',
-      message: settings
+      message: settings,
     });
   }
 }

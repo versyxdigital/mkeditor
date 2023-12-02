@@ -11,7 +11,7 @@ const AlertBlock = (md: MarkdownIt) => {
   setup();
 };
 
-function setup () {
+function setup() {
   const alerts = [
     'success',
     'info',
@@ -20,7 +20,7 @@ function setup () {
     'primary',
     'secondary',
     'light',
-    'dark'
+    'dark',
   ];
 
   for (const alert of alerts) {
@@ -30,7 +30,7 @@ function setup () {
   links();
 }
 
-function container (name: string) {
+function container(name: string) {
   handler.use(MarkdownItContainer, name, {
     render: function (tokens: any, i: number) {
       if (tokens[i].nesting === 1) {
@@ -40,11 +40,11 @@ function container (name: string) {
         containerOpenCount -= 1;
         return '</div>\n';
       }
-    }
+    },
   });
 }
 
-function links () {
+function links() {
   const render = handler.renderer.rules.link_open || selfRender;
 
   handler.renderer.rules.link_open = (tokens, idx, options, env, self) => {
