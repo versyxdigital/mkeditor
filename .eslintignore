@@ -1,8 +1,6 @@
-/**node_modules/*
-node_modules/
-
-dist/
-release/
-docs/
-build/
+node_modules
+dist
+build
+releases
+docs
 webpack.config.js

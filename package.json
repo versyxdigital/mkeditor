@@ -7,15 +7,15 @@
   "description": "Markdown Editor",
   "main": "dist/app/main.js",
   "scripts": {
-    "clean": "rm -rf ./dist",
+    "clean-all": "rm -rf ./dist && rm -rf ./releases",
     "prettier": "prettier . --write",
     "lint": "eslint src --ext .ts",
     "prebuild": "node -p \"'export const APP_VERSION = ' + JSON.stringify(require('./package.json').version) + ';'\" > src/browser/version.ts",
-    "build:editor": "npm run prebuild && npm run prettier && webpack --config webpack.config.js",
-    "build:app": "tsc src/app/*.ts --outDir ./dist/app",
-    "build:installer": "electron-builder",
-    "serve:web": "http-server dist",
-    "serve:app": "electron ."
+    "build-editor": "npm run prebuild && npm run prettier && webpack --config webpack.config.js",
+    "build-app": "tsc -p tsconfig.app.json",
+    "build-installer": "electron-builder",
+    "serve-web": "http-server dist",
+    "serve-app": "electron ."
   },
   "devDependencies": {
     "@electron/asar": "^3.2.8",
