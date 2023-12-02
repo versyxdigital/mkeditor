@@ -4,23 +4,22 @@ import { SettingsProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
 
 export class AppBridge {
-  
   private context: BrowserWindow;
-  
+
   private contextWindowTitle: string = 'MKEditor';
-  
+
   private contextBridgedContent: BridgedEditorContent = {
     original: null,
-    current: null
+    current: null,
   };
 
   private contextBridgedContentHasChanged: boolean = false;
 
   private providers: SettingsProviders = {
-    settings: null
+    settings: null,
   };
 
-  constructor (context: BrowserWindow, register = false) {
+  constructor(context: BrowserWindow, register = false) {
     this.context = context;
 
     if (register) {
@@ -31,49 +30,51 @@ export class AppBridge {
   provide<T>(provider: string, instance: T) {
     this.providers[provider] = instance;
   }
-  
-  register () {
+
+  register() {
     // Set the app window title
     ipcMain.on('to:title:set', (event, title = null) => {
       if (title) {
         this.contextWindowTitle = `MKEditor - ${title}`;
       }
-      
+
       this.context.setTitle(this.contextWindowTitle);
     });
-    
+
     // Set the editor state to track content changes in the main process.
     ipcMain.on('to:editor:state', (event, { original, current }) => {
       this.updateContextBridgedContent(original, current);
-      
+
       if (this.contextBridgedContentHasChanged) {
-        this.context.setTitle(`${this.contextWindowTitle} - *(Unsaved Changes)*`);
+        this.context.setTitle(
+          `${this.contextWindowTitle} - *(Unsaved Changes)*`,
+        );
       } else {
         this.context.setTitle(this.contextWindowTitle);
       }
     });
-    
+
     // Save editor settings to file (~/.mkeditor/settings.json)
     ipcMain.on('to:settings:save', (event, { settings }) => {
       this.providers.settings?.saveSettingsToFile(settings);
     });
-    
+
     // Export rendered HTML, triggered from the renderer process
     ipcMain.on('to:html:export', (event, { content }) => {
       AppStorage.save(this.context, {
         id: event.sender.id,
         data: content,
-        encoding: 'utf-8'
+        encoding: 'utf-8',
       });
     });
-    
+
     // Create a new file, linked to the application menu
     ipcMain.on('to:file:new', (event, { content, file }) => {
       AppStorage.create(this.context, {
         id: event.sender.id,
         data: content,
         filePath: file,
-        encoding: 'utf-8'
+        encoding: 'utf-8',
       }).then(() => {
         this.resetContextBridgedContent();
       });
@@ -84,27 +85,30 @@ export class AppBridge {
     ipcMain.on('to:file:open', () => {
       AppStorage.open(this.context);
     });
-    
+
     // Save an existing file, this is also used by the renderer bridge "from:file:open" listener, if
-    // editor content changes are detected by logic in the renderer process, the renderer bridge will 
+    // editor content changes are detected by logic in the renderer process, the renderer bridge will
     // submit a save event to this channel with prompt and fromOpen both defined, otherwise it'll just
     // submit an open event directly to the "to:file:open" channel instead.
-    ipcMain.on('to:file:save', async (event, { content, file, prompt = false, fromOpen = false }) => {
-      if (await AppStorage.promptUserActionConfirmed(this.context, prompt)) {
-        AppStorage.save(this.context, {
-          id: event.sender.id,
-          data: content,
-          filePath: file,
-          encoding: 'utf-8'
-        }).then(() => {
+    ipcMain.on(
+      'to:file:save',
+      async (event, { content, file, prompt = false, fromOpen = false }) => {
+        if (await AppStorage.promptUserActionConfirmed(this.context, prompt)) {
+          AppStorage.save(this.context, {
+            id: event.sender.id,
+            data: content,
+            filePath: file,
+            encoding: 'utf-8',
+          }).then(() => {
+            if (fromOpen) AppStorage.open(this.context);
+            this.resetContextBridgedContent();
+          });
+        } else {
           if (fromOpen) AppStorage.open(this.context);
-          this.resetContextBridgedContent();
-        });
-      } else {
-        if (fromOpen) AppStorage.open(this.context);
-      }
-    });
-    
+        }
+      },
+    );
+
     // Save as event, doesn't require checks on "activeFile",
     // this will simply just call AppStorage save and triger
     // the dialog for the user to save the file to the location
@@ -113,43 +117,43 @@ export class AppBridge {
       AppStorage.save(this.context, {
         id: event.sender.id,
         data,
-        encoding: 'utf-8'
+        encoding: 'utf-8',
       }).then(() => {
         this.resetContextBridgedContent();
       });
     });
   }
-  
-  promptUserBeforeQuit (event: Event) {
+
+  promptUserBeforeQuit(event: Event) {
     if (this.contextBridgedContentHasChanged) {
       return this.displayPrompt(
         event,
         'Confirm',
-        'You have unsaved changes, are you sure you want to quit?'
+        'You have unsaved changes, are you sure you want to quit?',
       );
     }
   }
 
-  displayPrompt (event: Event, title: string, message: string) {
+  displayPrompt(event: Event, title: string, message: string) {
     const choice = dialog.showMessageBoxSync(this.context, {
       type: 'question',
       buttons: ['Yes', 'No'],
       title,
-      message
+      message,
     });
 
     if (choice) {
       event.preventDefault();
     }
   }
-  
-  updateContextBridgedContent (original: string, current: string) {
+
+  updateContextBridgedContent(original: string, current: string) {
     this.contextBridgedContent.original = original;
     this.contextBridgedContent.current = current;
     this.contextBridgedContentHasChanged = original !== current;
   }
-  
-  resetContextBridgedContent () {
+
+  resetContextBridgedContent() {
     this.contextBridgedContent.original = null;
     this.contextBridgedContent.current = null;
     this.contextBridgedContentHasChanged = false;

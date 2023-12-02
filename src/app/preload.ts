@@ -1,12 +1,12 @@
 /**
-* Preload script.
-*
-* Main Bridge: AppBridge
-* Renderer Bridge: Bridge
-*
-* The contextBridge module provides a safe, bi-directional, synchronous
-* bridge across the isolated contexts.
-*/
+ * Preload script.
+ *
+ * Main Bridge: AppBridge
+ * Renderer Bridge: Bridge
+ *
+ * The contextBridge module provides a safe, bi-directional, synchronous
+ * bridge across the isolated contexts.
+ */
 import { contextBridge, ipcRenderer } from 'electron';
 
 // Can be sent from the renderer process and
@@ -19,7 +19,7 @@ const senderWhitelist = [
   'to:file:new',
   'to:file:open',
   'to:file:save',
-  'to:file:saveas'
+  'to:file:saveas',
 ];
 
 // Can be sent from the main process and received
@@ -34,14 +34,14 @@ const receiverWhitelist = [
   'from:file:saveas',
   'from:modal:open',
   'from:command:palette',
-  'from:notification:display'
+  'from:notification:display',
 ];
 
 /**
-* contextBridgeChannel utilises the ipcRenderer module to provide methods for
-* sending synchronous and asynchronous messages accross different execution contexts
-* (i.e. from the renderer process to the main process.).
-*/
+ * contextBridgeChannel utilises the ipcRenderer module to provide methods for
+ * sending synchronous and asynchronous messages accross different execution contexts
+ * (i.e. from the renderer process to the main process.).
+ */
 const contextBridgeChannel = () => {
   return {
     send: (channel: string, data: any) => {
@@ -62,16 +62,16 @@ const contextBridgeChannel = () => {
           fn(...args);
         });
       }
-    }
+    },
   };
 };
 
 /**
-* The "Main World" is the JavaScript context that the main renderer code runs in.
-*
-* When contextIsolation is enabled in webPreferences, the preload scripts run in an
-* "Isolated World" that is exposed to the "Main World" through the contextBridge.
-*
-* Docs: https://electronjs.org/docs/api/context-bridge
-*/
+ * The "Main World" is the JavaScript context that the main renderer code runs in.
+ *
+ * When contextIsolation is enabled in webPreferences, the preload scripts run in an
+ * "Isolated World" that is exposed to the "Main World" through the contextBridge.
+ *
+ * Docs: https://electronjs.org/docs/api/context-bridge
+ */
 contextBridge.exposeInMainWorld('executionBridge', contextBridgeChannel());

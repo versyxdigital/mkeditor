@@ -39,10 +39,10 @@ if (model) {
 
   // If running within electron app, register IPC handler for communication between
   // main and renderer execution contexts.
-  if (api !== 'web') {    
+  if (api !== 'web') {
     // Create a new bridge communication handler.
     const bridge = new Bridge(api, model, dispatcher);
-    
+
     // Attach providers.
     bridge.provide('settings', mkeditor.providers.settings);
     bridge.provide('commands', mkeditor.providers.commands);
@@ -51,7 +51,7 @@ if (model) {
 
   // Setup application tooltips.
   setupTooltips();
-  
+
   // Implement draggable split.
   draggableSplit(model);
 

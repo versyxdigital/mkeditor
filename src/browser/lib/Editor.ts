@@ -10,10 +10,9 @@ import { APP_VERSION } from '../version';
 import { dom } from '../dom';
 
 export class Editor {
-
   private mode: 'web' | 'desktop' = 'web';
-  
-  private model: editor.IStandaloneCodeEditor | null  = null;
+
+  private model: editor.IStandaloneCodeEditor | null = null;
 
   private dispatcher: EditorDispatcher;
 
@@ -27,10 +26,10 @@ export class Editor {
     bridge: null,
     commands: null,
     completion: null,
-    settings: null
+    settings: null,
   };
-  
-  constructor (mode: 'web' | 'desktop' = 'web', dispatcher: EditorDispatcher) {
+
+  constructor(mode: 'web' | 'desktop' = 'web', dispatcher: EditorDispatcher) {
     this.mode = mode;
     this.dispatcher = dispatcher;
     this.editorHTMLElement = dom.editor.dom;
@@ -42,11 +41,11 @@ export class Editor {
     this.providers[provider] = instance;
   }
 
-  setAppMode (mode: 'web' | 'desktop') {
+  setAppMode(mode: 'web' | 'desktop') {
     this.mode = mode;
   }
 
-  create ({ watch = false}) {
+  create({ watch = false }) {
     try {
       // Create the underlying monaco editor.
       // See https://microsoft.github.io/monaco-editor/
@@ -60,7 +59,7 @@ export class Editor {
         renderLineHighlight: 'gutter',
         smoothScrolling: true,
         roundedSelection: false,
-        accessibilityPageSize: 1000
+        accessibilityPageSize: 1000,
       });
 
       // Set loadedInitialEditorValue for tracking; this value is used
@@ -89,7 +88,6 @@ export class Editor {
         // various event listeners.
         this.watch();
       }
-
     } catch (err) {
       this.model = null;
       console.log(err);
@@ -98,16 +96,18 @@ export class Editor {
     return this;
   }
 
-  render () {
+  render() {
     if (this.model) {
-      this.previewHTMLElement.innerHTML = Markdown.render(this.model.getValue());
+      this.previewHTMLElement.innerHTML = Markdown.render(
+        this.model.getValue(),
+      );
 
       WordCount(this.previewHTMLElement);
       CharacterCount(this.previewHTMLElement);
     }
   }
 
-  watch () {
+  watch() {
     // When the editor content changes, update the main process through the IPC handler
     // so that it can do things such as set the title notifying the user of unsaved changes,
     // prompt the user to save if they try to close the app or open a new file, etc.
@@ -117,16 +117,14 @@ export class Editor {
           // The initial editor content
           <string>this.loadedInitialEditorValue,
           // The current editor content
-          <string>this.model?.getValue()
+          <string>this.model?.getValue(),
         );
       }
 
       // Register dynamic completions provider to provide completion suggestions based on
       // user input.
-      this.providers.completion?.changeOnValidProposal(
-        event.changes[0].text
-      );      
-      
+      this.providers.completion?.changeOnValidProposal(event.changes[0].text);
+
       // Add a small timeout for the render.
       setTimeout(() => {
         // Update the rendered content in the preview.
@@ -150,7 +148,7 @@ export class Editor {
     return this.model;
   }
 
-  registerContextListeners () {
+  registerContextListeners() {
     // Register the event listener for editor UI save settings button; this button
     // is executed from within the web context, and uses the IPC handler to fire an
     // event to the main process, which has access to the filesystem.
@@ -176,7 +174,11 @@ export class Editor {
           if (this.providers.bridge) {
             this.providers.bridge.saveContentToFile();
           } else {
-            Exporter.webExportToFile(this.model.getValue(), 'text/plain', '.md');
+            Exporter.webExportToFile(
+              this.model.getValue(),
+              'text/plain',
+              '.md',
+            );
           }
         }
       });
@@ -189,11 +191,14 @@ export class Editor {
       dom.buttons.save.preview.addEventListener('click', (event) => {
         event.preventDefault();
         const styled = <HTMLInputElement>dom.buttons.save.styled;
-        const html = Exporter.generateExportHTML(this.previewHTMLElement.innerHTML, {
-          styled: styled.checked,
-          providers: ['bootstrap', 'fontawesome', 'highlightjs']
-        });
-  
+        const html = Exporter.generateExportHTML(
+          this.previewHTMLElement.innerHTML,
+          {
+            styled: styled.checked,
+            providers: ['bootstrap', 'fontawesome', 'highlightjs'],
+          },
+        );
+
         if (this.providers.bridge) {
           this.providers.bridge.exportPreviewToFile(html);
         } else {

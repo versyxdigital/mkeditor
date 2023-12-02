@@ -40,27 +40,28 @@ const Markdown = new MarkdownIt({
       try {
         const code = hljs.highlight(str, {
           language: lang,
-          ignoreIllegals: true
+          ignoreIllegals: true,
         }).value;
 
-        return '<pre class="hljs"><code class="hljs language-' + lang + '">' +
+        return (
+          '<pre class="hljs"><code class="hljs language-' +
+          lang +
+          '">' +
           code +
-        '</code></pre>';
+          '</code></pre>'
+        );
       } catch (err) {
         console.log(err);
       }
     }
 
     return '<pre class="hljs"><code>' + escapeHtml(str) + '</code></pre>';
-  }
+  },
 });
-
 
 Markdown.use(AlertBlock);
 Markdown.use(LineNumber);
 Markdown.use(LinkTarget);
 Markdown.use(TableStyle);
 
-export {
-  Markdown
-};
+export { Markdown };

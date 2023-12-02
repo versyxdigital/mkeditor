@@ -10,8 +10,8 @@ export const completion = {
       'primary',
       'secondary',
       'light',
-      'dark'
-    ]
+      'dark',
+    ],
   },
   codeblocks: {
     literal: '```',
@@ -24,7 +24,7 @@ export const completion = {
       'php',
       'sql',
       'shell',
-      'xml'
-    ]
-  }
+      'xml',
+    ],
+  },
 };

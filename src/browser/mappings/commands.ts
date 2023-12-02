@@ -9,7 +9,7 @@ export const alertblocks = [
   { type: 'Warning', key: 'W' },
   { type: 'Danger', key: 'D' },
   { type: 'Light', key: 'L' },
-  { type: 'Dark', key: 'R' }
+  { type: 'Dark', key: 'R' },
 ];
 
 export const codeblocks = [
@@ -20,7 +20,7 @@ export const codeblocks = [
   { type: 'PHP', key: 'P' },
   { type: 'Python', key: 'Y' },
   { type: 'SQL', key: 'Q' },
-  { type: 'XML', key: 'X' }
+  { type: 'XML', key: 'X' },
 ];
 
 export const commands: Record<string, EditorCommand> = {
@@ -31,7 +31,7 @@ export const commands: Record<string, EditorCommand> = {
     contextMenuOrder: 1,
     keybindings: [KeyMod.CtrlCmd | KeyCode.KeyB],
     isInline: true,
-    syntax: '**'
+    syntax: '**',
   },
   italic: {
     id: 'italic',
@@ -40,7 +40,7 @@ export const commands: Record<string, EditorCommand> = {
     contextMenuOrder: 2,
     keybindings: [KeyMod.CtrlCmd | KeyCode.KeyI],
     isInline: true,
-    syntax: '_'
+    syntax: '_',
   },
   strikethrough: {
     id: 'strikethrough',
@@ -49,7 +49,7 @@ export const commands: Record<string, EditorCommand> = {
     contextMenuOrder: 3,
     keybindings: [KeyMod.CtrlCmd | KeyCode.KeyG],
     isInline: true,
-    syntax: '~~'
+    syntax: '~~',
   },
   unorderedList: {
     id: 'unordered-list',
@@ -57,7 +57,7 @@ export const commands: Record<string, EditorCommand> = {
     contextMenuGroupId: 'cutcopypaste',
     contextMenuOrder: 4,
     keybindings: [KeyMod.CtrlCmd | KeyCode.Digit2], // todo find an available accelerator
-    isInline: false
+    isInline: false,
   },
   orderedList: {
     id: 'ordered-list',
@@ -65,6 +65,6 @@ export const commands: Record<string, EditorCommand> = {
     contextMenuGroupId: 'cutcopypaste',
     contextMenuOrder: 5,
     keybindings: [KeyMod.CtrlCmd | KeyCode.Digit3], // todo find an available accelerator
-    isInline: false
-  }
+    isInline: false,
+  },
 };

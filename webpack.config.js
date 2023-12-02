@@ -9,18 +9,20 @@ module.exports = {
   entry: {
     mkeditor: [
       './src/browser/index.ts',
-      './src/browser/assets/scss/index.scss'
-    ]
+      './src/browser/assets/scss/index.scss',
+    ],
   },
   output: {
     globalObject: 'self',
     filename: 'mkeditor.bundle.js',
-    path: path.resolve(__dirname, 'dist')
+    path: path.resolve(__dirname, 'dist'),
   },
   optimization: {
-    minimizer: [new TerserWebpackPlugin({
-      extractComments: true
-    })]
+    minimizer: [
+      new TerserWebpackPlugin({
+        extractComments: true,
+      }),
+    ],
   },
   module: {
     rules: [
@@ -31,7 +33,7 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader']
+        use: ['style-loader', 'css-loader'],
       },
       {
         test: /\.scss$/,
@@ -39,19 +41,19 @@ module.exports = {
         use: [
           {
             loader: 'file-loader',
-            options: { name: 'mkeditor.bundle.css' }
+            options: { name: 'mkeditor.bundle.css' },
           },
-          'sass-loader'
-        ]
+          'sass-loader',
+        ],
       },
       {
         test: /\.ttf$/,
-        type: 'asset/resource'
-      }
-    ]
+        type: 'asset/resource',
+      },
+    ],
   },
   resolve: {
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
   },
   plugins: [
     new MonacoWebpackPlugin({
@@ -78,24 +80,24 @@ module.exports = {
         'suggest',
         'wordHighlighter',
         'wordOperations',
-        'wordPartOperations'
-      ]
+        'wordPartOperations',
+      ],
     }),
     new webpack.optimize.LimitChunkCountPlugin({
-      maxChunks: 1
+      maxChunks: 1,
     }),
     new CopyWebpackPlugin({
       patterns: [
         {
           from: './src/browser/assets/favicon.ico',
-          to: './favicon.ico'
+          to: './favicon.ico',
         },
         {
           from: './src/browser/assets/icon.png',
-          to: './icon.png'
+          to: './icon.png',
         },
-        { from: './src/browser/views'}
-      ]
-    })
-  ]
+        { from: './src/browser/views' },
+      ],
+    }),
+  ],
 };

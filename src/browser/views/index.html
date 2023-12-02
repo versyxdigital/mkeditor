@@ -1,452 +1,736 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>MKEditor</title>
-    <link rel="stylesheet" href="./mkeditor.bundle.css">
-</head>
-<body data-theme="light">
-
-<div id="splashscreen" class="position-absolute top-0 bottom-0 h-100 w-100 align-items-center text-center">
-    <div class="w-100">
-        <img src="./icon.png" class="img-fluid app-logo mb-3">
+    <link rel="stylesheet" href="./mkeditor.bundle.css" />
+  </head>
+  <body data-theme="light">
+    <div
+      id="splashscreen"
+      class="position-absolute top-0 bottom-0 h-100 w-100 align-items-center text-center"
+    >
+      <div class="w-100">
+        <img src="./icon.png" class="img-fluid app-logo mb-3" />
         <h1>mkeditor</h1>
         <small>markdown made simple</small>
+      </div>
     </div>
-</div>
 
-<!-- sub-menu bar -->
-<nav class="navbar navbar-expand navbar-light bg-light">
-    <ul class="navbar-nav mr-auto">
+    <!-- sub-menu bar -->
+    <nav class="navbar navbar-expand navbar-light bg-light">
+      <ul class="navbar-nav mr-auto">
         <li class="nav-item d-flex align-items-center gap-2">
-            <img src="./icon.png" class="img-fluid app-logo-tiny ms-2">
-            <span id="active-file" class="text-muted">MKEditor</span>
+          <img src="./icon.png" class="img-fluid app-logo-tiny ms-2" />
+          <span id="active-file" class="text-muted">MKEditor</span>
         </li>
-    </ul>
-    <ul class="navbar-nav ms-auto">
+      </ul>
+      <ul class="navbar-nav ms-auto">
         <li class="nav-item text-muted">
-            <small>Character Count: <span id="character-count">0</span></small>
-            <span class="mx-1 font-weight-lighter">|</span>
-            <small>Word Count: <span id="word-count">0</span></small>
+          <small>Character Count: <span id="character-count">0</span></small>
+          <span class="mx-1 font-weight-lighter">|</span>
+          <small>Word Count: <span id="word-count">0</span></small>
         </li>
-        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="top"
-            title="Modify your editor settings here."
+        <li
+          class="nav-item"
+          data-bs-toggle="tooltip"
+          data-bs-placement="top"
+          title="Modify your editor settings here."
         >
-            <a class="text-muted hover-fade ms-3" href="#" data-bs-toggle="modal" data-bs-target="#app-settings">
-                <i class="fas fa-cog hover-fade"></i>
-            </a>
+          <a
+            class="text-muted hover-fade ms-3"
+            href="#"
+            data-bs-toggle="modal"
+            data-bs-target="#app-settings"
+          >
+            <i class="fas fa-cog hover-fade"></i>
+          </a>
         </li>
-        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="top"
-        title="View all available editor shortcuts here.">
-            <a class="text-muted hover-fade mx-3" href="#" data-bs-toggle="modal" data-bs-target="#app-shortcuts">
-                <i class="fa fa-question-circle hover-fade"></i>
-            </a>
+        <li
+          class="nav-item"
+          data-bs-toggle="tooltip"
+          data-bs-placement="top"
+          title="View all available editor shortcuts here."
+        >
+          <a
+            class="text-muted hover-fade mx-3"
+            href="#"
+            data-bs-toggle="modal"
+            data-bs-target="#app-shortcuts"
+          >
+            <i class="fa fa-question-circle hover-fade"></i>
+          </a>
         </li>
-    </ul>
-</nav>
+      </ul>
+    </nav>
 
-<!-- main content -->
-<div id="app" class="d-flex flex-row h-100">
-    <div class="w-100 border-top">
+    <!-- main content -->
+    <div id="app" class="d-flex flex-row h-100">
+      <div class="w-100 border-top">
         <div id="wrapper" class="d-flex flex-row">
-            <!-- editor pane -->
-            <div id="editor-split">
-                <div id="editor" class="flex-column split-editor"></div>
-            </div>
+          <!-- editor pane -->
+          <div id="editor-split">
+            <div id="editor" class="flex-column split-editor"></div>
+          </div>
 
-            <!-- preview pane -->
-            <div id="preview-split">
-                <div id="preview" class="flex-column split-preview p-3"></div>
-            </div>
+          <!-- preview pane -->
+          <div id="preview-split">
+            <div id="preview" class="flex-column split-preview p-3"></div>
+          </div>
         </div>
 
         <!-- bottom editor toolbar -->
         <nav class="navbar navbar-light bg-light fixed-bottom border-top p-2">
-            <div class="d-flex justify-content-start align-items-center" id="editor-functions">
-                <div class="btn-group btn-group-sm me-2">
-                    <button class="btn btn-outline-secondary shortcut" data-cmd="bold" data-key="B" data-syntax="**"
-                        data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + B"
-                    >
-                        <i class="fa fa-bold"></i>
-                    </button>
-                    <button class="btn btn-outline-secondary shortcut" data-cmd="italic" data-key="I" data-syntax="_"
-                        data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + I"
-                    >
-                        <i class="fa fa-italic"></i>
-                    </button>
-                    <button class="btn btn-outline-secondary shortcut" data-cmd="strikethrough" data-key="G" data-syntax="~~"
-                        data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + G"
-                    >
-                        <i class="fa fa-strikethrough"></i>
-                    </button>
-                </div>
-                <div class="btn-group btn-group-sm me-2">
-                    <button class="btn btn-outline-secondary shortcut" data-cmd="unorderedList" data-key="1"
-                        data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + 1"
-                    >
-                        <i class="fa fa-list-ul"></i>
-                    </button>
-                    <button class="btn btn-outline-secondary shortcut" data-cmd="orderedList" data-key="2"
-                        data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + 2"
-                    >
-                        <i class="fa fa-list-ol"></i>
-                    </button>
-                </div>
-                <div class="btn-group btn-group-sm dropup me-2" data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + K" data-key="K">
-                    <button class="btn btn-outline-secondary dropdown-toggle shortcut" type="button" id="codeblock-menu-button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-code"></i>
-                    </button>
-                    <div class="dropdown-menu" id="codeblocks" aria-labelledby="codeblock-menu-button">
-                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="sh"><i class="fas fa-terminal"></i> <u>S</u>hell</button>
-                        <div class="dropdown-divider"></div>
-                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="csharp"><i class="fas fa-code"></i> <u>C</u>#</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="javascript"><i class="fas fa-code"></i> <u>J</u>avascript</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="typescript"><i class="fas fa-code"></i> <u>T</u>ypescript</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="php"><i class="fas fa-code"></i> <u>P</u>HP</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="python"><i class="fas fa-code"></i> P<u>y</u>thon</button>
-                        <div class="dropdown-divider"></div>
-                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="sql"><i class="fas fa-database"></i> S<u>Q</u>L</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="codeblock" data-language="xml"><i class="fas fa-code"></i> <u>X</u>ML</button>
-                    </div>
-                </div>
-                <div class="dropup me-2" data-bs-toggle="tooltip" data-bs-placement="top" title="Ctrl + L" data-key="L">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut" type="button" id="alert-menu-button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-exclamation-circle"></i>
-                    </button>
-                    <div class="dropdown-menu" id="alertblocks" aria-labelledby="alert-menu-button">
-                        <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="primary"><u>P</u>rimary</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="secondary">S<u>e</u>condary</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="success"><u>S</u>uccess</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="danger"><u>D</u>anger</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="warning"><u>W</u>arning</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="info"><u>I</u>nformation</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="light"><u>L</u>ight</button>
-                        <button class="dropdown-item md-editor-btn" data-cmd="alert" data-type="dark">Da<u>r</u>k</button>
-                    </div>
-                </div>
-                <div class="btn-group btn-group-sm me-2">
-                    <button class="btn btn-outline-secondary" id="app-markdown-save">
-                        <i class="fas fa-save me-1"></i>
-                        <span class="d-none d-md-inline">Save</span>
-                        <span class="d-none d-lg-inline">Markdown</span>
-                    </button>
-                </div>
-                <div class="btn-group btn-group-sm me-2">
-                    <button class="btn btn-outline-secondary" id="export-preview-html">
-                        <i class="fas fa-file-export me-1"></i>
-                        <small class="d-none d-md-inline">
-                            <span class="d-none d-md-inline">Export</span>
-                            <span class="d-none d-lg-inline">to HTML</span>
-                        </small>
-                    </button>
-                </div>
-                <div class="form-check">
-                    <input id="export-preview-styled" class="form-check-input me-2" type="checkbox" checked />
-                    <label class="form-check-label small text-muted" for="export-preview-styled">
-                        <span class="d-none d-sm-inline d-md-none">styles</span>
-                        <span class="d-none d-md-inline">with styles</span>
-                    </label>
-                </div>
+          <div
+            class="d-flex justify-content-start align-items-center"
+            id="editor-functions"
+          >
+            <div class="btn-group btn-group-sm me-2">
+              <button
+                class="btn btn-outline-secondary shortcut"
+                data-cmd="bold"
+                data-key="B"
+                data-syntax="**"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                title="Ctrl + B"
+              >
+                <i class="fa fa-bold"></i>
+              </button>
+              <button
+                class="btn btn-outline-secondary shortcut"
+                data-cmd="italic"
+                data-key="I"
+                data-syntax="_"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                title="Ctrl + I"
+              >
+                <i class="fa fa-italic"></i>
+              </button>
+              <button
+                class="btn btn-outline-secondary shortcut"
+                data-cmd="strikethrough"
+                data-key="G"
+                data-syntax="~~"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                title="Ctrl + G"
+              >
+                <i class="fa fa-strikethrough"></i>
+              </button>
             </div>
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item">
-                    <div class="form-check form-switch me-2" data-bs-toggle="tooltip" data-bs-placement="top"
-                        title="This switch is disabled on desktop if you are using your system theme."
-                    >
-                        <input type="checkbox" class="form-check-input" id="darkmode-setting">
-                        <label class="form-check-label ms-1" for="darkmode-setting" id="darkmode-icon">
-                            <i class="fas fa-moon"></i>
-                        </label>
-                    </div>
-                </li>
-            </ul>
+            <div class="btn-group btn-group-sm me-2">
+              <button
+                class="btn btn-outline-secondary shortcut"
+                data-cmd="unorderedList"
+                data-key="1"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                title="Ctrl + 1"
+              >
+                <i class="fa fa-list-ul"></i>
+              </button>
+              <button
+                class="btn btn-outline-secondary shortcut"
+                data-cmd="orderedList"
+                data-key="2"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                title="Ctrl + 2"
+              >
+                <i class="fa fa-list-ol"></i>
+              </button>
+            </div>
+            <div
+              class="btn-group btn-group-sm dropup me-2"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              title="Ctrl + K"
+              data-key="K"
+            >
+              <button
+                class="btn btn-outline-secondary dropdown-toggle shortcut"
+                type="button"
+                id="codeblock-menu-button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                <i class="fas fa-code"></i>
+              </button>
+              <div
+                class="dropdown-menu"
+                id="codeblocks"
+                aria-labelledby="codeblock-menu-button"
+              >
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="codeblock"
+                  data-language="sh"
+                >
+                  <i class="fas fa-terminal"></i> <u>S</u>hell
+                </button>
+                <div class="dropdown-divider"></div>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="codeblock"
+                  data-language="csharp"
+                >
+                  <i class="fas fa-code"></i> <u>C</u>#
+                </button>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="codeblock"
+                  data-language="javascript"
+                >
+                  <i class="fas fa-code"></i> <u>J</u>avascript
+                </button>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="codeblock"
+                  data-language="typescript"
+                >
+                  <i class="fas fa-code"></i> <u>T</u>ypescript
+                </button>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="codeblock"
+                  data-language="php"
+                >
+                  <i class="fas fa-code"></i> <u>P</u>HP
+                </button>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="codeblock"
+                  data-language="python"
+                >
+                  <i class="fas fa-code"></i> P<u>y</u>thon
+                </button>
+                <div class="dropdown-divider"></div>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="codeblock"
+                  data-language="sql"
+                >
+                  <i class="fas fa-database"></i> S<u>Q</u>L
+                </button>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="codeblock"
+                  data-language="xml"
+                >
+                  <i class="fas fa-code"></i> <u>X</u>ML
+                </button>
+              </div>
+            </div>
+            <div
+              class="dropup me-2"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              title="Ctrl + L"
+              data-key="L"
+            >
+              <button
+                class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut"
+                type="button"
+                id="alert-menu-button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                <i class="fas fa-exclamation-circle"></i>
+              </button>
+              <div
+                class="dropdown-menu"
+                id="alertblocks"
+                aria-labelledby="alert-menu-button"
+              >
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="alert"
+                  data-type="primary"
+                >
+                  <u>P</u>rimary
+                </button>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="alert"
+                  data-type="secondary"
+                >
+                  S<u>e</u>condary
+                </button>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="alert"
+                  data-type="success"
+                >
+                  <u>S</u>uccess
+                </button>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="alert"
+                  data-type="danger"
+                >
+                  <u>D</u>anger
+                </button>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="alert"
+                  data-type="warning"
+                >
+                  <u>W</u>arning
+                </button>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="alert"
+                  data-type="info"
+                >
+                  <u>I</u>nformation
+                </button>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="alert"
+                  data-type="light"
+                >
+                  <u>L</u>ight
+                </button>
+                <button
+                  class="dropdown-item md-editor-btn"
+                  data-cmd="alert"
+                  data-type="dark"
+                >
+                  Da<u>r</u>k
+                </button>
+              </div>
+            </div>
+            <div class="btn-group btn-group-sm me-2">
+              <button class="btn btn-outline-secondary" id="app-markdown-save">
+                <i class="fas fa-save me-1"></i>
+                <span class="d-none d-md-inline">Save</span>
+                <span class="d-none d-lg-inline">Markdown</span>
+              </button>
+            </div>
+            <div class="btn-group btn-group-sm me-2">
+              <button
+                class="btn btn-outline-secondary"
+                id="export-preview-html"
+              >
+                <i class="fas fa-file-export me-1"></i>
+                <small class="d-none d-md-inline">
+                  <span class="d-none d-md-inline">Export</span>
+                  <span class="d-none d-lg-inline">to HTML</span>
+                </small>
+              </button>
+            </div>
+            <div class="form-check">
+              <input
+                id="export-preview-styled"
+                class="form-check-input me-2"
+                type="checkbox"
+                checked
+              />
+              <label
+                class="form-check-label small text-muted"
+                for="export-preview-styled"
+              >
+                <span class="d-none d-sm-inline d-md-none">styles</span>
+                <span class="d-none d-md-inline">with styles</span>
+              </label>
+            </div>
+          </div>
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <div
+                class="form-check form-switch me-2"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                title="This switch is disabled on desktop if you are using your system theme."
+              >
+                <input
+                  type="checkbox"
+                  class="form-check-input"
+                  id="darkmode-setting"
+                />
+                <label
+                  class="form-check-label ms-1"
+                  for="darkmode-setting"
+                  id="darkmode-icon"
+                >
+                  <i class="fas fa-moon"></i>
+                </label>
+              </div>
+            </li>
+          </ul>
         </nav>
+      </div>
     </div>
-</div>
 
-<!-- settings modal -->
-<div class="modal" tabindex="-1" id="app-settings">
-    <div class="modal-dialog">
+    <!-- settings modal -->
+    <div class="modal" tabindex="-1" id="app-settings">
+      <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header border-bottom-0">
-                <h5 class="modal-title">MKEditor settings</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <div class="modal-header border-bottom-0">
+            <h5 class="modal-title">MKEditor settings</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body small pt-0">
+            <p class="text-muted">
+              Here you can customize various editor settings according to your
+              preferences, settings are automatically saved as they are updated.
+            </p>
+            <p class="text-muted" id="app-settings-file-info">
+              Your settings file is located at
+              <span class="font-monospace small">~/.mkeditor/settings.json</span
+              >.
+            </p>
+            <hr />
+            <p class="text-muted"><strong>Formatting</strong></p>
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input setting"
+                id="autoindent-setting"
+              />
+              <label
+                class="form-check-label d-flex flex-column"
+                for="autoindent-setting"
+              >
+                <span>Toggle automatic indentation</span>
+                <small class="text-muted"
+                  >Automatically indent text on new lines.</small
+                >
+              </label>
             </div>
-            <div class="modal-body small pt-0">
-                <p class="text-muted">
-                    Here you can customize various editor settings according to your preferences, settings are automatically saved
-                    as they are updated.
-                </p>
-                <p class="text-muted" id="app-settings-file-info">
-                    Your settings file is located at <span class="font-monospace small">~/.mkeditor/settings.json</span>.
-                </p>
-                <hr >
-                <p class="text-muted"><strong>Formatting</strong></p>
-                <div class="form-check">
-                    <input type="checkbox" class="form-check-input setting" id="autoindent-setting">
-                    <label class="form-check-label d-flex flex-column" for="autoindent-setting">
-                        <span>Toggle automatic indentation</span> <small class="text-muted">Automatically indent text on new lines.</small>
-                    </label>
-                </div>
-                <div class="form-check mt-3">
-                    <input type="checkbox" class="form-check-input setting" id="wordwrap-setting">
-                    <label class="form-check-label d-flex flex-column" for="wordwrap-setting">
-                        <span>Toggle word-wrapping</span> <small class="text-muted">Automatically break lines to fit the width of the editor.</small>
-                    </label>
-                </div>
-                <hr >
-                <p class="text-muted"><strong>Editing</strong></p>
-                <div class="form-check mt-3">
-                    <input type="checkbox" class="form-check-input setting" id="whitespace-setting">
-                    <label class="form-check-label d-flex flex-column" for="whitespace-setting">
-                        <span>Render whitespace</span> <small class="text-muted">Display whitespace characters.</small>
-                    </label>
-                </div>
-                <hr >
-                <p class="text-muted"><strong>Miscellaneous</strong></p>
-                <div class="form-check mt-3">
-                    <input type="checkbox" class="form-check-input setting" id="minimap-setting">
-                    <label class="form-check-label d-flex flex-column" for="minimap-setting">
-                        <span>Display minimap</span> <small class="text-muted">Display the editor minimap.</small>
-                    </label>
-                </div>
-                <div class="form-check mt-3">
-                    <input type="checkbox" class="form-check-input setting" id="systemtheme-setting">
-                    <label class="form-check-label d-flex flex-column" for="systemtheme-setting">
-                        <span>Use system theme</span> <small class="text-muted">Let your system theme override your stored settings.</small>
-                    </label>
-                </div>
-                <hr >
-                <div class="form-group d-flex align-items-center gap-3 mt-4 mb-3">
-                    <button id="app-settings-save" class="btn btn-sm btn-primary rounded-1">
-                        <i class="fas fa-save"></i>
-                        <span class="ms-1">Save Settings</span>
-                    </button>
-                </div>
+            <div class="form-check mt-3">
+              <input
+                type="checkbox"
+                class="form-check-input setting"
+                id="wordwrap-setting"
+              />
+              <label
+                class="form-check-label d-flex flex-column"
+                for="wordwrap-setting"
+              >
+                <span>Toggle word-wrapping</span>
+                <small class="text-muted"
+                  >Automatically break lines to fit the width of the
+                  editor.</small
+                >
+              </label>
             </div>
+            <hr />
+            <p class="text-muted"><strong>Editing</strong></p>
+            <div class="form-check mt-3">
+              <input
+                type="checkbox"
+                class="form-check-input setting"
+                id="whitespace-setting"
+              />
+              <label
+                class="form-check-label d-flex flex-column"
+                for="whitespace-setting"
+              >
+                <span>Render whitespace</span>
+                <small class="text-muted">Display whitespace characters.</small>
+              </label>
+            </div>
+            <hr />
+            <p class="text-muted"><strong>Miscellaneous</strong></p>
+            <div class="form-check mt-3">
+              <input
+                type="checkbox"
+                class="form-check-input setting"
+                id="minimap-setting"
+              />
+              <label
+                class="form-check-label d-flex flex-column"
+                for="minimap-setting"
+              >
+                <span>Display minimap</span>
+                <small class="text-muted">Display the editor minimap.</small>
+              </label>
+            </div>
+            <div class="form-check mt-3">
+              <input
+                type="checkbox"
+                class="form-check-input setting"
+                id="systemtheme-setting"
+              />
+              <label
+                class="form-check-label d-flex flex-column"
+                for="systemtheme-setting"
+              >
+                <span>Use system theme</span>
+                <small class="text-muted"
+                  >Let your system theme override your stored settings.</small
+                >
+              </label>
+            </div>
+            <hr />
+            <div class="form-group d-flex align-items-center gap-3 mt-4 mb-3">
+              <button
+                id="app-settings-save"
+                class="btn btn-sm btn-primary rounded-1"
+              >
+                <i class="fas fa-save"></i>
+                <span class="ms-1">Save Settings</span>
+              </button>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
-</div>
 
-<!-- about modal -->
-<div class="modal" tabindex="-1" id="app-about">
-    <div class="modal-dialog">
+    <!-- about modal -->
+    <div class="modal" tabindex="-1" id="app-about">
+      <div class="modal-dialog">
         <div class="modal-content text-center p-3">
-            <div class="text-muted modal-body small">
-                <img src="./icon.png" class="img-fluid app-logo mb-3">
-                <p>Version <span id="app-version"></span></p>
-                <p>Built with love by <a class="fw-bold text-primary text-decoration-none" href="https://github.com/sentrychris" target="_blank">Chris Rowles</a>.</p>
-                <p class="mb-1">MKEditor uses the following open-source libraries:</p>
-                <p>monaco, bootstrap, fontawesome, markdown-it, highlight.js, split.js, sweetalert2, webpack and electron.</p>
-                <p class="mb-0">View the source code <a class="fw-bold text-primary text-decoration-none" href="https://github.com/mkeditorOSS/mkeditor" target="_blank">here</a>.
-            </div>
+          <div class="text-muted modal-body small">
+            <img src="./icon.png" class="img-fluid app-logo mb-3" />
+            <p>Version <span id="app-version"></span></p>
+            <p>
+              Built with love by
+              <a
+                class="fw-bold text-primary text-decoration-none"
+                href="https://github.com/sentrychris"
+                target="_blank"
+                >Chris Rowles</a
+              >.
+            </p>
+            <p class="mb-1">
+              MKEditor uses the following open-source libraries:
+            </p>
+            <p>
+              monaco, bootstrap, fontawesome, markdown-it, highlight.js,
+              split.js, sweetalert2, webpack and electron.
+            </p>
+            <p class="mb-0">
+              View the source code
+              <a
+                class="fw-bold text-primary text-decoration-none"
+                href="https://github.com/mkeditorOSS/mkeditor"
+                target="_blank"
+                >here</a
+              >.
+            </p>
+          </div>
         </div>
+      </div>
     </div>
-</div>
 
-<!-- shortcuts modal -->
-<div class="modal" tabindex="-1" id="app-shortcuts">
-    <div class="modal-dialog mw-100 w-75" role="document">
+    <!-- shortcuts modal -->
+    <div class="modal" tabindex="-1" id="app-shortcuts">
+      <div class="modal-dialog mw-100 w-75" role="document">
         <div class="modal-content">
-            <div class="modal-header border-bottom-0">
-                <h5 class="modal-title">MKEditor Shortcuts</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body px-4 py-0">
+          <div class="modal-header border-bottom-0">
+            <h5 class="modal-title">MKEditor Shortcuts</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body px-4 py-0">
+            <div class="row">
+              <div class="col-6">
+                <h6>Basic Editing</h6>
+                <table class="table table-sm table-striped small">
+                  <thead>
+                    <tr>
+                      <th scope="col">Shortcut</th>
+                      <th scope="col">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>Ctrl + X</strong></td>
+                      <td>Cut line (empty selection)</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + C</strong></td>
+                      <td>Copy line (empty selection)</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Alt + ↑ / ↓</strong></td>
+                      <td>Move line up/down</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Shift + Alt + ↑ / ↓</strong></td>
+                      <td>Copy line up/down</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + Shift + K</strong></td>
+                      <td>Delete line</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + Enter</strong></td>
+                      <td>Insert line below</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + Shift + Enter</strong></td>
+                      <td>Insert line above</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + ] / [</strong></td>
+                      <td>Indent/outdent line</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Home / End</strong></td>
+                      <td>Go to beginning/end of line</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + Home</strong></td>
+                      <td>Go to beginning of file</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + End</strong></td>
+                      <td>Go to end of file</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + ↑ / ↓</strong></td>
+                      <td>Scroll line up/down</td>
+                      <td></td>
+                    </tr>
+                    <tr>
+                      <td><strong>Alt + PgUp / PgDn</strong></td>
+                      <td>Scroll page up/down</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="col-6">
                 <div class="row">
-                    <div class="col-6">
-                        <h6>Basic Editing</h6>
-                        <table class="table table-sm table-striped small">
-                            <thead>
-                            <tr>
-                                <th scope="col">Shortcut</th>
-                                <th scope="col">Description</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr>
-                                <td><strong>Ctrl + X</strong></td>
-                                <td>Cut line (empty selection)</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + C</strong></td>
-                                <td>Copy line (empty selection)</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Alt + ↑ / ↓</strong></td>
-                                <td>Move line up/down</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Shift + Alt + ↑ / ↓</strong></td>
-                                <td>Copy line up/down</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + Shift + K</strong></td>
-                                <td>Delete line</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + Enter</strong></td>
-                                <td>Insert line below</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + Shift + Enter</strong></td>
-                                <td>Insert line above</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + ] / [</strong></td>
-                                <td>Indent/outdent line</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Home / End</strong></td>
-                                <td>Go to beginning/end of line</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + Home</strong></td>
-                                <td>Go to beginning of file</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + End</strong></td>
-                                <td>Go to end of file</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + ↑ / ↓</strong></td>
-                                <td>Scroll line up/down</td>
-                                <td>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Alt + PgUp / PgDn</strong></td>
-                                <td>Scroll page up/down</td>
-                            </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="col-6">
-                        <div class="row">
-                            <div class="col-12">
-                                <h6>Text Formatting</h6>
-                                <table class="table table-sm table-striped small">
-                                    <thead>
-                                    <tr>
-                                        <th scope="col">Shortcut</th>
-                                        <th scope="col">Description</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr>
-                                        <td><strong>Ctrl + B</strong></td>
-                                        <td>Make text bold</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Ctrl + I</strong></td>
-                                        <td>Make text italic</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Ctrl + G</strong></td>
-                                        <td>Strikethrough text</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Ctrl + 1</strong></td>
-                                        <td>Create unordered list</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Ctrl + 2</strong></td>
-                                        <td>Create ordered list</td>
-                                    </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="col-12 mt-3">
-                                <h6>Search and Replace</h6>
-                                <table class="table table-sm table-striped small">
-                                    <thead>
-                                    <tr>
-                                        <th scope="col">Shortcut</th>
-                                        <th scope="col">Description</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr>
-                                        <td><strong>Ctrl + F</strong></td>
-                                        <td>Find</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Ctrl + H</strong></td>
-                                        <td>Replace</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>F3 / Shift + F3</strong></td>
-                                        <td>Find next/previous</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Alt + Enter</strong></td>
-                                        <td>Select all occurrences of find match</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Alt + C / R / W</strong></td>
-                                        <td>Toggle case-sensitive / regex / whole word</td>
-                                    </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+                  <div class="col-12">
+                    <h6>Text Formatting</h6>
+                    <table class="table table-sm table-striped small">
+                      <thead>
+                        <tr>
+                          <th scope="col">Shortcut</th>
+                          <th scope="col">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><strong>Ctrl + B</strong></td>
+                          <td>Make text bold</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Ctrl + I</strong></td>
+                          <td>Make text italic</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Ctrl + G</strong></td>
+                          <td>Strikethrough text</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Ctrl + 1</strong></td>
+                          <td>Create unordered list</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Ctrl + 2</strong></td>
+                          <td>Create ordered list</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="col-12 mt-3">
+                    <h6>Search and Replace</h6>
+                    <table class="table table-sm table-striped small">
+                      <thead>
+                        <tr>
+                          <th scope="col">Shortcut</th>
+                          <th scope="col">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><strong>Ctrl + F</strong></td>
+                          <td>Find</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Ctrl + H</strong></td>
+                          <td>Replace</td>
+                        </tr>
+                        <tr>
+                          <td><strong>F3 / Shift + F3</strong></td>
+                          <td>Find next/previous</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Alt + Enter</strong></td>
+                          <td>Select all occurrences of find match</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Alt + C / R / W</strong></td>
+                          <td>Toggle case-sensitive / regex / whole word</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div class="row">
-                    <div class="col-12">
-                        <h6>Multi-cursor and selection</h6>
-                        <table class="table table-sm table-striped small">
-                            <thead>
-                            <tr>
-                                <th scope="col">Shortcut</th>
-                                <th scope="col">Description</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr>
-                                <td><strong>Alt + Click</strong></td>
-                                <td>Insert cursor</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + Alt + ↑ / ↓</strong></td>
-                                <td>Insert cursor above/below</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Shift + Alt + I</strong></td>
-                                <td>Insert cursor at end of each line selected</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + L</strong></td>
-                                <td>Select current line</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + F2</strong></td>
-                                <td>Select all occurrences of current word</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Shift + Alt + (Drag mouse)</strong></td>
-                                <td>Column (box) selection</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + Shift + Alt + ↑ / ↓</strong></td>
-                                <td>Column (box) selection</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Ctrl + Shift + Alt + PgUp / PgDn</strong></td>
-                                <td>Column (box) selection</td>
-                            </tr>
-                            <tr>
-                                <td><strong>(Mousewheel pressed + drag cursor)</strong></td>
-                                <td>Column (box) selection</td>
-                            </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+              </div>
             </div>
+            <div class="row">
+              <div class="col-12">
+                <h6>Multi-cursor and selection</h6>
+                <table class="table table-sm table-striped small">
+                  <thead>
+                    <tr>
+                      <th scope="col">Shortcut</th>
+                      <th scope="col">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>Alt + Click</strong></td>
+                      <td>Insert cursor</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + Alt + ↑ / ↓</strong></td>
+                      <td>Insert cursor above/below</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Shift + Alt + I</strong></td>
+                      <td>Insert cursor at end of each line selected</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + L</strong></td>
+                      <td>Select current line</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + F2</strong></td>
+                      <td>Select all occurrences of current word</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Shift + Alt + (Drag mouse)</strong></td>
+                      <td>Column (box) selection</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + Shift + Alt + ↑ / ↓</strong></td>
+                      <td>Column (box) selection</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + Shift + Alt + PgUp / PgDn</strong></td>
+                      <td>Column (box) selection</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>(Mousewheel pressed + drag cursor)</strong>
+                      </td>
+                      <td>Column (box) selection</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
-</div>
-<script type="text/javascript" src="./mkeditor.bundle.js"></script>
-</body>
+    <script type="text/javascript" src="./mkeditor.bundle.js"></script>
+  </body>
 </html>

@@ -7,20 +7,20 @@ const toast: ReturnType<typeof Swal.mixin> = Swal.mixin({
   timer: 7500,
   timerProgressBar: true,
   showClass: {
-    popup: ''
+    popup: '',
   },
   hideClass: {
-    popup: ''
+    popup: '',
   },
   didOpen: (toast) => {
     toast.addEventListener('mouseenter', Swal.stopTimer);
     toast.addEventListener('mouseleave', Swal.resumeTimer);
-  }
+  },
 });
 
 export class Notify {
-  static async send (icon: string, html: string) {
+  static async send(icon: string, html: string) {
     const title = icon.charAt(0).toUpperCase() + icon.slice(1);
-    await toast.fire({ html, title, icon: (icon as SweetAlertIcon) });
+    await toast.fire({ html, title, icon: icon as SweetAlertIcon });
   }
 }

@@ -3,11 +3,7 @@
     "types": ["@types/wicg-file-system-access"],
     "outDir": "./dist",
     "target": "esnext",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
@@ -20,12 +16,8 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "baseUrl": ".",
+    "baseUrl": "."
   },
-  "files": [
-    "./@types/index.d.ts"
-  ],
-  "include": [
-    "src"
-  ]
+  "files": ["./@types/index.d.ts"],
+  "include": ["src"]
 }

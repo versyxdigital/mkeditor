@@ -1,13 +1,15 @@
-import { Dispatcher, ListenerEvent, ListenerEventCallback } from '../interfaces/Dispatcher';
+import {
+  Dispatcher,
+  ListenerEvent,
+  ListenerEventCallback,
+} from '../interfaces/Dispatcher';
 
-export class BaseDispatcher implements Dispatcher
-{
+export class BaseDispatcher implements Dispatcher {
   public _listeners?: {
     [index: string]: ListenerEventCallback[];
   };
-  
-  addEventListener(type: string, listener: ListenerEventCallback): void
-  {
+
+  addEventListener(type: string, listener: ListenerEventCallback): void {
     if (this._listeners === undefined) this._listeners = {};
     const listeners = this._listeners;
 
@@ -15,20 +17,18 @@ export class BaseDispatcher implements Dispatcher
       listeners[type] = [];
     }
 
-    if (! listeners[type].includes(listener)) {
+    if (!listeners[type].includes(listener)) {
       listeners[type].push(listener);
     }
   }
 
-  hasEventListener(type: string, listener: ListenerEventCallback): boolean
-  {
+  hasEventListener(type: string, listener: ListenerEventCallback): boolean {
     if (this._listeners === undefined) return false;
     const listeners = this._listeners;
     return listeners[type] !== undefined && listeners[type].includes(listener);
   }
 
-  removeEventListener(type: string, listener: ListenerEventCallback): void
-  {
+  removeEventListener(type: string, listener: ListenerEventCallback): void {
     if (this._listeners === undefined) return;
     const listeners = this._listeners;
     const listenerA = listeners[type];
@@ -41,8 +41,7 @@ export class BaseDispatcher implements Dispatcher
     }
   }
 
-  dispatchEvent(event: ListenerEvent): void
-  {
+  dispatchEvent(event: ListenerEvent): void {
     if (this._listeners === undefined) return;
     const listeners = this._listeners;
     const listenerA = listeners[event.type];

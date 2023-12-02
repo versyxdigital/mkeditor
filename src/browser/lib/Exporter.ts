@@ -6,37 +6,41 @@ const cdn = {
     css: {
       rel: 'stylesheet',
       href: 'https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css',
-      integrity: 'sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC',
-      crossorigin: 'anonymous'
+      integrity:
+        'sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC',
+      crossorigin: 'anonymous',
     },
     js: {
       src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js',
-      integrity: 'sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM',
-      crossorigin: 'anonymous'
-    }
+      integrity:
+        'sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM',
+      crossorigin: 'anonymous',
+    },
   },
   fontawesome: {
     css: {
       rel: 'stylesheet',
       href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css',
-      integrity: 'sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==',
-      crossorigin: 'anonymous'
+      integrity:
+        'sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==',
+      crossorigin: 'anonymous',
     },
     js: {
       src: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/js/all.min.js',
-      integrity: 'sha512-uKQ39gEGiyUJl4AI6L+ekBdGKpGw4xJ55+xyJG7YFlJokPNYegn9KwQ3P8A7aFQAUtUsAQHep+d/lrGqrbPIDQ==',
-      crossorigin: 'anonymous'
-    }
+      integrity:
+        'sha512-uKQ39gEGiyUJl4AI6L+ekBdGKpGw4xJ55+xyJG7YFlJokPNYegn9KwQ3P8A7aFQAUtUsAQHep+d/lrGqrbPIDQ==',
+      crossorigin: 'anonymous',
+    },
   },
   highlightjs: {
     css: {
       rel: 'stylesheet',
       href: 'https://cdn.jsdelivr.net/npm/highlightjs-themes@1.0.0/github.css',
       integrity: 'sha256-3Kq/Y3s2zLxBaWvXF4mw18pnAfq4mSlsi/J2sa9zvSE=',
-      crossorigin: 'anonymous'
+      crossorigin: 'anonymous',
     },
     js: null,
-  }
+  },
 };
 
 const css = `@media print {
@@ -128,16 +132,19 @@ const css = `@media print {
 type ProviderKey = keyof typeof cdn;
 
 export class Exporter {
-  static generateExportHTML (content: string, { styled = true, providers = ['highlightjs'] }) {
+  static generateExportHTML(
+    content: string,
+    { styled = true, providers = ['highlightjs'] },
+  ) {
     // If using bootstrap styles then wrap the content inside a container with padding
     if (styled && providers.includes('bootstrap')) {
-      content = '<div class="container py-5">' +
-            content +
-        '</div>';
+      content = '<div class="container py-5">' + content + '</div>';
     }
 
     // Create a full HTML document and remove unnecessary attributes and classes
-    const document = Exporter.sanitizeHTML((new DOMParser()).parseFromString(content, 'text/html'));
+    const document = Exporter.sanitizeHTML(
+      new DOMParser().parseFromString(content, 'text/html'),
+    );
 
     if (styled) {
       // Apply styles/scripts based on selected provider(s)
@@ -183,16 +190,11 @@ export class Exporter {
     return formatHTML(`<!DOCTYPE html>${document.documentElement.outerHTML}`);
   }
 
-  static sanitizeHTML (document: Document) {
+  static sanitizeHTML(document: Document) {
     // Define attributes and classes for removal
     const removals = {
-      attrs: [
-        dom.meta.scroll.line.start,
-        dom.meta.scroll.line.end
-      ],
-      classes: [
-        dom.meta.scroll.line.class
-      ]
+      attrs: [dom.meta.scroll.line.start, dom.meta.scroll.line.end],
+      classes: [dom.meta.scroll.line.class],
     };
 
     // Loop through and remove attributes
@@ -222,18 +224,24 @@ export class Exporter {
     return document;
   }
 
-  static webExportToFile (content: string, mimeType: MIMEType = 'text/plain', extension: FileExtension = '.md') {
+  static webExportToFile(
+    content: string,
+    mimeType: MIMEType = 'text/plain',
+    extension: FileExtension = '.md',
+  ) {
     const blob = new Blob([content], { type: mimeType });
-  
-    async function createHandle () {
+
+    async function createHandle() {
       return await window.showSaveFilePicker({
-        types: [{
-          description: 'MKEditor export',
-          accept: { [mimeType]: [extension] }
-        }]
+        types: [
+          {
+            description: 'MKEditor export',
+            accept: { [mimeType]: [extension] },
+          },
+        ],
       });
     }
-  
+
     createHandle().then((handle) => {
       handle.createWritable().then(async (writable) => {
         await writable.write(blob);

@@ -8,10 +8,10 @@ export const dom = {
   app: <HTMLDivElement>document.querySelector('#app'),
   about: {
     modal: <HTMLDivElement>document.querySelector('#app-about'),
-    version: <HTMLSpanElement>document.querySelector('#app-version')
+    version: <HTMLSpanElement>document.querySelector('#app-version'),
   },
   shortcuts: {
-    modal: <HTMLDivElement>document.querySelector('#app-shortcuts')
+    modal: <HTMLDivElement>document.querySelector('#app-shortcuts'),
   },
   settings: {
     modal: <HTMLDivElement>document.querySelector('#app-settings'),
@@ -20,60 +20,68 @@ export const dom = {
     wordwrap: <HTMLInputElement>document.querySelector('#wordwrap-setting'),
     whitespace: <HTMLInputElement>document.querySelector('#whitespace-setting'),
     minimap: <HTMLInputElement>document.querySelector('#minimap-setting'),
-    systemtheme: <HTMLInputElement>document.querySelector('#systemtheme-setting'),
-    fileinfo: <HTMLParagraphElement>document.querySelector('#app-settings-file-info')
+    systemtheme: <HTMLInputElement>(
+      document.querySelector('#systemtheme-setting')
+    ),
+    fileinfo: <HTMLParagraphElement>(
+      document.querySelector('#app-settings-file-info')
+    ),
   },
   icons: {
-    darkmode: <HTMLLabelElement>document.querySelector('#darkmode-icon')
+    darkmode: <HTMLLabelElement>document.querySelector('#darkmode-icon'),
   },
   buttons: {
     save: {
       settings: <HTMLButtonElement>document.querySelector('#app-settings-save'),
       markdown: <HTMLButtonElement>document.querySelector('#app-markdown-save'),
-      preview: <HTMLButtonElement>document.querySelector('#export-preview-html'),
-      styled: <HTMLButtonElement>document.querySelector('#export-preview-styled')
-    }
+      preview: <HTMLButtonElement>(
+        document.querySelector('#export-preview-html')
+      ),
+      styled: <HTMLButtonElement>(
+        document.querySelector('#export-preview-styled')
+      ),
+    },
   },
   commands: {
     toolbar: <HTMLDivElement>document.querySelector('#editor-functions'),
     dropdowns: {
       alertblocks: <HTMLDivElement>document.querySelector('#alertblocks'),
       codeblocks: <HTMLDivElement>document.querySelector('#codeblocks'),
-    }
+    },
   },
   editor: {
-    dom: <HTMLDivElement>document.querySelector('#editor')
+    dom: <HTMLDivElement>document.querySelector('#editor'),
   },
   preview: {
-    dom: <HTMLDivElement>document.querySelector('#preview')
+    dom: <HTMLDivElement>document.querySelector('#preview'),
   },
   meta: {
     file: {
-      active: <HTMLSpanElement>document.querySelector('#active-file')
+      active: <HTMLSpanElement>document.querySelector('#active-file'),
     },
-    scroll:{
+    scroll: {
       line: {
         class: 'has-line-data',
         start: 'data-line-start',
-        end: 'data-line-end'
-      }
-    }
-  }
+        end: 'data-line-end',
+      },
+    },
+  },
 };
 
-export async function setupTooltips () {
-  [].slice.call(
-    document.querySelectorAll('[data-bs-toggle="tooltip"]')
-  ).map((tooltip: HTMLElement) => {
-    if (tooltip.dataset.key) {
-      if (getOSPlatform() !== 'MacOS') {
-        tooltip.title = 'Ctrl + ' + tooltip.dataset.key;
-      } else { 
-        tooltip.title = '⌘ + ' + tooltip.dataset.key;
+export async function setupTooltips() {
+  [].slice
+    .call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    .map((tooltip: HTMLElement) => {
+      if (tooltip.dataset.key) {
+        if (getOSPlatform() !== 'MacOS') {
+          tooltip.title = 'Ctrl + ' + tooltip.dataset.key;
+        } else {
+          tooltip.title = '⌘ + ' + tooltip.dataset.key;
+        }
       }
-    }
-    return new Tooltip(tooltip);
-  });
+      return new Tooltip(tooltip);
+    });
 }
 
 export function splashScreen() {
@@ -88,7 +96,7 @@ export function fade(element: HTMLElement, direction: 'in' | 'out') {
 export function fadeOut(element: HTMLElement) {
   let alpha = 1;
   const timer = setInterval(() => {
-    if (alpha <= 0.1){
+    if (alpha <= 0.1) {
       clearInterval(timer);
       element.style.display = 'none';
     }
@@ -101,7 +109,7 @@ export function fadeOut(element: HTMLElement) {
 export function fadeIn(element: HTMLElement) {
   let alpha = 0.1;
   const timer = setInterval(() => {
-    if (alpha >= 1){
+    if (alpha >= 1) {
       clearInterval(timer);
     }
     element.style.opacity = alpha.toString();
@@ -110,8 +118,10 @@ export function fadeIn(element: HTMLElement) {
   }, 50);
 }
 
-export function draggableSplit (model: editor.IStandaloneCodeEditor){
+export function draggableSplit(model: editor.IStandaloneCodeEditor) {
   Split(['#editor-split', '#preview-split'], {
-    onDrag () { model.layout(); }
+    onDrag() {
+      model.layout();
+    },
   });
 }
