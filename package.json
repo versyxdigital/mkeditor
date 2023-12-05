@@ -29,7 +29,7 @@
     "@types/markdown-it-container": "^2.0.9",
     "@types/node": "^20.10.2",
     "@types/wicg-file-system-access": "^2023.10.4",
-    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/eslint-plugin": "^6.13.2",
     "@typescript-eslint/parser": "^6.13.1",
     "bootstrap": "^5.3.2",
     "circle-buffer": "^0.1.5",
