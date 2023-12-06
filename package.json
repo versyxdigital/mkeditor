@@ -42,7 +42,7 @@
     "highlight.js": "^11.9.0",
     "html-webpack-plugin": "^5.5.3",
     "markdown-it": "^13.0.2",
-    "markdown-it-container": "^3.0.0",
+    "markdown-it-container": "^4.0.0",
     "monaco-editor": "^0.44.0",
     "monaco-editor-webpack-plugin": "^7.1.0",
     "prettier": "^3.1.0",
