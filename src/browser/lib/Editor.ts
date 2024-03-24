@@ -52,7 +52,7 @@ export class Editor {
       this.model = editor.create(this.editorHTMLElement, {
         value: welcomeMarkdown,
         language: 'markdown',
-        wordBasedSuggestions: false,
+        wordBasedSuggestions: 'off',
         autoIndent: 'advanced',
         wordWrap: 'on',
         renderWhitespace: 'all',
