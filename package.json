@@ -35,7 +35,7 @@
     "circle-buffer": "^0.1.5",
     "copy-webpack-plugin": "^12.0.2",
     "css-loader": "^6.10.0",
-    "electron": "^29.1.5",
+    "electron": "^30.0.5",
     "electron-builder": "^24.13.3",
     "eslint": "^8.57.0",
     "file-loader": "^6.2.0",
