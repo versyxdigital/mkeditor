@@ -30,7 +30,7 @@
     "@types/node": "^20.11.30",
     "@types/wicg-file-system-access": "^2023.10.5",
     "@typescript-eslint/eslint-plugin": "^7.3.1",
-    "@typescript-eslint/parser": "^7.3.1",
+    "@typescript-eslint/parser": "^7.12.0",
     "bootstrap": "^5.3.3",
     "circle-buffer": "^0.1.5",
     "copy-webpack-plugin": "^12.0.2",
