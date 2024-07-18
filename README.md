@@ -2,12 +2,13 @@
 
 The simple markdown editor.
 
-Use it through your [browser](https://mkeditoross.github.io/web/), or download for desktop.
+Use it through your [browser](https://versyxdigital.github.io/mkeditor/web/), or download for desktop.
+
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
-| Windows     | v2.6.0  | [exe](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.6.0/mkeditor-setup-v2.6.0-x86_64.zip) |
-| MacOS       | v2.6.0  | [pkg](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.6.0/mkeditor-setup-v2.6.0-x86_64.pkg) |
-| Linux       | v2.6.0  | [deb](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.6.0/mkeditor-setup-v2.6.0_amd64.deb)  |
+| Windows     | v2.6.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v2.6.0/mkeditor-setup-v2.6.0-x86_64.zip) |
+| MacOS       | v2.6.0  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v2.6.0/mkeditor-setup-v2.6.0-x86_64.pkg) |
+| Linux       | v2.6.0  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v2.6.0/mkeditor-setup-v2.6.0_amd64.deb)  |
 
 ![MKEditor](https://versyxdigital.github.io/mkeditor/demo.png)
 
@@ -15,13 +16,13 @@ Use it through your [browser](https://mkeditoross.github.io/web/), or download f
 
 Thank you for choosing MKEditor 😊, I hope you find this tool useful for all your markdown needs!
 
-If you have any issues or questions, please feel free to submit an [issue](https://github.com/mkeditorOSS/mkeditor/issues).
+If you have any issues or questions, please feel free to submit an [issue](https://github.com/versyxdigital/mkeditor/issues).
 
 ---
 
 Open the help menu using the button at the top right for a complete list of editor shortcuts.
 
-You can also view a cheatsheet [here](https://mkeditoross.github.io/shortcuts).
+You can also view a cheatsheet [here](https://versyxdigital.github.io/mkeditor/shortcuts).
 
 ---
 
