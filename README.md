@@ -5,11 +5,11 @@ The simple markdown editor.
 Use it through your [browser](https://mkeditoross.github.io/web/), or download for desktop.
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
-| Windows     | v2.4.0  | [exe](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.4.0/mkeditor-setup-v2.4.0-x86_64.zip) |
-| MacOS       | v2.4.0  | [pkg](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.4.0/mkeditor-setup-v2.4.0-x86_64.pkg) |
-| Linux       | v1.7.1  | [deb](https://github.com/mkeditorOSS/mkeditor/releases/download/v1.7.1/mkeditor-setup-v1.7.1_amd64.deb)  |
+| Windows     | v2.6.0  | [exe](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.6.0/mkeditor-setup-v2.6.0-x86_64.zip) |
+| MacOS       | v2.6.0  | [pkg](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.6.0/mkeditor-setup-v2.6.0-x86_64.pkg) |
+| Linux       | v2.6.0  | [deb](https://github.com/mkeditorOSS/mkeditor/releases/download/v2.6.0/mkeditor-setup-v2.6.0_amd64.deb)  |
 
-![MKEditor](https://mkeditoross.github.io/demo.png)
+![MKEditor](https://versyxdigital.github.io/mkeditor/demo.png)
 
 # Welcome
 
