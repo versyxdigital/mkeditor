@@ -129,10 +129,10 @@ export class Completion {
   trackBufferContents(value: string) {
     if (value === '\n') {
       // If the value is a newline then do nothing
-      return this.buffer.get();
+      return this.buffer.current();
     }
 
-    if (value === '' && this.buffer.get() !== '') {
+    if (value === '' && this.buffer.current() !== '') {
       // if it's a backspace and the buffer is not empty then remove the last
       // value added to the buffer
       this.buffer.rewind();
@@ -141,8 +141,8 @@ export class Completion {
       this.buffer.forward(value);
     }
 
-    // Return the buffered contents
-    return this.buffer.get();
+    // Return the current buffer contents
+    return this.buffer.current();
   }
 
   getTextUntilPosition(model: editor.ITextModel, position: Position) {
