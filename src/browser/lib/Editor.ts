@@ -19,12 +19,16 @@ export class Editor {
   /** Editor event dispatcher */
   private dispatcher: EditorDispatcher;
 
+  /** The loaded original editor value for tracking */
   private loadedInitialEditorValue: string | null = null;
 
+  /** The editor HTML element (mount point) */
   private editorHTMLElement: HTMLElement;
 
+  /** The preview HTML element (mount point) */
   private previewHTMLElement: HTMLElement;
 
+  /** Editor functional providers */
   public providers: EditorProviders = {
     bridge: null,
     commands: null,
@@ -32,7 +36,16 @@ export class Editor {
     settings: null,
   };
 
-  constructor(mode: 'web' | 'desktop' = 'web', dispatcher: EditorDispatcher) {
+  /**
+   * Create a new mkeditor.
+   *
+   * @param mode - the execution mode
+   * @param dispatcher - the editor event dispatcher
+   */
+  public constructor(
+    mode: 'web' | 'desktop' = 'web',
+    dispatcher: EditorDispatcher,
+  ) {
     this.mode = mode;
     this.dispatcher = dispatcher;
     this.editorHTMLElement = dom.editor.dom;
@@ -40,15 +53,32 @@ export class Editor {
     dom.about.version.innerHTML = APP_VERSION;
   }
 
-  provide<T>(provider: string, instance: T) {
-    this.providers[provider] = instance;
-  }
-
-  setAppMode(mode: 'web' | 'desktop') {
+  /**
+   * Sets the app execution mode.
+   *
+   * @param mode - the execution mode
+   */
+  public setAppMode(mode: 'web' | 'desktop') {
     this.mode = mode;
   }
 
-  create({ watch = false }) {
+  /**
+   * Provide access to a provider.
+   *
+   * @param provider - the provider to access
+   * @param instance - the associated provider instance
+   */
+  public provide<T>(provider: string, instance: T) {
+    this.providers[provider] = instance;
+  }
+
+  /**
+   * Create a new editor instance.
+   *
+   * @param watch - flag to watch the editor for changes
+   * @returns
+   */
+  public create({ watch = false }) {
     try {
       // Create the underlying monaco editor.
       // See https://microsoft.github.io/monaco-editor/
@@ -99,7 +129,10 @@ export class Editor {
     return this;
   }
 
-  render() {
+  /**
+   * Render the editor.
+   */
+  public render() {
     if (this.model) {
       this.previewHTMLElement.innerHTML = Markdown.render(
         this.model.getValue(),
@@ -110,7 +143,10 @@ export class Editor {
     }
   }
 
-  watch() {
+  /**
+   * Watch and re-render the editor for changes.
+   */
+  public watch() {
     // When the editor content changes, update the main process through the IPC handler
     // so that it can do things such as set the title notifying the user of unsaved changes,
     // prompt the user to save if they try to close the app or open a new file, etc.
@@ -147,11 +183,18 @@ export class Editor {
     });
   }
 
-  getModel() {
+  /**
+   * Get the current editor model.
+   * @returns
+   */
+  public getModel() {
     return this.model;
   }
 
-  registerContextListeners() {
+  /**
+   * Register listeners for cross-context events.
+   */
+  private registerContextListeners() {
     // Register the event listener for editor UI save settings button; this button
     // is executed from within the web context, and uses the IPC handler to fire an
     // event to the main process, which has access to the filesystem.

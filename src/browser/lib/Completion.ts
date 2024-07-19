@@ -17,13 +17,25 @@ export class Completion {
   /** Editor event dispatcher */
   private dispatcher: EditorDispatcher;
 
+  /** Disposable completion provider */
   private provider: IDisposable | null;
 
+  /** Buffer to track a fixed-size state of the editor */
   private buffer: CircularBuffer;
 
+  /** Completion provider matching criteria */
   private matchers: Record<string, Matcher>;
 
-  constructor(
+  /**
+   * Create a new mkeditor completion provider.
+   *
+   * Responsible for creating a completion provider and providing completion
+   * auto-suggestions.
+   *
+   * @param model - the editor model instance
+   * @param dispatcher - the editor event dispatcher
+   */
+  public constructor(
     model: editor.IStandaloneCodeEditor,
     dispatcher: EditorDispatcher,
   ) {
@@ -65,7 +77,12 @@ export class Completion {
     });
   }
 
-  async changeOnValidProposal(value: string) {
+  /**
+   * Change the providre when a valid completion proposal is detected.
+   *
+   * @param value - tracking value to detect
+   */
+  public async changeOnValidProposal(value: string) {
     // Fetch potential auto-completions proposal.
     const proposal = this.trackBufferContents(value);
     // Update the provider to provide matching auto-completions.
@@ -76,7 +93,12 @@ export class Completion {
     }
   }
 
-  async updateCompletionProvider(type: keyof typeof this.matchers) {
+  /**
+   * Update the completion provider.
+   *
+   * @param type - the type of provider for the matching criteria
+   */
+  private async updateCompletionProvider(type: keyof typeof this.matchers) {
     // Remove the existing provider (otherwise you get duplicates).
     await this.disposeCompletionProvider();
 
@@ -92,7 +114,10 @@ export class Completion {
     console.log(`Registered new completion provider for ${type}`);
   }
 
-  async disposeCompletionProvider() {
+  /**
+   * Dispose the current completion provider.
+   */
+  private async disposeCompletionProvider() {
     if (this.provider) {
       this.provider.dispose();
       this.provider = null;
@@ -100,7 +125,14 @@ export class Completion {
     }
   }
 
-  registerCompletionProvider(
+  /**
+   * Register a completion provider against the model instance.
+   *
+   * @param regex - the matching regex
+   * @param proposeAt - the range to propose for insertion
+   * @returns
+   */
+  private registerCompletionProvider(
     regex: RegExp,
     proposeAt: (range: IRange) => CompletionItem[],
   ) {
@@ -128,7 +160,13 @@ export class Completion {
     });
   }
 
-  trackBufferContents(value: string) {
+  /**
+   * Track values in the buffer.
+   *
+   * @param value - the value to track
+   * @returns
+   */
+  private trackBufferContents(value: string) {
     if (value === '\n') {
       // If the value is a newline then do nothing
       return this.buffer.current();
@@ -147,7 +185,14 @@ export class Completion {
     return this.buffer.current();
   }
 
-  getTextUntilPosition(model: editor.ITextModel, position: Position) {
+  /**
+   * Get editor text until the specified position is reached.
+   *
+   * @param model - the editor model instance
+   * @param position - the specified position
+   * @returns
+   */
+  private getTextUntilPosition(model: editor.ITextModel, position: Position) {
     return model
       .getValueInRange({
         startLineNumber: 1,
@@ -159,7 +204,14 @@ export class Completion {
       .pop();
   }
 
-  getRange(word: editor.IWordAtPosition, position: Position): IRange {
+  /**
+   * Get the range for the completion.
+   *
+   * @param word - the word at the position
+   * @param position - the position
+   * @returns
+   */
+  private getRange(word: editor.IWordAtPosition, position: Position): IRange {
     return {
       startLineNumber: position.lineNumber,
       endLineNumber: position.lineNumber,
@@ -168,7 +220,13 @@ export class Completion {
     };
   }
 
-  alertBlockProposals(range: IRange) {
+  /**
+   * Create a new alert block completion proposal.
+   *
+   * @param range - the editor range for completion
+   * @returns
+   */
+  private alertBlockProposals(range: IRange) {
     const proposals: CompletionItem[] = [];
     for (const alert of completion.alertblocks.types) {
       proposals.push({
@@ -183,7 +241,13 @@ export class Completion {
     return proposals;
   }
 
-  codeBlockProposals(range: IRange) {
+  /**
+   * Create a new code block completion proposal.
+   *
+   * @param range - the editor range for completion
+   * @returns
+   */
+  private codeBlockProposals(range: IRange) {
     const proposals: CompletionItem[] = [];
     for (const lang of completion.codeblocks.types) {
       proposals.push({
