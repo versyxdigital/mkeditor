@@ -14,11 +14,16 @@ export class Settings {
   /** Editor event dispatcher */
   private dispatcher: EditorDispatcher;
 
+  /** Editor settings */
   private settings: EditorSettings = settings;
 
+  /** Editor theme */
   private theme: 'light' | 'dark' = 'light';
 
-  constructor(
+  /**
+   * Create a new editor settings handler.
+   */
+  public constructor(
     mode: 'web' | 'desktop' = 'web',
     model: editor.IStandaloneCodeEditor,
     dispatcher: EditorDispatcher,
@@ -32,31 +37,31 @@ export class Settings {
     this.registerDOMListeners();
   }
 
-  setAppMode(mode: 'web' | 'desktop') {
+  public setAppMode(mode: 'web' | 'desktop') {
     this.mode = mode;
   }
 
-  getSettings() {
+  public getSettings() {
     return this.settings;
   }
 
-  getDefaultSettings() {
+  public getDefaultSettings() {
     return settings;
   }
 
-  setSettings(settings: EditorSettings) {
+  public setSettings(settings: EditorSettings) {
     this.settings = settings;
   }
 
-  setSetting(key: string, value: boolean) {
+  public setSetting(key: string, value: boolean) {
     this.settings[key as ValidSetting] = value;
   }
 
-  setDefaultSettings() {
+  public setDefaultSettings() {
     this.settings = settings;
   }
 
-  loadSettings() {
+  private loadSettings() {
     if (this.mode === 'web') {
       this.loadSettingsFromLocalStorage();
     }
@@ -69,7 +74,7 @@ export class Settings {
       .setSystemThemeOverride();
   }
 
-  loadSettingsFromLocalStorage() {
+  private loadSettingsFromLocalStorage() {
     const storage = localStorage.getItem('mkeditor-settings');
     if (storage) {
       const settings = JSON.parse(storage) as EditorSettings;
@@ -80,11 +85,11 @@ export class Settings {
     }
   }
 
-  updateSettingsInLocalStorage() {
+  private updateSettingsInLocalStorage() {
     localStorage.setItem('mkeditor-settings', JSON.stringify(this.settings));
   }
 
-  registerDOMListeners() {
+  public registerDOMListeners() {
     const toggler = dom.settings;
     this.registerAutoIndentChangeListener(toggler.autoindent);
     this.registerDarkModeChangeListener(toggler.darkmode);
@@ -96,7 +101,7 @@ export class Settings {
     this.setUIState();
   }
 
-  registerAutoIndentChangeListener(handler: Element) {
+  private registerAutoIndentChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('autoindent', target.checked);
@@ -107,7 +112,7 @@ export class Settings {
     return this;
   }
 
-  setAudoIndent() {
+  public setAudoIndent() {
     this.model.updateOptions({
       autoIndent: this.settings.autoindent ? 'advanced' : 'none',
     });
@@ -115,7 +120,7 @@ export class Settings {
     return this;
   }
 
-  registerDarkModeChangeListener(handler: Element) {
+  private registerDarkModeChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('darkmode', target.checked);
@@ -126,7 +131,7 @@ export class Settings {
     return this;
   }
 
-  setTheme() {
+  public setTheme() {
     document.body.setAttribute(
       'data-theme',
       this.settings.darkmode ? 'dark' : 'light',
@@ -138,7 +143,7 @@ export class Settings {
     return this;
   }
 
-  registerMinimapChangeListener(handler: Element) {
+  private registerMinimapChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('minimap', target.checked);
@@ -149,7 +154,7 @@ export class Settings {
     return this;
   }
 
-  setMinimap() {
+  public setMinimap() {
     this.model.updateOptions({
       minimap: { enabled: this.settings.minimap },
     });
@@ -157,7 +162,7 @@ export class Settings {
     return this;
   }
 
-  registerWordWrapChangeListener(handler: Element) {
+  private registerWordWrapChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('wordwrap', target.checked);
@@ -168,7 +173,7 @@ export class Settings {
     return this;
   }
 
-  setWordWrap() {
+  public setWordWrap() {
     this.model.updateOptions({
       wordWrap: this.settings.wordwrap ? 'on' : 'off',
     });
@@ -176,7 +181,7 @@ export class Settings {
     return this;
   }
 
-  registerWhitespaceChangeListener(handler: Element) {
+  private registerWhitespaceChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('whitespace', target.checked);
@@ -187,7 +192,7 @@ export class Settings {
     return this;
   }
 
-  setWhitespace() {
+  public setWhitespace() {
     this.model.updateOptions({
       renderWhitespace: this.settings.whitespace ? 'all' : 'none',
     });
@@ -195,7 +200,7 @@ export class Settings {
     return this;
   }
 
-  registerSystemThemeOverrideChangeListener(handler: Element) {
+  private registerSystemThemeOverrideChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('systemtheme', target.checked);
@@ -206,13 +211,13 @@ export class Settings {
     return this;
   }
 
-  setSystemThemeOverride() {
+  public setSystemThemeOverride() {
     dom.settings.darkmode.checked = this.theme === 'dark';
 
     return this;
   }
 
-  setUIState() {
+  public setUIState() {
     const { settings, icons } = dom;
 
     if (this.mode === 'web') {
@@ -244,7 +249,7 @@ export class Settings {
     }
   }
 
-  persist() {
+  private persist() {
     this.setUIState();
     if (this.mode === 'web') {
       this.updateSettingsInLocalStorage();

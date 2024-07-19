@@ -8,8 +8,6 @@ import { Bridge } from './lib/Bridge';
 import { splashScreen, setupTooltips, draggableSplit } from './dom';
 import { getExecutionBridge } from './util';
 
-// Let's co-author a commit! :)
-// Test comment - John
 // The bi-directional synchronous bridge to the main execution context.
 // Exposed on the window object through the preloader.
 const api = getExecutionBridge();
