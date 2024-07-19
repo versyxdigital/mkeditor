@@ -10,10 +10,13 @@ import { APP_VERSION } from '../version';
 import { dom } from '../dom';
 
 export class Editor {
+  /** Execution mode */
   private mode: 'web' | 'desktop' = 'web';
 
+  /** Editor model instance */
   private model: editor.IStandaloneCodeEditor | null = null;
 
+  /** Editor event dispatcher */
   private dispatcher: EditorDispatcher;
 
   private loadedInitialEditorValue: string | null = null;

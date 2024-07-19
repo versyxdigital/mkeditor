@@ -5,10 +5,13 @@ import { settings } from '../config';
 import { dom } from '../dom';
 
 export class Settings {
+  /** Execution mode */
   private mode: 'web' | 'desktop' = 'web';
 
+  /** Editor model instance */
   private model: editor.IStandaloneCodeEditor;
 
+  /** Editor event dispatcher */
   private dispatcher: EditorDispatcher;
 
   private settings: EditorSettings = settings;

@@ -11,8 +11,10 @@ import { EditorDispatcher } from '../events/EditorDispatcher';
 import { completion } from '../mappings/completion';
 
 export class Completion {
+  /** Editor model instance */
   private model: editor.IStandaloneCodeEditor;
 
+  /** Editor event dispatcher */
   private dispatcher: EditorDispatcher;
 
   private provider: IDisposable | null;
