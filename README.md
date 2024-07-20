@@ -2,7 +2,8 @@
 
 The simple markdown editor.
 
-Use it through your [browser](https://versyxdigital.github.io/mkeditor/web), or download for desktop.
+Use it through your [browser](https://versyxdigital.github.io/mkeditor/web/), or download for desktop.
+
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
 | Windows     | v2.6.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v2.6.0/mkeditor-setup-v2.6.0-x86_64.zip) |
