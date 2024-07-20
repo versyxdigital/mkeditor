@@ -2,13 +2,13 @@ export const welcomeMarkdown = `# Welcome to MKEditor
 
 Thank you for choosing MKEditor 😊, I hope you find this tool useful for all your markdown needs!
 
-If you have any issues or questions, please feel free to submit an issue over at [Github](https://github.com/mkeditorOSS/mkeditor/issues).
+If you have any issues or questions, please feel free to submit an issue over at [Github](https://github.com/versyxdigital/mkeditor/issues).
 
 ---
 
 Open the help menu using the button at the top right for a complete list of editor shortcuts.
 
-You can also view a cheatsheet [here](https://mkeditoross.github.io/mkeditor/shortcuts).
+You can also view a cheatsheet [here](https://versyxdigital.github.io/mkeditor/shortcuts).
 
 ---
 
