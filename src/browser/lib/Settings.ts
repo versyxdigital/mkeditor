@@ -37,58 +37,62 @@ export class Settings {
     this.registerDOMListeners();
   }
 
+  /**
+   * Sets the app execution mode.
+   *
+   * @param mode - the execution mode
+   */
   public setAppMode(mode: 'web' | 'desktop') {
     this.mode = mode;
   }
 
+  /**
+   * Get the editor settings.
+   *
+   * @returns - the editor settings
+   */
   public getSettings() {
     return this.settings;
   }
 
-  public getDefaultSettings() {
-    return settings;
-  }
-
+  /**
+   * Set the editor settings.
+   *
+   * @param settings - the settings to set
+   */
   public setSettings(settings: EditorSettings) {
     this.settings = settings;
   }
 
-  public setSetting(key: string, value: boolean) {
-    this.settings[key as ValidSetting] = value;
+  /**
+   * Get default editor settings.
+   *
+   * @returns - the default editor settings
+   */
+  public getDefaultSettings() {
+    return settings;
   }
 
+  /**
+   * Set editor settings back to defaults.
+   */
   public setDefaultSettings() {
     this.settings = settings;
   }
 
-  private loadSettings() {
-    if (this.mode === 'web') {
-      this.loadSettingsFromLocalStorage();
-    }
-
-    this.setTheme()
-      .setAudoIndent()
-      .setMinimap()
-      .setWhitespace()
-      .setWordWrap()
-      .setSystemThemeOverride();
+  /**
+   * Set a specific editor setting.
+   *
+   * @param key - the settings key
+   * @param value - the value to set
+   */
+  public setSetting(key: string, value: boolean) {
+    this.settings[key as ValidSetting] = value;
   }
 
-  private loadSettingsFromLocalStorage() {
-    const storage = localStorage.getItem('mkeditor-settings');
-    if (storage) {
-      const settings = JSON.parse(storage) as EditorSettings;
-      this.setSettings(settings);
-    } else {
-      this.setDefaultSettings();
-      this.updateSettingsInLocalStorage();
-    }
-  }
-
-  private updateSettingsInLocalStorage() {
-    localStorage.setItem('mkeditor-settings', JSON.stringify(this.settings));
-  }
-
+  /**
+   * Register DOM event listeners for changes to editor settings.
+   */
   public registerDOMListeners() {
     const toggler = dom.settings;
     this.registerAutoIndentChangeListener(toggler.autoindent);
@@ -101,122 +105,9 @@ export class Settings {
     this.setUIState();
   }
 
-  private registerAutoIndentChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('autoindent', target.checked);
-      this.setAudoIndent();
-      this.persist();
-    });
-
-    return this;
-  }
-
-  public setAudoIndent() {
-    this.model.updateOptions({
-      autoIndent: this.settings.autoindent ? 'advanced' : 'none',
-    });
-
-    return this;
-  }
-
-  private registerDarkModeChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('darkmode', target.checked);
-      this.setTheme();
-      this.persist();
-    });
-
-    return this;
-  }
-
-  public setTheme() {
-    document.body.setAttribute(
-      'data-theme',
-      this.settings.darkmode ? 'dark' : 'light',
-    );
-    editor.setTheme(this.settings.darkmode ? 'vs-dark' : 'vs');
-
-    this.theme = this.settings.darkmode ? 'dark' : 'light';
-
-    return this;
-  }
-
-  private registerMinimapChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('minimap', target.checked);
-      this.setMinimap();
-      this.persist();
-    });
-
-    return this;
-  }
-
-  public setMinimap() {
-    this.model.updateOptions({
-      minimap: { enabled: this.settings.minimap },
-    });
-
-    return this;
-  }
-
-  private registerWordWrapChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('wordwrap', target.checked);
-      this.setWordWrap();
-      this.persist();
-    });
-
-    return this;
-  }
-
-  public setWordWrap() {
-    this.model.updateOptions({
-      wordWrap: this.settings.wordwrap ? 'on' : 'off',
-    });
-
-    return this;
-  }
-
-  private registerWhitespaceChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('whitespace', target.checked);
-      this.setWhitespace();
-      this.persist();
-    });
-
-    return this;
-  }
-
-  public setWhitespace() {
-    this.model.updateOptions({
-      renderWhitespace: this.settings.whitespace ? 'all' : 'none',
-    });
-
-    return this;
-  }
-
-  private registerSystemThemeOverrideChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('systemtheme', target.checked);
-      this.setSystemThemeOverride();
-      this.persist();
-    });
-
-    return this;
-  }
-
-  public setSystemThemeOverride() {
-    dom.settings.darkmode.checked = this.theme === 'dark';
-
-    return this;
-  }
-
+  /**
+   * Set the UI state of the editor settings handlers.
+   */
   public setUIState() {
     const { settings, icons } = dom;
 
@@ -249,6 +140,228 @@ export class Settings {
     }
   }
 
+  /**
+   * Load the editor settings.
+   */
+  private loadSettings() {
+    if (this.mode === 'web') {
+      this.loadSettingsFromLocalStorage();
+    }
+
+    this.setTheme()
+      .setAudoIndent()
+      .setMinimap()
+      .setWhitespace()
+      .setWordWrap()
+      .setSystemThemeOverride();
+  }
+
+  /**
+   * Loads editor settings from local storage for web execution context.
+   */
+  private loadSettingsFromLocalStorage() {
+    const storage = localStorage.getItem('mkeditor-settings');
+    if (storage) {
+      const settings = JSON.parse(storage) as EditorSettings;
+      this.setSettings(settings);
+    } else {
+      this.setDefaultSettings();
+      this.updateSettingsInLocalStorage();
+    }
+  }
+
+  /**
+   * Updates editor settings in local storage for web execution context.
+   */
+  private updateSettingsInLocalStorage() {
+    localStorage.setItem('mkeditor-settings', JSON.stringify(this.settings));
+  }
+
+  /**
+   * Register the handler for the auto-indent settings.
+   *
+   * @param handler - the handler
+   * @returns this
+   */
+  private registerAutoIndentChangeListener(handler: Element) {
+    handler.addEventListener('click', (event) => {
+      const target = <HTMLInputElement>event.target;
+      this.setSetting('autoindent', target.checked);
+      this.setAudoIndent();
+      this.persist();
+    });
+
+    return this;
+  }
+
+  /**
+   * Set the auto-indent settings.
+   *
+   * @returns this
+   */
+  public setAudoIndent() {
+    this.model.updateOptions({
+      autoIndent: this.settings.autoindent ? 'advanced' : 'none',
+    });
+
+    return this;
+  }
+
+  /**
+   * Register the handler for the dark-mode settings.
+   *
+   * @param handler - the handler
+   * @returns this
+   */
+  private registerDarkModeChangeListener(handler: Element) {
+    handler.addEventListener('click', (event) => {
+      const target = <HTMLInputElement>event.target;
+      this.setSetting('darkmode', target.checked);
+      this.setTheme();
+      this.persist();
+    });
+
+    return this;
+  }
+
+  /**
+   * Set the editor theme (light or dark).
+   *
+   * @returns this
+   */
+  public setTheme() {
+    document.body.setAttribute(
+      'data-theme',
+      this.settings.darkmode ? 'dark' : 'light',
+    );
+    editor.setTheme(this.settings.darkmode ? 'vs-dark' : 'vs');
+
+    this.theme = this.settings.darkmode ? 'dark' : 'light';
+
+    return this;
+  }
+
+  /**
+   * Register the handler for the mini-map settings.
+   *
+   * @param handler - the handler
+   * @returns this
+   */
+  private registerMinimapChangeListener(handler: Element) {
+    handler.addEventListener('click', (event) => {
+      const target = <HTMLInputElement>event.target;
+      this.setSetting('minimap', target.checked);
+      this.setMinimap();
+      this.persist();
+    });
+
+    return this;
+  }
+
+  /**
+   * Set the mini-map settings.
+   *
+   * @returns this
+   */
+  public setMinimap() {
+    this.model.updateOptions({
+      minimap: { enabled: this.settings.minimap },
+    });
+
+    return this;
+  }
+
+  /**
+   * Register the hanlder for the word-wrap settings.
+   *
+   * @param handler - the handler
+   * @returns this
+   */
+  private registerWordWrapChangeListener(handler: Element) {
+    handler.addEventListener('click', (event) => {
+      const target = <HTMLInputElement>event.target;
+      this.setSetting('wordwrap', target.checked);
+      this.setWordWrap();
+      this.persist();
+    });
+
+    return this;
+  }
+
+  /**
+   * Set the word-wrap settings.
+   *
+   * @returns this
+   */
+  public setWordWrap() {
+    this.model.updateOptions({
+      wordWrap: this.settings.wordwrap ? 'on' : 'off',
+    });
+
+    return this;
+  }
+
+  /**
+   * Register the hanlder for the whitespace rendering settings.
+   *
+   * @param handler - the handler
+   * @returns this
+   */
+  private registerWhitespaceChangeListener(handler: Element) {
+    handler.addEventListener('click', (event) => {
+      const target = <HTMLInputElement>event.target;
+      this.setSetting('whitespace', target.checked);
+      this.setWhitespace();
+      this.persist();
+    });
+
+    return this;
+  }
+
+  /**
+   * Set whitespace settings.
+   *
+   * @returns this
+   */
+  public setWhitespace() {
+    this.model.updateOptions({
+      renderWhitespace: this.settings.whitespace ? 'all' : 'none',
+    });
+
+    return this;
+  }
+
+  /**
+   * Register the hanlder for the system theme override settings.
+   *
+   * @param handler - the handler
+   * @returns this
+   */
+  private registerSystemThemeOverrideChangeListener(handler: Element) {
+    handler.addEventListener('click', (event) => {
+      const target = <HTMLInputElement>event.target;
+      this.setSetting('systemtheme', target.checked);
+      this.setSystemThemeOverride();
+      this.persist();
+    });
+
+    return this;
+  }
+
+  /**
+   * Set system theme override settings.
+   *
+   * @returns this
+   */
+  public setSystemThemeOverride() {
+    dom.settings.darkmode.checked = this.theme === 'dark';
+
+    return this;
+  }
+
+  /**
+   * Persist configured settings.
+   */
   private persist() {
     this.setUIState();
     if (this.mode === 'web') {

@@ -132,6 +132,14 @@ const css = `@media print {
 type ProviderKey = keyof typeof cdn;
 
 export class Exporter {
+  /**
+   * Generate HTML export.
+   *
+   * @param content - the editor content
+   * @param styled - style the HTML
+   * @param providers - style providers
+   * @returns - the generated HTML
+   */
   static generateExportHTML(
     content: string,
     { styled = true, providers = ['highlightjs'] },
@@ -190,6 +198,12 @@ export class Exporter {
     return formatHTML(`<!DOCTYPE html>${document.documentElement.outerHTML}`);
   }
 
+  /**
+   * Sanitizes the HTML for export.
+   *
+   * @param document - the HTML document
+   * @returns - the sanitized HTML
+   */
   static sanitizeHTML(document: Document) {
     // Define attributes and classes for removal
     const removals = {
@@ -224,6 +238,15 @@ export class Exporter {
     return document;
   }
 
+  /**
+   * Export handler for browser-based exports.
+   *
+   * TODO potentially move this elsewhere
+   *
+   * @param content - the content to be exported
+   * @param mimeType- the mime type
+   * @param extension - the file extension
+   */
   static webExportToFile(
     content: string,
     mimeType: MIMEType = 'text/plain',
