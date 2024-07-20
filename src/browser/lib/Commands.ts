@@ -16,19 +16,34 @@ import { getOSPlatform } from '../util';
 import { dom } from '../dom';
 
 export class Commands {
+  /** Execution mode */
   private mode: 'web' | 'desktop' = 'web';
 
+  /** Editor model instance */
   private model: editor.IStandaloneCodeEditor;
 
+  /** Editor event dispatcher */
   private dispatcher: EditorDispatcher;
 
+  /** Editor command dropdown triggers */
   private dropdowns: DropdownProviders;
 
+  /** Editor command modal triggers */
   private modals: ModalProviders;
 
+  /** Editor command toolbar */
   private toolbar = dom.commands.toolbar;
 
-  constructor(
+  /**
+   * Create a new mkeditor command handler.
+   *
+   * Responsible for creating a command handler and handling editor commands.
+   *
+   * @param mode  - the execution mode
+   * @param model - the editor model instance
+   * @param dispatcher - the editor event dispatcher
+   */
+  public constructor(
     mode: 'web' | 'desktop' = 'web',
     model: editor.IStandaloneCodeEditor,
     dispatcher: EditorDispatcher,
@@ -51,11 +66,19 @@ export class Commands {
     this.register();
   }
 
-  setAppMode(mode: 'web' | 'desktop') {
+  /**
+   * Sets the app execution mode.
+   *
+   * @param mode - the execution mode
+   */
+  public setAppMode(mode: 'web' | 'desktop') {
     this.mode = mode;
   }
 
-  register() {
+  /**
+   * Register editor commands.
+   */
+  public register() {
     // Register command keybinding for displaying settings modal action
     this.model.addAction({
       id: 'settings',
@@ -171,32 +194,58 @@ export class Commands {
     }
   }
 
-  editInline(syntax: string) {
+  /**
+   * get an editor modal triggered by a command.
+   *
+   * @param key - the modal key
+   * @returns
+   */
+  public getModal(key: ValidModal) {
+    return this.modals[key] as Modal;
+  }
+
+  /**
+   * Execute an inline edit command on the model.
+   *
+   * @param syntax - the markdown syntax (i.e. ** or __)
+   */
+  private editInline(syntax: string) {
     this.executeEdit(syntax + this.getModel() + syntax);
   }
 
-  executeEdit(str: string) {
+  /**
+   * Execute edit commands on the model.
+   *
+   * @param content - the content to manipulate
+   */
+  private executeEdit(content: string) {
     this.model.executeEdits(null, [
       {
         range: this.getRange(),
-        text: str,
+        text: content,
         forceMoveMarkers: true,
       },
     ]);
   }
 
-  getModal(key: ValidModal) {
-    return this.modals[key] as Modal;
-  }
-
-  getModel() {
+  /**
+   * Get the editor model instance.
+   *
+   * @returns
+   */
+  private getModel() {
     const model =
       this.model.getModel()?.getValueInRange(this.getRange()) ?? ' ';
 
     return model;
   }
 
-  getRange() {
+  /**
+   * Get the editor content range for command execution.
+   *
+   * @returns
+   */
+  private getRange() {
     return (
       this.model.getSelection() ?? {
         startLineNumber: 0,
@@ -207,26 +256,44 @@ export class Commands {
     );
   }
 
-  alert(params: HTMLElement | string, content?: string) {
+  /**
+   * Insert an alert.
+   *
+   * @param params - alert parameters
+   * @param content - the content to insert
+   */
+  private alert(params: HTMLElement | string, content?: string) {
     const alert = params instanceof HTMLElement ? params.dataset.type : params;
     content = content || this.getModel();
     this.executeEdit('::: ' + alert + '\n' + content + '\n:::');
   }
 
-  codeblock(params: HTMLElement | string, content?: string) {
+  /**
+   * Insert a codeblock.
+   *
+   * @param params - codeblock parameters
+   * @param content - the content to insert
+   */
+  private codeblock(params: HTMLElement | string, content?: string) {
     const language =
       params instanceof HTMLElement ? params.dataset.language : params;
     content = content || this.getModel();
     this.executeEdit('```' + language + '\n' + content + '\n```');
   }
 
-  unorderedList() {
+  /**
+   * Create an unordered list.
+   */
+  private unorderedList() {
     this.executeEdit(
       this.getModel().replace(/^[a-zA-Z]+?/gm, (match) => `- ${match}`),
     );
   }
 
-  orderedList() {
+  /**
+   * Create an ordered list.
+   */
+  private orderedList() {
     let i = 0;
     this.executeEdit(
       this.getModel().replace(/^[a-zA-Z]+?/gm, (match) => `${++i}. ${match}`),

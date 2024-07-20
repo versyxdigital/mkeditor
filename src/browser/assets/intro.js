@@ -48,5 +48,5 @@ MKEditor also includes a built-in, resizable preview renderer and support for ex
 
 Customize your settings, switch between light mode and dark mode, write some documents and have fun!
 
-Built with ❤️ by [Chris Rowles](https://github.com/sentrychris)
+Built with ❤️ by [Versyx Digital](https://versyx.dev)
 `;

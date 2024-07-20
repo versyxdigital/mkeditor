@@ -1,4 +1,3 @@
-// import notify from '../utilities/notify';
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { ContextBridgeAPI, ContextBridgedFile } from '../interfaces/Bridge';
 import { BridgeProviders, ValidModal } from '../interfaces/Providers';
@@ -8,23 +7,39 @@ import { Notify } from './Notify';
 import { dom } from '../dom';
 
 export class Bridge {
+  /** Execution context bridge */
   private bridge: ContextBridgeAPI;
 
+  /** Editor model instance */
   private model: editor.IStandaloneCodeEditor;
 
+  /** Editor event dispatcher */
   private dispatcher: EditorDispatcher;
 
+  /** The current active file */
   private activeFile: string | null = null;
 
+  /** Flag to determine whether the content has changed */
   private contentHasChanged: boolean = false;
 
+  /** Providers to be accessed through bridge */
   public providers: BridgeProviders = {
     settings: null,
     commands: null,
     completion: null,
   };
 
-  constructor(
+  /**
+   * Create a new mkeditor bridge.
+   *
+   * Responsible for creating a bridge and handling events between
+   * execution contexts.
+   *
+   * @param bridge - the execution bridge
+   * @param model  - the editor model instance
+   * @param dispatcher - the editor event dispatcher
+   */
+  public constructor(
     bridge: ContextBridgeAPI,
     model: editor.IStandaloneCodeEditor,
     dispatcher: EditorDispatcher,
@@ -40,11 +55,20 @@ export class Bridge {
     });
   }
 
-  provide<T>(provider: string, instance: T) {
+  /**
+   * Provide access to a provider.
+   *
+   * @param provider - the provider to access
+   * @param instance - the associated provider instance
+   */
+  public provide<T>(provider: string, instance: T) {
     this.providers[provider] = instance;
   }
 
-  register() {
+  /**
+   * Register bridge events.
+   */
+  public register() {
     // Set the theme according to the user's system theme
     this.bridge.receive('from:theme:set', (shouldUseDarkMode: boolean) => {
       if (shouldUseDarkMode) {
@@ -144,11 +168,19 @@ export class Bridge {
     );
   }
 
-  saveSettingsToFile(settings: EditorSettings) {
+  /**
+   * Send a save settings request across the bridge.
+   *
+   * @param settings - the settings to save
+   */
+  public saveSettingsToFile(settings: EditorSettings) {
     this.bridge.send('to:settings:save', { settings });
   }
 
-  saveContentToFile() {
+  /**
+   * Send a save contents request across the bridge.
+   */
+  public saveContentToFile() {
     if (this.activeFile) {
       this.bridge.send('to:file:save', {
         content: this.model.getValue(),
@@ -159,16 +191,36 @@ export class Bridge {
     }
   }
 
-  exportPreviewToFile(content: string) {
+  /**
+   * Send an export preview request across the bridge.
+   *
+   * @param content - the content to export
+   */
+  public exportPreviewToFile(content: string) {
     this.bridge.send('to:html:export', { content });
   }
 
-  trackEditorStateBetweenExecutionContext(original: string, current: string) {
+  /**
+   * Track the editor state between both exection contexts.
+   *
+   * @param original - the original loaded state of the editor
+   * @param current  - the current state of the editor
+   */
+  public trackEditorStateBetweenExecutionContext(
+    original: string,
+    current: string,
+  ) {
     this.bridge.send('to:editor:state', { original, current });
     this.contentHasChanged = original !== current;
   }
 
-  loadSettingsFromStorageChannel(settings: EditorSettings) {
+  /**
+   * private method to load settings for the editor model, used by the
+   * from:settings:set bridge channel receiver.
+   *
+   * @param settings - the editor settings to load
+   */
+  private loadSettingsFromStorageChannel(settings: EditorSettings) {
     this.model.updateOptions({
       autoIndent: settings.autoindent ? 'advanced' : 'none',
     });

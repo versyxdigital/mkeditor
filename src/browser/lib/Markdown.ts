@@ -30,6 +30,9 @@ hljs.registerLanguage('sql', sql);
 hljs.registerLanguage('xml', xml);
 hljs.registerLanguage('csharp', csharp);
 
+/**
+ * Create a new markdownIt instance.
+ */
 const Markdown = new MarkdownIt({
   html: true,
   breaks: true,

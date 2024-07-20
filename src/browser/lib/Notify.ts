@@ -1,5 +1,8 @@
 import Swal, { SweetAlertIcon } from 'sweetalert2';
 
+/**
+ * Configure a sweetalert2 mixin for toast notifications.
+ */
 const toast: ReturnType<typeof Swal.mixin> = Swal.mixin({
   toast: true,
   position: 'bottom-end',
@@ -19,6 +22,12 @@ const toast: ReturnType<typeof Swal.mixin> = Swal.mixin({
 });
 
 export class Notify {
+  /**
+   * Send a toast notification.
+   *
+   * @param icon - the icon for the notification
+   * @param html - the content of the notification
+   */
   static async send(icon: string, html: string) {
     const title = icon.charAt(0).toUpperCase() + icon.slice(1);
     await toast.fire({ html, title, icon: icon as SweetAlertIcon });
