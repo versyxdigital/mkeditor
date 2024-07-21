@@ -84,12 +84,6 @@ export async function setupTooltips() {
     });
 }
 
-export function splashScreen() {
-  fade(dom.splash, 'out', 750, () => {
-    fade(dom.app, 'in', 750);
-  });
-}
-
 export function fade(
   element: HTMLElement,
   direction: 'in' | 'out',
@@ -145,7 +139,13 @@ export function fadeIn(
   }, interval);
 }
 
-export function draggableSplit(model: editor.IStandaloneCodeEditor) {
+export function showSplashScreen({ duration }: { duration: number }) {
+  fade(dom.splash, 'out', duration, () => {
+    fade(dom.app, 'in', duration);
+  });
+}
+
+export function createDraggableSplit(model: editor.IStandaloneCodeEditor) {
   Split(['#editor-split', '#preview-split'], {
     onDrag() {
       model.layout();
