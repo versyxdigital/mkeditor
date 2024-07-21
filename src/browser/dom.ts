@@ -85,37 +85,64 @@ export async function setupTooltips() {
 }
 
 export function splashScreen() {
-  setTimeout(() => fade(dom.splash, 'out'), 750);
-  setTimeout(() => fade(dom.app, 'in'), 500);
+  fade(dom.splash, 'out', 750, () => {
+    fade(dom.app, 'in', 750);
+  });
 }
 
-export function fade(element: HTMLElement, direction: 'in' | 'out') {
-  direction === 'in' ? fadeIn(element) : fadeOut(element);
+export function fade(
+  element: HTMLElement,
+  direction: 'in' | 'out',
+  duration: number,
+  callback?: () => void,
+) {
+  direction === 'in'
+    ? fadeIn(element, duration, callback)
+    : fadeOut(element, duration, callback);
 }
 
-export function fadeOut(element: HTMLElement) {
+export function fadeOut(
+  element: HTMLElement,
+  duration: number,
+  callback?: () => void,
+) {
   let alpha = 1;
+  const interval = 16; // ~60 FPS
+  const decrement = interval / duration;
+
   const timer = setInterval(() => {
-    if (alpha <= 0.1) {
+    alpha -= decrement;
+    if (alpha <= 0) {
       clearInterval(timer);
       element.style.display = 'none';
+      element.style.opacity = '0';
+      if (callback) callback();
+    } else {
+      element.style.opacity = alpha.toString();
     }
-    element.style.opacity = alpha.toString();
-    element.style.filter = 'alpha(opacity=' + alpha * 100 + ')';
-    alpha -= alpha * 0.1;
-  }, 50);
+  }, interval);
 }
 
-export function fadeIn(element: HTMLElement) {
-  let alpha = 0.1;
+export function fadeIn(
+  element: HTMLElement,
+  duration: number,
+  callback?: () => void,
+) {
+  let alpha = 0;
+  element.style.display = '';
+  const interval = 16; // ~60 FPS
+  const increment = interval / duration;
+
   const timer = setInterval(() => {
+    alpha += increment;
     if (alpha >= 1) {
       clearInterval(timer);
+      element.style.opacity = '1';
+      if (callback) callback();
+    } else {
+      element.style.opacity = alpha.toString();
     }
-    element.style.opacity = alpha.toString();
-    element.style.filter = 'alpha(opacity=' + alpha * 100 + ')';
-    alpha += alpha * 0.1;
-  }, 50);
+  }, interval);
 }
 
 export function draggableSplit(model: editor.IStandaloneCodeEditor) {
