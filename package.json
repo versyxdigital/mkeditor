@@ -50,7 +50,7 @@
     "sass-loader": "^14.2.1",
     "split.js": "^1.6.5",
     "style-loader": "^4.0.0",
-    "sweetalert2": "^11.12.2",
+    "sweetalert2": "^11.14.2",
     "terser-webpack-plugin": "^5.3.10",
     "ts-loader": "^9.5.1",
     "typescript": "^5.5.3",
