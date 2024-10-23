@@ -27,7 +27,7 @@
     "@types/bootstrap": "^5.2.10",
     "@types/markdown-it": "^14.1.1",
     "@types/markdown-it-container": "^2.0.10",
-    "@types/node": "^20.14.11",
+    "@types/node": "^22.7.9",
     "@types/wicg-file-system-access": "^2023.10.5",
     "@typescript-eslint/eslint-plugin": "^7.16.1",
     "@typescript-eslint/parser": "^7.16.1",
