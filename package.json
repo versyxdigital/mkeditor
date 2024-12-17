@@ -21,7 +21,7 @@
     "@electron/asar": "^3.2.10",
     "@fortawesome/fontawesome-svg-core": "^6.6.0",
     "@fortawesome/free-brands-svg-icons": "^6.6.0",
-    "@fortawesome/free-regular-svg-icons": "^6.6.0",
+    "@fortawesome/free-regular-svg-icons": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@popperjs/core": "^2.11.8",
     "@types/bootstrap": "^5.2.10",
