@@ -43,7 +43,7 @@
     "html-webpack-plugin": "^5.6.0",
     "markdown-it": "^14.1.0",
     "markdown-it-container": "^4.0.0",
-    "monaco-editor": "^0.50.0",
+    "monaco-editor": "^0.52.2",
     "monaco-editor-webpack-plugin": "^7.1.0",
     "prettier": "^3.3.3",
     "sass": "^1.77.8",
