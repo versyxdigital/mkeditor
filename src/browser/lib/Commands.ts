@@ -131,7 +131,8 @@ export class Commands {
           // are edits that begin with their own syntax on the first line, and then end with
           // their own syntax on the last line, with the text occupying the lines in-between.
           // For examle, codeblocks (```).
-          commands[cmd].run = () => (this[cmd as ValidCommand] as Function)();
+          commands[cmd].run = () =>
+            (this[cmd as ValidCommand] as (...args: any[]) => void)();
         }
       }
 
@@ -151,7 +152,7 @@ export class Commands {
               this.editInline(syntax);
             } else {
               // Same fenced block edit functionality explained in the loop above.
-              (this[cmd as ValidCommand] as Function)(target);
+              (this[cmd as ValidCommand] as (t: HTMLElement) => any)(target);
             }
             this.model.focus();
           }
