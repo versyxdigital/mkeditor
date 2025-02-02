@@ -90,7 +90,7 @@ export function splashScreen() {
 }
 
 export function fade(element: HTMLElement, direction: 'in' | 'out') {
-  direction === 'in' ? fadeIn(element) : fadeOut(element);
+  return direction === 'in' ? fadeIn(element) : fadeOut(element);
 }
 
 export function fadeOut(element: HTMLElement) {
