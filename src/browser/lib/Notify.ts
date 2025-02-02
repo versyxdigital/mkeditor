@@ -7,6 +7,7 @@ const toast: ReturnType<typeof Swal.mixin> = Swal.mixin({
   toast: true,
   position: 'bottom-end',
   showConfirmButton: false,
+  showCloseButton: true,
   timer: 7500,
   timerProgressBar: true,
   showClass: {

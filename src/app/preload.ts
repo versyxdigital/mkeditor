@@ -55,7 +55,7 @@ const contextBridgeChannel = () => {
         ipcRenderer.send(channel, data);
       }
     },
-    receive: (channel: string, fn: Function) => {
+    receive: (channel: string, fn: (...args: any[]) => void) => {
       if (receiverWhitelist.includes(channel)) {
         // Listen to channels and execute callack when messages are received.
         ipcRenderer.on(channel, (event, ...args) => {
