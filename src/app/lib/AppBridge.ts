@@ -102,13 +102,7 @@ export class AppBridge {
       'to:file:save',
       async (
         event,
-        {
-          content,
-          file,
-          prompt = false,
-          fromOpen = false,
-          openPath = null,
-        },
+        { content, file, prompt = false, fromOpen = false, openPath = null },
       ) => {
         if (await AppStorage.promptUserActionConfirmed(this.context, prompt)) {
           AppStorage.save(this.context, {

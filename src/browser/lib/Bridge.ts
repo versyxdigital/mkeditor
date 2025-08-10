@@ -158,7 +158,12 @@ export class Bridge {
         const name = filename || `Untitled ${this.untitledCounter - 1}`;
         let mdl = this.models.get(path);
 
-        if (!mdl && this.activeFile && this.activeFile.startsWith('untitled') && file) {
+        if (
+          !mdl &&
+          this.activeFile &&
+          this.activeFile.startsWith('untitled') &&
+          file
+        ) {
           mdl = this.models.get(this.activeFile);
           const tab = this.tabs.get(this.activeFile);
           if (mdl && tab) {
@@ -275,7 +280,8 @@ export class Bridge {
     if (dom.filetree) {
       dom.filetree.querySelectorAll('li.file .file-name').forEach((el) => {
         const li = (el as HTMLElement).parentElement as HTMLElement;
-        if (li.dataset.path === path) (el as HTMLElement).classList.add('active');
+        if (li.dataset.path === path)
+          (el as HTMLElement).classList.add('active');
         else (el as HTMLElement).classList.remove('active');
       });
     }

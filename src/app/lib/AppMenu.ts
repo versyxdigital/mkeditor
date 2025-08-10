@@ -42,9 +42,13 @@ export class AppMenu {
           {
             label: 'Open Folder...',
             click: () => {
-              this.context.webContents.send('from:folder:open', 'to:folder:open');
+              this.context.webContents.send(
+                'from:folder:open',
+                'to:folder:open',
+              );
             },
-            accelerator: process.platform === 'darwin' ? 'Cmd+Shift+O' : 'Ctrl+Shift+O',
+            accelerator:
+              process.platform === 'darwin' ? 'Cmd+Shift+O' : 'Ctrl+Shift+O',
           },
           {
             label: 'Save',

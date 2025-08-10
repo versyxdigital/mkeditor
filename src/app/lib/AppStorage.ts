@@ -1,10 +1,5 @@
 import { app, BrowserWindow, dialog } from 'electron';
-import {
-  statSync,
-  readFileSync,
-  writeFileSync,
-  readdirSync,
-} from 'fs';
+import { statSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { CreateFileOptions, SaveFileOptions } from '../interfaces/Storage';
 

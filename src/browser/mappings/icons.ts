@@ -8,6 +8,8 @@ import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faDatabase } from '@fortawesome/free-solid-svg-icons/faDatabase';
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons/faExclamationCircle';
 import { faFileExport } from '@fortawesome/free-solid-svg-icons/faFileExport';
+import { faFile } from '@fortawesome/free-solid-svg-icons/faFile';
+import { faFolder } from '@fortawesome/free-solid-svg-icons/faFolder';
 import { faItalic } from '@fortawesome/free-solid-svg-icons/faItalic';
 import { faListOl } from '@fortawesome/free-solid-svg-icons/faListOl';
 import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
@@ -28,6 +30,8 @@ library.add(
   faCopy,
   faDatabase,
   faExclamationCircle,
+  faFile,
+  faFolder,
   faFileExport,
   faItalic,
   faListUl,
