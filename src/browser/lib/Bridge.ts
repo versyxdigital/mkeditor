@@ -274,6 +274,7 @@ export class Bridge {
       if (p === path) tab.classList.add('active');
       else tab.classList.remove('active');
     });
+    this.dispatcher.render();
     this.model.focus();
     this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
   }

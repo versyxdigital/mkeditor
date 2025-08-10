@@ -51,6 +51,7 @@ export class Editor {
     this.editorHTMLElement = dom.editor.dom;
     this.previewHTMLElement = dom.preview.dom;
     dom.about.version.innerHTML = APP_VERSION;
+    this.dispatcher.addEventListener('editor:render', () => this.render());
   }
 
   /**
