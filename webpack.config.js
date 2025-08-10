@@ -8,7 +8,7 @@ module.exports = {
   mode: 'production',
   entry: {
     mkeditor: [
-      './src/browser/index.ts',
+      './src/browser/index.tsx',
       './src/browser/assets/scss/index.scss',
     ],
   },
@@ -53,7 +53,7 @@ module.exports = {
     ],
   },
   resolve: {
-    extensions: ['.ts', '.js'],
+    extensions: ['.tsx', '.ts', '.js'],
   },
   plugins: [
     new MonacoWebpackPlugin({

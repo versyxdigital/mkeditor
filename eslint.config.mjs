@@ -46,7 +46,7 @@ export default [
     },
 
     rules: {
-      indent: ['error', 2],
+      indent: ['off', 2],
       quotes: ['error', 'single'],
       semi: ['error', 'always'],
       'no-constant-condition': 'off',
