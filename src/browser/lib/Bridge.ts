@@ -274,6 +274,13 @@ export class Bridge {
       if (p === path) tab.classList.add('active');
       else tab.classList.remove('active');
     });
+    if (dom.filetree) {
+      dom.filetree.querySelectorAll('li.file .file-name').forEach((el) => {
+        const li = (el as HTMLElement).parentElement as HTMLElement;
+        if (li.dataset.path === path) (el as HTMLElement).classList.add('active');
+        else (el as HTMLElement).classList.remove('active');
+      });
+    }
     this.dispatcher.render();
     this.model.focus();
     this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
@@ -285,14 +292,26 @@ export class Bridge {
     const build = (nodes: any[], parent: HTMLElement) => {
       nodes.forEach((node) => {
         const li = document.createElement('li');
-        li.textContent = node.name;
+        li.classList.add('ft-node', node.type);
+
+        const span = document.createElement('span');
+        span.classList.add('file-name');
+        const icon = document.createElement('i');
+        icon.className =
+          node.type === 'directory' ? 'fa fa-folder me-1' : 'fa fa-file me-1';
+        span.appendChild(icon);
+        span.append(node.name);
+        li.appendChild(span);
+
         if (node.type === 'directory') {
           const ul = document.createElement('ul');
+          ul.classList.add('list-unstyled', 'ps-3');
           build(node.children, ul);
           li.appendChild(ul);
         } else {
+          li.classList.add('file');
           li.dataset.path = node.path;
-          li.addEventListener('click', (e) => {
+          span.addEventListener('click', (e) => {
             e.preventDefault();
             this.openFileFromPath(node.path);
           });
