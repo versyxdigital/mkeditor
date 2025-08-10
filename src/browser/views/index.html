@@ -65,13 +65,13 @@
     </nav>
 
     <!-- main content -->
-    <div id="app" class="d-flex flex-row h-100">
-      <div id="sidebar" class="border-end p-2">
-        <ul id="file-tree" class="list-unstyled mb-0"></ul>
-      </div>
-      <div class="w-100 border-top">
-        <ul id="editor-tabs" class="nav nav-tabs"></ul>
-        <div id="wrapper" class="d-flex flex-row">
+    <div id="main" class="border-top d-flex flex-column h-100">
+      <ul id="editor-tabs" class="tab-bar"></ul>
+      <div id="app" class="d-flex flex-row flex-grow-1">
+        <div id="sidebar" class="border-end p-2">
+          <ul id="file-tree" class="list-unstyled mb-0"></ul>
+        </div>
+        <div id="wrapper" class="d-flex flex-row w-100">
           <!-- editor pane -->
           <div id="editor-split">
             <div id="editor" class="flex-column split-editor"></div>
@@ -82,9 +82,11 @@
             <div id="preview" class="flex-column split-preview p-3"></div>
           </div>
         </div>
+      </div>
+    </div>
 
-        <!-- bottom editor toolbar -->
-        <nav class="navbar navbar-light bg-light fixed-bottom border-top p-2">
+    <!-- bottom editor toolbar -->
+    <nav class="navbar navbar-light bg-light fixed-bottom border-top p-2">
           <div
             class="d-flex justify-content-start align-items-center"
             id="editor-functions"
@@ -386,9 +388,7 @@
               </div>
             </li>
           </ul>
-        </nav>
-      </div>
-    </div>
+          </nav>
 
     <!-- settings modal -->
     <div class="modal" tabindex="-1" id="app-settings">

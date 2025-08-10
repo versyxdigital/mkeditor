@@ -242,9 +242,7 @@ export class Bridge {
 
   private addTab(name: string, path: string) {
     const li = document.createElement('li');
-    li.className = 'nav-item';
     const a = document.createElement('a');
-    a.className = 'nav-link';
     a.href = '#';
     a.textContent = name;
     a.addEventListener('click', (e) => {

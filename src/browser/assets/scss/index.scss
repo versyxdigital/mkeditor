@@ -7,6 +7,7 @@
 @import '_notify.scss';
 @import '_darkmode.scss';
 @import '_sidebar.scss';
+@import '_tabs.scss';
 
 body[data-theme='light'] {
   @include meta.load-css('highlight.js/styles/github');
