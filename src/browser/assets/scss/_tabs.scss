@@ -9,6 +9,8 @@
   li {
     list-style: none;
     margin-right: 2px;
+    display: flex;
+    align-items: center;
 
     a {
       display: block;
@@ -28,6 +30,19 @@
         background-color: #ffffff;
         border-color: #cccccc;
         border-bottom: 1px solid #ffffff;
+      }
+    }
+
+    .tab-close {
+      margin-left: 4px;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      padding: 0 4px;
+      color: #666666;
+
+      &:hover {
+        color: #000000;
       }
     }
   }

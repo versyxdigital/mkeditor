@@ -254,9 +254,67 @@ export class Bridge {
       e.preventDefault();
       this.activateFile(path);
     });
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.classList.add('tab-close');
+    close.innerHTML = '&times;';
+    close.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.closeTab(path);
+    });
+
     li.appendChild(a);
+    li.appendChild(close);
     dom.tabs?.appendChild(li);
     this.tabs.set(path, a);
+  }
+
+  private closeTab(path: string) {
+    const mdl = this.models.get(path);
+    if (!mdl) return;
+
+    const original = this.originals.get(path) ?? '';
+    const current = mdl.getValue();
+
+    if (original !== current) {
+      const save = window.confirm(
+        'You have unsaved changes. Save before closing?'
+      );
+      if (save) {
+        if (path.startsWith('untitled')) {
+          this.bridge.send('to:file:saveas', current);
+        } else {
+          this.bridge.send('to:file:save', { content: current, file: path });
+        }
+      }
+    }
+
+    mdl.dispose();
+    this.models.delete(path);
+    this.originals.delete(path);
+
+    const tab = this.tabs.get(path);
+    tab?.parentElement?.remove();
+    this.tabs.delete(path);
+
+    if (this.activeFile === path) {
+      this.activeFile = null;
+      const next = this.tabs.keys().next();
+      if (!next.done) {
+        const nextPath = next.value;
+        const nextTab = this.tabs.get(nextPath);
+        this.activateFile(nextPath, nextTab?.textContent || undefined);
+      } else {
+        const newPath = `untitled-${this.untitledCounter++}`;
+        const model = editor.createModel('', 'markdown');
+        this.models.set(newPath, model);
+        this.originals.set(newPath, '');
+        this.addTab(`Untitled ${this.untitledCounter - 1}`, newPath);
+        this.activateFile(newPath, `Untitled ${this.untitledCounter - 1}`);
+      }
+    }
   }
 
   private activateFile(path: string, name?: string) {
