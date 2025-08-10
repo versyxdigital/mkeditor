@@ -1,8 +1,8 @@
 import hljs from 'highlight.js/lib/core';
 
 // Supported languages for markdown codeblocks
-import c from 'highlight.js/lib/languages/c.js'
-import cpp from 'highlight.js/lib/languages/cpp.js'
+import c from 'highlight.js/lib/languages/c.js';
+import cpp from 'highlight.js/lib/languages/cpp.js';
 import csharp from 'highlight.js/lib/languages/csharp';
 import javascript from 'highlight.js/lib/languages/javascript';
 import json from 'highlight.js/lib/languages/json';
