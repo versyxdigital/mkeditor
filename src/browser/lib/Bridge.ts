@@ -22,6 +22,18 @@ export class Bridge {
   /** Flag to determine whether the content has changed */
   private contentHasChanged: boolean = false;
 
+  /** Map of open file models */
+  private models: Map<string, editor.ITextModel> = new Map();
+
+  /** Map of original contents */
+  private originals: Map<string, string> = new Map();
+
+  /** Map of tab elements */
+  private tabs: Map<string, HTMLAnchorElement> = new Map();
+
+  /** counter for untitled files */
+  private untitledCounter = 1;
+
   /** Providers to be accessed through bridge */
   public providers: BridgeProviders = {
     settings: null,
@@ -102,10 +114,25 @@ export class Bridge {
         content: this.model.getValue(),
         file: this.activeFile,
       });
+      if (this.activeFile) {
+        this.originals.set(this.activeFile, this.model.getValue());
+        this.dispatcher.setTrackedContent({
+          content: this.model.getValue(),
+        });
+      }
     });
 
     this.bridge.receive('from:file:saveas', (channel: string) => {
       this.bridge.send(channel, this.model.getValue());
+    });
+
+    // Handle opening folders and constructing file tree
+    this.bridge.receive('from:folder:open', (channel: string) => {
+      this.bridge.send(channel, true);
+    });
+
+    this.bridge.receive('from:folder:opened', ({ tree }) => {
+      this.buildFileTree(tree);
     });
 
     // Enable opening files from outside of the renderer execution context.
@@ -127,23 +154,32 @@ export class Bridge {
     this.bridge.receive(
       'from:file:opened',
       ({ content, filename, file }: ContextBridgedFile) => {
-        this.model.focus();
-        this.model.setValue(content);
-        this.activeFile = file;
+        const path = file || `untitled-${this.untitledCounter++}`;
+        const name = filename || `Untitled ${this.untitledCounter - 1}`;
+        let mdl = this.models.get(path);
 
-        // Dispatch contents so the editor can track it.
-        this.dispatcher.setTrackedContent({
-          content: this.model.getValue(),
-        });
+        if (!mdl && this.activeFile && this.activeFile.startsWith('untitled') && file) {
+          mdl = this.models.get(this.activeFile);
+          const tab = this.tabs.get(this.activeFile);
+          if (mdl && tab) {
+            this.models.delete(this.activeFile);
+            this.tabs.delete(this.activeFile);
+            this.originals.delete(this.activeFile);
+            tab.textContent = name;
+            this.models.set(path, mdl);
+            this.tabs.set(path, tab);
+            this.originals.set(path, content);
+          }
+        }
 
-        this.trackEditorStateBetweenExecutionContext(content, content);
+        if (!mdl) {
+          mdl = editor.createModel(content, 'markdown');
+          this.models.set(path, mdl);
+          this.originals.set(path, content);
+          this.addTab(name, path);
+        }
 
-        dom.meta.file.active.innerText = filename;
-
-        this.bridge.send(
-          'to:title:set',
-          filename === '' ? 'New File' : filename,
-        );
+        this.activateFile(path, name);
       },
     );
 
@@ -181,10 +217,14 @@ export class Bridge {
    * Send a save contents request across the bridge.
    */
   public saveContentToFile() {
-    if (this.activeFile) {
+    if (this.activeFile && !this.activeFile.startsWith('untitled')) {
       this.bridge.send('to:file:save', {
         content: this.model.getValue(),
         file: this.activeFile,
+      });
+      this.originals.set(this.activeFile, this.model.getValue());
+      this.dispatcher.setTrackedContent({
+        content: this.model.getValue(),
       });
     } else {
       this.bridge.send('to:file:saveas', this.model.getValue());
@@ -198,6 +238,91 @@ export class Bridge {
    */
   public exportPreviewToFile(content: string) {
     this.bridge.send('to:html:export', { content });
+  }
+
+  private addTab(name: string, path: string) {
+    const li = document.createElement('li');
+    li.className = 'nav-item';
+    const a = document.createElement('a');
+    a.className = 'nav-link';
+    a.href = '#';
+    a.textContent = name;
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.activateFile(path);
+    });
+    li.appendChild(a);
+    dom.tabs?.appendChild(li);
+    this.tabs.set(path, a);
+  }
+
+  private activateFile(path: string, name?: string) {
+    const mdl = this.models.get(path);
+    if (!mdl) return;
+    this.activeFile = path;
+    this.model.setModel(mdl);
+    const filename = name || path.split(/[\\/]/).pop() || '';
+    dom.meta.file.active.innerText = filename;
+    this.dispatcher.setTrackedContent({
+      content: this.originals.get(path) ?? '',
+    });
+    this.trackEditorStateBetweenExecutionContext(
+      this.originals.get(path) ?? '',
+      this.model.getValue(),
+    );
+    this.tabs.forEach((tab, p) => {
+      if (p === path) tab.classList.add('active');
+      else tab.classList.remove('active');
+    });
+    this.model.focus();
+    this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
+  }
+
+  private buildFileTree(tree: any[]) {
+    if (!dom.filetree) return;
+    dom.filetree.innerHTML = '';
+    const build = (nodes: any[], parent: HTMLElement) => {
+      nodes.forEach((node) => {
+        const li = document.createElement('li');
+        li.textContent = node.name;
+        if (node.type === 'directory') {
+          const ul = document.createElement('ul');
+          build(node.children, ul);
+          li.appendChild(ul);
+        } else {
+          li.dataset.path = node.path;
+          li.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.openFileFromPath(node.path);
+          });
+        }
+        parent.appendChild(li);
+      });
+    };
+    build(tree, dom.filetree);
+  }
+
+  public openFileFromPath(path: string) {
+    if (this.models.has(path)) {
+      this.activateFile(path);
+      return;
+    }
+    if (this.contentHasChanged && this.activeFile !== path) {
+      this.bridge.send('to:file:save', {
+        content: this.model.getValue(),
+        file: this.activeFile,
+        prompt: true,
+        openPath: path,
+      });
+      if (this.activeFile) {
+        this.originals.set(this.activeFile, this.model.getValue());
+        this.dispatcher.setTrackedContent({
+          content: this.model.getValue(),
+        });
+      }
+    } else {
+      this.bridge.send('to:file:openpath', path);
+    }
   }
 
   /**

@@ -86,13 +86,30 @@ export class AppBridge {
       AppStorage.open(this.context);
     });
 
+    ipcMain.on('to:folder:open', () => {
+      AppStorage.openDirectory(this.context);
+    });
+
+    ipcMain.on('to:file:openpath', (event, path: string) => {
+      AppStorage.openPath(this.context, path);
+    });
+
     // Save an existing file, this is also used by the renderer bridge "from:file:open" listener, if
     // editor content changes are detected by logic in the renderer process, the renderer bridge will
     // submit a save event to this channel with prompt and fromOpen both defined, otherwise it'll just
     // submit an open event directly to the "to:file:open" channel instead.
     ipcMain.on(
       'to:file:save',
-      async (event, { content, file, prompt = false, fromOpen = false }) => {
+      async (
+        event,
+        {
+          content,
+          file,
+          prompt = false,
+          fromOpen = false,
+          openPath = null,
+        },
+      ) => {
         if (await AppStorage.promptUserActionConfirmed(this.context, prompt)) {
           AppStorage.save(this.context, {
             id: event.sender.id,
@@ -100,11 +117,13 @@ export class AppBridge {
             filePath: file,
             encoding: 'utf-8',
           }).then(() => {
-            if (fromOpen) AppStorage.open(this.context);
+            if (openPath) AppStorage.openPath(this.context, openPath);
+            else if (fromOpen) AppStorage.open(this.context);
             this.resetContextBridgedContent();
           });
         } else {
-          if (fromOpen) AppStorage.open(this.context);
+          if (openPath) AppStorage.openPath(this.context, openPath);
+          else if (fromOpen) AppStorage.open(this.context);
         }
       },
     );

@@ -55,6 +55,8 @@ export const dom = {
   preview: {
     dom: <HTMLDivElement>document.querySelector('#preview'),
   },
+  tabs: <HTMLUListElement>document.querySelector('#editor-tabs'),
+  filetree: <HTMLUListElement>document.querySelector('#file-tree'),
   meta: {
     file: {
       active: <HTMLSpanElement>document.querySelector('#active-file'),
@@ -90,9 +92,11 @@ export function fade(
   duration: number,
   callback?: () => void,
 ) {
-  direction === 'in'
-    ? fadeIn(element, duration, callback)
-    : fadeOut(element, duration, callback);
+  if (direction === 'in') {
+    fadeIn(element, duration, callback);
+  } else {
+    fadeOut(element, duration, callback);
+  }
 }
 
 export function fadeOut(

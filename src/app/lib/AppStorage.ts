@@ -1,5 +1,11 @@
 import { app, BrowserWindow, dialog } from 'electron';
-import { statSync, readFileSync, writeFileSync } from 'fs';
+import {
+  statSync,
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+} from 'fs';
+import { join } from 'path';
 import { CreateFileOptions, SaveFileOptions } from '../interfaces/Storage';
 
 export class AppStorage {
@@ -167,6 +173,55 @@ export class AppStorage {
           }
         });
     });
+  }
+
+  static async openDirectory(context: BrowserWindow) {
+    return new Promise((resolve) => {
+      dialog
+        .showOpenDialog({ properties: ['openDirectory'] })
+        .then(({ filePaths }) => {
+          if (filePaths.length === 0) {
+            throw new Error('noselection');
+          }
+
+          const tree = AppStorage.readDirectory(filePaths[0]);
+          context.webContents.send('from:folder:opened', {
+            path: filePaths[0],
+            tree,
+          });
+          resolve(tree);
+        })
+        .catch((err) => {
+          if (err.message !== 'noselection') {
+            context.webContents.send('from:notification:display', {
+              status: 'error',
+              message: 'Unable to open folder.',
+            });
+          }
+        });
+    });
+  }
+
+  private static readDirectory(dir: string): any[] {
+    return readdirSync(dir, { withFileTypes: true })
+      .filter((d) => d.isDirectory() || d.name.endsWith('.md'))
+      .map((entry) => {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          return {
+            type: 'directory',
+            name: entry.name,
+            path: full,
+            children: AppStorage.readDirectory(full),
+          };
+        }
+
+        return { type: 'file', name: entry.name, path: full };
+      });
+  }
+
+  static openPath(context: BrowserWindow, filePath: string) {
+    AppStorage.setActiveFile(context, filePath);
   }
 
   static setActiveFile(context: BrowserWindow, file: string | null = null) {

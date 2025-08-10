@@ -40,6 +40,13 @@ export class AppMenu {
             accelerator: process.platform === 'darwin' ? 'Cmd+O' : 'Ctrl+O',
           },
           {
+            label: 'Open Folder...',
+            click: () => {
+              this.context.webContents.send('from:folder:open', 'to:folder:open');
+            },
+            accelerator: process.platform === 'darwin' ? 'Cmd+Shift+O' : 'Ctrl+Shift+O',
+          },
+          {
             label: 'Save',
             click: () => {
               this.context.webContents.send('from:file:save', 'to:file:save');
