@@ -44,14 +44,7 @@ export class AppBridge {
     // Set the editor state to track content changes in the main process.
     ipcMain.on('to:editor:state', (event, { original, current }) => {
       this.updateContextBridgedContent(original, current);
-
-      if (this.contextBridgedContentHasChanged) {
-        this.context.setTitle(
-          `${this.contextWindowTitle} - *(Unsaved Changes)*`,
-        );
-      } else {
-        this.context.setTitle(this.contextWindowTitle);
-      }
+      this.context.setTitle(this.contextWindowTitle);
     });
 
     // Save editor settings to file (~/.mkeditor/settings.json)
@@ -97,7 +90,14 @@ export class AppBridge {
       'to:file:save',
       async (
         event,
-        { content, file, prompt = false, fromOpen = false, openPath = null },
+        {
+          content,
+          file,
+          prompt = false,
+          fromOpen = false,
+          openPath = null,
+          openFile = true,
+        },
       ) => {
         if (await AppStorage.promptUserActionConfirmed(this.context, prompt)) {
           AppStorage.save(this.context, {
@@ -105,6 +105,7 @@ export class AppBridge {
             data: content,
             filePath: file,
             encoding: 'utf-8',
+            openFile,
           }).then(() => {
             if (openPath) AppStorage.openPath(this.context, openPath);
             else if (fromOpen) AppStorage.open(this.context);

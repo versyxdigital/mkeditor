@@ -296,7 +296,11 @@ export class Bridge {
         if (path.startsWith('untitled')) {
           this.bridge.send('to:file:saveas', current);
         } else {
-          this.bridge.send('to:file:save', { content: current, file: path });
+          this.bridge.send('to:file:save', {
+            content: current,
+            file: path,
+            openFile: false,
+          });
         }
       }
     }

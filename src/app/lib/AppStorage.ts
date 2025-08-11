@@ -74,7 +74,7 @@ export class AppStorage {
             message: successAction,
           });
 
-          if (!isHTMLExport) {
+          if (!isHTMLExport && options.openFile !== false) {
             AppStorage.setActiveFile(context, options.filePath);
           }
         } catch (err) {
@@ -101,7 +101,7 @@ export class AppStorage {
               message: successAction,
             });
 
-            if (!isHTMLExport) {
+            if (!isHTMLExport && options.openFile !== false) {
               AppStorage.setActiveFile(context, filePath);
             }
           } catch (err: unknown) {
