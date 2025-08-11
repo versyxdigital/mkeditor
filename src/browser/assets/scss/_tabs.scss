@@ -1,0 +1,50 @@
+#editor-tabs {
+  display: flex;
+  align-items: flex-end;
+  background-color: #f3f3f3;
+  border-bottom: 1px solid #cccccc;
+  padding-left: 0;
+  margin-bottom: 0;
+  font-size: 0.85rem;
+
+  li {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 2px;
+
+    &:hover {
+      background-color: #e1e4e8;
+    }
+
+    &.active {
+      background-color: #ffffff;
+      border-color: #cccccc;
+      border-bottom: 1px solid #ffffff;
+      font-weight: bold;
+    }
+
+    a {
+      display: block;
+      padding: 4px 8px;
+      text-decoration: none;
+      color: #333333;
+      white-space: nowrap;
+    }
+
+    .tab-close {
+      margin-left: 4px;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      padding: 0 4px;
+      color: #666666;
+
+      &:hover {
+        color: #000000;
+      }
+    }
+  }
+}

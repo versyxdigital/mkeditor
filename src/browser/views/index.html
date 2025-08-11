@@ -65,9 +65,16 @@
     </nav>
 
     <!-- main content -->
-    <div id="app" class="d-flex flex-row h-100">
-      <div class="w-100 border-top">
-        <div id="wrapper" class="d-flex flex-row">
+    <div id="main" class="border-top d-flex flex-column h-100">
+      <ul id="editor-tabs" class="tab-bar"></ul>
+      <div id="app" class="d-flex flex-row flex-grow-1 h-100">
+        <!-- sidebar -->
+        <div id="sidebar" class="p-3">
+          <div class="explorer-title">Explorer</div>
+          <ul id="file-tree" class="list-unstyled mb-0"></ul>
+        </div>
+
+        <div id="wrapper" class="d-flex flex-row w-100">
           <!-- editor pane -->
           <div id="editor-split">
             <div id="editor" class="flex-column split-editor"></div>
@@ -78,313 +85,310 @@
             <div id="preview" class="flex-column split-preview p-3"></div>
           </div>
         </div>
-
-        <!-- bottom editor toolbar -->
-        <nav class="navbar navbar-light bg-light fixed-bottom border-top p-2">
-          <div
-            class="d-flex justify-content-start align-items-center"
-            id="editor-functions"
-          >
-            <div class="btn-group btn-group-sm me-2">
-              <button
-                class="btn btn-outline-secondary shortcut"
-                data-cmd="bold"
-                data-key="B"
-                data-syntax="**"
-                data-bs-toggle="tooltip"
-                data-bs-placement="top"
-                title="Ctrl + B"
-              >
-                <i class="fa fa-bold"></i>
-              </button>
-              <button
-                class="btn btn-outline-secondary shortcut"
-                data-cmd="italic"
-                data-key="I"
-                data-syntax="_"
-                data-bs-toggle="tooltip"
-                data-bs-placement="top"
-                title="Ctrl + I"
-              >
-                <i class="fa fa-italic"></i>
-              </button>
-              <button
-                class="btn btn-outline-secondary shortcut"
-                data-cmd="strikethrough"
-                data-key="G"
-                data-syntax="~~"
-                data-bs-toggle="tooltip"
-                data-bs-placement="top"
-                title="Ctrl + G"
-              >
-                <i class="fa fa-strikethrough"></i>
-              </button>
-            </div>
-            <div class="btn-group btn-group-sm me-2">
-              <button
-                class="btn btn-outline-secondary shortcut"
-                data-cmd="unorderedList"
-                data-key="1"
-                data-bs-toggle="tooltip"
-                data-bs-placement="top"
-                title="Ctrl + 1"
-              >
-                <i class="fa fa-list-ul"></i>
-              </button>
-              <button
-                class="btn btn-outline-secondary shortcut"
-                data-cmd="orderedList"
-                data-key="2"
-                data-bs-toggle="tooltip"
-                data-bs-placement="top"
-                title="Ctrl + 2"
-              >
-                <i class="fa fa-list-ol"></i>
-              </button>
-            </div>
-            <div
-              class="btn-group btn-group-sm dropup me-2"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              title="Ctrl + K"
-              data-key="K"
-            >
-              <button
-                class="btn btn-outline-secondary dropdown-toggle shortcut"
-                type="button"
-                id="codeblock-menu-button"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-              >
-                <i class="fas fa-code"></i>
-              </button>
-              <div
-                class="dropdown-menu"
-                id="codeblocks"
-                aria-labelledby="codeblock-menu-button"
-              >
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="codeblock"
-                  data-language="sh"
-                >
-                  <i class="fas fa-terminal"></i> <u>S</u>hell
-                </button>
-                <div class="dropdown-divider"></div>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="codeblock"
-                  data-language="csharp"
-                >
-                  <i class="fas fa-code"></i> <u>C</u>
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="codeblock"
-                  data-language="javascript"
-                >
-                  <i class="fas fa-code"></i> <u>J</u>avascript
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="codeblock"
-                  data-language="typescript"
-                >
-                  <i class="fas fa-code"></i> <u>T</u>ypescript
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="codeblock"
-                  data-language="php"
-                >
-                  <i class="fas fa-code"></i> <u>P</u>HP
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="codeblock"
-                  data-language="python"
-                >
-                  <i class="fas fa-code"></i> P<u>y</u>thon
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="codeblock"
-                  data-language="rust"
-                >
-                  <i class="fas fa-code"></i> <u>R</u>ust
-                </button>
-                <div class="dropdown-divider"></div>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="codeblock"
-                  data-language="json"
-                >
-                  <i class="fas fa-code"></i> JS<u>O</u>N
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="codeblock"
-                  data-language="yaml"
-                >
-                  <i class="fas fa-code"></i> YA<u>M</u>L
-                </button>
-                <div class="dropdown-divider"></div>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="codeblock"
-                  data-language="sql"
-                >
-                  <i class="fas fa-code"></i> S<u>Q</u>L
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="codeblock"
-                  data-language="xml"
-                >
-                  <i class="fas fa-code"></i> <u>X</u>ML
-                </button>
-              </div>
-            </div>
-            <div
-              class="dropup me-2"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              title="Ctrl + L"
-              data-key="L"
-            >
-              <button
-                class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut"
-                type="button"
-                id="alert-menu-button"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-              >
-                <i class="fas fa-exclamation-circle"></i>
-              </button>
-              <div
-                class="dropdown-menu"
-                id="alertblocks"
-                aria-labelledby="alert-menu-button"
-              >
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="alert"
-                  data-type="primary"
-                >
-                  <u>P</u>rimary
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="alert"
-                  data-type="secondary"
-                >
-                  S<u>e</u>condary
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="alert"
-                  data-type="success"
-                >
-                  <u>S</u>uccess
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="alert"
-                  data-type="danger"
-                >
-                  <u>D</u>anger
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="alert"
-                  data-type="warning"
-                >
-                  <u>W</u>arning
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="alert"
-                  data-type="info"
-                >
-                  <u>I</u>nformation
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="alert"
-                  data-type="light"
-                >
-                  <u>L</u>ight
-                </button>
-                <button
-                  class="dropdown-item md-editor-btn"
-                  data-cmd="alert"
-                  data-type="dark"
-                >
-                  Da<u>r</u>k
-                </button>
-              </div>
-            </div>
-            <div class="btn-group btn-group-sm me-2">
-              <button class="btn btn-outline-secondary" id="app-markdown-save">
-                <i class="fas fa-save me-1"></i>
-                <span class="d-none d-md-inline">Save</span>
-                <span class="d-none d-lg-inline">Markdown</span>
-              </button>
-            </div>
-            <div class="btn-group btn-group-sm me-2">
-              <button
-                class="btn btn-outline-secondary"
-                id="export-preview-html"
-              >
-                <i class="fas fa-file-export me-1"></i>
-                <small class="d-none d-md-inline">
-                  <span class="d-none d-md-inline">Export</span>
-                  <span class="d-none d-lg-inline">to HTML</span>
-                </small>
-              </button>
-            </div>
-            <div class="form-check">
-              <input
-                id="export-preview-styled"
-                class="form-check-input me-2"
-                type="checkbox"
-                checked
-              />
-              <label
-                class="form-check-label small text-muted"
-                for="export-preview-styled"
-              >
-                <span class="d-none d-sm-inline d-md-none">styles</span>
-                <span class="d-none d-md-inline">with styles</span>
-              </label>
-            </div>
-          </div>
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
-              <div
-                class="form-check form-switch me-2"
-                data-bs-toggle="tooltip"
-                data-bs-placement="top"
-                title="This switch is disabled on desktop if you are using your system theme."
-              >
-                <input
-                  type="checkbox"
-                  class="form-check-input"
-                  id="darkmode-setting"
-                />
-                <label
-                  class="form-check-label ms-1"
-                  for="darkmode-setting"
-                  id="darkmode-icon"
-                >
-                  <i class="fas fa-moon"></i>
-                </label>
-              </div>
-            </li>
-          </ul>
-        </nav>
       </div>
     </div>
+
+    <!-- bottom editor toolbar -->
+    <nav class="navbar navbar-light bg-light fixed-bottom border-top p-2">
+      <div
+        class="d-flex justify-content-start align-items-center"
+        id="editor-functions"
+      >
+        <div class="btn-group btn-group-sm me-2">
+          <button
+            class="btn btn-outline-secondary shortcut"
+            data-cmd="bold"
+            data-key="B"
+            data-syntax="**"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="Ctrl + B"
+          >
+            <i class="fa fa-bold"></i>
+          </button>
+          <button
+            class="btn btn-outline-secondary shortcut"
+            data-cmd="italic"
+            data-key="I"
+            data-syntax="_"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="Ctrl + I"
+          >
+            <i class="fa fa-italic"></i>
+          </button>
+          <button
+            class="btn btn-outline-secondary shortcut"
+            data-cmd="strikethrough"
+            data-key="G"
+            data-syntax="~~"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="Ctrl + G"
+          >
+            <i class="fa fa-strikethrough"></i>
+          </button>
+        </div>
+        <div class="btn-group btn-group-sm me-2">
+          <button
+            class="btn btn-outline-secondary shortcut"
+            data-cmd="unorderedList"
+            data-key="1"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="Ctrl + 1"
+          >
+            <i class="fa fa-list-ul"></i>
+          </button>
+          <button
+            class="btn btn-outline-secondary shortcut"
+            data-cmd="orderedList"
+            data-key="2"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="Ctrl + 2"
+          >
+            <i class="fa fa-list-ol"></i>
+          </button>
+        </div>
+        <div
+          class="btn-group btn-group-sm dropup me-2"
+          data-bs-toggle="tooltip"
+          data-bs-placement="top"
+          title="Ctrl + K"
+          data-key="K"
+        >
+          <button
+            class="btn btn-outline-secondary dropdown-toggle shortcut"
+            type="button"
+            id="codeblock-menu-button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <i class="fas fa-code"></i>
+          </button>
+          <div
+            class="dropdown-menu"
+            id="codeblocks"
+            aria-labelledby="codeblock-menu-button"
+          >
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="codeblock"
+              data-language="sh"
+            >
+              <i class="fas fa-terminal"></i> <u>S</u>hell
+            </button>
+            <div class="dropdown-divider"></div>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="codeblock"
+              data-language="csharp"
+            >
+              <i class="fas fa-code"></i> <u>C</u>
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="codeblock"
+              data-language="javascript"
+            >
+              <i class="fas fa-code"></i> <u>J</u>avascript
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="codeblock"
+              data-language="typescript"
+            >
+              <i class="fas fa-code"></i> <u>T</u>ypescript
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="codeblock"
+              data-language="php"
+            >
+              <i class="fas fa-code"></i> <u>P</u>HP
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="codeblock"
+              data-language="python"
+            >
+              <i class="fas fa-code"></i> P<u>y</u>thon
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="codeblock"
+              data-language="rust"
+            >
+              <i class="fas fa-code"></i> <u>R</u>ust
+            </button>
+            <div class="dropdown-divider"></div>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="codeblock"
+              data-language="json"
+            >
+              <i class="fas fa-code"></i> JS<u>O</u>N
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="codeblock"
+              data-language="yaml"
+            >
+              <i class="fas fa-code"></i> YA<u>M</u>L
+            </button>
+            <div class="dropdown-divider"></div>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="codeblock"
+              data-language="sql"
+            >
+              <i class="fas fa-code"></i> S<u>Q</u>L
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="codeblock"
+              data-language="xml"
+            >
+              <i class="fas fa-code"></i> <u>X</u>ML
+            </button>
+          </div>
+        </div>
+        <div
+          class="dropup me-2"
+          data-bs-toggle="tooltip"
+          data-bs-placement="top"
+          title="Ctrl + L"
+          data-key="L"
+        >
+          <button
+            class="btn btn-sm btn-outline-secondary dropdown-toggle shortcut"
+            type="button"
+            id="alert-menu-button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <i class="fas fa-exclamation-circle"></i>
+          </button>
+          <div
+            class="dropdown-menu"
+            id="alertblocks"
+            aria-labelledby="alert-menu-button"
+          >
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="alert"
+              data-type="primary"
+            >
+              <u>P</u>rimary
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="alert"
+              data-type="secondary"
+            >
+              S<u>e</u>condary
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="alert"
+              data-type="success"
+            >
+              <u>S</u>uccess
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="alert"
+              data-type="danger"
+            >
+              <u>D</u>anger
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="alert"
+              data-type="warning"
+            >
+              <u>W</u>arning
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="alert"
+              data-type="info"
+            >
+              <u>I</u>nformation
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="alert"
+              data-type="light"
+            >
+              <u>L</u>ight
+            </button>
+            <button
+              class="dropdown-item md-editor-btn"
+              data-cmd="alert"
+              data-type="dark"
+            >
+              Da<u>r</u>k
+            </button>
+          </div>
+        </div>
+        <div class="btn-group btn-group-sm me-2">
+          <button class="btn btn-outline-secondary" id="app-markdown-save">
+            <i class="fas fa-save me-1"></i>
+            <span class="d-none d-md-inline">Save</span>
+            <span class="d-none d-lg-inline">Markdown</span>
+          </button>
+        </div>
+        <div class="btn-group btn-group-sm me-2">
+          <button class="btn btn-outline-secondary" id="export-preview-html">
+            <i class="fas fa-file-export me-1"></i>
+            <small class="d-none d-md-inline">
+              <span class="d-none d-md-inline">Export</span>
+              <span class="d-none d-lg-inline">to HTML</span>
+            </small>
+          </button>
+        </div>
+        <div class="form-check">
+          <input
+            id="export-preview-styled"
+            class="form-check-input me-2"
+            type="checkbox"
+            checked
+          />
+          <label
+            class="form-check-label small text-muted"
+            for="export-preview-styled"
+          >
+            <span class="d-none d-sm-inline d-md-none">styles</span>
+            <span class="d-none d-md-inline">with styles</span>
+          </label>
+        </div>
+      </div>
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <div
+            class="form-check form-switch me-2"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="This switch is disabled on desktop if you are using your system theme."
+          >
+            <input
+              type="checkbox"
+              class="form-check-input"
+              id="darkmode-setting"
+            />
+            <label
+              class="form-check-label ms-1"
+              for="darkmode-setting"
+              id="darkmode-icon"
+            >
+              <i class="fas fa-moon"></i>
+            </label>
+          </div>
+        </li>
+      </ul>
+    </nav>
 
     <!-- settings modal -->
     <div class="modal" tabindex="-1" id="app-settings">

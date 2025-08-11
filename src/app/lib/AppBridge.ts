@@ -44,14 +44,7 @@ export class AppBridge {
     // Set the editor state to track content changes in the main process.
     ipcMain.on('to:editor:state', (event, { original, current }) => {
       this.updateContextBridgedContent(original, current);
-
-      if (this.contextBridgedContentHasChanged) {
-        this.context.setTitle(
-          `${this.contextWindowTitle} - *(Unsaved Changes)*`,
-        );
-      } else {
-        this.context.setTitle(this.contextWindowTitle);
-      }
+      this.context.setTitle(this.contextWindowTitle);
     });
 
     // Save editor settings to file (~/.mkeditor/settings.json)
@@ -69,13 +62,8 @@ export class AppBridge {
     });
 
     // Create a new file, linked to the application menu
-    ipcMain.on('to:file:new', (event, { content, file }) => {
-      AppStorage.create(this.context, {
-        id: event.sender.id,
-        data: content,
-        filePath: file,
-        encoding: 'utf-8',
-      }).then(() => {
+    ipcMain.on('to:file:new', () => {
+      AppStorage.create(this.context).then(() => {
         this.resetContextBridgedContent();
       });
     });
@@ -86,25 +74,46 @@ export class AppBridge {
       AppStorage.open(this.context);
     });
 
+    ipcMain.on('to:folder:open', () => {
+      AppStorage.openDirectory(this.context);
+    });
+
+    ipcMain.on('to:file:openpath', (event, path: string) => {
+      AppStorage.openPath(this.context, path);
+    });
+
     // Save an existing file, this is also used by the renderer bridge "from:file:open" listener, if
     // editor content changes are detected by logic in the renderer process, the renderer bridge will
     // submit a save event to this channel with prompt and fromOpen both defined, otherwise it'll just
     // submit an open event directly to the "to:file:open" channel instead.
     ipcMain.on(
       'to:file:save',
-      async (event, { content, file, prompt = false, fromOpen = false }) => {
+      async (
+        event,
+        {
+          content,
+          file,
+          prompt = false,
+          fromOpen = false,
+          openPath = null,
+          openFile = true,
+        },
+      ) => {
         if (await AppStorage.promptUserActionConfirmed(this.context, prompt)) {
           AppStorage.save(this.context, {
             id: event.sender.id,
             data: content,
             filePath: file,
             encoding: 'utf-8',
+            openFile,
           }).then(() => {
-            if (fromOpen) AppStorage.open(this.context);
+            if (openPath) AppStorage.openPath(this.context, openPath);
+            else if (fromOpen) AppStorage.open(this.context);
             this.resetContextBridgedContent();
           });
         } else {
-          if (fromOpen) AppStorage.open(this.context);
+          if (openPath) AppStorage.openPath(this.context, openPath);
+          else if (fromOpen) AppStorage.open(this.context);
         }
       },
     );

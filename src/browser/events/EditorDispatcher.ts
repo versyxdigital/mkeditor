@@ -29,4 +29,11 @@ export class EditorDispatcher extends BaseDispatcher {
       message: settings,
     });
   }
+
+  render() {
+    this.dispatchEvent({
+      type: 'editor:render',
+      message: undefined,
+    });
+  }
 }

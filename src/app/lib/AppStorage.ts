@@ -1,22 +1,10 @@
 import { app, BrowserWindow, dialog } from 'electron';
-import { statSync, readFileSync, writeFileSync } from 'fs';
-import { CreateFileOptions, SaveFileOptions } from '../interfaces/Storage';
+import { statSync, readFileSync, writeFileSync, readdirSync } from 'fs';
+import { join } from 'path';
+import { SaveFileOptions } from '../interfaces/Storage';
 
 export class AppStorage {
-  static async create(
-    context: BrowserWindow,
-    { data, filePath, encoding = 'utf-8' }: CreateFileOptions,
-  ) {
-    if (await AppStorage.promptUserActionConfirmed(context)) {
-      await AppStorage.save(context, {
-        id: 'new',
-        data,
-        filePath,
-        encoding,
-        reset: true,
-      });
-    }
-
+  static async create(context: BrowserWindow) {
     AppStorage.setActiveFile(context, null);
   }
 
@@ -41,7 +29,7 @@ export class AppStorage {
   static async save(context: BrowserWindow, options: SaveFileOptions) {
     const config = {
       title: 'Save file',
-      defaultPath: `markdown-0${options.id}`,
+      defaultPath: 'Untitled',
       buttonLabel: 'Save',
 
       filters: [
@@ -86,7 +74,7 @@ export class AppStorage {
             message: successAction,
           });
 
-          if (!isHTMLExport) {
+          if (!isHTMLExport && options.openFile !== false) {
             AppStorage.setActiveFile(context, options.filePath);
           }
         } catch (err) {
@@ -113,7 +101,7 @@ export class AppStorage {
               message: successAction,
             });
 
-            if (!isHTMLExport) {
+            if (!isHTMLExport && options.openFile !== false) {
               AppStorage.setActiveFile(context, filePath);
             }
           } catch (err: unknown) {
@@ -167,6 +155,55 @@ export class AppStorage {
           }
         });
     });
+  }
+
+  static async openDirectory(context: BrowserWindow) {
+    return new Promise((resolve) => {
+      dialog
+        .showOpenDialog({ properties: ['openDirectory'] })
+        .then(({ filePaths }) => {
+          if (filePaths.length === 0) {
+            throw new Error('noselection');
+          }
+
+          const tree = AppStorage.readDirectory(filePaths[0]);
+          context.webContents.send('from:folder:opened', {
+            path: filePaths[0],
+            tree,
+          });
+          resolve(tree);
+        })
+        .catch((err) => {
+          if (err.message !== 'noselection') {
+            context.webContents.send('from:notification:display', {
+              status: 'error',
+              message: 'Unable to open folder.',
+            });
+          }
+        });
+    });
+  }
+
+  private static readDirectory(dir: string): any[] {
+    return readdirSync(dir, { withFileTypes: true })
+      .filter((d) => d.isDirectory() || d.name.endsWith('.md'))
+      .map((entry) => {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          return {
+            type: 'directory',
+            name: entry.name,
+            path: full,
+            children: AppStorage.readDirectory(full),
+          };
+        }
+
+        return { type: 'file', name: entry.name, path: full };
+      });
+  }
+
+  static openPath(context: BrowserWindow, filePath: string) {
+    AppStorage.setActiveFile(context, filePath);
   }
 
   static setActiveFile(context: BrowserWindow, file: string | null = null) {

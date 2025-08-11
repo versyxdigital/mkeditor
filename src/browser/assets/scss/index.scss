@@ -6,6 +6,8 @@
 @import '_preview.scss';
 @import '_notify.scss';
 @import '_darkmode.scss';
+@import '_sidebar.scss';
+@import '_tabs.scss';
 
 body[data-theme='light'] {
   @include meta.load-css('highlight.js/styles/github');
@@ -94,5 +96,10 @@ body[data-theme='dark'] {
 
 .gutter.gutter-horizontal {
   background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+  cursor: col-resize;
+}
+
+.gutter.sidebar-gutter-horizontal {
+  width: 2px;
   cursor: col-resize;
 }
