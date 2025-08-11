@@ -388,45 +388,45 @@ export class Bridge {
         const span = document.createElement('span');
         span.classList.add('file-name');
 
-        const icon = document.createElement('i');
-        icon.className =
-          node.type === 'directory' ? 'fa fa-folder me-1' : 'fa fa-file me-1';
-
-        let chevron: HTMLElement | null = null;
-        if (node.type === 'directory') {
-          chevron = document.createElement('i');
-          chevron.className = node.children?.length
-            ? 'fa fa-chevron-right me-1'
-            : 'fa fa-chevron-right me-1 invisible';
-          chevron.style.fontSize = '0.7em';
-          span.appendChild(chevron);
+        const chevron = document.createElement('span');
+        chevron.classList.add('me-1');
+        chevron.innerHTML = '<i class="fa fa-chevron-right"></i>';
+        if (node.type !== 'directory') {
+          chevron.firstElementChild?.classList.add('invisible');
         }
+        chevron.style.display = 'inline-block';
+        chevron.style.fontSize = '0.7em';
+        span.appendChild(chevron);
 
+        const icon = document.createElement('span');
+        icon.classList.add('me-1');
+        icon.innerHTML =
+          node.type === 'directory'
+            ? '<i class="fa fa-folder"></i>'
+            : '<i class="fa fa-file"></i>';
         span.appendChild(icon);
         span.append(node.name);
         li.appendChild(span);
 
         if (node.type === 'directory') {
+          const ul = document.createElement('ul');
+          ul.classList.add('list-unstyled', 'ps-3');
+          ul.style.display = 'none';
           if (node.children?.length) {
-            const ul = document.createElement('ul');
-            ul.classList.add('list-unstyled', 'ps-3');
-            ul.style.display = 'none';
             build(node.children, ul);
-            li.appendChild(ul);
-
-            span.addEventListener('click', () => {
-              const isOpen = ul.style.display !== 'none';
-              ul.style.display = isOpen ? 'none' : '';
-              if (chevron) {
-                chevron.className = isOpen
-                  ? 'fa fa-chevron-right me-1'
-                  : 'fa fa-chevron-down me-1';
-              }
-              icon.className = isOpen
-                ? 'fa fa-folder me-1'
-                : 'fa fa-folder-open me-1';
-            });
           }
+          li.appendChild(ul);
+
+          span.addEventListener('click', () => {
+            const isOpen = ul.style.display !== 'none';
+            ul.style.display = isOpen ? 'none' : '';
+            chevron.innerHTML = isOpen
+              ? '<i class="fa fa-chevron-right"></i>'
+              : '<i class="fa fa-chevron-down"></i>';
+            icon.innerHTML = isOpen
+              ? '<i class="fa fa-folder"></i>'
+              : '<i class="fa fa-folder-open"></i>';
+          });
         } else {
           li.classList.add('file');
           li.dataset.path = node.path;

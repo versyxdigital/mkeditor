@@ -1,6 +1,7 @@
 import { dom, library } from '@fortawesome/fontawesome-svg-core';
 import { faBold } from '@fortawesome/free-solid-svg-icons/faBold';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
+import { faChevronDown } from '@fortawesome/free-solid-svg-icons/faChevronDown';
 import { faChevronRight } from '@fortawesome/free-solid-svg-icons/faChevronRight';
 import { faChevronUp } from '@fortawesome/free-solid-svg-icons/faChevronUp';
 import { faClipboard } from '@fortawesome/free-solid-svg-icons/faClipboard';
@@ -12,6 +13,7 @@ import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons/faExclama
 import { faFileExport } from '@fortawesome/free-solid-svg-icons/faFileExport';
 import { faFile } from '@fortawesome/free-solid-svg-icons/faFile';
 import { faFolder } from '@fortawesome/free-solid-svg-icons/faFolder';
+import { faFolderOpen } from '@fortawesome/free-solid-svg-icons/faFolderOpen';
 import { faItalic } from '@fortawesome/free-solid-svg-icons/faItalic';
 import { faListOl } from '@fortawesome/free-solid-svg-icons/faListOl';
 import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
@@ -26,6 +28,7 @@ import { faTerminal } from '@fortawesome/free-solid-svg-icons/faTerminal';
 library.add(
   faBold,
   faCheck,
+  faChevronDown,
   faChevronRight,
   faChevronUp,
   faClipboard,
@@ -36,6 +39,7 @@ library.add(
   faExclamationCircle,
   faFile,
   faFolder,
+  faFolderOpen,
   faFileExport,
   faItalic,
   faListUl,
