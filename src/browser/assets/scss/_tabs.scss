@@ -9,29 +9,29 @@
 
   li {
     list-style: none;
-    margin-right: 2px;
     display: flex;
     align-items: center;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 2px;
+
+    &:hover {
+      background-color: #e1e4e8;
+    }
+
+    &.active {
+      background-color: #ffffff;
+      border-color: #cccccc;
+      border-bottom: 1px solid #ffffff;
+      font-weight: bold;
+    }
 
     a {
       display: block;
       padding: 4px 8px;
       text-decoration: none;
       color: #333333;
-      border: 1px solid transparent;
-      border-bottom: none;
-      border-radius: 3px 3px 0 0;
       white-space: nowrap;
-
-      &:hover {
-        background-color: #e1e4e8;
-      }
-
-      &.active {
-        background-color: #ffffff;
-        border-color: #cccccc;
-        border-bottom: 1px solid #ffffff;
-      }
     }
 
     .tab-close {

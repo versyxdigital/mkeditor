@@ -33,16 +33,20 @@
     border-bottom: 1px solid #252525 !important;
 
     li {
+      border-color: #313131 !important;
+      border-bottom: 1px solid #1a1a1a !important;
+
+      &:hover {
+        background-color: #353535 !important;
+      }
+
+      &.active {
+        background-color: #353535 !important;
+        border-bottom: 1px solid #696969 !important; // nice
+      }
+
       a {
         color: #c9c9c9 !important;
-        border-color: #313131 !important;
-        border-bottom: #434343 !important;
-        &:hover {
-          background-color: #353535 !important;
-        }
-        &.active {
-          background-color: #353535 !important;
-        }
       }
     }
   }

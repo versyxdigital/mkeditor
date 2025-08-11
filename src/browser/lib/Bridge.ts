@@ -359,8 +359,11 @@ export class Bridge {
     );
 
     this.tabs.forEach((tab, p) => {
-      if (p === path) tab.classList.add('active');
-      else tab.classList.remove('active');
+      console.log({ tab });
+      const li = tab.parentElement as HTMLElement;
+      if (p === path) {
+        li.classList.add('active');
+      } else li.classList.remove('active');
     });
 
     if (dom.filetree) {
