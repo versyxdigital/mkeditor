@@ -375,7 +375,10 @@ export class Bridge {
   }
 
   private buildFileTree(tree: any[]) {
-    if (!dom.filetree) return;
+    if (!dom.filetree) {
+      return;
+    }
+
     dom.filetree.innerHTML = '';
     const build = (nodes: any[], parent: HTMLElement) => {
       nodes.forEach((node) => {
@@ -384,18 +387,46 @@ export class Bridge {
 
         const span = document.createElement('span');
         span.classList.add('file-name');
+
         const icon = document.createElement('i');
         icon.className =
           node.type === 'directory' ? 'fa fa-folder me-1' : 'fa fa-file me-1';
+
+        let chevron: HTMLElement | null = null;
+        if (node.type === 'directory') {
+          chevron = document.createElement('i');
+          chevron.className = node.children?.length
+            ? 'fa fa-chevron-right me-1'
+            : 'fa fa-chevron-right me-1 invisible';
+          chevron.style.fontSize = '0.7em';
+          span.appendChild(chevron);
+        }
+
         span.appendChild(icon);
         span.append(node.name);
         li.appendChild(span);
 
         if (node.type === 'directory') {
-          const ul = document.createElement('ul');
-          ul.classList.add('list-unstyled', 'ps-3');
-          build(node.children, ul);
-          li.appendChild(ul);
+          if (node.children?.length) {
+            const ul = document.createElement('ul');
+            ul.classList.add('list-unstyled', 'ps-3');
+            ul.style.display = 'none';
+            build(node.children, ul);
+            li.appendChild(ul);
+
+            span.addEventListener('click', () => {
+              const isOpen = ul.style.display !== 'none';
+              ul.style.display = isOpen ? 'none' : '';
+              if (chevron) {
+                chevron.className = isOpen
+                  ? 'fa fa-chevron-right me-1'
+                  : 'fa fa-chevron-down me-1';
+              }
+              icon.className = isOpen
+                ? 'fa fa-folder me-1'
+                : 'fa fa-folder-open me-1';
+            });
+          }
         } else {
           li.classList.add('file');
           li.dataset.path = node.path;
@@ -407,6 +438,7 @@ export class Bridge {
         parent.appendChild(li);
       });
     };
+
     build(tree, dom.filetree);
   }
 

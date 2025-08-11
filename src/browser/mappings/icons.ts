@@ -1,6 +1,8 @@
 import { dom, library } from '@fortawesome/fontawesome-svg-core';
 import { faBold } from '@fortawesome/free-solid-svg-icons/faBold';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
+import { faChevronRight } from '@fortawesome/free-solid-svg-icons/faChevronRight';
+import { faChevronUp } from '@fortawesome/free-solid-svg-icons/faChevronUp';
 import { faClipboard } from '@fortawesome/free-solid-svg-icons/faClipboard';
 import { faCode } from '@fortawesome/free-solid-svg-icons/faCode';
 import { faCog } from '@fortawesome/free-solid-svg-icons/faCog';
@@ -24,6 +26,8 @@ import { faTerminal } from '@fortawesome/free-solid-svg-icons/faTerminal';
 library.add(
   faBold,
   faCheck,
+  faChevronRight,
+  faChevronUp,
   faClipboard,
   faCode,
   faCog,
