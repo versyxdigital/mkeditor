@@ -135,7 +135,7 @@ export class Editor {
   /**
    * Track content over the execution bridge.
    */
-  public updateBridgedContent({ initialize }: { initialize?: Boolean } = {}) {
+  public updateBridgedContent({ initialize }: { initialize?: boolean } = {}) {
     if (!this.providers.bridge) {
       return false;
     }

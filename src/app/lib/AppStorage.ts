@@ -6,7 +6,7 @@ import { CreateFileOptions, SaveFileOptions } from '../interfaces/Storage';
 export class AppStorage {
   static async create(
     context: BrowserWindow,
-    contentHasChanged: Boolean,
+    contentHasChanged: boolean,
     { data, filePath, encoding = 'utf-8' }: CreateFileOptions,
   ) {
     if (

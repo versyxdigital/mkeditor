@@ -34,6 +34,9 @@ export class Bridge {
   /** counter for untitled files */
   private untitledCounter = 1;
 
+  /** Flag to indicate that a file is being opened */
+  private openingFile = false;
+
   /** Providers to be accessed through bridge */
   public providers: BridgeProviders = {
     settings: null,
@@ -139,6 +142,7 @@ export class Bridge {
     // If there are changes to the current file, user will be prompted and
     // the open event will be handled through this bridge channel's handler.
     this.bridge.receive('from:file:open', (channel: string) => {
+      this.openingFile = true;
       if (this.contentHasChanged) {
         this.bridge.send('to:file:save', {
           content: this.model.getValue(),
@@ -160,6 +164,7 @@ export class Bridge {
 
         if (
           !mdl &&
+          !this.openingFile &&
           this.activeFile &&
           this.activeFile.startsWith('untitled') &&
           file
@@ -177,6 +182,17 @@ export class Bridge {
             this.originals.set(path, content);
 
             mdl.setValue(content);
+
+            const closeBtn = tab.nextElementSibling as HTMLButtonElement | null;
+            if (closeBtn) {
+              const newBtn = closeBtn.cloneNode(true) as HTMLButtonElement;
+              newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeTab(path);
+              });
+              closeBtn.replaceWith(newBtn);
+            }
           }
         }
 
@@ -189,6 +205,7 @@ export class Bridge {
         }
 
         this.activateFile(path, name);
+        this.openingFile = false;
       },
     );
 
@@ -398,8 +415,10 @@ export class Bridge {
   }
 
   public openFileFromPath(path: string) {
+    this.openingFile = true;
     if (this.models.has(path)) {
       this.activateFile(path);
+      this.openingFile = false;
       return;
     }
     if (this.contentHasChanged && this.activeFile !== path) {
