@@ -169,13 +169,22 @@ export class Bridge {
             this.originals.delete(this.activeFile);
 
             tab.textContent = name;
+            const newTab = tab.cloneNode(true) as HTMLAnchorElement;
+            newTab.textContent = name;
+            newTab.addEventListener('click', (e) => {
+              e.preventDefault();
+              this.activateFile(path);
+            });
+            tab.replaceWith(newTab);
+
             this.models.set(path, mdl);
-            this.tabs.set(path, tab);
+            this.tabs.set(path, newTab);
             this.originals.set(path, content);
 
             mdl.setValue(content);
 
-            const closeBtn = tab.nextElementSibling as HTMLButtonElement | null;
+            const closeBtn =
+              newTab.nextElementSibling as HTMLButtonElement | null;
             if (closeBtn) {
               const newBtn = closeBtn.cloneNode(true) as HTMLButtonElement;
               newBtn.addEventListener('click', (e) => {
