@@ -37,6 +37,9 @@ export class Bridge {
   /** Flag to indicate that a file is being opened */
   private openingFile = false;
 
+  /** Root path for the current file tree */
+  private treeRoot: string | null = null;
+
   /** Providers to be accessed through bridge */
   public providers: BridgeProviders = {
     settings: null,
@@ -137,7 +140,8 @@ export class Bridge {
       this.bridge.send(channel, true);
     });
 
-    this.bridge.receive('from:folder:opened', ({ tree }) => {
+    this.bridge.receive('from:folder:opened', ({ tree, path }) => {
+      this.treeRoot = path;
       this.buildFileTree(tree);
     });
 
@@ -205,6 +209,7 @@ export class Bridge {
           this.addTab(name, path);
         }
 
+        this.addFileToTree(path);
         this.activateFile(path, name);
         this.openingFile = false;
       },
@@ -421,6 +426,7 @@ export class Bridge {
         li.appendChild(span);
 
         if (node.type === 'directory') {
+          li.dataset.path = node.path;
           const ul = document.createElement('ul');
           ul.classList.add('list-unstyled', 'ps-3');
           ul.style.display = 'none';
@@ -452,6 +458,83 @@ export class Bridge {
     };
 
     build(tree, dom.filetree);
+  }
+
+  private addFileToTree(path: string) {
+    if (!dom.filetree || !this.treeRoot) {
+      return;
+    }
+
+    if (!path.startsWith(this.treeRoot)) {
+      return;
+    }
+
+    const sep = this.treeRoot.includes('\\') ? '\\' : '/';
+    const segments = path.split(/[/\\]/);
+    const rootSegments = this.treeRoot.split(/[/\\]/);
+    const rel = segments.slice(rootSegments.length);
+
+    let parentUl: HTMLElement = dom.filetree;
+    let currentPath = this.treeRoot;
+
+    for (let i = 0; i < rel.length - 1; i++) {
+      const dir = rel[i];
+      currentPath += sep + dir;
+      const dirLi = Array.from(
+        parentUl.querySelectorAll(':scope > li.directory'),
+      ).find((el) => (el as HTMLElement).dataset.path === currentPath) as
+        | HTMLElement
+        | undefined;
+      if (!dirLi) {
+        return;
+      }
+      const span = dirLi.querySelector(
+        ':scope > span.file-name',
+      ) as HTMLElement;
+      const ul = dirLi.querySelector(':scope > ul') as HTMLElement;
+      if (!ul) return;
+      if (ul.style.display === 'none') {
+        span.dispatchEvent(new Event('click'));
+      }
+      parentUl = ul;
+    }
+
+    const fileName = rel[rel.length - 1];
+    const existing = Array.from(
+      parentUl.querySelectorAll(':scope > li.file'),
+    ).find((el) => (el as HTMLElement).dataset.path === path);
+    if (existing) {
+      return;
+    }
+
+    const li = document.createElement('li');
+    li.classList.add('ft-node', 'file');
+    li.dataset.path = path;
+
+    const span = document.createElement('span');
+    span.classList.add('file-name');
+
+    const chevron = document.createElement('span');
+    chevron.classList.add('me-1');
+    chevron.innerHTML = '<i class="fa fa-chevron-right"></i>';
+    chevron.firstElementChild?.classList.add('invisible');
+    chevron.style.display = 'inline-block';
+    chevron.style.fontSize = '0.7em';
+    span.appendChild(chevron);
+
+    const icon = document.createElement('span');
+    icon.classList.add('me-1');
+    icon.innerHTML = '<i class="fa fa-file"></i>';
+    span.appendChild(icon);
+    span.append(fileName);
+
+    span.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.openFileFromPath(path);
+    });
+
+    li.appendChild(span);
+    parentUl.appendChild(li);
   }
 
   public openFileFromPath(path: string) {
