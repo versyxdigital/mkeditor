@@ -4,7 +4,7 @@ export interface ContextBridgeAPI {
 }
 
 export interface ContextBridgedFile {
-  file: string;
+  file: string | null;
   filename: string;
   content: string;
 }

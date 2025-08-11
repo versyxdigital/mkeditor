@@ -6,6 +6,7 @@ import { getOSPlatform } from './util';
 export const dom = {
   splash: <HTMLDivElement>document.querySelector('#splashscreen'),
   app: <HTMLDivElement>document.querySelector('#app'),
+  sidebar: <HTMLDivElement>document.querySelector('#sidebar'),
   about: {
     modal: <HTMLDivElement>document.querySelector('#app-about'),
     version: <HTMLSpanElement>document.querySelector('#app-version'),
@@ -55,6 +56,8 @@ export const dom = {
   preview: {
     dom: <HTMLDivElement>document.querySelector('#preview'),
   },
+  tabs: <HTMLUListElement>document.querySelector('#editor-tabs'),
+  filetree: <HTMLUListElement>document.querySelector('#file-tree'),
   meta: {
     file: {
       active: <HTMLSpanElement>document.querySelector('#active-file'),
@@ -90,9 +93,11 @@ export function fade(
   duration: number,
   callback?: () => void,
 ) {
-  direction === 'in'
-    ? fadeIn(element, duration, callback)
-    : fadeOut(element, duration, callback);
+  if (direction === 'in') {
+    fadeIn(element, duration, callback);
+  } else {
+    fadeOut(element, duration, callback);
+  }
 }
 
 export function fadeOut(
@@ -145,8 +150,25 @@ export function showSplashScreen({ duration }: { duration: number }) {
   });
 }
 
-export function createDraggableSplit(model: editor.IStandaloneCodeEditor) {
+export function createDraggableSplitPanels(
+  model: editor.IStandaloneCodeEditor,
+) {
   Split(['#editor-split', '#preview-split'], {
+    onDrag() {
+      model.layout();
+    },
+  });
+
+  Split(['#sidebar', '#wrapper'], {
+    sizes: [15, 85],
+    gutter(index, direction) {
+      const gutter = document.createElement('div');
+      gutter.className = `gutter sidebar-gutter-${direction}`;
+      return gutter;
+    },
+    gutterStyle: () => ({
+      width: '3px',
+    }),
     onDrag() {
       model.layout();
     },

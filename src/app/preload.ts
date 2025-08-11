@@ -18,8 +18,10 @@ const senderWhitelist = [
   'to:html:export',
   'to:file:new',
   'to:file:open',
+  'to:folder:open',
   'to:file:save',
   'to:file:saveas',
+  'to:file:openpath',
 ];
 
 // Can be sent from the main process and received
@@ -29,6 +31,8 @@ const receiverWhitelist = [
   'from:settings:set',
   'from:file:new',
   'from:file:open',
+  'from:folder:open',
+  'from:folder:opened',
   'from:file:opened',
   'from:file:save',
   'from:file:saveas',

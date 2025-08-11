@@ -5,7 +5,12 @@ import { Completion } from './lib/Completion';
 import { Commands } from './lib/Commands';
 import { Settings } from './lib/Settings';
 import { Bridge } from './lib/Bridge';
-import { showSplashScreen, setupTooltips, createDraggableSplit } from './dom';
+import {
+  dom,
+  showSplashScreen,
+  setupTooltips,
+  createDraggableSplitPanels,
+} from './dom';
 import { getExecutionBridge } from './util';
 
 // The bi-directional synchronous bridge to the main execution context.
@@ -14,6 +19,13 @@ const api = getExecutionBridge();
 
 // App mode (desktop or web).
 const mode = api !== 'web' ? 'desktop' : 'web';
+
+// If the app is in web mode hide the filetree sidebar.
+if (mode === 'web') {
+  document.addEventListener('DOMContentLoaded', () => {
+    dom.sidebar.style.display = 'none';
+  });
+}
 
 // Create new custom event dispatcher.
 const dispatcher = new EditorDispatcher();
@@ -47,13 +59,16 @@ if (model) {
     bridge.provide('settings', mkeditor.providers.settings);
     bridge.provide('commands', mkeditor.providers.commands);
     mkeditor.provide('bridge', bridge);
+
+    // Initialize content tracker for the execution bridge.
+    mkeditor.updateBridgedContent({ initialize: true });
   }
 
   // Setup application tooltips.
   setupTooltips();
 
   // Implement draggable split.
-  createDraggableSplit(model);
+  createDraggableSplitPanels(model);
 
   // Display splash screen
   showSplashScreen({

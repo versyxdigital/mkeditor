@@ -2,15 +2,15 @@
 
 The simple markdown editor.
 
-Use it through your [browser](https://versyxdigital.github.io/mkeditor/web/), or download for desktop.
-
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
-| Windows     | v2.6.1  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v2.6.1/mkeditor-setup-v2.6.1-x86_64.zip) |
+| Windows     | v3.0.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v3.0.0/mkeditor-setup-v3.0.0-x86_64.zip) |
 | MacOS       | v2.6.1  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v2.6.1/mkeditor-setup-v2.6.1-x86_64.pkg) |
 | Linux       | v2.6.1  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v2.6.1/mkeditor-setup-v2.6.1_amd64.deb)  |
 
-![MKEditor](https://versyxdigital.github.io/mkeditor/demo.png)
+Use it through your [browser](https://versyxdigital.github.io/mkeditor/web/) or download for desktop. More documentation is available at the [website](https://versyxdigital.github.io/mkeditor).
+
+![MKEditor](https://versyxdigital.github.io/mkeditor/assets/demo-dark.png)
 
 # Welcome
 

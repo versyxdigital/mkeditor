@@ -24,6 +24,46 @@
     color: #eee;
   }
 
+  #sidebar {
+    background-color: #121212 !important;
+  }
+
+  #editor-tabs {
+    background-color: #1c1c1c !important;
+    border-bottom: 1px solid #252525 !important;
+
+    li {
+      border-color: #313131 !important;
+      border-bottom: 1px solid #1a1a1a !important;
+
+      &:hover {
+        background-color: #353535 !important;
+      }
+
+      &.active {
+        background-color: #353535 !important;
+        border-bottom: 1px solid #696969 !important; // nice
+      }
+
+      a {
+        color: #c9c9c9 !important;
+      }
+    }
+  }
+
+  #file-tree {
+    color: #c3c3c3 !important;
+  }
+
+  #file-tree li .file-name:hover {
+    background-color: #353535 !important;
+  }
+  #file-tree li .file-name.active {
+    background-color: #353535 !important;
+    color: white;
+    font-weight: bold;
+  }
+
   .dropdown-menu {
     --bs-dropdown-bg: #222222;
     --bs-dropdown-link-color: #eeeeee;
@@ -69,6 +109,10 @@
 
   .gutter {
     background-color: #3b3b3b !important;
+  }
+  .gutter.sidebar-gutter-horizontal {
+    border-right: 1px solid rgb(28, 28, 28);
+    background: #2d2d2d !important;
   }
 
   .form-check-input:checked {

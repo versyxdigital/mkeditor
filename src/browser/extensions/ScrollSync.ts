@@ -3,8 +3,8 @@ import { dom } from '../dom';
 const ScrollSync = async (line: number, preview: HTMLElement) => {
   return new Promise((resolve) => {
     if (line <= 0) {
-      preview.scroll(preview.scrollTop, 0);
-      return;
+      preview.scroll(preview.scrollLeft, 0);
+      return resolve(preview);
     }
 
     const { previous, next } = getElementsForSourceLine(line);

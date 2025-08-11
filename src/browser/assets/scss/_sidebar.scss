@@ -1,0 +1,51 @@
+#sidebar {
+  width: 250px;
+  background-color: #f3f3f3;
+  overflow-y: auto;
+  height: 100%;
+
+  .explorer-title {
+    font-size: 0.65rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 0.5em;
+    color: #838383;
+  }
+}
+
+#file-tree {
+  font-size: 0.85rem;
+  color: #454545;
+
+  li {
+    white-space: nowrap;
+
+    .file-name {
+      display: flex;
+      align-items: center;
+      padding: 2px 4px;
+      cursor: pointer;
+      border-radius: 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      &:hover {
+        background-color: #e1e4e8;
+      }
+
+      &.active {
+        background-color: #d7d7d7;
+        color: #222222;
+        font-weight: bold;
+      }
+
+      i {
+        margin-right: 4px;
+      }
+    }
+
+    ul {
+      padding-left: 1rem;
+    }
+  }
+}
