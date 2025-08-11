@@ -69,13 +69,8 @@ export class AppBridge {
     });
 
     // Create a new file, linked to the application menu
-    ipcMain.on('to:file:new', (event, { content, file }) => {
-      AppStorage.create(this.context, this.contextBridgedContentHasChanged, {
-        id: event.sender.id,
-        data: content,
-        filePath: file,
-        encoding: 'utf-8',
-      }).then(() => {
+    ipcMain.on('to:file:new', () => {
+      AppStorage.create(this.context).then(() => {
         this.resetContextBridgedContent();
       });
     });

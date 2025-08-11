@@ -4,24 +4,7 @@ import { join } from 'path';
 import { CreateFileOptions, SaveFileOptions } from '../interfaces/Storage';
 
 export class AppStorage {
-  static async create(
-    context: BrowserWindow,
-    contentHasChanged: boolean,
-    { data, filePath, encoding = 'utf-8' }: CreateFileOptions,
-  ) {
-    if (
-      contentHasChanged &&
-      (await AppStorage.promptUserActionConfirmed(context))
-    ) {
-      await AppStorage.save(context, {
-        id: 'new',
-        data,
-        filePath,
-        encoding,
-        reset: true,
-      });
-    }
-
+  static async create(context: BrowserWindow) {
     AppStorage.setActiveFile(context, null);
   }
 
