@@ -149,8 +149,25 @@ export function showSplashScreen({ duration }: { duration: number }) {
   });
 }
 
-export function createDraggableSplit(model: editor.IStandaloneCodeEditor) {
+export function createDraggableSplitPanels(
+  model: editor.IStandaloneCodeEditor,
+) {
   Split(['#editor-split', '#preview-split'], {
+    onDrag() {
+      model.layout();
+    },
+  });
+
+  Split(['#sidebar', '#wrapper'], {
+    sizes: [15, 85],
+    gutter(index, direction) {
+      const gutter = document.createElement('div');
+      gutter.className = `gutter sidebar-gutter-${direction}`;
+      return gutter;
+    },
+    gutterStyle: () => ({
+      width: '3px',
+    }),
     onDrag() {
       model.layout();
     },

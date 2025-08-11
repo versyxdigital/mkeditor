@@ -5,7 +5,11 @@ import { Completion } from './lib/Completion';
 import { Commands } from './lib/Commands';
 import { Settings } from './lib/Settings';
 import { Bridge } from './lib/Bridge';
-import { showSplashScreen, setupTooltips, createDraggableSplit } from './dom';
+import {
+  showSplashScreen,
+  setupTooltips,
+  createDraggableSplitPanels,
+} from './dom';
 import { getExecutionBridge } from './util';
 
 // The bi-directional synchronous bridge to the main execution context.
@@ -56,7 +60,7 @@ if (model) {
   setupTooltips();
 
   // Implement draggable split.
-  createDraggableSplit(model);
+  createDraggableSplitPanels(model);
 
   // Display splash screen
   showSplashScreen({
