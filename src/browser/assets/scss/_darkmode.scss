@@ -24,6 +24,36 @@
     color: #eee;
   }
 
+  #sidebar {
+    background-color: #121212 !important;
+  }
+
+  #editor-tabs {
+    background-color: #1c1c1c !important;
+    border-bottom: 1px solid #252525 !important;
+
+    li {
+      a {
+        color: #c9c9c9 !important;
+        border-color: #313131 !important;
+        border-bottom: #434343 !important;
+        &:hover {
+          background-color: #353535 !important;
+        }
+        &.active {
+          background-color: #353535 !important;
+        }
+      }
+    }
+  }
+
+  #file-tree li .file-name:hover {
+    background-color: #353535 !important;
+  }
+  #file-tree li .file-name.active {
+    background-color: #353535 !important;
+  }
+
   .dropdown-menu {
     --bs-dropdown-bg: #222222;
     --bs-dropdown-link-color: #eeeeee;
