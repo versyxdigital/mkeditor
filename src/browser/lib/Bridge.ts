@@ -113,15 +113,18 @@ export class Bridge {
     // Enable saving files from outside of the renderer execution context.
     // Provides access to browser window data and emits it to the ipc channel.
     this.bridge.receive('from:file:save', (channel: string) => {
-      this.bridge.send(channel, {
-        content: this.model.getValue(),
-        file: this.activeFile,
-      });
-      if (this.activeFile) {
+      if (this.activeFile && !this.activeFile.startsWith('untitled')) {
+        this.bridge.send(channel, {
+          content: this.model.getValue(),
+          file: this.activeFile,
+        });
+
         this.originals.set(this.activeFile, this.model.getValue());
         this.dispatcher.setTrackedContent({
           content: this.model.getValue(),
         });
+      } else {
+        this.bridge.send('to:file:saveas', this.model.getValue());
       }
     });
 

@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import { statSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import { join } from 'path';
-import { CreateFileOptions, SaveFileOptions } from '../interfaces/Storage';
+import { SaveFileOptions } from '../interfaces/Storage';
 
 export class AppStorage {
   static async create(context: BrowserWindow) {
@@ -29,7 +29,7 @@ export class AppStorage {
   static async save(context: BrowserWindow, options: SaveFileOptions) {
     const config = {
       title: 'Save file',
-      defaultPath: `markdown-0${options.id}`,
+      defaultPath: 'Untitled',
       buttonLabel: 'Save',
 
       filters: [
