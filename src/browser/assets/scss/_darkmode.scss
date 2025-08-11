@@ -51,11 +51,17 @@
     }
   }
 
+  #file-tree {
+    color: #c3c3c3 !important;
+  }
+
   #file-tree li .file-name:hover {
     background-color: #353535 !important;
   }
   #file-tree li .file-name.active {
     background-color: #353535 !important;
+    color: white;
+    font-weight: bold;
   }
 
   .dropdown-menu {

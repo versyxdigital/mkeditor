@@ -3,10 +3,19 @@
   background-color: #f3f3f3;
   overflow-y: auto;
   height: 100%;
+
+  .explorer-title {
+    font-size: 0.65rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 0.5em;
+    color: #838383;
+  }
 }
 
 #file-tree {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
+  color: #454545;
 
   li {
     white-space: nowrap;
@@ -26,6 +35,8 @@
 
       &.active {
         background-color: #d7d7d7;
+        color: #222222;
+        font-weight: bold;
       }
 
       i {
