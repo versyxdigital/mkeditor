@@ -369,7 +369,6 @@ export class Bridge {
     );
 
     this.tabs.forEach((tab, p) => {
-      console.log({ tab });
       const li = tab.parentElement as HTMLElement;
       if (p === path) {
         li.classList.add('active');
