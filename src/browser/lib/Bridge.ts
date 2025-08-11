@@ -398,7 +398,15 @@ export class Bridge {
 
     dom.filetree.innerHTML = '';
     const build = (nodes: any[], parent: HTMLElement) => {
-      nodes.forEach((node) => {
+      const sorted = [...nodes].sort((a, b) => {
+        if (a.type === b.type) {
+          return a.name.localeCompare(b.name, undefined, {
+            sensitivity: 'base',
+          });
+        }
+        return a.type === 'directory' ? -1 : 1;
+      });
+      sorted.forEach((node) => {
         const li = document.createElement('li');
         li.classList.add('ft-node', node.type);
 
@@ -534,7 +542,22 @@ export class Bridge {
     });
 
     li.appendChild(span);
-    parentUl.appendChild(li);
+
+    const fileNodes = Array.from(
+      parentUl.querySelectorAll(':scope > li.file'),
+    ) as HTMLElement[];
+    const before = fileNodes.find((el) => {
+      const nameEl = el.querySelector(':scope > span.file-name');
+      const name = nameEl?.textContent?.trim() || '';
+      return (
+        fileName.localeCompare(name, undefined, { sensitivity: 'base' }) < 0
+      );
+    });
+    if (before) {
+      parentUl.insertBefore(li, before);
+    } else {
+      parentUl.appendChild(li);
+    }
   }
 
   public openFileFromPath(path: string) {
