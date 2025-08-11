@@ -6,6 +6,7 @@ import { Commands } from './lib/Commands';
 import { Settings } from './lib/Settings';
 import { Bridge } from './lib/Bridge';
 import {
+  dom,
   showSplashScreen,
   setupTooltips,
   createDraggableSplitPanels,
@@ -18,6 +19,13 @@ const api = getExecutionBridge();
 
 // App mode (desktop or web).
 const mode = api !== 'web' ? 'desktop' : 'web';
+
+// If the app is in web mode hide the filetree sidebar.
+if (mode === 'web') {
+  document.addEventListener('DOMContentLoaded', () => {
+    dom.sidebar.style.display = 'none';
+  });
+}
 
 // Create new custom event dispatcher.
 const dispatcher = new EditorDispatcher();
