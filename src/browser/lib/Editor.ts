@@ -51,7 +51,9 @@ export class Editor {
     this.editorHTMLElement = dom.editor.dom;
     this.previewHTMLElement = dom.preview.dom;
     dom.about.version.innerHTML = APP_VERSION;
-    this.dispatcher.addEventListener('editor:render', () => this.render());
+    this.dispatcher.addEventListener('editor:render', () => {
+      this.render();
+    });
   }
 
   /**
@@ -131,6 +133,26 @@ export class Editor {
   }
 
   /**
+   * Track content over the execution bridge.
+   */
+  public updateBridgedContent({ initialize }: { initialize?: Boolean } = {}) {
+    if (!this.providers.bridge) {
+      return false;
+    }
+
+    if (initialize) {
+      this.providers.bridge.trackEditorStateBetweenExecutionContext('', '');
+    } else {
+      this.providers.bridge.trackEditorStateBetweenExecutionContext(
+        // The initial editor content
+        <string>this.loadedInitialEditorValue,
+        // The current editor content
+        <string>this.model?.getValue(),
+      );
+    }
+  }
+
+  /**
    * Render the editor.
    */
   public render() {
@@ -152,14 +174,8 @@ export class Editor {
     // so that it can do things such as set the title notifying the user of unsaved changes,
     // prompt the user to save if they try to close the app or open a new file, etc.
     this.model?.onDidChangeModelContent((event) => {
-      if (this.providers.bridge) {
-        this.providers.bridge.trackEditorStateBetweenExecutionContext(
-          // The initial editor content
-          <string>this.loadedInitialEditorValue,
-          // The current editor content
-          <string>this.model?.getValue(),
-        );
-      }
+      // Update the tracked content over the execution bridge.
+      this.updateBridgedContent();
 
       // Register dynamic completions provider to provide completion suggestions based on
       // user input.

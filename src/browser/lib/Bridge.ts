@@ -170,13 +170,17 @@ export class Bridge {
             this.models.delete(this.activeFile);
             this.tabs.delete(this.activeFile);
             this.originals.delete(this.activeFile);
+
             tab.textContent = name;
             this.models.set(path, mdl);
             this.tabs.set(path, tab);
             this.originals.set(path, content);
+
+            mdl.setValue(content);
           }
         }
 
+        // Fallback
         if (!mdl) {
           mdl = editor.createModel(content, 'markdown');
           this.models.set(path, mdl);
@@ -280,7 +284,7 @@ export class Bridge {
 
     if (original !== current) {
       const save = window.confirm(
-        'You have unsaved changes. Save before closing?'
+        'You have unsaved changes. Save before closing?',
       );
       if (save) {
         if (path.startsWith('untitled')) {
@@ -319,22 +323,29 @@ export class Bridge {
 
   private activateFile(path: string, name?: string) {
     const mdl = this.models.get(path);
-    if (!mdl) return;
+    if (!mdl) {
+      return;
+    }
+
     this.activeFile = path;
     this.model.setModel(mdl);
     const filename = name || path.split(/[\\/]/).pop() || '';
     dom.meta.file.active.innerText = filename;
+
     this.dispatcher.setTrackedContent({
       content: this.originals.get(path) ?? '',
     });
+
     this.trackEditorStateBetweenExecutionContext(
       this.originals.get(path) ?? '',
       this.model.getValue(),
     );
+
     this.tabs.forEach((tab, p) => {
       if (p === path) tab.classList.add('active');
       else tab.classList.remove('active');
     });
+
     if (dom.filetree) {
       dom.filetree.querySelectorAll('li.file .file-name').forEach((el) => {
         const li = (el as HTMLElement).parentElement as HTMLElement;
@@ -343,8 +354,10 @@ export class Bridge {
         else (el as HTMLElement).classList.remove('active');
       });
     }
+
     this.dispatcher.render();
     this.model.focus();
+
     this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
   }
 

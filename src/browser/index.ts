@@ -47,6 +47,9 @@ if (model) {
     bridge.provide('settings', mkeditor.providers.settings);
     bridge.provide('commands', mkeditor.providers.commands);
     mkeditor.provide('bridge', bridge);
+
+    // Initialize content tracker for the execution bridge.
+    mkeditor.updateBridgedContent({ initialize: true });
   }
 
   // Setup application tooltips.

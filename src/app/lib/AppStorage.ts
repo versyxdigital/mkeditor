@@ -6,9 +6,13 @@ import { CreateFileOptions, SaveFileOptions } from '../interfaces/Storage';
 export class AppStorage {
   static async create(
     context: BrowserWindow,
+    contentHasChanged: Boolean,
     { data, filePath, encoding = 'utf-8' }: CreateFileOptions,
   ) {
-    if (await AppStorage.promptUserActionConfirmed(context)) {
+    if (
+      contentHasChanged &&
+      (await AppStorage.promptUserActionConfirmed(context))
+    ) {
       await AppStorage.save(context, {
         id: 'new',
         data,
