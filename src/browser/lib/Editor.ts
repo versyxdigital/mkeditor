@@ -52,7 +52,10 @@ export class Editor {
     this.previewHTMLElement = dom.preview.dom;
     dom.about.version.innerHTML = APP_VERSION;
     this.dispatcher.addEventListener('editor:render', () => {
-      this.render();
+      const value = this.model?.getValue() ?? '';
+      WordCount(value);
+      CharacterCount(value);
+      this.render(value);
     });
   }
 
@@ -115,9 +118,12 @@ export class Editor {
       window.onresize = () => this.model?.layout();
       this.previewHTMLElement.onresize = () => this.model?.layout();
 
+      const value = this.model.getValue();
+      WordCount(value);
+      CharacterCount(value);
       // Render the editor content to preview; also initialises editor
       // extensions.
-      this.render();
+      this.render(value);
 
       if (watch) {
         // Watch the editor for changes, updates the preview and and copntains
@@ -155,14 +161,10 @@ export class Editor {
   /**
    * Render the editor.
    */
-  public render() {
+  public render(value?: string) {
     if (this.model) {
-      this.previewHTMLElement.innerHTML = Markdown.render(
-        this.model.getValue(),
-      );
-
-      WordCount(this.previewHTMLElement);
-      CharacterCount(this.previewHTMLElement);
+      const content = value ?? this.model.getValue();
+      this.previewHTMLElement.innerHTML = Markdown.render(content);
     }
   }
 
@@ -183,8 +185,12 @@ export class Editor {
 
       // Add a small timeout for the render.
       setTimeout(() => {
+        const value = this.model?.getValue() ?? '';
+        WordCount(value);
+        CharacterCount(value);
+
         // Update the rendered content in the preview.
-        this.render();
+        this.render(value);
       }, 150);
     });
 
