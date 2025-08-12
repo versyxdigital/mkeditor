@@ -5,6 +5,7 @@ import { EditorSettings } from '../interfaces/Editor';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { Notify } from './Notify';
 import { dom } from '../dom';
+import Swal from 'sweetalert2';
 
 export class Bridge {
   /** Execution context bridge */
@@ -191,10 +192,10 @@ export class Bridge {
               newTab.nextElementSibling as HTMLButtonElement | null;
             if (closeBtn) {
               const newBtn = closeBtn.cloneNode(true) as HTMLButtonElement;
-              newBtn.addEventListener('click', (e) => {
+              newBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                this.closeTab(path);
+                await this.closeTab(path);
               });
               closeBtn.replaceWith(newBtn);
             }
@@ -286,10 +287,10 @@ export class Bridge {
     close.type = 'button';
     close.classList.add('tab-close');
     close.innerHTML = '&times;';
-    close.addEventListener('click', (e) => {
+    close.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
-      this.closeTab(path);
+      await this.closeTab(path);
     });
 
     li.appendChild(a);
@@ -298,7 +299,7 @@ export class Bridge {
     this.tabs.set(path, a);
   }
 
-  private closeTab(path: string) {
+  private async closeTab(path: string) {
     const mdl = this.models.get(path);
     if (!mdl) return;
 
@@ -306,10 +307,20 @@ export class Bridge {
     const current = mdl.getValue();
 
     if (original !== current) {
-      const save = window.confirm(
-        'You have unsaved changes. Save before closing?',
-      );
-      if (save) {
+      const result = await Swal.fire({
+        customClass: {
+          container: 'unsaved-changes-popup',
+        },
+        title: 'Unsaved changes',
+        text: 'Save changes to your file before closing?',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Save & close',
+        denyButtonText: 'Close without saving',
+        cancelButtonText: 'Cancel',
+      });
+
+      if (result.isConfirmed) {
         if (path.startsWith('untitled')) {
           this.bridge.send('to:file:saveas', current);
         } else {
@@ -319,6 +330,8 @@ export class Bridge {
             openFile: false,
           });
         }
+      } else if (!result.isDenied) {
+        return;
       }
     }
 
@@ -559,29 +572,28 @@ export class Bridge {
     }
   }
 
+  /**
+   * Open a file from a given path.
+   *
+   * @param path - the file path to open
+   */
   public openFileFromPath(path: string) {
     this.openingFile = true;
+
     if (this.models.has(path)) {
       this.activateFile(path);
       this.openingFile = false;
       return;
     }
+
     if (this.contentHasChanged && this.activeFile !== path) {
-      this.bridge.send('to:file:save', {
+      // Update the tracked content so the existing file retains its unsaved state
+      this.dispatcher.setTrackedContent({
         content: this.model.getValue(),
-        file: this.activeFile,
-        prompt: true,
-        openPath: path,
       });
-      if (this.activeFile) {
-        this.originals.set(this.activeFile, this.model.getValue());
-        this.dispatcher.setTrackedContent({
-          content: this.model.getValue(),
-        });
-      }
-    } else {
-      this.bridge.send('to:file:openpath', path);
     }
+
+    this.bridge.send('to:file:openpath', path);
   }
 
   /**
