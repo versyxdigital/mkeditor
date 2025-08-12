@@ -19,6 +19,7 @@ import MarkdownIt from 'markdown-it';
 import AlertBlock from '../extensions/AlertBlock';
 import LineNumber from '../extensions/LineNumber';
 import LinkTarget from '../extensions/LinkTarget';
+import ImageStyle from '../extensions/ImageStyle';
 import TableStyle from '../extensions/TableStyle';
 
 hljs.registerLanguage('javascript', javascript);
@@ -81,6 +82,7 @@ const Markdown = new MarkdownIt({
 Markdown.use(AlertBlock);
 Markdown.use(LineNumber);
 Markdown.use(LinkTarget);
+Markdown.use(ImageStyle);
 Markdown.use(TableStyle);
 
 export { Markdown };
