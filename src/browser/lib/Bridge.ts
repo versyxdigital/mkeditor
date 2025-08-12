@@ -559,29 +559,28 @@ export class Bridge {
     }
   }
 
+  /**
+   * Open a file from a given path.
+   *
+   * @param path - the file path to open
+   */
   public openFileFromPath(path: string) {
     this.openingFile = true;
+
     if (this.models.has(path)) {
       this.activateFile(path);
       this.openingFile = false;
       return;
     }
+
     if (this.contentHasChanged && this.activeFile !== path) {
-      this.bridge.send('to:file:save', {
+      // Update the tracked content so the existing file retains its unsaved state
+      this.dispatcher.setTrackedContent({
         content: this.model.getValue(),
-        file: this.activeFile,
-        prompt: true,
-        openPath: path,
       });
-      if (this.activeFile) {
-        this.originals.set(this.activeFile, this.model.getValue());
-        this.dispatcher.setTrackedContent({
-          content: this.model.getValue(),
-        });
-      }
-    } else {
-      this.bridge.send('to:file:openpath', path);
     }
+
+    this.bridge.send('to:file:openpath', path);
   }
 
   /**
