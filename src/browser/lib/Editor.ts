@@ -2,7 +2,7 @@ import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { EditorProviders } from '../interfaces/Providers';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { CharacterCount, WordCount } from '../extensions/WordCount';
-import { ScrollSync, cacheLineElements } from '../extensions/ScrollSync';
+import { ScrollSync, invalidateLineElements } from '../extensions/ScrollSync';
 import { welcomeMarkdown } from '../assets/intro';
 import { Markdown } from './Markdown';
 import { Exporter } from './Exporter';
@@ -163,7 +163,7 @@ export class Editor {
 
       WordCount(this.previewHTMLElement);
       CharacterCount(this.previewHTMLElement);
-      cacheLineElements();
+      invalidateLineElements();
     }
   }
 

@@ -1,6 +1,7 @@
 import { dom } from '../dom';
 
 let lineElements: { element: HTMLElement; line: number }[] = [];
+let needsRefresh = true;
 
 const cacheLineElements = () => {
   lineElements = [{ element: document.body, line: 0 }];
@@ -29,6 +30,11 @@ const cacheLineElements = () => {
       lineElements.push({ element: node, line });
     }
   }
+  needsRefresh = false;
+};
+
+const invalidateLineElements = () => {
+  needsRefresh = true;
 };
 
 const ScrollSync = async (line: number, preview: HTMLElement) => {
@@ -87,7 +93,13 @@ const getElementsForSourceLine = (targetLine: number) => {
   return { previous };
 };
 
-const getCodeLineElements = () => lineElements;
+const getCodeLineElements = () => {
+  if (needsRefresh) {
+    cacheLineElements();
+  }
+
+  return lineElements;
+};
 
 const getElementBounds = ({ element }: { element: HTMLElement }) => {
   const bounds = element.getBoundingClientRect();
@@ -108,4 +120,4 @@ const getElementBounds = ({ element }: { element: HTMLElement }) => {
   return bounds;
 };
 
-export { ScrollSync, cacheLineElements };
+export { ScrollSync, invalidateLineElements };
