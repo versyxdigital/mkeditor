@@ -78,7 +78,7 @@ export class AppBridge {
       AppStorage.openDirectory(this.context);
     });
 
-    ipcMain.on('to:file:openpath', (event, path: string) => {
+    ipcMain.on('to:file:openpath', (event, { path }: { path: string }) => {
       AppStorage.openPath(this.context, path);
     });
 
@@ -99,7 +99,7 @@ export class AppBridge {
           openFile = true,
         },
       ) => {
-        if (await AppStorage.promptUserActionConfirmed(this.context, prompt)) {
+        if (await AppStorage.promptUserConfirmSave(this.context, prompt)) {
           AppStorage.save(this.context, {
             id: event.sender.id,
             data: content,
