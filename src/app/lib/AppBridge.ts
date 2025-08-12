@@ -1,5 +1,4 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
-import { BridgedEditorContent } from '../interfaces/Bridge';
 import { SettingsProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
 
@@ -7,11 +6,6 @@ export class AppBridge {
   private context: BrowserWindow;
 
   private contextWindowTitle: string = 'MKEditor';
-
-  private contextBridgedContent: BridgedEditorContent = {
-    original: null,
-    current: null,
-  };
 
   private contextBridgedContentHasChanged: boolean = false;
 
@@ -34,17 +28,14 @@ export class AppBridge {
   register() {
     // Set the app window title
     ipcMain.on('to:title:set', (event, title = null) => {
-      if (title) {
-        this.contextWindowTitle = `MKEditor - ${title}`;
-      }
-
-      this.context.setTitle(this.contextWindowTitle);
+      this.contextWindowTitle = title ? `MKEditor - ${title}` : 'MKEditor';
+      this.setWindowTitle();
     });
 
     // Set the editor state to track content changes in the main process.
-    ipcMain.on('to:editor:state', (event, { original, current }) => {
-      this.updateContextBridgedContent(original, current);
-      this.context.setTitle(this.contextWindowTitle);
+    ipcMain.on('to:editor:state', (event, hasChanged: boolean) => {
+      this.contextBridgedContentHasChanged = hasChanged;
+      this.setWindowTitle();
     });
 
     // Save editor settings to file (~/.mkeditor/settings.json)
@@ -156,15 +147,12 @@ export class AppBridge {
     }
   }
 
-  updateContextBridgedContent(original: string, current: string) {
-    this.contextBridgedContent.original = original;
-    this.contextBridgedContent.current = current;
-    this.contextBridgedContentHasChanged = original !== current;
+  private setWindowTitle() {
+    const suffix = this.contextBridgedContentHasChanged ? ' *' : '';
+    this.context.setTitle(`${this.contextWindowTitle}${suffix}`);
   }
 
   resetContextBridgedContent() {
-    this.contextBridgedContent.original = null;
-    this.contextBridgedContent.current = null;
-    this.contextBridgedContentHasChanged = false;
+    this.setWindowTitle();
   }
 }
