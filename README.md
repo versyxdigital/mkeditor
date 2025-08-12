@@ -4,7 +4,7 @@ The simple markdown editor.
 
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
-| Windows     | v3.0.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v3.0.0/mkeditor-setup-v3.0.0-x86_64.zip) |
+| Windows     | v3.0.1  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v3.0.1/mkeditor-setup-v3.0.1-x86_64.zip) |
 | MacOS       | v2.6.1  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v2.6.1/mkeditor-setup-v2.6.1-x86_64.pkg) |
 | Linux       | v2.6.1  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v2.6.1/mkeditor-setup-v2.6.1_amd64.deb)  |
 
