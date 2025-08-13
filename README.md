@@ -6,7 +6,7 @@ The simple markdown editor.
 | --------    | ------- | -------   |
 | Windows     | v3.0.1  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v3.0.1/mkeditor-setup-v3.0.1-x86_64.zip) |
 | MacOS       | v3.0.1  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v3.0.1/mkeditor-setup-v3.0.1_x86_64.pkg) |
-| Linux       | v2.6.1  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v2.6.1/mkeditor-setup-v2.6.1_amd64.deb)  |
+| Linux       | v3.0.1  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v3.0.1/mkeditor-setup-v3.0.1_amd64.deb)  |
 
 Use it through your [browser](https://versyxdigital.github.io/mkeditor/web/) or download for desktop. More documentation is available at the [website](https://versyxdigital.github.io/mkeditor).
 
