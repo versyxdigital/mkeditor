@@ -32,6 +32,9 @@ export class Bridge {
   /** Map of tab elements */
   private tabs: Map<string, HTMLAnchorElement> = new Map();
 
+  /** Map of directory <ul> elements */
+  private directoryMap: Map<string, HTMLElement> = new Map();
+
   /** counter for untitled files */
   private untitledCounter = 1;
 
@@ -428,14 +431,10 @@ export class Bridge {
     if (!this.treeRoot || parentPath === this.treeRoot) {
       dom.filetree.innerHTML = '';
       parent = dom.filetree;
+      this.directoryMap.clear();
+      this.directoryMap.set(parentPath, dom.filetree);
     } else {
-      const selector = `li.directory[data-path="${CSS.escape(parentPath)}"]`;
-      const li = dom.filetree.querySelector(selector) as HTMLElement | null;
-      if (!li) {
-        return;
-      }
-
-      const ul = li.querySelector(':scope > ul') as HTMLElement | null;
+      const ul = this.directoryMap.get(parentPath);
       if (!ul) {
         return;
       }
@@ -443,7 +442,8 @@ export class Bridge {
       ul.dataset.loaded = 'true';
       parent = ul;
 
-      if (tree.length === 0) {
+      const li = ul.parentElement as HTMLElement | null;
+      if (tree.length === 0 && li) {
         li.dataset.hasChildren = 'false';
         const chevron = li.querySelector(
           ':scope > span.file-name > span:first-child',
@@ -496,6 +496,7 @@ export class Bridge {
           ul.classList.add('list-unstyled', 'ps-3');
           ul.style.display = 'none';
           li.appendChild(ul);
+          this.directoryMap.set(node.path, ul);
         } else {
           li.classList.add('file');
           li.dataset.path = node.path;
@@ -572,28 +573,26 @@ export class Bridge {
     const rootSegments = this.treeRoot.split(/[/\\]/);
     const rel = segments.slice(rootSegments.length);
 
-    let parentUl: HTMLElement = dom.filetree;
     let currentPath = this.treeRoot;
+    let parentUl = this.directoryMap.get(currentPath) || dom.filetree;
+    if (!parentUl) {
+      return;
+    }
 
     for (let i = 0; i < rel.length - 1; i++) {
       const dir = rel[i];
       currentPath += sep + dir;
-      const dirLi = Array.from(
-        parentUl.querySelectorAll(':scope > li.directory'),
-      ).find((el) => (el as HTMLElement).dataset.path === currentPath) as
-        | HTMLElement
-        | undefined;
-      if (!dirLi) {
+
+      const ul = this.directoryMap.get(currentPath);
+      if (!ul) {
         return;
       }
-      const span = dirLi.querySelector(
-        ':scope > span.file-name',
-      ) as HTMLElement;
-      const ul = dirLi.querySelector(':scope > ul') as HTMLElement;
-      if (!ul) return;
+
       if (ul.style.display === 'none') {
-        span.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        const span = ul.previousElementSibling as HTMLElement;
+        span?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       }
+
       parentUl = ul;
     }
 
