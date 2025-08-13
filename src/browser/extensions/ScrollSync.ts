@@ -1,5 +1,42 @@
 import { dom } from '../dom';
 
+let lineElements: { element: HTMLElement; line: number }[] = [];
+let needsRefresh = true;
+
+const cacheLineElements = () => {
+  lineElements = [{ element: document.body, line: 0 }];
+
+  for (const element of document.getElementsByClassName(
+    dom.meta.scroll.line.class,
+  )) {
+    const line = parseInt(
+      <string>element.getAttribute(dom.meta.scroll.line.start),
+    );
+
+    if (isNaN(line)) {
+      continue;
+    }
+
+    const node = element as HTMLElement;
+    if (
+      node.tagName === 'CODE' &&
+      node.parentElement &&
+      node.parentElement.tagName === 'PRE'
+    ) {
+      // Fenced code blocks are a special case since the `code-line` can only be marked on
+      // the `<code>` element and not the parent `<pre>` element.
+      lineElements.push({ element: node.parentElement, line });
+    } else {
+      lineElements.push({ element: node, line });
+    }
+  }
+  needsRefresh = false;
+};
+
+const invalidateLineElements = () => {
+  needsRefresh = true;
+};
+
 const ScrollSync = async (line: number, preview: HTMLElement) => {
   return new Promise((resolve) => {
     if (line <= 0) {
@@ -56,40 +93,13 @@ const getElementsForSourceLine = (targetLine: number) => {
   return { previous };
 };
 
-const getCodeLineElements = (() => {
-  let elements;
+const getCodeLineElements = () => {
+  if (needsRefresh) {
+    cacheLineElements();
+  }
 
-  return () => {
-    elements = [{ element: document.body, line: 0 }];
-
-    for (const element of document.getElementsByClassName(
-      dom.meta.scroll.line.class,
-    )) {
-      const line = parseInt(
-        <string>element.getAttribute(dom.meta.scroll.line.start),
-      );
-
-      if (isNaN(line)) {
-        continue;
-      }
-
-      const node = element as HTMLElement;
-      if (
-        node.tagName === 'CODE' &&
-        node.parentElement &&
-        node.parentElement.tagName === 'PRE'
-      ) {
-        // Fenced code blocks are a special case since the `code-line` can only be marked on
-        // the `<code>` element and not the parent `<pre>` element.
-        elements.push({ element: node.parentElement, line });
-      } else {
-        elements.push({ element: node, line });
-      }
-    }
-
-    return elements;
-  };
-})();
+  return lineElements;
+};
 
 const getElementBounds = ({ element }: { element: HTMLElement }) => {
   const bounds = element.getBoundingClientRect();
@@ -110,4 +120,4 @@ const getElementBounds = ({ element }: { element: HTMLElement }) => {
   return bounds;
 };
 
-export { ScrollSync };
+export { ScrollSync, invalidateLineElements };

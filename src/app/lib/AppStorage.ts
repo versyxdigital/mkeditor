@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog } from 'electron';
-import { statSync, readFileSync, writeFileSync, readdirSync } from 'fs';
+import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
 import { join } from 'path';
 import { SaveFileOptions } from '../interfaces/Storage';
 
@@ -8,7 +8,7 @@ export class AppStorage {
     AppStorage.setActiveFile(context, null);
   }
 
-  static async promptUserActionConfirmed(
+  static async promptUserConfirmSave(
     context: BrowserWindow,
     shouldShowPrompt = true,
   ) {
@@ -158,52 +158,71 @@ export class AppStorage {
   }
 
   static async openDirectory(context: BrowserWindow) {
-    return new Promise((resolve) => {
-      dialog
-        .showOpenDialog({ properties: ['openDirectory'] })
-        .then(({ filePaths }) => {
-          if (filePaths.length === 0) {
-            throw new Error('noselection');
-          }
+    try {
+      const { filePaths } = await dialog.showOpenDialog({
+        properties: ['openDirectory'],
+      });
 
-          const tree = AppStorage.readDirectory(filePaths[0]);
-          context.webContents.send('from:folder:opened', {
-            path: filePaths[0],
-            tree,
-          });
-          resolve(tree);
-        })
-        .catch((err) => {
-          if (err.message !== 'noselection') {
-            context.webContents.send('from:notification:display', {
-              status: 'error',
-              message: 'Unable to open folder.',
-            });
-          }
+      if (filePaths.length === 0) {
+        throw new Error('noselection');
+      }
+
+      const tree = await AppStorage.readDirectory(filePaths[0]);
+      context.webContents.send('from:folder:opened', {
+        path: filePaths[0],
+        tree,
+      });
+      return tree;
+    } catch (err) {
+      if ((err as Error).message !== 'noselection') {
+        context.webContents.send('from:notification:display', {
+          status: 'error',
+          message: 'Unable to open folder.',
         });
-    });
+      }
+    }
   }
 
-  private static readDirectory(dir: string): any[] {
-    return readdirSync(dir, { withFileTypes: true })
-      .filter((d) => d.isDirectory() || d.name.endsWith('.md'))
-      .map((entry) => {
+  private static async readDirectory(dir: string): Promise<any[]> {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const filtered = entries.filter(
+      (d) => d.isDirectory() || d.name.endsWith('.md'),
+    );
+    return Promise.all(
+      filtered.map(async (entry) => {
         const full = join(dir, entry.name);
         if (entry.isDirectory()) {
           return {
             type: 'directory',
             name: entry.name,
             path: full,
-            children: AppStorage.readDirectory(full),
+            hasChildren: true,
           };
         }
 
         return { type: 'file', name: entry.name, path: full };
-      });
+      }),
+    );
   }
 
-  static openPath(context: BrowserWindow, filePath: string) {
-    AppStorage.setActiveFile(context, filePath);
+  static async openPath(context: BrowserWindow, filePath: string) {
+    try {
+      const stats = await fs.stat(filePath);
+      if (stats.isDirectory()) {
+        const tree = await AppStorage.readDirectory(filePath);
+        context.webContents.send('from:folder:opened', {
+          path: filePath,
+          tree,
+        });
+      } else {
+        AppStorage.setActiveFile(context, filePath);
+      }
+    } catch (err) {
+      context.webContents.send('from:notification:display', {
+        status: 'error',
+        message: 'Unable to open path.',
+      });
+    }
   }
 
   static setActiveFile(context: BrowserWindow, file: string | null = null) {

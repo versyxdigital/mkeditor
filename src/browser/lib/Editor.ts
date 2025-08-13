@@ -2,12 +2,20 @@ import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { EditorProviders } from '../interfaces/Providers';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { CharacterCount, WordCount } from '../extensions/WordCount';
-import { ScrollSync } from '../extensions/ScrollSync';
+import { ScrollSync, invalidateLineElements } from '../extensions/ScrollSync';
 import { welcomeMarkdown } from '../assets/intro';
 import { Markdown } from './Markdown';
 import { Exporter } from './Exporter';
 import { APP_VERSION } from '../version';
 import { dom } from '../dom';
+
+const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
+  let timeout: number | undefined;
+  return (...args: Parameters<F>) => {
+    window.clearTimeout(timeout);
+    timeout = window.setTimeout(() => fn(...args), wait);
+  };
+};
 
 export class Editor {
   /** Execution mode */
@@ -52,7 +60,10 @@ export class Editor {
     this.previewHTMLElement = dom.preview.dom;
     dom.about.version.innerHTML = APP_VERSION;
     this.dispatcher.addEventListener('editor:render', () => {
-      this.render();
+      const value = this.model?.getValue() ?? '';
+      WordCount(value);
+      CharacterCount(value);
+      this.render(value);
     });
   }
 
@@ -115,9 +126,12 @@ export class Editor {
       window.onresize = () => this.model?.layout();
       this.previewHTMLElement.onresize = () => this.model?.layout();
 
+      const value = this.model.getValue();
+      WordCount(value);
+      CharacterCount(value);
       // Render the editor content to preview; also initialises editor
       // extensions.
-      this.render();
+      this.render(value);
 
       if (watch) {
         // Watch the editor for changes, updates the preview and and copntains
@@ -140,29 +154,21 @@ export class Editor {
       return false;
     }
 
-    if (initialize) {
-      this.providers.bridge.trackEditorStateBetweenExecutionContext('', '');
-    } else {
-      this.providers.bridge.trackEditorStateBetweenExecutionContext(
-        // The initial editor content
-        <string>this.loadedInitialEditorValue,
-        // The current editor content
-        <string>this.model?.getValue(),
-      );
-    }
+    const hasChanged = initialize
+      ? false
+      : this.loadedInitialEditorValue !== this.model?.getValue();
+
+    this.providers.bridge.trackEditorStateBetweenExecutionContext(hasChanged);
   }
 
   /**
    * Render the editor.
    */
-  public render() {
+  public render(value?: string) {
     if (this.model) {
-      this.previewHTMLElement.innerHTML = Markdown.render(
-        this.model.getValue(),
-      );
-
-      WordCount(this.previewHTMLElement);
-      CharacterCount(this.previewHTMLElement);
+      const content = value ?? this.model.getValue();
+      this.previewHTMLElement.innerHTML = Markdown.render(content);
+      invalidateLineElements();
     }
   }
 
@@ -170,12 +176,17 @@ export class Editor {
    * Watch and re-render the editor for changes.
    */
   public watch() {
+    const debouncedUpdateBridgedContent = debounce(
+      () => this.updateBridgedContent(),
+      250,
+    );
+
     // When the editor content changes, update the main process through the IPC handler
     // so that it can do things such as set the title notifying the user of unsaved changes,
     // prompt the user to save if they try to close the app or open a new file, etc.
     this.model?.onDidChangeModelContent((event) => {
       // Update the tracked content over the execution bridge.
-      this.updateBridgedContent();
+      debouncedUpdateBridgedContent();
 
       // Register dynamic completions provider to provide completion suggestions based on
       // user input.
@@ -183,8 +194,12 @@ export class Editor {
 
       // Add a small timeout for the render.
       setTimeout(() => {
+        const value = this.model?.getValue() ?? '';
+        WordCount(value);
+        CharacterCount(value);
+
         // Update the rendered content in the preview.
-        this.render();
+        this.render(value);
       }, 150);
     });
 

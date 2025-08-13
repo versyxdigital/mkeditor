@@ -32,14 +32,23 @@ export class Bridge {
   /** Map of tab elements */
   private tabs: Map<string, HTMLAnchorElement> = new Map();
 
+  /** Map of directory <ul> elements */
+  private directoryMap: Map<string, HTMLElement> = new Map();
+
   /** counter for untitled files */
   private untitledCounter = 1;
 
   /** Flag to indicate that a file is being opened */
   private openingFile = false;
 
+  /** Flag to indicate a new root folder is being opened */
+  private openingFolder = false;
+
   /** Root path for the current file tree */
   private treeRoot: string | null = null;
+
+  /** Flag to track file tree listener registration */
+  private fileTreeListenerRegistered = false;
 
   /** Providers to be accessed through bridge */
   public providers: BridgeProviders = {
@@ -138,12 +147,20 @@ export class Bridge {
 
     // Handle opening folders and constructing file tree
     this.bridge.receive('from:folder:open', (channel: string) => {
+      this.openingFolder = true;
       this.bridge.send(channel, true);
     });
 
     this.bridge.receive('from:folder:opened', ({ tree, path }) => {
-      this.treeRoot = path;
-      this.buildFileTree(tree);
+      if (
+        this.openingFolder ||
+        !this.treeRoot ||
+        !path.startsWith(this.treeRoot)
+      ) {
+        this.treeRoot = path;
+        this.openingFolder = false;
+      }
+      this.buildFileTree(tree, path);
     });
 
     // Enable opening files from outside of the renderer execution context.
@@ -372,14 +389,11 @@ export class Bridge {
     const filename = name || path.split(/[\\/]/).pop() || '';
     dom.meta.file.active.innerText = filename;
 
-    this.dispatcher.setTrackedContent({
-      content: this.originals.get(path) ?? '',
-    });
+    const original = this.originals.get(path) ?? '';
+    const current = this.model.getValue();
 
-    this.trackEditorStateBetweenExecutionContext(
-      this.originals.get(path) ?? '',
-      this.model.getValue(),
-    );
+    this.dispatcher.setTrackedContent({ content: original });
+    this.trackEditorStateBetweenExecutionContext(original !== current);
 
     this.tabs.forEach((tab, p) => {
       const li = tab.parentElement as HTMLElement;
@@ -403,13 +417,42 @@ export class Bridge {
     this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
   }
 
-  private buildFileTree(tree: any[]) {
+  private buildFileTree(tree: any[], parentPath: string) {
     if (!dom.filetree) {
       return;
     }
 
-    dom.filetree.innerHTML = '';
-    const build = (nodes: any[], parent: HTMLElement) => {
+    if (!this.fileTreeListenerRegistered) {
+      dom.filetree.addEventListener('click', this.handleFileTreeClick);
+      this.fileTreeListenerRegistered = true;
+    }
+
+    let parent: HTMLElement;
+    if (!this.treeRoot || parentPath === this.treeRoot) {
+      dom.filetree.innerHTML = '';
+      parent = dom.filetree;
+      this.directoryMap.clear();
+      this.directoryMap.set(parentPath, dom.filetree);
+    } else {
+      const ul = this.directoryMap.get(parentPath);
+      if (!ul) {
+        return;
+      }
+      ul.innerHTML = '';
+      ul.dataset.loaded = 'true';
+      parent = ul;
+
+      const li = ul.parentElement as HTMLElement | null;
+      if (tree.length === 0 && li) {
+        li.dataset.hasChildren = 'false';
+        const chevron = li.querySelector(
+          ':scope > span.file-name > span:first-child',
+        );
+        chevron?.firstElementChild?.classList.add('invisible');
+      }
+    }
+
+    const build = (nodes: any[], parentEl: HTMLElement) => {
       const sorted = [...nodes].sort((a, b) => {
         if (a.type === b.type) {
           return a.name.localeCompare(b.name, undefined, {
@@ -418,6 +461,7 @@ export class Bridge {
         }
         return a.type === 'directory' ? -1 : 1;
       });
+      const fragment = document.createDocumentFragment();
       sorted.forEach((node) => {
         const li = document.createElement('li');
         li.classList.add('ft-node', node.type);
@@ -428,7 +472,7 @@ export class Bridge {
         const chevron = document.createElement('span');
         chevron.classList.add('me-1');
         chevron.innerHTML = '<i class="fa fa-chevron-right"></i>';
-        if (node.type !== 'directory') {
+        if (node.type !== 'directory' || !node.hasChildren) {
           chevron.firstElementChild?.classList.add('invisible');
         }
         chevron.style.display = 'inline-block';
@@ -447,38 +491,73 @@ export class Bridge {
 
         if (node.type === 'directory') {
           li.dataset.path = node.path;
+          li.dataset.hasChildren = node.hasChildren ? 'true' : 'false';
           const ul = document.createElement('ul');
           ul.classList.add('list-unstyled', 'ps-3');
           ul.style.display = 'none';
-          if (node.children?.length) {
-            build(node.children, ul);
-          }
           li.appendChild(ul);
-
-          span.addEventListener('click', () => {
-            const isOpen = ul.style.display !== 'none';
-            ul.style.display = isOpen ? 'none' : '';
-            chevron.innerHTML = isOpen
-              ? '<i class="fa fa-chevron-right"></i>'
-              : '<i class="fa fa-chevron-down"></i>';
-            icon.innerHTML = isOpen
-              ? '<i class="fa fa-folder"></i>'
-              : '<i class="fa fa-folder-open"></i>';
-          });
+          this.directoryMap.set(node.path, ul);
         } else {
           li.classList.add('file');
           li.dataset.path = node.path;
-          span.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.openFileFromPath(node.path);
-          });
         }
-        parent.appendChild(li);
+        fragment.appendChild(li);
       });
+      parentEl.appendChild(fragment);
     };
 
-    build(tree, dom.filetree);
+    build(tree, parent);
   }
+
+  /**
+   * Handle file tree click events.
+   *
+   * @param e - the click event
+   * @returns
+   */
+  private handleFileTreeClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const span = target.closest('span.file-name');
+    if (!span) {
+      return;
+    }
+
+    const li = span.parentElement as HTMLElement;
+    if (!li) {
+      return;
+    }
+
+    if (li.classList.contains('directory')) {
+      const ul = li.querySelector(':scope > ul') as HTMLElement | null;
+      if (!ul) {
+        return;
+      }
+
+      const chevron = span.firstElementChild as HTMLElement;
+      const icon = chevron?.nextElementSibling as HTMLElement;
+      const isOpen = ul.style.display !== 'none';
+
+      if (isOpen) {
+        ul.style.display = 'none';
+        chevron.innerHTML = '<i class="fa fa-chevron-right"></i>';
+        icon.innerHTML = '<i class="fa fa-folder"></i>';
+      } else {
+        ul.style.display = '';
+        chevron.innerHTML = '<i class="fa fa-chevron-down"></i>';
+        icon.innerHTML = '<i class="fa fa-folder-open"></i>';
+        if (
+          !ul.dataset.loaded &&
+          li.dataset.hasChildren === 'true' &&
+          li.dataset.path
+        ) {
+          this.bridge.send('to:file:openpath', { path: li.dataset.path });
+        }
+      }
+    } else if (li.classList.contains('file') && li.dataset.path) {
+      e.preventDefault();
+      this.openFileFromPath(li.dataset.path);
+    }
+  };
 
   private addFileToTree(path: string) {
     if (!dom.filetree || !this.treeRoot) {
@@ -494,28 +573,26 @@ export class Bridge {
     const rootSegments = this.treeRoot.split(/[/\\]/);
     const rel = segments.slice(rootSegments.length);
 
-    let parentUl: HTMLElement = dom.filetree;
     let currentPath = this.treeRoot;
+    let parentUl = this.directoryMap.get(currentPath) || dom.filetree;
+    if (!parentUl) {
+      return;
+    }
 
     for (let i = 0; i < rel.length - 1; i++) {
       const dir = rel[i];
       currentPath += sep + dir;
-      const dirLi = Array.from(
-        parentUl.querySelectorAll(':scope > li.directory'),
-      ).find((el) => (el as HTMLElement).dataset.path === currentPath) as
-        | HTMLElement
-        | undefined;
-      if (!dirLi) {
+
+      const ul = this.directoryMap.get(currentPath);
+      if (!ul) {
         return;
       }
-      const span = dirLi.querySelector(
-        ':scope > span.file-name',
-      ) as HTMLElement;
-      const ul = dirLi.querySelector(':scope > ul') as HTMLElement;
-      if (!ul) return;
+
       if (ul.style.display === 'none') {
-        span.dispatchEvent(new Event('click'));
+        const span = ul.previousElementSibling as HTMLElement;
+        span?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       }
+
       parentUl = ul;
     }
 
@@ -547,11 +624,6 @@ export class Bridge {
     icon.innerHTML = '<i class="fa fa-file"></i>';
     span.appendChild(icon);
     span.append(fileName);
-
-    span.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.openFileFromPath(path);
-    });
 
     li.appendChild(span);
 
@@ -593,21 +665,17 @@ export class Bridge {
       });
     }
 
-    this.bridge.send('to:file:openpath', path);
+    this.bridge.send('to:file:openpath', { path });
   }
 
   /**
    * Track the editor state between both exection contexts.
    *
-   * @param original - the original loaded state of the editor
-   * @param current  - the current state of the editor
+   * @param hasChanged - whether the editor content has changed
    */
-  public trackEditorStateBetweenExecutionContext(
-    original: string,
-    current: string,
-  ) {
-    this.bridge.send('to:editor:state', { original, current });
-    this.contentHasChanged = original !== current;
+  public trackEditorStateBetweenExecutionContext(hasChanged: boolean) {
+    this.bridge.send('to:editor:state', hasChanged);
+    this.contentHasChanged = hasChanged;
   }
 
   /**

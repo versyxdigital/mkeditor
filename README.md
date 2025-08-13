@@ -4,9 +4,9 @@ The simple markdown editor.
 
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
-| Windows     | v3.0.1  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v3.0.1/mkeditor-setup-v3.0.1-x86_64.zip) |
-| MacOS       | v3.0.1  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v3.0.1/mkeditor-setup-v3.0.1_x86_64.pkg) |
-| Linux       | v2.6.1  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v2.6.1/mkeditor-setup-v2.6.1_amd64.deb)  |
+| Windows     | v3.1.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v3.1.0/mkeditor-setup-v3.1.0-x86_64.zip) |
+| MacOS       | v3.1.0  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v3.1.0/mkeditor-setup-v3.1.0_x86_64.pkg) |
+| Linux       | v3.1.0  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v3.1.0/mkeditor-setup-v3.1.0_amd64.deb)  |
 
 Use it through your [browser](https://versyxdigital.github.io/mkeditor/web/) or download for desktop. More documentation is available at the [website](https://versyxdigital.github.io/mkeditor).
 
@@ -55,4 +55,4 @@ MKEditor also includes a built-in, resizable preview renderer and support for ex
 
 Customize your settings, switch between light mode and dark mode, write some documents and have fun!
 
-Built with ❤️ by [Versyx Digital](https://versyx.dev)
+Built with ❤️ by [Versyx Digital](https://github.com/versyxdigital)
