@@ -38,6 +38,9 @@ export class Bridge {
   /** Flag to indicate that a file is being opened */
   private openingFile = false;
 
+  /** Flag to indicate a new root folder is being opened */
+  private openingFolder = false;
+
   /** Root path for the current file tree */
   private treeRoot: string | null = null;
 
@@ -138,12 +141,20 @@ export class Bridge {
 
     // Handle opening folders and constructing file tree
     this.bridge.receive('from:folder:open', (channel: string) => {
+      this.openingFolder = true;
       this.bridge.send(channel, true);
     });
 
     this.bridge.receive('from:folder:opened', ({ tree, path }) => {
-      this.treeRoot = path;
-      this.buildFileTree(tree);
+      if (
+        this.openingFolder ||
+        !this.treeRoot ||
+        !path.startsWith(this.treeRoot)
+      ) {
+        this.treeRoot = path;
+        this.openingFolder = false;
+      }
+      this.buildFileTree(tree, path);
     });
 
     // Enable opening files from outside of the renderer execution context.
@@ -403,13 +414,32 @@ export class Bridge {
     this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
   }
 
-  private buildFileTree(tree: any[]) {
+  private buildFileTree(tree: any[], parentPath: string) {
     if (!dom.filetree) {
       return;
     }
 
-    dom.filetree.innerHTML = '';
-    const build = (nodes: any[], parent: HTMLElement) => {
+    let parent: HTMLElement;
+    if (!this.treeRoot || parentPath === this.treeRoot) {
+      dom.filetree.innerHTML = '';
+      parent = dom.filetree;
+    } else {
+      const selector = `li.directory[data-path="${CSS.escape(parentPath)}"]`;
+      const li = dom.filetree.querySelector(selector) as HTMLElement | null;
+      if (!li) {
+        return;
+      }
+
+      const ul = li.querySelector(':scope > ul') as HTMLElement | null;
+      if (!ul) {
+        return;
+      }
+      ul.innerHTML = '';
+      ul.dataset.loaded = 'true';
+      parent = ul;
+    }
+
+    const build = (nodes: any[], parentEl: HTMLElement) => {
       const sorted = [...nodes].sort((a, b) => {
         if (a.type === b.type) {
           return a.name.localeCompare(b.name, undefined, {
@@ -428,7 +458,7 @@ export class Bridge {
         const chevron = document.createElement('span');
         chevron.classList.add('me-1');
         chevron.innerHTML = '<i class="fa fa-chevron-right"></i>';
-        if (node.type !== 'directory') {
+        if (node.type !== 'directory' || !node.hasChildren) {
           chevron.firstElementChild?.classList.add('invisible');
         }
         chevron.style.display = 'inline-block';
@@ -450,20 +480,22 @@ export class Bridge {
           const ul = document.createElement('ul');
           ul.classList.add('list-unstyled', 'ps-3');
           ul.style.display = 'none';
-          if (node.children?.length) {
-            build(node.children, ul);
-          }
           li.appendChild(ul);
 
           span.addEventListener('click', () => {
             const isOpen = ul.style.display !== 'none';
-            ul.style.display = isOpen ? 'none' : '';
-            chevron.innerHTML = isOpen
-              ? '<i class="fa fa-chevron-right"></i>'
-              : '<i class="fa fa-chevron-down"></i>';
-            icon.innerHTML = isOpen
-              ? '<i class="fa fa-folder"></i>'
-              : '<i class="fa fa-folder-open"></i>';
+            if (isOpen) {
+              ul.style.display = 'none';
+              chevron.innerHTML = '<i class="fa fa-chevron-right"></i>';
+              icon.innerHTML = '<i class="fa fa-folder"></i>';
+            } else {
+              ul.style.display = '';
+              chevron.innerHTML = '<i class="fa fa-chevron-down"></i>';
+              icon.innerHTML = '<i class="fa fa-folder-open"></i>';
+              if (!ul.dataset.loaded && node.hasChildren) {
+                this.bridge.send('to:file:openpath', { path: node.path });
+              }
+            }
           });
         } else {
           li.classList.add('file');
@@ -473,11 +505,11 @@ export class Bridge {
             this.openFileFromPath(node.path);
           });
         }
-        parent.appendChild(li);
+        parentEl.appendChild(li);
       });
     };
 
-    build(tree, dom.filetree);
+    build(tree, parent);
   }
 
   private addFileToTree(path: string) {
@@ -593,7 +625,7 @@ export class Bridge {
       });
     }
 
-    this.bridge.send('to:file:openpath', path);
+    this.bridge.send('to:file:openpath', { path });
   }
 
   /**
