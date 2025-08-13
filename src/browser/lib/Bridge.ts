@@ -44,6 +44,9 @@ export class Bridge {
   /** Root path for the current file tree */
   private treeRoot: string | null = null;
 
+  /** Flag to track file tree listener registration */
+  private fileTreeListenerRegistered = false;
+
   /** Providers to be accessed through bridge */
   public providers: BridgeProviders = {
     settings: null,
@@ -416,6 +419,11 @@ export class Bridge {
       return;
     }
 
+    if (!this.fileTreeListenerRegistered) {
+      dom.filetree.addEventListener('click', this.handleFileTreeClick);
+      this.fileTreeListenerRegistered = true;
+    }
+
     let parent: HTMLElement;
     if (!this.treeRoot || parentPath === this.treeRoot) {
       dom.filetree.innerHTML = '';
@@ -445,6 +453,7 @@ export class Bridge {
         }
         return a.type === 'directory' ? -1 : 1;
       });
+      const fragment = document.createDocumentFragment();
       sorted.forEach((node) => {
         const li = document.createElement('li');
         li.classList.add('ft-node', node.type);
@@ -474,40 +483,72 @@ export class Bridge {
 
         if (node.type === 'directory') {
           li.dataset.path = node.path;
+          li.dataset.hasChildren = node.hasChildren ? 'true' : 'false';
           const ul = document.createElement('ul');
           ul.classList.add('list-unstyled', 'ps-3');
           ul.style.display = 'none';
           li.appendChild(ul);
-
-          span.addEventListener('click', () => {
-            const isOpen = ul.style.display !== 'none';
-            if (isOpen) {
-              ul.style.display = 'none';
-              chevron.innerHTML = '<i class="fa fa-chevron-right"></i>';
-              icon.innerHTML = '<i class="fa fa-folder"></i>';
-            } else {
-              ul.style.display = '';
-              chevron.innerHTML = '<i class="fa fa-chevron-down"></i>';
-              icon.innerHTML = '<i class="fa fa-folder-open"></i>';
-              if (!ul.dataset.loaded && node.hasChildren) {
-                this.bridge.send('to:file:openpath', { path: node.path });
-              }
-            }
-          });
         } else {
           li.classList.add('file');
           li.dataset.path = node.path;
-          span.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.openFileFromPath(node.path);
-          });
         }
-        parentEl.appendChild(li);
+        fragment.appendChild(li);
       });
+      parentEl.appendChild(fragment);
     };
 
     build(tree, parent);
   }
+
+  /**
+   * Handle file tree click events.
+   *
+   * @param e - the click event
+   * @returns
+   */
+  private handleFileTreeClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const span = target.closest('span.file-name');
+    if (!span) {
+      return;
+    }
+
+    const li = span.parentElement as HTMLElement;
+    if (!li) {
+      return;
+    }
+
+    if (li.classList.contains('directory')) {
+      const ul = li.querySelector(':scope > ul') as HTMLElement | null;
+      if (!ul) {
+        return;
+      }
+
+      const chevron = span.firstElementChild as HTMLElement;
+      const icon = chevron?.nextElementSibling as HTMLElement;
+      const isOpen = ul.style.display !== 'none';
+
+      if (isOpen) {
+        ul.style.display = 'none';
+        chevron.innerHTML = '<i class="fa fa-chevron-right"></i>';
+        icon.innerHTML = '<i class="fa fa-folder"></i>';
+      } else {
+        ul.style.display = '';
+        chevron.innerHTML = '<i class="fa fa-chevron-down"></i>';
+        icon.innerHTML = '<i class="fa fa-folder-open"></i>';
+        if (
+          !ul.dataset.loaded &&
+          li.dataset.hasChildren === 'true' &&
+          li.dataset.path
+        ) {
+          this.bridge.send('to:file:openpath', { path: li.dataset.path });
+        }
+      }
+    } else if (li.classList.contains('file') && li.dataset.path) {
+      e.preventDefault();
+      this.openFileFromPath(li.dataset.path);
+    }
+  };
 
   private addFileToTree(path: string) {
     if (!dom.filetree || !this.treeRoot) {
@@ -543,7 +584,7 @@ export class Bridge {
       const ul = dirLi.querySelector(':scope > ul') as HTMLElement;
       if (!ul) return;
       if (ul.style.display === 'none') {
-        span.dispatchEvent(new Event('click'));
+        span.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       }
       parentUl = ul;
     }
@@ -576,11 +617,6 @@ export class Bridge {
     icon.innerHTML = '<i class="fa fa-file"></i>';
     span.appendChild(icon);
     span.append(fileName);
-
-    span.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.openFileFromPath(path);
-    });
 
     li.appendChild(span);
 
