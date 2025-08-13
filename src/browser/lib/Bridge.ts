@@ -32,6 +32,9 @@ export class Bridge {
   /** Map of tab elements */
   private tabs: Map<string, HTMLAnchorElement> = new Map();
 
+  /** Map of directory <ul> elements */
+  private directoryMap: Map<string, HTMLElement> = new Map();
+
   /** counter for untitled files */
   private untitledCounter = 1;
 
@@ -43,6 +46,9 @@ export class Bridge {
 
   /** Root path for the current file tree */
   private treeRoot: string | null = null;
+
+  /** Flag to track file tree listener registration */
+  private fileTreeListenerRegistered = false;
 
   /** Providers to be accessed through bridge */
   public providers: BridgeProviders = {
@@ -416,24 +422,34 @@ export class Bridge {
       return;
     }
 
+    if (!this.fileTreeListenerRegistered) {
+      dom.filetree.addEventListener('click', this.handleFileTreeClick);
+      this.fileTreeListenerRegistered = true;
+    }
+
     let parent: HTMLElement;
     if (!this.treeRoot || parentPath === this.treeRoot) {
       dom.filetree.innerHTML = '';
       parent = dom.filetree;
+      this.directoryMap.clear();
+      this.directoryMap.set(parentPath, dom.filetree);
     } else {
-      const selector = `li.directory[data-path="${CSS.escape(parentPath)}"]`;
-      const li = dom.filetree.querySelector(selector) as HTMLElement | null;
-      if (!li) {
-        return;
-      }
-
-      const ul = li.querySelector(':scope > ul') as HTMLElement | null;
+      const ul = this.directoryMap.get(parentPath);
       if (!ul) {
         return;
       }
       ul.innerHTML = '';
       ul.dataset.loaded = 'true';
       parent = ul;
+
+      const li = ul.parentElement as HTMLElement | null;
+      if (tree.length === 0 && li) {
+        li.dataset.hasChildren = 'false';
+        const chevron = li.querySelector(
+          ':scope > span.file-name > span:first-child',
+        );
+        chevron?.firstElementChild?.classList.add('invisible');
+      }
     }
 
     const build = (nodes: any[], parentEl: HTMLElement) => {
@@ -445,6 +461,7 @@ export class Bridge {
         }
         return a.type === 'directory' ? -1 : 1;
       });
+      const fragment = document.createDocumentFragment();
       sorted.forEach((node) => {
         const li = document.createElement('li');
         li.classList.add('ft-node', node.type);
@@ -474,40 +491,73 @@ export class Bridge {
 
         if (node.type === 'directory') {
           li.dataset.path = node.path;
+          li.dataset.hasChildren = node.hasChildren ? 'true' : 'false';
           const ul = document.createElement('ul');
           ul.classList.add('list-unstyled', 'ps-3');
           ul.style.display = 'none';
           li.appendChild(ul);
-
-          span.addEventListener('click', () => {
-            const isOpen = ul.style.display !== 'none';
-            if (isOpen) {
-              ul.style.display = 'none';
-              chevron.innerHTML = '<i class="fa fa-chevron-right"></i>';
-              icon.innerHTML = '<i class="fa fa-folder"></i>';
-            } else {
-              ul.style.display = '';
-              chevron.innerHTML = '<i class="fa fa-chevron-down"></i>';
-              icon.innerHTML = '<i class="fa fa-folder-open"></i>';
-              if (!ul.dataset.loaded && node.hasChildren) {
-                this.bridge.send('to:file:openpath', { path: node.path });
-              }
-            }
-          });
+          this.directoryMap.set(node.path, ul);
         } else {
           li.classList.add('file');
           li.dataset.path = node.path;
-          span.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.openFileFromPath(node.path);
-          });
         }
-        parentEl.appendChild(li);
+        fragment.appendChild(li);
       });
+      parentEl.appendChild(fragment);
     };
 
     build(tree, parent);
   }
+
+  /**
+   * Handle file tree click events.
+   *
+   * @param e - the click event
+   * @returns
+   */
+  private handleFileTreeClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const span = target.closest('span.file-name');
+    if (!span) {
+      return;
+    }
+
+    const li = span.parentElement as HTMLElement;
+    if (!li) {
+      return;
+    }
+
+    if (li.classList.contains('directory')) {
+      const ul = li.querySelector(':scope > ul') as HTMLElement | null;
+      if (!ul) {
+        return;
+      }
+
+      const chevron = span.firstElementChild as HTMLElement;
+      const icon = chevron?.nextElementSibling as HTMLElement;
+      const isOpen = ul.style.display !== 'none';
+
+      if (isOpen) {
+        ul.style.display = 'none';
+        chevron.innerHTML = '<i class="fa fa-chevron-right"></i>';
+        icon.innerHTML = '<i class="fa fa-folder"></i>';
+      } else {
+        ul.style.display = '';
+        chevron.innerHTML = '<i class="fa fa-chevron-down"></i>';
+        icon.innerHTML = '<i class="fa fa-folder-open"></i>';
+        if (
+          !ul.dataset.loaded &&
+          li.dataset.hasChildren === 'true' &&
+          li.dataset.path
+        ) {
+          this.bridge.send('to:file:openpath', { path: li.dataset.path });
+        }
+      }
+    } else if (li.classList.contains('file') && li.dataset.path) {
+      e.preventDefault();
+      this.openFileFromPath(li.dataset.path);
+    }
+  };
 
   private addFileToTree(path: string) {
     if (!dom.filetree || !this.treeRoot) {
@@ -523,28 +573,26 @@ export class Bridge {
     const rootSegments = this.treeRoot.split(/[/\\]/);
     const rel = segments.slice(rootSegments.length);
 
-    let parentUl: HTMLElement = dom.filetree;
     let currentPath = this.treeRoot;
+    let parentUl = this.directoryMap.get(currentPath) || dom.filetree;
+    if (!parentUl) {
+      return;
+    }
 
     for (let i = 0; i < rel.length - 1; i++) {
       const dir = rel[i];
       currentPath += sep + dir;
-      const dirLi = Array.from(
-        parentUl.querySelectorAll(':scope > li.directory'),
-      ).find((el) => (el as HTMLElement).dataset.path === currentPath) as
-        | HTMLElement
-        | undefined;
-      if (!dirLi) {
+
+      const ul = this.directoryMap.get(currentPath);
+      if (!ul) {
         return;
       }
-      const span = dirLi.querySelector(
-        ':scope > span.file-name',
-      ) as HTMLElement;
-      const ul = dirLi.querySelector(':scope > ul') as HTMLElement;
-      if (!ul) return;
+
       if (ul.style.display === 'none') {
-        span.dispatchEvent(new Event('click'));
+        const span = ul.previousElementSibling as HTMLElement;
+        span?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       }
+
       parentUl = ul;
     }
 
@@ -576,11 +624,6 @@ export class Bridge {
     icon.innerHTML = '<i class="fa fa-file"></i>';
     span.appendChild(icon);
     span.append(fileName);
-
-    span.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.openFileFromPath(path);
-    });
 
     li.appendChild(span);
 

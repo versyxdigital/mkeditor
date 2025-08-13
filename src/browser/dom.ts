@@ -154,6 +154,7 @@ export function createDraggableSplitPanels(
   model: editor.IStandaloneCodeEditor,
 ) {
   Split(['#editor-split', '#preview-split'], {
+    minSize: 0,
     onDrag() {
       model.layout();
     },
