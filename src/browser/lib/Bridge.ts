@@ -442,6 +442,14 @@ export class Bridge {
       ul.innerHTML = '';
       ul.dataset.loaded = 'true';
       parent = ul;
+
+      if (tree.length === 0) {
+        li.dataset.hasChildren = 'false';
+        const chevron = li.querySelector(
+          ':scope > span.file-name > span:first-child',
+        );
+        chevron?.firstElementChild?.classList.add('invisible');
+      }
     }
 
     const build = (nodes: any[], parentEl: HTMLElement) => {

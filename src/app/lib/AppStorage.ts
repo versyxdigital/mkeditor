@@ -192,15 +192,11 @@ export class AppStorage {
       filtered.map(async (entry) => {
         const full = join(dir, entry.name);
         if (entry.isDirectory()) {
-          const childEntries = await fs.readdir(full, { withFileTypes: true });
-          const hasChildren = childEntries.some(
-            (d) => d.isDirectory() || d.name.endsWith('.md'),
-          );
           return {
             type: 'directory',
             name: entry.name,
             path: full,
-            hasChildren,
+            hasChildren: true,
           };
         }
 
