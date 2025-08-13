@@ -9,6 +9,14 @@ import { Exporter } from './Exporter';
 import { APP_VERSION } from '../version';
 import { dom } from '../dom';
 
+const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
+  let timeout: number | undefined;
+  return (...args: Parameters<F>) => {
+    window.clearTimeout(timeout);
+    timeout = window.setTimeout(() => fn(...args), wait);
+  };
+};
+
 export class Editor {
   /** Execution mode */
   private mode: 'web' | 'desktop' = 'web';
@@ -146,16 +154,11 @@ export class Editor {
       return false;
     }
 
-    if (initialize) {
-      this.providers.bridge.trackEditorStateBetweenExecutionContext('', '');
-    } else {
-      this.providers.bridge.trackEditorStateBetweenExecutionContext(
-        // The initial editor content
-        <string>this.loadedInitialEditorValue,
-        // The current editor content
-        <string>this.model?.getValue(),
-      );
-    }
+    const hasChanged = initialize
+      ? false
+      : this.loadedInitialEditorValue !== this.model?.getValue();
+
+    this.providers.bridge.trackEditorStateBetweenExecutionContext(hasChanged);
   }
 
   /**
@@ -173,12 +176,17 @@ export class Editor {
    * Watch and re-render the editor for changes.
    */
   public watch() {
+    const debouncedUpdateBridgedContent = debounce(
+      () => this.updateBridgedContent(),
+      250,
+    );
+
     // When the editor content changes, update the main process through the IPC handler
     // so that it can do things such as set the title notifying the user of unsaved changes,
     // prompt the user to save if they try to close the app or open a new file, etc.
     this.model?.onDidChangeModelContent((event) => {
       // Update the tracked content over the execution bridge.
-      this.updateBridgedContent();
+      debouncedUpdateBridgedContent();
 
       // Register dynamic completions provider to provide completion suggestions based on
       // user input.

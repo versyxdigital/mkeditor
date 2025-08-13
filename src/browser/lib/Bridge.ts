@@ -383,14 +383,11 @@ export class Bridge {
     const filename = name || path.split(/[\\/]/).pop() || '';
     dom.meta.file.active.innerText = filename;
 
-    this.dispatcher.setTrackedContent({
-      content: this.originals.get(path) ?? '',
-    });
+    const original = this.originals.get(path) ?? '';
+    const current = this.model.getValue();
 
-    this.trackEditorStateBetweenExecutionContext(
-      this.originals.get(path) ?? '',
-      this.model.getValue(),
-    );
+    this.dispatcher.setTrackedContent({ content: original });
+    this.trackEditorStateBetweenExecutionContext(original !== current);
 
     this.tabs.forEach((tab, p) => {
       const li = tab.parentElement as HTMLElement;
@@ -631,15 +628,11 @@ export class Bridge {
   /**
    * Track the editor state between both exection contexts.
    *
-   * @param original - the original loaded state of the editor
-   * @param current  - the current state of the editor
+   * @param hasChanged - whether the editor content has changed
    */
-  public trackEditorStateBetweenExecutionContext(
-    original: string,
-    current: string,
-  ) {
-    this.bridge.send('to:editor:state', { original, current });
-    this.contentHasChanged = original !== current;
+  public trackEditorStateBetweenExecutionContext(hasChanged: boolean) {
+    this.bridge.send('to:editor:state', hasChanged);
+    this.contentHasChanged = hasChanged;
   }
 
   /**
