@@ -10,10 +10,16 @@ import { APP_VERSION } from '../version';
 import { dom } from '../dom';
 
 const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
-  let timeout: number | undefined;
+  let timeout: number | null = null;
   return (...args: Parameters<F>) => {
-    window.clearTimeout(timeout);
-    timeout = window.setTimeout(() => fn(...args), wait);
+    if (timeout) {
+      window.clearTimeout(timeout);
+    }
+
+    timeout = window.setTimeout(() => {
+      timeout = null;
+      fn(...args);
+    }, wait);
   };
 };
 
