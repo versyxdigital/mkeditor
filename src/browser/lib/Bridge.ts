@@ -518,7 +518,7 @@ export class Bridge {
    * @returns
    */
   private buildFileTree(tree: any[], parentPath: string) {
-    if (!dom.filetree) {
+    if (!dom.filetree || !Array.isArray(tree)) {
       return;
     }
 
@@ -553,7 +553,18 @@ export class Bridge {
     }
 
     const build = (nodes: any[], parentEl: HTMLElement) => {
-      const sorted = [...nodes].sort((a, b) => {
+      const validNodes = nodes.filter((n) => {
+        if (
+          n &&
+          (n.type === 'directory' || n.type === 'file') &&
+          typeof n.name == 'string' &&
+          typeof n.path === 'string'
+        ) {
+          return n;
+        }
+      });
+
+      const sorted = [...validNodes].sort((a, b) => {
         if (a.type === b.type) {
           return a.name.localeCompare(b.name, undefined, {
             sensitivity: 'base',
@@ -561,6 +572,7 @@ export class Bridge {
         }
         return a.type === 'directory' ? -1 : 1;
       });
+
       const fragment = document.createDocumentFragment();
       sorted.forEach((node) => {
         const li = document.createElement('li');
