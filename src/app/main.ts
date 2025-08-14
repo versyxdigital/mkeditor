@@ -6,6 +6,7 @@ import {
   shell,
   Tray,
 } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import { join } from 'path';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
@@ -14,6 +15,56 @@ import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
 
 let context: BrowserWindow | null;
+let updaterInitialized = false;
+
+function notify(status: 'info' | 'success' | 'error', message: string) {
+  if (context && !context.isDestroyed()) {
+    context.webContents.send('from:notification:display', { status, message });
+  }
+}
+
+function initAutoUpdaterOnce() {
+  if (updaterInitialized) return;
+  updaterInitialized = true;
+
+  // Silent background download; install when user quits
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  // Event wiring
+  autoUpdater.on('checking-for-update', () => {
+    notify('info', 'Checking for updates…');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    notify(
+      'info',
+      `Update ${info.version} found. Downloading in the background…`,
+    );
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    notify('success', `You’re on the latest version (${app.getVersion()}).`);
+  });
+
+  autoUpdater.on('download-progress', (p) => {
+    const pct = Math.round(p.percent);
+    if (pct > 0 && pct < 100) notify('info', `Downloading update… ${pct}%`);
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    notify(
+      'success',
+      `Update ${info.version} is ready. It will install when you exit.`,
+    );
+    // If you ever want immediate install:
+    // autoUpdater.quitAndInstall();
+  });
+
+  autoUpdater.on('error', (err) => {
+    notify('error', `Updater error: ${err?.message || 'Unknown error'}`);
+  });
+}
 
 function main(file: string | null = null) {
   context = new BrowserWindow({
@@ -43,6 +94,9 @@ function main(file: string | null = null) {
   tray.setContextMenu(menu.buildTrayContextMenu(context));
   tray.setToolTip('MKEditor');
   tray.setTitle('MKEditor');
+
+  initAutoUpdaterOnce();
+  autoUpdater.checkForUpdates().catch(() => {});
 
   context.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
