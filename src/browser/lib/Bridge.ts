@@ -78,6 +78,25 @@ export class Bridge {
 
     this.register();
 
+    dom.tabs?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!dom.tabs) {
+        return;
+      }
+      const after = this.getDragAfterElement(dom.tabs, e.clientX);
+      const dragging = dom.tabs.querySelector(
+        'li.dragging',
+      ) as HTMLLIElement | null;
+      if (!dragging) {
+        return;
+      }
+      if (after == null) {
+        dom.tabs.appendChild(dragging);
+      } else {
+        dom.tabs.insertBefore(dragging, after);
+      }
+    });
+
     this.dispatcher.addEventListener('editor:bridge:settings', (event) => {
       this.saveSettingsToFile(event.message);
     });
@@ -290,11 +309,20 @@ export class Bridge {
     this.bridge.send('to:html:export', { content });
   }
 
+  /**
+   * Add a new tab for a file.
+   *
+   * @param name - the file name
+   * @param path - the path of the file
+   */
   private addTab(name: string, path: string) {
     const li = document.createElement('li');
+    li.draggable = true;
+    li.dataset.path = path;
     const a = document.createElement('a');
     a.href = '#';
     a.textContent = name;
+    a.draggable = false;
     a.addEventListener('click', (e) => {
       e.preventDefault();
       this.activateFile(path);
@@ -304,10 +332,20 @@ export class Bridge {
     close.type = 'button';
     close.classList.add('tab-close');
     close.innerHTML = '&times;';
+    close.draggable = false;
     close.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
       await this.closeTab(path);
+    });
+
+    li.addEventListener('dragstart', () => {
+      li.classList.add('dragging');
+    });
+
+    li.addEventListener('dragend', () => {
+      li.classList.remove('dragging');
+      this.syncTabOrder();
     });
 
     li.appendChild(a);
@@ -316,6 +354,12 @@ export class Bridge {
     this.tabs.set(path, a);
   }
 
+  /**
+   * Close a file tree tab.
+   *
+   * @param path - the path of the file to close.
+   * @returns
+   */
   private async closeTab(path: string) {
     const mdl = this.models.get(path);
     if (!mdl) return;
@@ -378,6 +422,55 @@ export class Bridge {
     }
   }
 
+  /**
+   * Synchronize the order of file tabs.
+   *
+   * @returns
+   */
+  private syncTabOrder() {
+    if (!dom.tabs) return;
+    const newMap: Map<string, HTMLAnchorElement> = new Map();
+    dom.tabs.querySelectorAll('li').forEach((li) => {
+      const path = (li as HTMLLIElement).dataset.path;
+      if (!path) return;
+      const anchor = this.tabs.get(path);
+      if (anchor) newMap.set(path, anchor);
+    });
+    this.tabs = newMap;
+  }
+
+  /**
+   * Get the next element from the drag.
+   *
+   * @param container - the tabs container
+   * @param x - the next tab offset
+   * @returns
+   */
+  private getDragAfterElement(container: HTMLElement, x: number) {
+    const elements = Array.from(
+      container.querySelectorAll('li:not(.dragging)'),
+    ) as HTMLElement[];
+    let closest: { offset: number; element: HTMLElement | null } = {
+      offset: Number.NEGATIVE_INFINITY,
+      element: null,
+    };
+    for (const child of elements) {
+      const box = child.getBoundingClientRect();
+      const offset = x - box.left - box.width / 2;
+      if (offset < 0 && offset > closest.offset) {
+        closest = { offset, element: child };
+      }
+    }
+    return closest.element;
+  }
+
+  /**
+   * Activate a file after opening.
+   *
+   * @param path - the path of the file to activate
+   * @param name - the file name
+   * @returns
+   */
   private activateFile(path: string, name?: string) {
     const mdl = this.models.get(path);
     if (!mdl) {
@@ -417,6 +510,13 @@ export class Bridge {
     this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
   }
 
+  /**
+   * Build the file explorer tree.
+   *
+   * @param tree - build the file tree
+   * @param parentPath - recursive parent path
+   * @returns
+   */
   private buildFileTree(tree: any[], parentPath: string) {
     if (!dom.filetree) {
       return;
@@ -559,6 +659,12 @@ export class Bridge {
     }
   };
 
+  /**
+   * Add a file to the file explorer tree.
+   *
+   * @param path - the path of the file
+   * @returns
+   */
   private addFileToTree(path: string) {
     if (!dom.filetree || !this.treeRoot) {
       return;
