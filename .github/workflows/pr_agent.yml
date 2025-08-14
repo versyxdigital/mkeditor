@@ -19,5 +19,6 @@ jobs:
         env:
           OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          config.enable_ai_metadata: "true"
           config.model: "openai/gpt-5-2025-08-07"
           config.fallback_models: '["openai/o4-mini"]'
