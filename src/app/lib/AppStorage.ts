@@ -207,6 +207,10 @@ export class AppStorage {
 
   static async openPath(context: BrowserWindow, filePath: string) {
     try {
+      if (!filePath || typeof filePath !== 'string') {
+        throw new Error('invalidpath');
+      }
+
       const stats = await fs.stat(filePath);
       if (stats.isDirectory()) {
         const tree = await AppStorage.readDirectory(filePath);
@@ -214,13 +218,23 @@ export class AppStorage {
           path: filePath,
           tree,
         });
-      } else {
+      } else if (stats.isFile()) {
         AppStorage.setActiveFile(context, filePath);
+      } else {
+        throw new Error('unsupported');
       }
     } catch (err) {
+      const code = (err as any)?.code || (err as Error).message;
+      const message =
+        code == 'EOENT' || code == 'invalidpath'
+          ? 'The path does not exist.'
+          : code == 'EACCESS'
+            ? 'Permission denied, cannot open path.'
+            : 'Unable to open path.';
+
       context.webContents.send('from:notification:display', {
         status: 'error',
-        message: 'Unable to open path.',
+        message,
       });
     }
   }

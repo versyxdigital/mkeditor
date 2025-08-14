@@ -98,13 +98,20 @@ export class AppBridge {
             encoding: 'utf-8',
             openFile,
           }).then(() => {
-            if (openPath) AppStorage.openPath(this.context, openPath);
-            else if (fromOpen) AppStorage.open(this.context);
+            if (openPath) {
+              AppStorage.openPath(this.context, openPath);
+            } else if (fromOpen) {
+              AppStorage.open(this.context);
+            }
+
             this.resetContextBridgedContent();
           });
         } else {
-          if (openPath) AppStorage.openPath(this.context, openPath);
-          else if (fromOpen) AppStorage.open(this.context);
+          if (openPath) {
+            AppStorage.openPath(this.context, openPath);
+          } else if (fromOpen) {
+            AppStorage.open(this.context);
+          }
         }
       },
     );
