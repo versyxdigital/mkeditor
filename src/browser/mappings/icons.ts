@@ -1,4 +1,5 @@
 import { dom, library } from '@fortawesome/fontawesome-svg-core';
+import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faBold } from '@fortawesome/free-solid-svg-icons/faBold';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons/faChevronDown';
@@ -26,6 +27,7 @@ import { faTasks } from '@fortawesome/free-solid-svg-icons/faTasks';
 import { faTerminal } from '@fortawesome/free-solid-svg-icons/faTerminal';
 
 library.add(
+  faBars,
   faBold,
   faCheck,
   faChevronDown,

@@ -10,6 +10,7 @@ import {
   showSplashScreen,
   setupTooltips,
   createDraggableSplitPanels,
+  createSidebarToggle,
 } from './dom';
 import { getExecutionBridge } from './util';
 
@@ -69,6 +70,9 @@ if (model) {
 
   // Implement draggable split.
   createDraggableSplitPanels(model);
+
+  // Implement sidebar toggle.
+  createSidebarToggle(model);
 
   // Display splash screen
   showSplashScreen({
