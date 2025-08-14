@@ -1,3 +1,5 @@
+[![Tests](https://github.com/versyxdigital/mkeditor/actions/workflows/tests.yml/badge.svg)](https://github.com/versyxdigital/mkeditor/actions/workflows/tests.yml)
+
 # MKEditor
 
 The simple markdown editor.
