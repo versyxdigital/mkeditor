@@ -32,6 +32,7 @@ export const dom = {
     darkmode: <HTMLLabelElement>document.querySelector('#darkmode-icon'),
   },
   buttons: {
+    sidebar: <HTMLButtonElement>document.querySelector('#sidebar-toggle'),
     save: {
       settings: <HTMLButtonElement>document.querySelector('#app-settings-save'),
       markdown: <HTMLButtonElement>document.querySelector('#app-markdown-save'),
@@ -154,6 +155,7 @@ export function createDraggableSplitPanels(
   model: editor.IStandaloneCodeEditor,
 ) {
   Split(['#editor-split', '#preview-split'], {
+    minSize: 0,
     onDrag() {
       model.layout();
     },
@@ -172,5 +174,25 @@ export function createDraggableSplitPanels(
     onDrag() {
       model.layout();
     },
+  });
+}
+
+// Toggle sidebar visibility.
+export function createSidebarToggle(model: editor.IStandaloneCodeEditor) {
+  const sidebarGutter = document.querySelector(
+    '.gutter.sidebar-gutter-horizontal',
+  ) as HTMLDivElement | null;
+
+  dom.buttons.sidebar?.addEventListener('click', () => {
+    const hidden = dom.sidebar.style.display === 'none';
+    if (hidden) {
+      dom.sidebar.style.display = '';
+      if (sidebarGutter) sidebarGutter.style.display = '';
+    } else {
+      dom.sidebar.style.display = 'none';
+      if (sidebarGutter) sidebarGutter.style.display = 'none';
+    }
+
+    model.layout();
   });
 }

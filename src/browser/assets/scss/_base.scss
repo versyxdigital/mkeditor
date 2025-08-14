@@ -16,3 +16,8 @@ body {
   height: 100%;
   padding-bottom: 44px;
 }
+
+#editor-split,
+#preview-split {
+  min-width: 0;
+}
