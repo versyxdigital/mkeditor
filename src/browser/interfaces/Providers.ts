@@ -20,6 +20,7 @@ export interface ModalProviders {
 export interface DropdownProviders {
   alertblocks: Dropdown;
   codeblocks: Dropdown;
+  tables: Dropdown;
 }
 
 export interface BridgeProviders extends Omit<Providers, 'bridge'> {

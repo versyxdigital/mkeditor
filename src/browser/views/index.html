@@ -163,6 +163,59 @@
           class="btn-group btn-group-sm dropup me-2"
           data-bs-toggle="tooltip"
           data-bs-placement="top"
+          title="Ctrl + T"
+          data-key="T"
+        >
+          <button
+            class="btn btn-outline-secondary dropdown-toggle shortcut"
+            type="button"
+            id="markdown-table-menu-button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <i class="fas fa-code"></i>
+          </button>
+          <div
+            class="dropdown-menu"
+            id="markdown-tables"
+            aria-labelledby="markdown-table-menu-button"
+          >
+            <div class="p-3">
+              <div id="insert-markdown-table-form" class="dropup-content">
+                <div class="mb-3">
+                  <label>Number of rows:</label>
+                  <input
+                    type="number"
+                    id="markdown-table-rows"
+                    min="1"
+                    value="2"
+                  />
+                </div>
+
+                <div class="mb-3">
+                  <label>Number of columns:</label>
+                  <input
+                    type="number"
+                    id="markdown-table-cols"
+                    min="1"
+                    value="2"
+                  />
+                </div>
+
+                <button
+                  id="insert-markdown-table-btn"
+                  class="btn btn-sm btn-outline-secondary"
+                >
+                  Insert Table ▴
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div
+          class="btn-group btn-group-sm dropup me-2"
+          data-bs-toggle="tooltip"
+          data-bs-placement="top"
           title="Ctrl + K"
           data-key="K"
         >

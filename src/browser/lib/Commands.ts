@@ -61,6 +61,7 @@ export class Commands {
     this.dropdowns = {
       alertblocks: new Dropdown(dom.commands.dropdowns.alertblocks),
       codeblocks: new Dropdown(dom.commands.dropdowns.codeblocks),
+      tables: new Dropdown(dom.commands.dropdowns.tables),
     };
 
     this.register();
@@ -108,11 +109,18 @@ export class Commands {
     // For example, the user presses Ctrl+K, to display the codeblocks dropdown, and then
     // presses J to insert a Javascript codeblock.
     this.model.onKeyDown((e) => {
+      console.log(e);
       const holdKey = getOSPlatform() !== 'MacOS' ? e.ctrlKey : e.metaKey;
-      if (holdKey && e.keyCode === 42 /* L */)
+      if (holdKey && e.keyCode === 42 /* L */) {
         this.dropdowns.alertblocks.toggle();
-      if (holdKey && e.keyCode === 41 /* K */)
+      }
+      if (holdKey && e.keyCode === 41 /* K */) {
         this.dropdowns.codeblocks.toggle();
+      }
+      if (holdKey && e.keyCode === 50 /* T */) {
+        console.log(this.dropdowns.tables);
+        this.dropdowns.tables.toggle();
+      }
       this.model.focus();
     });
 
