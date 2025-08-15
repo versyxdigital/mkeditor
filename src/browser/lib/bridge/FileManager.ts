@@ -1,7 +1,7 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
+import Swal from 'sweetalert2';
 import { ContextBridgeAPI } from '../../interfaces/Bridge';
 import { EditorDispatcher } from '../../events/EditorDispatcher';
-import Swal from 'sweetalert2';
 import { dom } from '../../dom';
 
 /**
@@ -29,13 +29,25 @@ export class FileManager {
   /** Flag to indicate that a file is being opened */
   public openingFile = false;
 
+  /**
+   * Create a new file manager instance.
+   *
+   * @param bridge - the execution bridge
+   * @param model - the editor model
+   * @param dispatcher - the event dispatcher
+   */
   constructor(
     private bridge: ContextBridgeAPI,
     private model: editor.IStandaloneCodeEditor,
     private dispatcher: EditorDispatcher,
   ) {}
 
-  /** Add a new tab for a file */
+  /**
+   * Add a new tab for an activated file.
+   *
+   * @param name - the file name
+   * @param path - the file path
+   */
   public addTab(name: string, path: string) {
     const li = document.createElement('li');
     li.draggable = true;
@@ -75,7 +87,12 @@ export class FileManager {
     this.tabs.set(path, a);
   }
 
-  /** Close a file tree tab */
+  /**
+   * Close a tab (check for saved changes).
+   *
+   * @param path - the file path
+   * @returns 
+   */
   public async closeTab(path: string) {
     const mdl = this.models.get(path);
     if (!mdl) return;
@@ -136,7 +153,11 @@ export class FileManager {
     }
   }
 
-  /** Synchronize the order of file tabs */
+  /**
+   * Synchronize the order of the tabs after reordering.
+   *
+   * @returns 
+   */
   private syncTabOrder() {
     if (!dom.tabs) return;
     const newMap: Map<string, HTMLAnchorElement> = new Map();
@@ -149,7 +170,13 @@ export class FileManager {
     this.tabs = newMap;
   }
 
-  /** Get the next element from the drag */
+  /**
+   * Get the next tab element from the drag.
+   *
+   * @param container - the tabs container
+   * @param x - the tab index offset
+   * @returns 
+   */
   public getDragAfterElement(container: HTMLElement, x: number) {
     const elements = Array.from(
       container.querySelectorAll('li:not(.dragging)'),
@@ -168,7 +195,13 @@ export class FileManager {
     return closest.element;
   }
 
-  /** Activate a file after opening */
+  /**
+   * Activate a file upon opening it.
+   *
+   * @param path - the file path
+   * @param name - the file name
+   * @returns 
+   */
   public activateFile(path: string, name?: string) {
     const mdl = this.models.get(path);
     if (!mdl) {
@@ -208,7 +241,12 @@ export class FileManager {
     this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
   }
 
-  /** Open a file from a given path */
+  /**
+   * Open a file from a given path.
+   *
+   * @param path - the file path
+   * @returns 
+   */
   public openFileFromPath(path: string) {
     this.openingFile = true;
 
@@ -227,13 +265,21 @@ export class FileManager {
     this.bridge.send('to:file:openpath', { path });
   }
 
-  /** Track the editor state between both execution contexts */
+  /**
+   * Track the editor state (contents) on the active file.
+   *
+   * @param hasChanged - whether the state has changed
+   * @returns
+   */
   public trackEditorStateBetweenExecutionContext(hasChanged: boolean) {
     this.bridge.send('to:editor:state', hasChanged);
     this.contentHasChanged = hasChanged;
   }
 
-  /** Send a save contents request across the bridge */
+  /**
+   * Save the active file contents.
+   * @returns
+   */
   public saveContentToFile() {
     if (this.activeFile && !this.activeFile.startsWith('untitled')) {
       this.bridge.send('to:file:save', {
@@ -249,7 +295,12 @@ export class FileManager {
     }
   }
 
-  /** Send an export preview request across the bridge */
+  /**
+   * Export an active file preview to HTML
+   *
+   * @param content - the preview HTML content
+   * @returns
+   */
   public exportPreviewToFile(content: string) {
     this.bridge.send('to:html:export', { content });
   }

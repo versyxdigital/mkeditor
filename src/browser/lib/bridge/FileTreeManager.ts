@@ -17,12 +17,24 @@ export class FileTreeManager {
   /** Flag to indicate a new root folder is being opened */
   public openingFolder = false;
 
+  /**
+   * Create a new file tree manager instance.
+   *
+   * @param bridge - the executuon bridge
+   * @param openFileFromPath - callback to open a file
+   */
   constructor(
     private bridge: ContextBridgeAPI,
     private openFileFromPath: (path: string) => void,
   ) {}
 
-  /** Build the file explorer tree */
+  /**
+   * Build the file explorer tree.
+   *
+   * @param tree - recursive tree
+   * @param parentPath - the parent path
+   * @returns
+   */
   public buildFileTree(tree: any[], parentPath: string) {
     if (!dom.filetree || !Array.isArray(tree)) {
       return;
@@ -127,7 +139,12 @@ export class FileTreeManager {
     build(tree, parent);
   }
 
-  /** Handle file tree click events */
+  /**
+   * Handle click events on file tree items.
+   *
+   * @param e - the clicke event
+   * @returns 
+   */
   private handleFileTreeClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     const span = target.closest('span.file-name');
@@ -172,7 +189,12 @@ export class FileTreeManager {
     }
   };
 
-  /** Add a file to the file explorer tree */
+  /**
+   * Add a file to the file tree.
+   *
+   * @param path - the path of the file to add
+   * @returns 
+   */
   public addFileToTree(path: string) {
     if (!dom.filetree || !this.treeRoot) {
       return;

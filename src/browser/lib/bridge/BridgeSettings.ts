@@ -6,18 +6,34 @@ import { EditorSettings } from '../../interfaces/Editor';
  * Handle bridge settings logic.
  */
 export class BridgeSettings {
+  /**
+   * Create a new bridge settings handler
+   *
+   * @param bridge - the execution bridge
+   * @param model - the editor model
+   */
   constructor(
     private bridge: ContextBridgeAPI,
     private model: editor.IStandaloneCodeEditor,
   ) {}
 
-  /** Send a save settings request across the bridge */
+  /**
+   * Save settings to the settings file.
+   *
+   * @param settings - the editor settings
+   * @returns
+   */
   public saveSettingsToFile(settings: EditorSettings) {
     this.bridge.send('to:settings:save', { settings });
   }
 
-  /** Load settings for the editor model */
-  public loadSettingsFromStorageChannel(settings: EditorSettings) {
+  /**
+   * Load settings from the from:settings:set channel.
+   *
+   * @param settings - the settings to load
+   * @returns
+   */
+  public loadSettingsFromBridgeListener(settings: EditorSettings) {
     this.model.updateOptions({
       autoIndent: settings.autoindent ? 'advanced' : 'none',
     });

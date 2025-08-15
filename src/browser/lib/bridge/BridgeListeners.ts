@@ -31,7 +31,7 @@ export function registerBridgeListeners(
 
   // Set settings from stored settings file (%HOME%/.mkeditor/settings.json)
   bridge.receive('from:settings:set', (s: EditorSettings) => {
-    settings.loadSettingsFromStorageChannel(s);
+    settings.loadSettingsFromBridgeListener(s);
     providers.settings?.setSettings(s);
     providers.settings?.registerDOMListeners();
   });
@@ -62,6 +62,7 @@ export function registerBridgeListeners(
     }
   });
 
+  // Handle file save-as events
   bridge.receive('from:file:saveas', (channel: string) => {
     bridge.send(channel, model.getValue());
   });
@@ -72,6 +73,7 @@ export function registerBridgeListeners(
     bridge.send(channel, true);
   });
 
+  // Handle post-folder open events
   bridge.receive('from:folder:opened', ({ tree: t, path }) => {
     if (
       tree.openingFolder ||
@@ -90,6 +92,7 @@ export function registerBridgeListeners(
     bridge.send(channel, true);
   });
 
+  // Handle post-file open events
   bridge.receive(
     'from:file:opened',
     ({ content, filename, file }: ContextBridgedFile) => {
