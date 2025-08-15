@@ -167,7 +167,7 @@ export class Editor {
       ? false
       : this.loadedInitialEditorValue !== this.model?.getValue();
 
-    this.providers.bridge.trackEditorStateBetweenExecutionContext(hasChanged);
+    this.providers.bridge.sendFileContentHasChanged(hasChanged);
   }
 
   /**

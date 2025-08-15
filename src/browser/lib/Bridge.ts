@@ -9,6 +9,12 @@ import { BridgeSettings } from './bridge/BridgeSettings';
 import { registerBridgeListeners } from './bridge/BridgeListeners';
 import { dom } from '../dom';
 
+/**
+ * Bridge handler.
+ *
+ * This is an orchestrator class for orchestrating operations between
+ * the renderer context and the main process.
+ */
 export class Bridge {
   /** Execution context bridge */
   public bridge: ContextBridgeAPI;
@@ -27,16 +33,16 @@ export class Bridge {
   };
 
   /** File manager helper */
-  private files: FileManager;
+  private fileManager: FileManager;
 
   /** File tree helper */
-  private tree: FileTreeManager;
+  private fileTreeManager: FileTreeManager;
 
   /** Settings helper */
   private settings: BridgeSettings;
 
   /**
-   * Create a new mkeditor bridge.
+   * Create a new bridge handler.
    */
   public constructor(
     bridge: ContextBridgeAPI,
@@ -47,28 +53,36 @@ export class Bridge {
     this.model = model;
     this.dispatcher = dispatcher;
 
-    this.files = new FileManager(this.bridge, this.model, this.dispatcher);
-    this.tree = new FileTreeManager(this.bridge, (p) =>
-      this.openFileFromPath(p),
+    this.fileManager = new FileManager(
+      this.bridge,
+      this.model,
+      this.dispatcher,
     );
+    this.fileTreeManager = new FileTreeManager(this.bridge, (path) =>
+      this.fileManager.openFileFromPath(path),
+    );
+
     this.settings = new BridgeSettings(this.bridge, this.model);
 
+    // Register event listeners for events sent through IPC channels.
     registerBridgeListeners(
       this.bridge,
       this.model,
       this.dispatcher,
       this.providers,
-      this.files,
-      this.tree,
+      this.fileManager,
+      this.fileTreeManager,
       this.settings,
     );
 
+    // Configure the event listener for file tab reordering.
+    // TODO: find a more appropriate place for this.
     dom.tabs?.addEventListener('dragover', (e) => {
       e.preventDefault();
       if (!dom.tabs) {
         return;
       }
-      const after = this.files.getDragAfterElement(dom.tabs, e.clientX);
+      const after = this.fileManager.getDragAfterElement(dom.tabs, e.clientX);
       const dragging = dom.tabs.querySelector(
         'li.dragging',
       ) as HTMLLIElement | null;
@@ -82,38 +96,58 @@ export class Bridge {
       }
     });
 
+    // Configure event listener for a settings update event.
     this.dispatcher.addEventListener('editor:bridge:settings', (event) => {
       this.saveSettingsToFile(event.message);
     });
   }
 
-  /** Provide access to a provider */
+  /**
+   * Provide access to a provider.
+   *
+   * @param provider - the provider to access
+   * @param instance - the associated provider instance
+   * @returns
+   */
   public provide<T>(provider: string, instance: T) {
     this.providers[provider] = instance;
   }
 
-  /** Send a save settings request across the bridge */
+  /**
+   * BridgeSettings wrapper method to save settings to file.
+   *
+   * @param settings - the settings to save.
+   * @returns
+   */
   public saveSettingsToFile(settings: EditorSettings) {
     this.settings.saveSettingsToFile(settings);
   }
 
-  /** Send a save contents request across the bridge */
+  /**
+   * FileManager wrapper method to save content to markdown file.
+   * @returns
+   */
   public saveContentToFile() {
-    this.files.saveContentToFile();
+    this.fileManager.saveContentToFile();
   }
 
-  /** Send an export preview request across the bridge */
+  /**
+   * FileManager wrapper method to export preview to HTML file.
+   *
+   * @param content - the preview HTML content
+   * @returns
+   */
   public exportPreviewToFile(content: string) {
-    this.files.exportPreviewToFile(content);
+    this.fileManager.exportPreviewToFile(content);
   }
 
-  /** Open a file from a given path */
-  public openFileFromPath(path: string) {
-    this.files.openFileFromPath(path);
-  }
-
-  /** Track the editor state between both execution contexts */
-  public trackEditorStateBetweenExecutionContext(hasChanged: boolean) {
-    this.files.trackEditorStateBetweenExecutionContext(hasChanged);
+  /**
+   * FileManager wrapper method to send hasChanged over the bridge.
+   *
+   * @param hasChanged - whether the content has changed
+   * @returns
+   */
+  public sendFileContentHasChanged(hasChanged: boolean) {
+    this.fileManager.trackContentHasChanged(hasChanged);
   }
 }

@@ -143,7 +143,7 @@ export class FileTreeManager {
    * Handle click events on file tree items.
    *
    * @param e - the clicke event
-   * @returns 
+   * @returns
    */
   private handleFileTreeClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -193,7 +193,7 @@ export class FileTreeManager {
    * Add a file to the file tree.
    *
    * @param path - the path of the file to add
-   * @returns 
+   * @returns
    */
   public addFileToTree(path: string) {
     if (!dom.filetree || !this.treeRoot) {

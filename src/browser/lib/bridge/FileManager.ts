@@ -91,7 +91,7 @@ export class FileManager {
    * Close a tab (check for saved changes).
    *
    * @param path - the file path
-   * @returns 
+   * @returns
    */
   public async closeTab(path: string) {
     const mdl = this.models.get(path);
@@ -156,7 +156,7 @@ export class FileManager {
   /**
    * Synchronize the order of the tabs after reordering.
    *
-   * @returns 
+   * @returns
    */
   private syncTabOrder() {
     if (!dom.tabs) return;
@@ -175,7 +175,7 @@ export class FileManager {
    *
    * @param container - the tabs container
    * @param x - the tab index offset
-   * @returns 
+   * @returns
    */
   public getDragAfterElement(container: HTMLElement, x: number) {
     const elements = Array.from(
@@ -200,7 +200,7 @@ export class FileManager {
    *
    * @param path - the file path
    * @param name - the file name
-   * @returns 
+   * @returns
    */
   public activateFile(path: string, name?: string) {
     const mdl = this.models.get(path);
@@ -217,7 +217,7 @@ export class FileManager {
     const current = this.model.getValue();
 
     this.dispatcher.setTrackedContent({ content: original });
-    this.trackEditorStateBetweenExecutionContext(original !== current);
+    this.trackContentHasChanged(original !== current);
 
     this.tabs.forEach((tab, p) => {
       const li = tab.parentElement as HTMLElement;
@@ -245,7 +245,7 @@ export class FileManager {
    * Open a file from a given path.
    *
    * @param path - the file path
-   * @returns 
+   * @returns
    */
   public openFileFromPath(path: string) {
     this.openingFile = true;
@@ -271,7 +271,7 @@ export class FileManager {
    * @param hasChanged - whether the state has changed
    * @returns
    */
-  public trackEditorStateBetweenExecutionContext(hasChanged: boolean) {
+  public trackContentHasChanged(hasChanged: boolean) {
     this.bridge.send('to:editor:state', hasChanged);
     this.contentHasChanged = hasChanged;
   }
