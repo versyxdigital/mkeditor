@@ -4,9 +4,9 @@ import { BridgeProviders, ValidModal } from '../../interfaces/Providers';
 import { EditorSettings } from '../../interfaces/Editor';
 import { EditorDispatcher } from '../../events/EditorDispatcher';
 import { Notify } from '../Notify';
-import { FileManager } from './files';
-import { FileTree } from './fileTree';
-import { BridgeSettings } from './settings';
+import { FileManager } from './FileManager';
+import { FileTree } from './FileTreeManager';
+import { BridgeSettings } from './BridgeSettings';
 
 /**
  * Register bridge channel listeners.

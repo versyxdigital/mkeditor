@@ -3,11 +3,11 @@ import { ContextBridgeAPI } from '../interfaces/Bridge';
 import { BridgeProviders } from '../interfaces/Providers';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { EditorSettings } from '../interfaces/Editor';
+import { FileManager } from './bridge/FileManager';
+import { FileTreeManager } from './bridge/FileTreeManager';
+import { BridgeSettings } from './bridge/BridgeSettings';
+import { registerBridgeListeners } from './bridge/BridgeListeners';
 import { dom } from '../dom';
-import { FileManager } from './bridge/files';
-import { FileTree } from './bridge/fileTree';
-import { BridgeSettings } from './bridge/settings';
-import { registerBridgeListeners } from './bridge/listeners';
 
 export class Bridge {
   /** Execution context bridge */
@@ -30,7 +30,7 @@ export class Bridge {
   private files: FileManager;
 
   /** File tree helper */
-  private tree: FileTree;
+  private tree: FileTreeManager;
 
   /** Settings helper */
   private settings: BridgeSettings;
@@ -48,7 +48,7 @@ export class Bridge {
     this.dispatcher = dispatcher;
 
     this.files = new FileManager(this.bridge, this.model, this.dispatcher);
-    this.tree = new FileTree(this.bridge, (p) => this.openFileFromPath(p));
+    this.tree = new FileTreeManager(this.bridge, (p) => this.openFileFromPath(p));
     this.settings = new BridgeSettings(this.bridge, this.model);
 
     registerBridgeListeners(

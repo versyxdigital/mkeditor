@@ -4,7 +4,7 @@ import { dom } from '../../dom';
 /**
  * Handle the file explorer tree.
  */
-export class FileTree {
+export class FileTreeManager {
   /** Root path for the current file tree */
   public treeRoot: string | null = null;
 
