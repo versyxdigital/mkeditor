@@ -331,4 +331,18 @@ export class Commands {
       this.getModel().replace(/^[a-zA-Z]+?/gm, (match) => `${++i}. ${match}`),
     );
   }
+
+  /**
+   * Create a link.
+   */
+  private mdLinkAdd() {
+    this.executeEdit('[link](http://versyxdigital.github.io)');
+  }
+
+  /**
+   * Create a link.
+   */
+  // private mdLinkDelete() {
+  //   this.executeEdit('[link](http://versyxdigital.github.io)');
+  // }
 }
