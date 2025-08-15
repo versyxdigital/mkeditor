@@ -125,16 +125,19 @@ export class Editor {
         this.loadedInitialEditorValue = event.message;
       });
 
-      this.registerContextListeners();
+      // Event listeners for the renderer context's UI toolbar.
+      this.registerUIToolbarListeners();
 
       // Resize listeners to resize the editor.
       window.onload = () => this.model?.layout();
       window.onresize = () => this.model?.layout();
       this.previewHTMLElement.onresize = () => this.model?.layout();
 
+      // Initialize word count and character count values
       const value = this.model.getValue();
       WordCount(value);
       CharacterCount(value);
+
       // Render the editor content to preview; also initialises editor
       // extensions.
       this.render(value);
@@ -232,7 +235,7 @@ export class Editor {
   /**
    * Register listeners for cross-context events.
    */
-  private registerContextListeners() {
+  private registerUIToolbarListeners() {
     // Register the event listener for editor UI save settings button; this button
     // is executed from within the web context, and uses the IPC handler to fire an
     // event to the main process, which has access to the filesystem.
