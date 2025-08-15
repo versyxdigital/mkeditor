@@ -168,6 +168,10 @@ export class Commands {
       }
     }
 
+    // Add handler for the insert markdown table form button
+    const mdTableBtn = dom.commands.forms.tables.submit;
+    mdTableBtn.addEventListener('click', () => this.table());
+
     for (const block of alertblocks) {
       // Register command keybindings for each alertblock type.
       const binding = `Key${block.key}` as keyof typeof KeyCode;
@@ -288,6 +292,25 @@ export class Commands {
       params instanceof HTMLElement ? params.dataset.language : params;
     content = content || this.getModel();
     this.executeEdit('```' + language + '\n' + content + '\n```');
+  }
+
+  /**
+   * Insert a table.
+   */
+  private table() {
+    const { cols, rows } = dom.commands.forms.tables;
+    const numCols = parseInt(cols.value);
+    const numRows = parseInt(rows.value);
+
+    const makeRow = (cells: string[]) => `| ${cells.join(' | ')} |`;
+
+    const header = makeRow(Array(numCols).fill('Header'));
+    const separator = makeRow(Array(numCols).fill('---'));
+    const body = Array(numRows)
+      .fill(makeRow(Array(numCols).fill('Cell')))
+      .join('\n');
+
+    this.executeEdit(`${header}\n${separator}\n${body}\n`);
   }
 
   /**

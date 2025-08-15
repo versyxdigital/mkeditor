@@ -173,7 +173,7 @@
             data-bs-toggle="dropdown"
             aria-expanded="false"
           >
-            <i class="fas fa-code"></i>
+            <i class="fas fa-table"></i>
           </button>
           <div
             class="dropdown-menu"
@@ -183,8 +183,9 @@
             <div class="p-3">
               <div id="insert-markdown-table-form" class="dropup-content">
                 <div class="mb-3">
-                  <label>Number of rows:</label>
+                  <label class="mb-2 small">Rows:</label>
                   <input
+                    class="form-control form-control-sm"
                     type="number"
                     id="markdown-table-rows"
                     min="1"
@@ -193,8 +194,9 @@
                 </div>
 
                 <div class="mb-3">
-                  <label>Number of columns:</label>
+                  <label class="mb-2 small">Columns:</label>
                   <input
+                    class="form-control form-control-sm"
                     type="number"
                     id="markdown-table-cols"
                     min="1"
@@ -206,7 +208,7 @@
                   id="insert-markdown-table-btn"
                   class="btn btn-sm btn-outline-secondary"
                 >
-                  Insert Table ▴
+                  Insert Table
                 </button>
               </div>
             </div>
