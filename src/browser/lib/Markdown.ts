@@ -21,6 +21,7 @@ import LineNumber from '../extensions/LineNumber';
 import LinkTarget from '../extensions/LinkTarget';
 import ImageStyle from '../extensions/ImageStyle';
 import TableStyle from '../extensions/TableStyle';
+import MarkdownItKatex from '@vscode/markdown-it-katex';
 
 hljs.registerLanguage('javascript', javascript);
 hljs.registerAliases('js', { languageName: 'javascript' });
@@ -84,5 +85,6 @@ Markdown.use(LineNumber);
 Markdown.use(LinkTarget);
 Markdown.use(ImageStyle);
 Markdown.use(TableStyle);
+Markdown.use(MarkdownItKatex);
 
 export { Markdown };
