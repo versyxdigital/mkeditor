@@ -9,6 +9,8 @@
 @import '_sidebar.scss';
 @import '_tabs.scss';
 
+@include meta.load-css('katex/dist/katex.min.css');
+
 body[data-theme='light'] {
   @include meta.load-css('highlight.js/styles/github');
 }
