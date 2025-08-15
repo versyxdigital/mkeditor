@@ -5,7 +5,7 @@ import { EditorSettings } from '../../interfaces/Editor';
 import { EditorDispatcher } from '../../events/EditorDispatcher';
 import { Notify } from '../Notify';
 import { FileManager } from './FileManager';
-import { FileTree } from './FileTreeManager';
+import { FileTreeManager } from './FileTreeManager';
 import { BridgeSettings } from './BridgeSettings';
 
 /**
@@ -17,7 +17,7 @@ export function registerBridgeListeners(
   dispatcher: EditorDispatcher,
   providers: BridgeProviders,
   files: FileManager,
-  tree: FileTree,
+  tree: FileTreeManager,
   settings: BridgeSettings,
 ) {
   // Set the theme according to the user's system theme

@@ -48,7 +48,9 @@ export class Bridge {
     this.dispatcher = dispatcher;
 
     this.files = new FileManager(this.bridge, this.model, this.dispatcher);
-    this.tree = new FileTreeManager(this.bridge, (p) => this.openFileFromPath(p));
+    this.tree = new FileTreeManager(this.bridge, (p) =>
+      this.openFileFromPath(p),
+    );
     this.settings = new BridgeSettings(this.bridge, this.model);
 
     registerBridgeListeners(
