@@ -6,13 +6,19 @@ import {
   shell,
   Tray,
 } from 'electron';
-import { join } from 'path';
+import log from 'electron-log/main';
+import { homedir } from 'os';
+import { join, normalize } from 'path';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
-import { updateElectronApp } from 'update-electron-app';
+
+log.transports.file.resolvePathFn = () => {
+  return join(normalize(homedir()), '.mkeditor/main.log');
+};
+log.initialize();
 
 let context: BrowserWindow | null;
 
@@ -104,11 +110,6 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.on('ready', () => {
-  // Check for app updates from GH releases.
-  // NOTE: This won't work for MacOS without code signing.
-  console.log('checking for updates...');
-  updateElectronApp();
-
   let file: string | null = null;
   if (process.platform === 'win32' && process.argv.length >= 2) {
     file = process.argv[1];

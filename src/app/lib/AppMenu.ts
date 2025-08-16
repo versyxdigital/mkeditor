@@ -75,6 +75,12 @@ export class AppMenu {
               this.context.webContents.send('from:modal:open', 'settings'); // channel / provider
             },
           },
+          {
+            label: 'Open Log...',
+            click: () => {
+              // Open the application log
+            },
+          },
           { type: 'separator' },
           { role: 'quit' },
         ],

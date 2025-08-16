@@ -1,7 +1,7 @@
 {
   "name": "mkeditor",
   "productName": "MKEditor",
-  "version": "3.2.1",
+  "version": "3.2.0",
   "license": "MIT",
   "author": "Chris Rowles <christopher.rowles@outlook.com>",
   "description": "Markdown Editor",
@@ -112,6 +112,6 @@
     }
   },
   "dependencies": {
-    "update-electron-app": "^3.1.1"
+    "electron-log": "^5.4.2"
   }
 }
