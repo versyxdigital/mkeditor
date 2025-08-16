@@ -66,9 +66,16 @@
 
   .dropdown-menu {
     --bs-dropdown-bg: #222222;
+    --bs-dropdown-color: #eeeeee;
     --bs-dropdown-link-color: #eeeeee;
     --bs-dropdown-link-hover-bg: #2f2f2f;
     --bs-dropdown-link-hover-color: #f5f5f5;
+  }
+
+  input.form-control {
+    background: #1a1a1a !important;
+    color: #eeeeee !important;
+    border-color: #5f5f5f !important;
   }
 
   .table {
