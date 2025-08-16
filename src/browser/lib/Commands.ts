@@ -170,6 +170,9 @@ export class Commands {
     const mdTableBtn = dom.commands.forms.tables.submit;
     mdTableBtn.addEventListener('click', () => this.table());
 
+    // Add event listener for build info click
+    dom.build.addEventListener('click', () => this.modals.about.toggle());
+
     for (const block of alertblocks) {
       // Register command keybindings for each alertblock type.
       const binding = `Key${block.key}` as keyof typeof KeyCode;

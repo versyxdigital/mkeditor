@@ -64,7 +64,10 @@ export class Editor {
     this.dispatcher = dispatcher;
     this.editorHTMLElement = dom.editor.dom;
     this.previewHTMLElement = dom.preview.dom;
+
     dom.about.version.innerHTML = APP_VERSION;
+    dom.build.innerHTML = `v${APP_VERSION}`;
+
     this.dispatcher.addEventListener('editor:render', () => {
       const value = this.model?.getValue() ?? '';
       WordCount(value);

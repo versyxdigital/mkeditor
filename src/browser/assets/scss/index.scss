@@ -36,6 +36,14 @@ body[data-theme='dark'] {
   opacity: 0;
 }
 
+#app-build-id {
+  font-size: 0.7rem;
+  cursor: pointer;
+  &:hover {
+    color: #222222 !important;
+  }
+}
+
 #splashscreen {
   z-index: 9999;
   background: #222222;

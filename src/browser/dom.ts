@@ -6,6 +6,7 @@ import { getOSPlatform } from './util';
 export const dom = {
   splash: <HTMLDivElement>document.querySelector('#splashscreen'),
   app: <HTMLDivElement>document.querySelector('#app'),
+  build: <HTMLSpanElement>document.querySelector('#app-build-id'),
   sidebar: <HTMLDivElement>document.querySelector('#sidebar'),
   about: {
     modal: <HTMLDivElement>document.querySelector('#app-about'),
