@@ -22,6 +22,7 @@ beforeEach(async () => {
     <input id="systemtheme-setting" />
     <p id="app-settings-file-info"></p>
     <label id="darkmode-icon"></label>
+    <span id="app-build-id"></span>
   `;
   ({ Editor } = await import('../src/browser/lib/Editor'));
   ({ EditorDispatcher } = await import(

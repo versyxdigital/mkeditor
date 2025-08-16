@@ -12,6 +12,7 @@ describe('Editor', () => {
       <div id="editor"></div>
       <div id="preview"></div>
       <div id="app-about"><span id="app-version"></span></div>
+      <span id="app-build-id"></span>
     `;
     ({ Editor } = await import('../src/browser/lib/Editor'));
     ({ EditorDispatcher } = await import(
