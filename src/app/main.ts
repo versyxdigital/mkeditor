@@ -20,6 +20,7 @@ import { iconBase64 } from './assets/icon';
 log.transports.file.resolvePathFn = () => {
   return join(normalize(homedir()), '.mkeditor/main.log');
 };
+log.transports.file.level = 'info';
 log.initialize();
 
 // Configure auto-updater
