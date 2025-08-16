@@ -1,14 +1,14 @@
 import hljs from 'highlight.js/lib/core';
 
 // Supported languages for markdown codeblocks
-import c from 'highlight.js/lib/languages/c.js';
-import cpp from 'highlight.js/lib/languages/cpp.js';
+import c from 'highlight.js/lib/languages/c';
+import cpp from 'highlight.js/lib/languages/cpp';
 import csharp from 'highlight.js/lib/languages/csharp';
 import javascript from 'highlight.js/lib/languages/javascript';
 import json from 'highlight.js/lib/languages/json';
 import php from 'highlight.js/lib/languages/php';
 import python from 'highlight.js/lib/languages/python';
-import rust from 'highlight.js/lib/languages/rust.js';
+import rust from 'highlight.js/lib/languages/rust';
 import shell from 'highlight.js/lib/languages/shell';
 import sql from 'highlight.js/lib/languages/sql';
 import typescript from 'highlight.js/lib/languages/typescript';
@@ -21,6 +21,7 @@ import LineNumber from '../extensions/LineNumber';
 import LinkTarget from '../extensions/LinkTarget';
 import ImageStyle from '../extensions/ImageStyle';
 import TableStyle from '../extensions/TableStyle';
+import MarkdownItKatex from '@vscode/markdown-it-katex';
 
 hljs.registerLanguage('javascript', javascript);
 hljs.registerAliases('js', { languageName: 'javascript' });
@@ -84,5 +85,6 @@ Markdown.use(LineNumber);
 Markdown.use(LinkTarget);
 Markdown.use(ImageStyle);
 Markdown.use(TableStyle);
+Markdown.use(MarkdownItKatex);
 
 export { Markdown };

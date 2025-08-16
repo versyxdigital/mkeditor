@@ -1,4 +1,4 @@
-import './mappings/icons';
+import './icons';
 import { Editor } from './lib/Editor';
 import { EditorDispatcher } from './events/EditorDispatcher';
 import { Completion } from './lib/Completion';

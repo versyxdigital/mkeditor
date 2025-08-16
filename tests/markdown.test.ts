@@ -17,4 +17,9 @@ describe('Markdown', () => {
     const output = Markdown.render('line1\n\nline2');
     expect(output).toContain('has-line-data');
   });
+
+  it('renders latex expressions', () => {
+    const output = Markdown.render('The area is $A = \\pi r^2$');
+    expect(output).toContain('katex');
+  });
 });

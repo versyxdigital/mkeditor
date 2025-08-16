@@ -6,6 +6,7 @@ import { getOSPlatform } from './util';
 export const dom = {
   splash: <HTMLDivElement>document.querySelector('#splashscreen'),
   app: <HTMLDivElement>document.querySelector('#app'),
+  build: <HTMLSpanElement>document.querySelector('#app-build-id'),
   sidebar: <HTMLDivElement>document.querySelector('#sidebar'),
   about: {
     modal: <HTMLDivElement>document.querySelector('#app-about'),
@@ -49,6 +50,16 @@ export const dom = {
     dropdowns: {
       alertblocks: <HTMLDivElement>document.querySelector('#alertblocks'),
       codeblocks: <HTMLDivElement>document.querySelector('#codeblocks'),
+      tables: <HTMLDivElement>document.querySelector('#markdown-tables'),
+    },
+    forms: {
+      tables: {
+        cols: <HTMLInputElement>document.querySelector('#markdown-table-cols'),
+        rows: <HTMLInputElement>document.querySelector('#markdown-table-rows'),
+        submit: <HTMLButtonElement>(
+          document.querySelector('#insert-markdown-table-btn')
+        ),
+      },
     },
   },
   editor: {

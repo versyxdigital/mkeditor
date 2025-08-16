@@ -9,6 +9,8 @@
 @import '_sidebar.scss';
 @import '_tabs.scss';
 
+@include meta.load-css('katex/dist/katex.min.css');
+
 body[data-theme='light'] {
   @include meta.load-css('highlight.js/styles/github');
 }
@@ -32,6 +34,14 @@ body[data-theme='dark'] {
 
 #app {
   opacity: 0;
+}
+
+#app-build-id {
+  font-size: 0.7rem;
+  cursor: pointer;
+  &:hover {
+    color: #222222 !important;
+  }
 }
 
 #splashscreen {

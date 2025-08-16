@@ -241,8 +241,6 @@ export class Exporter {
   /**
    * Export handler for browser-based exports.
    *
-   * TODO potentially move this elsewhere
-   *
    * @param content - the content to be exported
    * @param mimeType- the mime type
    * @param extension - the file extension

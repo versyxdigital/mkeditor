@@ -61,6 +61,7 @@ export class Commands {
     this.dropdowns = {
       alertblocks: new Dropdown(dom.commands.dropdowns.alertblocks),
       codeblocks: new Dropdown(dom.commands.dropdowns.codeblocks),
+      tables: new Dropdown(dom.commands.dropdowns.tables),
     };
 
     this.register();
@@ -109,10 +110,15 @@ export class Commands {
     // presses J to insert a Javascript codeblock.
     this.model.onKeyDown((e) => {
       const holdKey = getOSPlatform() !== 'MacOS' ? e.ctrlKey : e.metaKey;
-      if (holdKey && e.keyCode === 42 /* L */)
+      if (holdKey && e.keyCode === 42 /* L */) {
         this.dropdowns.alertblocks.toggle();
-      if (holdKey && e.keyCode === 41 /* K */)
+      }
+      if (holdKey && e.keyCode === 41 /* K */) {
         this.dropdowns.codeblocks.toggle();
+      }
+      if (holdKey && e.keyCode === 50 /* T */) {
+        this.dropdowns.tables.toggle();
+      }
       this.model.focus();
     });
 
@@ -159,6 +165,13 @@ export class Commands {
         });
       }
     }
+
+    // Add handler for the insert markdown table form button
+    const mdTableBtn = dom.commands.forms.tables.submit;
+    mdTableBtn.addEventListener('click', () => this.table());
+
+    // Add event listener for build info click
+    dom.build.addEventListener('click', () => this.modals.about.toggle());
 
     for (const block of alertblocks) {
       // Register command keybindings for each alertblock type.
@@ -211,7 +224,17 @@ export class Commands {
    * @param syntax - the markdown syntax (i.e. ** or __)
    */
   private editInline(syntax: string) {
-    this.executeEdit(syntax + this.getModel() + syntax);
+    const selected = this.getModel();
+    let edit = '';
+    // Handle inline links
+    if (syntax === '[]()') {
+      const text = selected && selected.trim().length > 0 ? selected : 'link';
+      edit = `[${text}](.)`;
+    } else {
+      edit = syntax + this.getModel() + syntax;
+    }
+
+    this.executeEdit(edit);
   }
 
   /**
@@ -280,6 +303,25 @@ export class Commands {
       params instanceof HTMLElement ? params.dataset.language : params;
     content = content || this.getModel();
     this.executeEdit('```' + language + '\n' + content + '\n```');
+  }
+
+  /**
+   * Insert a table.
+   */
+  private table() {
+    const { cols, rows } = dom.commands.forms.tables;
+    const numCols = parseInt(cols.value);
+    const numRows = parseInt(rows.value);
+
+    const makeRow = (cells: string[]) => `| ${cells.join(' | ')} |`;
+
+    const header = makeRow(Array(numCols).fill('Header'));
+    const separator = makeRow(Array(numCols).fill('---'));
+    const body = Array(numRows)
+      .fill(makeRow(Array(numCols).fill('Cell')))
+      .join('\n');
+
+    this.executeEdit(`${header}\n${separator}\n${body}\n`);
   }
 
   /**

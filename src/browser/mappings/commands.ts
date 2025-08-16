@@ -70,4 +70,13 @@ export const commands: Record<string, EditorCommand> = {
     keybindings: [KeyMod.CtrlCmd | KeyCode.Digit3], // todo find an available accelerator
     isInline: false,
   },
+  mdLinkAdd: {
+    id: 'md-link-add',
+    label: 'Add a link',
+    contextMenuGroupId: 'navigation',
+    contextMenuOrder: 6,
+    keybindings: [KeyMod.CtrlCmd | KeyCode.KeyH],
+    isInline: true,
+    syntax: '[]()',
+  },
 };

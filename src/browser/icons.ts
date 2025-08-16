@@ -16,6 +16,7 @@ import { faFile } from '@fortawesome/free-solid-svg-icons/faFile';
 import { faFolder } from '@fortawesome/free-solid-svg-icons/faFolder';
 import { faFolderOpen } from '@fortawesome/free-solid-svg-icons/faFolderOpen';
 import { faItalic } from '@fortawesome/free-solid-svg-icons/faItalic';
+import { faLink } from '@fortawesome/free-solid-svg-icons/faLink';
 import { faListOl } from '@fortawesome/free-solid-svg-icons/faListOl';
 import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
 import { faMoon } from '@fortawesome/free-solid-svg-icons/faMoon';
@@ -23,6 +24,7 @@ import { faQuestionCircle } from '@fortawesome/free-solid-svg-icons/faQuestionCi
 import { faRefresh } from '@fortawesome/free-solid-svg-icons/faRefresh';
 import { faSave } from '@fortawesome/free-solid-svg-icons/faSave';
 import { faStrikethrough } from '@fortawesome/free-solid-svg-icons/faStrikethrough';
+import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
 import { faTasks } from '@fortawesome/free-solid-svg-icons/faTasks';
 import { faTerminal } from '@fortawesome/free-solid-svg-icons/faTerminal';
 
@@ -44,6 +46,7 @@ library.add(
   faFolderOpen,
   faFileExport,
   faItalic,
+  faLink,
   faListUl,
   faListOl,
   faMoon,
@@ -51,6 +54,7 @@ library.add(
   faRefresh,
   faSave,
   faStrikethrough,
+  faTable,
   faTasks,
   faTerminal,
 );

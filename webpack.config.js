@@ -47,7 +47,7 @@ module.exports = {
         ],
       },
       {
-        test: /\.ttf$/,
+        test: /\.(ttf|woff2?|eot)$/,
         type: 'asset/resource',
       },
     ],
@@ -97,6 +97,10 @@ module.exports = {
           to: './icon.png',
         },
         { from: './src/browser/views' },
+        {
+          from: './node_modules/katex/dist/fonts/*',
+          to: 'fonts/[name][ext]',
+        },
       ],
     }),
   ],

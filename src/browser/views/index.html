@@ -159,6 +159,73 @@
             <i class="fa fa-list-ol"></i>
           </button>
         </div>
+        <div class="btn-group btn-group-sm me-2">
+          <button
+            class="btn btn-outline-secondary shortcut"
+            data-cmd="mdLinkAdd"
+            data-syntax="[]()"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="Insert a link"
+          >
+            <i class="fa fa-link"></i>
+          </button>
+        </div>
+        <div
+          class="btn-group btn-group-sm dropup me-2"
+          data-bs-toggle="tooltip"
+          data-bs-placement="top"
+          title="Ctrl + T"
+          data-key="T"
+        >
+          <button
+            class="btn btn-outline-secondary dropdown-toggle shortcut"
+            type="button"
+            id="markdown-table-menu-button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <i class="fas fa-table"></i>
+          </button>
+          <div
+            class="dropdown-menu"
+            id="markdown-tables"
+            aria-labelledby="markdown-table-menu-button"
+          >
+            <div class="p-3">
+              <div id="insert-markdown-table-form" class="dropup-content">
+                <div class="mb-3">
+                  <label class="mb-2 small">Rows:</label>
+                  <input
+                    class="form-control form-control-sm"
+                    type="number"
+                    id="markdown-table-rows"
+                    min="1"
+                    value="2"
+                  />
+                </div>
+
+                <div class="mb-3">
+                  <label class="mb-2 small">Columns:</label>
+                  <input
+                    class="form-control form-control-sm"
+                    type="number"
+                    id="markdown-table-cols"
+                    min="1"
+                    value="2"
+                  />
+                </div>
+
+                <button
+                  id="insert-markdown-table-btn"
+                  class="btn btn-sm btn-outline-secondary"
+                >
+                  Insert Table
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
         <div
           class="btn-group btn-group-sm dropup me-2"
           data-bs-toggle="tooltip"
@@ -373,7 +440,7 @@
           </label>
         </div>
       </div>
-      <ul class="navbar-nav ms-auto">
+      <ul class="navbar-nav ms-auto d-flex flex-row align-items-center">
         <li class="nav-item">
           <div
             class="form-check form-switch me-2"
@@ -394,6 +461,9 @@
               <i class="fas fa-moon"></i>
             </label>
           </div>
+        </li>
+        <li class="nav-item">
+          <span class="text-muted" id="app-build-id"></span>
         </li>
       </ul>
     </nav>
@@ -530,7 +600,7 @@
               Built with love by
               <a
                 class="fw-bold text-primary text-decoration-none"
-                href="https://versyx.dev"
+                href="https://versyxdigital.github.io/"
                 target="_blank"
                 >Versyx Digital</a
               >.
