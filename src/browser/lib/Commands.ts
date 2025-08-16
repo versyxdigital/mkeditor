@@ -109,7 +109,6 @@ export class Commands {
     // For example, the user presses Ctrl+K, to display the codeblocks dropdown, and then
     // presses J to insert a Javascript codeblock.
     this.model.onKeyDown((e) => {
-      console.log(e);
       const holdKey = getOSPlatform() !== 'MacOS' ? e.ctrlKey : e.metaKey;
       if (holdKey && e.keyCode === 42 /* L */) {
         this.dropdowns.alertblocks.toggle();
@@ -118,7 +117,6 @@ export class Commands {
         this.dropdowns.codeblocks.toggle();
       }
       if (holdKey && e.keyCode === 50 /* T */) {
-        console.log(this.dropdowns.tables);
         this.dropdowns.tables.toggle();
       }
       this.model.focus();
