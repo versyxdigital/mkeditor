@@ -6,6 +6,7 @@ import {
   shell,
   Tray,
 } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import log from 'electron-log/main';
 import { homedir } from 'os';
 import { join, normalize } from 'path';
@@ -15,10 +16,15 @@ import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
 
+// Configure app logger
 log.transports.file.resolvePathFn = () => {
   return join(normalize(homedir()), '.mkeditor/main.log');
 };
 log.initialize();
+
+// Configure auto-updater
+autoUpdater.logger = log;
+autoUpdater.autoDownload = true;
 
 let context: BrowserWindow | null;
 
@@ -110,11 +116,17 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.on('ready', () => {
+  autoUpdater.checkForUpdatesAndNotify();
+  log.info('changes');
   let file: string | null = null;
   if (process.platform === 'win32' && process.argv.length >= 2) {
     file = process.argv[1];
   }
   main(file);
+});
+
+autoUpdater.on('update-downloaded', () => {
+  autoUpdater.quitAndInstall();
 });
 
 app.on('activate', () => {
