@@ -1,7 +1,7 @@
 {
   "name": "mkeditor",
   "productName": "MKEditor",
-  "version": "3.2.1",
+  "version": "3.2.0",
   "license": "MIT",
   "author": "Chris Rowles <christopher.rowles@outlook.com>",
   "description": "Markdown Editor",
@@ -16,11 +16,12 @@
     "build-installer": "electron-builder",
     "build-all": "node ./make.mjs",
     "serve-web": "http-server dist",
-    "serve-app": "electron ."
+    "serve-app": "electron .",
+    "publish": "npm run build-editor && npm run build-app && electron-builder --publish always"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/sentrychris/mkeditor-auto-updates"
+    "url": "https://github.com/versyxdigital/mkeditor"
   },
   "devDependencies": {
     "@electron/asar": "^4.0.1",
@@ -116,8 +117,8 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "sentrychris",
-      "repo": "mkeditor-auto-updates"
+      "owner": "versyxdigital",
+      "repo": "mkeditor"
     }
   }
 }

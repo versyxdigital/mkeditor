@@ -125,8 +125,14 @@ app.on('ready', () => {
   main(file);
 });
 
-autoUpdater.on('update-downloaded', () => {
-  autoUpdater.quitAndInstall();
+autoUpdater.on('update-downloaded', async () => {
+  if (context) {
+    context.webContents.send('from:notification:display', {
+      status: 'success',
+      message:
+        'An update has been downloaded. MKEditor will be updated the next time you launch.',
+    });
+  }
 });
 
 app.on('activate', () => {
