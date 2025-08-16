@@ -12,6 +12,7 @@ import { AppMenu } from './lib/AppMenu';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
+import { updateElectronApp } from 'update-electron-app';
 
 let context: BrowserWindow | null;
 
@@ -80,34 +81,7 @@ function main(file: string | null = null) {
   context.show();
 }
 
-// MacOS - open with... Also handle files using the same runnning instance
-app.on('open-file', (event) => {
-  event.preventDefault();
-  let file: string | null = null;
-  if (process.platform === 'win32' && process.argv.length >= 2) {
-    file = process.argv[1];
-  }
-
-  if (!context) {
-    main(file);
-  } else if (file && file !== '.' && !file.startsWith('-')) {
-    AppStorage.setActiveFile(context, file);
-  }
-});
-
-app.on('ready', () => {
-  let file: string | null = null;
-  if (process.platform === 'win32' && process.argv.length >= 2) {
-    file = process.argv[1];
-  }
-  main(file);
-});
-
-app.on('activate', () => {
-  if (!context) {
-    main();
-  }
-});
+/** --------------------App Lifecycle ---------------------------- */
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -128,6 +102,40 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
 }
+
+app.on('ready', () => {
+  // Check for app updates from GH releases.
+  // NOTE: This won't work for MacOS without code signing.
+  console.log('checking for updates...');
+  updateElectronApp();
+
+  let file: string | null = null;
+  if (process.platform === 'win32' && process.argv.length >= 2) {
+    file = process.argv[1];
+  }
+  main(file);
+});
+
+app.on('activate', () => {
+  if (!context) {
+    main();
+  }
+});
+
+// MacOS - open with... Also handle files using the same runnning instance
+app.on('open-file', (event) => {
+  event.preventDefault();
+  let file: string | null = null;
+  if (process.platform === 'win32' && process.argv.length >= 2) {
+    file = process.argv[1];
+  }
+
+  if (!context) {
+    main(file);
+  } else if (file && file !== '.' && !file.startsWith('-')) {
+    AppStorage.setActiveFile(context, file);
+  }
+});
 
 app.on('window-all-closed', () => {
   app.clearRecentDocuments();

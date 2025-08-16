@@ -1,7 +1,7 @@
 {
   "name": "mkeditor",
   "productName": "MKEditor",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "license": "MIT",
   "author": "Chris Rowles <christopher.rowles@outlook.com>",
   "description": "Markdown Editor",
@@ -17,6 +17,10 @@
     "build-all": "node ./make.mjs",
     "serve-web": "http-server dist",
     "serve-app": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sentrychris/mkeditor-auto-updates"
   },
   "devDependencies": {
     "@electron/asar": "^4.0.1",
@@ -57,8 +61,8 @@
     "style-loader": "^4.0.0",
     "sweetalert2": "^11.22.4",
     "terser-webpack-plugin": "^5.3.14",
-    "ts-loader": "^9.5.2",
     "ts-jest": "^29.4.1",
+    "ts-loader": "^9.5.2",
     "typescript": "^5.9.2",
     "webpack": "^5.101.2",
     "webpack-cli": "^6.0.1"
@@ -106,5 +110,8 @@
     "pkg": {
       "license": "build/resources/license.txt"
     }
+  },
+  "dependencies": {
+    "update-electron-app": "^3.1.1"
   }
 }
