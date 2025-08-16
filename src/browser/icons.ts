@@ -17,7 +17,6 @@ import { faFolder } from '@fortawesome/free-solid-svg-icons/faFolder';
 import { faFolderOpen } from '@fortawesome/free-solid-svg-icons/faFolderOpen';
 import { faItalic } from '@fortawesome/free-solid-svg-icons/faItalic';
 import { faLink } from '@fortawesome/free-solid-svg-icons/faLink';
-import { faLinkSlash } from '@fortawesome/free-solid-svg-icons/faLinkSlash';
 import { faListOl } from '@fortawesome/free-solid-svg-icons/faListOl';
 import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
 import { faMoon } from '@fortawesome/free-solid-svg-icons/faMoon';
@@ -48,7 +47,6 @@ library.add(
   faFileExport,
   faItalic,
   faLink,
-  faLinkSlash,
   faListUl,
   faListOl,
   faMoon,
