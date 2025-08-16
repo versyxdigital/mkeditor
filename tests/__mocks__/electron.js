@@ -1,5 +1,11 @@
 const app = {
   on: jest.fn(),
+  once: jest.fn(),
+  isReady: jest.fn(() => true),
+  getName: jest.fn(() => 'mkeditor'),
+  getVersion: jest.fn(() => '0.0.0'),
+  getPath: jest.fn(),
+  isPackaged: false,
   quit: jest.fn(),
   focus: jest.fn(),
   requestSingleInstanceLock: jest.fn(() => true),
