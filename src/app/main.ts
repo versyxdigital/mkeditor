@@ -17,9 +17,8 @@ import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
 
 // Configure app logger
-log.transports.file.resolvePathFn = () => {
-  return join(normalize(homedir()), '.mkeditor/main.log');
-};
+const logPath = join(normalize(homedir()), '.mkeditor/main.log');
+log.transports.file.resolvePathFn = () => logPath;
 log.transports.file.level = 'info';
 log.initialize();
 
@@ -50,7 +49,7 @@ function main(file: string | null = null) {
   bridge.provide('settings', settings);
   bridge.register();
 
-  const menu = new AppMenu(context);
+  const menu = new AppMenu(context, logPath);
   menu.register();
 
   const tray = new Tray(nativeImage.createFromDataURL(iconBase64()));

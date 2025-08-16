@@ -1,15 +1,19 @@
 import { app, BrowserWindow, Menu } from 'electron';
 import { BridgeProviders } from '../interfaces/Providers';
+import { AppStorage } from './AppStorage';
 
 export class AppMenu {
   private context: BrowserWindow;
+
+  private logpath: string;
 
   private providers: BridgeProviders = {
     bridge: null,
   };
 
-  constructor(context: BrowserWindow, register = false) {
+  constructor(context: BrowserWindow, logpath: string, register = false) {
     this.context = context;
+    this.logpath = logpath;
 
     if (register) {
       this.register();
@@ -76,9 +80,9 @@ export class AppMenu {
             },
           },
           {
-            label: 'Open Log...',
+            label: 'Open Log',
             click: () => {
-              // Open the application log
+              AppStorage.openPath(this.context, this.logpath);
             },
           },
           { type: 'separator' },

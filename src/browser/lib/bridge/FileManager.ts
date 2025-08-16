@@ -29,6 +29,9 @@ export class FileManager {
   /** Flag to indicate that a file is being opened */
   public openingFile = false;
 
+  /** Is the app log */
+  private isLogFile: boolean = false;
+
   /**
    * Create a new file manager instance.
    *
@@ -100,7 +103,7 @@ export class FileManager {
     const original = this.originals.get(path) ?? '';
     const current = mdl.getValue();
 
-    if (original !== current) {
+    if (original !== current && !this.isLogFile) {
       const result = await Swal.fire({
         customClass: { container: 'unsaved-changes-popup' },
         title: 'Unsaved changes',
@@ -216,8 +219,14 @@ export class FileManager {
     const original = this.originals.get(path) ?? '';
     const current = this.model.getValue();
 
-    this.dispatcher.setTrackedContent({ content: original });
-    this.trackContentHasChanged(original !== current);
+    this.isLogFile = filename.endsWith('.log');
+
+    if (!this.isLogFile) {
+      this.dispatcher.setTrackedContent({ content: original });
+      this.trackContentHasChanged(original !== current);
+    } else {
+      this.contentHasChanged = false;
+    }
 
     this.tabs.forEach((tab, p) => {
       const li = tab.parentElement as HTMLElement;
@@ -272,6 +281,7 @@ export class FileManager {
    * @returns
    */
   public trackContentHasChanged(hasChanged: boolean) {
+    if (this.isLogFile) hasChanged = false;
     this.bridge.send('to:editor:state', hasChanged);
     this.contentHasChanged = hasChanged;
   }
