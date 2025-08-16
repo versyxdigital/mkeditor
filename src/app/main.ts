@@ -6,12 +6,26 @@ import {
   shell,
   Tray,
 } from 'electron';
-import { join } from 'path';
+import { autoUpdater } from 'electron-updater';
+import log from 'electron-log/main';
+import { homedir } from 'os';
+import { join, normalize } from 'path';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
+
+// Configure app logger
+log.transports.file.resolvePathFn = () => {
+  return join(normalize(homedir()), '.mkeditor/main.log');
+};
+log.transports.file.level = 'info';
+log.initialize();
+
+// Configure auto-updater
+autoUpdater.logger = log;
+autoUpdater.autoDownload = true;
 
 let context: BrowserWindow | null;
 
@@ -80,34 +94,7 @@ function main(file: string | null = null) {
   context.show();
 }
 
-// MacOS - open with... Also handle files using the same runnning instance
-app.on('open-file', (event) => {
-  event.preventDefault();
-  let file: string | null = null;
-  if (process.platform === 'win32' && process.argv.length >= 2) {
-    file = process.argv[1];
-  }
-
-  if (!context) {
-    main(file);
-  } else if (file && file !== '.' && !file.startsWith('-')) {
-    AppStorage.setActiveFile(context, file);
-  }
-});
-
-app.on('ready', () => {
-  let file: string | null = null;
-  if (process.platform === 'win32' && process.argv.length >= 2) {
-    file = process.argv[1];
-  }
-  main(file);
-});
-
-app.on('activate', () => {
-  if (!context) {
-    main();
-  }
-});
+/** --------------------App Lifecycle ---------------------------- */
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -128,6 +115,47 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
 }
+
+app.on('ready', () => {
+  autoUpdater.checkForUpdatesAndNotify();
+  log.info('changes');
+  let file: string | null = null;
+  if (process.platform === 'win32' && process.argv.length >= 2) {
+    file = process.argv[1];
+  }
+  main(file);
+});
+
+autoUpdater.on('update-downloaded', async () => {
+  if (context) {
+    context.webContents.send('from:notification:display', {
+      status: 'success',
+      message:
+        'An update has been downloaded. MKEditor will be updated the next time you launch.',
+    });
+  }
+});
+
+app.on('activate', () => {
+  if (!context) {
+    main();
+  }
+});
+
+// MacOS - open with... Also handle files using the same runnning instance
+app.on('open-file', (event) => {
+  event.preventDefault();
+  let file: string | null = null;
+  if (process.platform === 'win32' && process.argv.length >= 2) {
+    file = process.argv[1];
+  }
+
+  if (!context) {
+    main(file);
+  } else if (file && file !== '.' && !file.startsWith('-')) {
+    AppStorage.setActiveFile(context, file);
+  }
+});
 
 app.on('window-all-closed', () => {
   app.clearRecentDocuments();
