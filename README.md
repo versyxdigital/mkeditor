@@ -77,7 +77,7 @@ If you would like to build from source, please follow the steps below:
     ```sh
     npm run build-editor
     ```
-    This will output the editor to **dist/**. You can serve the editor web app by running `npm run serve-app`.
+    This will output the editor to **dist/**. You can serve the editor web app by running `npm run serve-app` (requires [http-server](https://www.npmjs.com/package/http-server) to be installed.).
 4. Build the electron app:
     ```sh
     npm run build-app
