@@ -58,3 +58,37 @@ MKEditor also includes a built-in, resizable preview renderer and support for ex
 Customize your settings, switch between light mode and dark mode, write some documents and have fun!
 
 Built with ❤️ by [Versyx Digital](https://github.com/versyxdigital)
+
+## Building from Source
+
+If you would like to build from source, please follow the steps below:
+
+1. Clone the repository
+    ```sh
+    git clone git@github.com:versyxdigital/mkeditor.git
+    ```
+
+2. Install dependencies
+    ```sh
+    npm install
+    ```
+
+3. Build the editor:
+    ```sh
+    npm run build-editor
+    ```
+    This will output the editor to **dist/**. You can serve the editor web app by running `npm run serve-app`.
+4. Build the electron app:
+    ```sh
+    npm run build-app
+    ```
+    This will output the app to **dist/app**. You can serve the electron app by running `npm run serve-app`,
+
+To build an installable package:
+
+```sh
+npm run build-all
+```
+
+This will invoke the `make.mjs` script which runs all the necessary commands for building both an installer and an unpacked executable. Outputs to the **releases/** directory.
+
