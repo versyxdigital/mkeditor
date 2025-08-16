@@ -76,14 +76,7 @@ export const commands: Record<string, EditorCommand> = {
     contextMenuGroupId: 'navigation',
     contextMenuOrder: 6,
     keybindings: [KeyMod.CtrlCmd | KeyCode.KeyH],
-    isInline: false,
+    isInline: true,
+    syntax: '[]()',
   },
-  // mdLinkDelete: {
-  //   id: 'md-link-delete',
-  //   label: 'Delete a link',
-  //   contextMenuGroupId: 'navigation',
-  //   contextMenuOrder: 7,
-  //   keybindings: [KeyMod.CtrlCmd | KeyCode.KeyD],
-  //   isInline: false,
-  // },
 };

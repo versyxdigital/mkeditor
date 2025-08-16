@@ -223,7 +223,17 @@ export class Commands {
    * @param syntax - the markdown syntax (i.e. ** or __)
    */
   private editInline(syntax: string) {
-    this.executeEdit(syntax + this.getModel() + syntax);
+    const selected = this.getModel();
+    let edit = '';
+    // Handle inline links
+    if (syntax === '[]()') {
+      const text = selected && selected.trim().length > 0 ? selected : 'link';
+      edit = `[${text}](.)`;
+    } else {
+      edit = syntax + this.getModel() + syntax;
+    }
+
+    this.executeEdit(edit);
   }
 
   /**
@@ -331,18 +341,4 @@ export class Commands {
       this.getModel().replace(/^[a-zA-Z]+?/gm, (match) => `${++i}. ${match}`),
     );
   }
-
-  /**
-   * Create a link.
-   */
-  private mdLinkAdd() {
-    this.executeEdit('[link](http://versyxdigital.github.io)');
-  }
-
-  /**
-   * Create a link.
-   */
-  // private mdLinkDelete() {
-  //   this.executeEdit('[link](http://versyxdigital.github.io)');
-  // }
 }
