@@ -97,6 +97,10 @@ module.exports = {
           to: './icon.png',
         },
         { from: './src/browser/views' },
+        {
+          from: './node_modules/katex/dist/fonts/*',
+          to: 'fonts/[name][ext]',
+        },
       ],
     }),
   ],
