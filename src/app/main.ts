@@ -8,6 +8,7 @@ import {
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log/main';
+import { existsSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 import { join, normalize } from 'path';
 import { AppBridge } from './lib/AppBridge';
@@ -16,8 +17,15 @@ import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
 
-// Configure app logger
+// Set the log path
 const logPath = join(normalize(homedir()), '.mkeditor/main.log');
+
+// Truncate the log file
+if (existsSync(logPath)) {
+  writeFileSync(logPath, '');
+}
+
+// Configure the logger
 log.transports.file.resolvePathFn = () => logPath;
 log.transports.file.level = 'info';
 log.initialize();
@@ -28,6 +36,11 @@ autoUpdater.autoDownload = true;
 
 let context: BrowserWindow | null;
 
+/**
+ * Main entry point for MKEditor app.
+ *
+ * @param file - present if we are opening the app from a file
+ */
 function main(file: string | null = null) {
   context = new BrowserWindow({
     show: false,
@@ -42,7 +55,6 @@ function main(file: string | null = null) {
   context.webContents.on('will-navigate', (event) => event.preventDefault());
   context.loadFile(join(__dirname, '../index.html'));
 
-  // const dialog = new Dialog(context);
   const settings = new AppSettings(context);
 
   const bridge = new AppBridge(context);
@@ -125,12 +137,21 @@ app.on('ready', () => {
   main(file);
 });
 
+autoUpdater.on('update-available', async () => {
+  if (context) {
+    context.webContents.send('from:notification:display', {
+      status: 'info',
+      message: 'An update has been detected. Downloading in the background...',
+    });
+  }
+});
+
 autoUpdater.on('update-downloaded', async () => {
   if (context) {
     context.webContents.send('from:notification:display', {
       status: 'success',
       message:
-        'An update has been downloaded. MKEditor will be updated the next time you launch.',
+        'update has been downloaded. MKEditor will be updated the next time you launch.',
     });
   }
 });
