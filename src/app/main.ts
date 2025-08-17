@@ -128,7 +128,7 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.on('ready', () => {
-  autoUpdater.checkForUpdates();
+  autoUpdater.checkForUpdatesAndNotify();
   let file: string | null = null;
   if (process.platform === 'win32' && process.argv.length >= 2) {
     file = process.argv[1];
