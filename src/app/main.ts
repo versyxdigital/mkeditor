@@ -136,21 +136,21 @@ app.on('ready', () => {
   main(file);
 });
 
-autoUpdater.on('update-available', async () => {
+autoUpdater.on('update-available', async (event) => {
   if (context) {
     context.webContents.send('from:notification:display', {
       status: 'info',
-      message: 'An update has been detected. Downloading in the background...',
+      message: `Update ${event.version} is available, downloading in the background...`,
     });
   }
 });
 
-autoUpdater.on('update-downloaded', async () => {
+autoUpdater.on('update-downloaded', async (event) => {
   if (context) {
     context.webContents.send('from:notification:display', {
       status: 'success',
       message:
-        'update has been downloaded. MKEditor will be updated the next time you launch.',
+        `update ${event.version} has been downloaded, restart to update.`,
     });
   }
 });
