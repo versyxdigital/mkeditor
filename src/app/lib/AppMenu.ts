@@ -80,7 +80,7 @@ export class AppMenu {
             },
           },
           {
-            label: 'Open Log',
+            label: 'Open Log...',
             click: () => {
               AppStorage.openPath(this.context, this.logpath);
             },
