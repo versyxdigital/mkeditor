@@ -150,7 +150,7 @@ autoUpdater.on('update-downloaded', async (event) => {
     context.webContents.send('from:notification:display', {
       status: 'success',
       message:
-        `update ${event.version} has been downloaded, restart to update.`,
+        `Update ${event.version} has been downloaded, restart to update.`,
     });
   }
 });
