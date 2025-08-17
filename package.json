@@ -107,11 +107,6 @@
       "installerIcon": "build/resources/icon.ico",
       "license": "build/resources/license.txt"
     },
-    "msi": {
-      "oneClick": false,
-      "perMachine": true,
-      "runAfterFinish": true
-    },
     "pkg": {
       "license": "build/resources/license.txt"
     },
