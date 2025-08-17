@@ -229,7 +229,7 @@ export class Commands {
     // Handle inline links
     if (syntax === '[]()') {
       const text = selected && selected.trim().length > 0 ? selected : 'link';
-      edit = `[${text}](.)`;
+      edit = `[${text}](#)`;
     } else {
       edit = syntax + this.getModel() + syntax;
     }
