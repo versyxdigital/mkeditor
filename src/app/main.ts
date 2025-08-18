@@ -85,6 +85,7 @@ function main(file: string | null = null) {
 
   // Load the editor frontend
   context.loadFile(join(__dirname, '../index.html'));
+  context.webContents.on('will-navigate', (event) => event.preventDefault());
 
   // Load the main process settings handler
   const settings = new AppSettings(context);
@@ -115,24 +116,9 @@ function main(file: string | null = null) {
     return new Response(''); // satisfy the protocol
   });
 
-  // TODO unfudge this
-  context.webContents.on('will-navigate', (event, url) => {
-    if (url.startsWith('mked://')) {
-      event.preventDefault();
-      bridge.handleMkedUrl(url);
-    } else {
-      event.preventDefault();
-      shell.openExternal(url);
-    }
-  });
-
-  // TODO unfudge this
+  // Set the window open handler for HTTP(S) URLs
   context.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('mked://')) {
-      bridge.handleMkedUrl(url);
-    } else {
-      shell.openExternal(url);
-    }
+    shell.openExternal(url);
     return { action: 'deny' };
   });
 

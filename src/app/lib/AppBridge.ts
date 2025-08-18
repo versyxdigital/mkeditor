@@ -154,13 +154,14 @@ export class AppBridge {
   handleMkedUrl(url: string) {
     try {
       const parsed = new URL(url);
-      console.log({ parsed });
       if (parsed.hostname === 'open') {
         const path = parsed.searchParams.get('path');
         AppStorage.openActiveFile(this.context, path);
       }
     } catch {
-      // ignore malformed URLs
+      this.providers.logger?.log.error(
+        `Malformed path to linked document: ${url}`
+      )
     }
   }
 
