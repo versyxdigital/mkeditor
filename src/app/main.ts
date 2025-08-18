@@ -38,10 +38,31 @@ autoUpdater.autoDownload = true;
 
 let context: BrowserWindow | null;
 
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'mked',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: true,
+      allowServiceWorkers: false,
+    },
+  },
+]);
+
 ipcMain.handle('mked:path:dirname', (_e, p: string) => dirname(p));
 ipcMain.handle('mked:path:resolve', (_e, base: string, rel: string) =>
   resolve(base, rel),
 );
+
+ipcMain.on('mked:open-url', (_e, url: string) => {
+  try {
+    handleMkedUrl(url);
+  } catch (e) {
+    log.error('[mked:open-url]', e);
+  }
+});
 
 /**
  * Main entry point for MKEditor app.
@@ -138,6 +159,7 @@ function openActiveFile(file: string | null) {
 function handleMkedUrl(url: string) {
   try {
     const parsed = new URL(url);
+    console.log({ parsed });
     if (parsed.hostname === 'open') {
       const path = parsed.searchParams.get('path');
       openActiveFile(path);

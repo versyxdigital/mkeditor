@@ -38,19 +38,40 @@ export class LinkProvider {
           const startPos = m.getPositionAt(startOffset);
           const endPos = m.getPositionAt(endOffset);
 
-          links.push({
+          // NOTE: no 'url' here — let resolveLink handle it
+          const link: languages.ILink = {
             range: {
               startLineNumber: startPos.lineNumber,
               startColumn: startPos.column,
               endLineNumber: endPos.lineNumber,
               endColumn: endPos.column,
             },
-            url: `mked://open?path=${encodeURIComponent(resolved)}`,
-          });
+            tooltip: `Open ${url}`,
+          };
+
+          // stash the absolute path so resolveLink can use it
+          (link as any).__absPath = resolved;
+
+          links.push(link);
         }
 
         console.log(links);
         return { links };
+      },
+      resolveLink: async (link) => {
+        const abs = (link as any).__absPath as string | undefined;
+        if (!abs) return link;
+
+        // Your preload should expose this IPC
+        // window.mked.openMkedUrl('mked://open?path=...')
+        if (window && window.mked) {
+          window.mked.openMkedUrl(
+            `mked://open?path=${encodeURIComponent(abs)}`,
+          );
+        }
+
+        // Returning null tells Monaco "we handled it; don't navigate"
+        return null;
       },
     });
   }

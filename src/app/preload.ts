@@ -85,4 +85,5 @@ contextBridge.exposeInMainWorld('mked', {
   pathDirname: (p: string) => ipcRenderer.invoke('mked:path:dirname', p),
   resolvePath: (base: string, rel: string) =>
     ipcRenderer.invoke('mked:path:resolve', base, rel),
+  openMkedUrl: (url: string) => ipcRenderer.send('mked:open-url', url),
 });

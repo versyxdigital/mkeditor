@@ -7,6 +7,7 @@ declare global {
       getActiveFilePath: () => string | null;
       pathDirname: (p: string) => string;
       resolvePath: (base: string, rel: string) => string;
+      openMkedUrl: (url: string) => string;
     };
   }
 }
