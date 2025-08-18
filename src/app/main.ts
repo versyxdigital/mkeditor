@@ -181,21 +181,17 @@ app.on('ready', () => {
 });
 
 autoUpdater.on('update-available', async (event) => {
-  if (context) {
-    context.webContents.send('from:notification:display', {
-      status: 'info',
-      message: `Update ${event.version} is available, downloading in the background...`,
-    });
-  }
+  context?.webContents.send('from:notification:display', {
+    status: 'info',
+    message: `Update ${event.version} is available, downloading in the background...`,
+  });
 });
 
 autoUpdater.on('update-downloaded', async (event) => {
-  if (context) {
-    context.webContents.send('from:notification:display', {
-      status: 'success',
-      message: `Update ${event.version} has been downloaded, restart to update.`,
-    });
-  }
+  context?.webContents.send('from:notification:display', {
+    status: 'success',
+    message: `Update ${event.version} has been downloaded, restart to update.`,
+  });
 });
 
 // Mainly MacOS...
