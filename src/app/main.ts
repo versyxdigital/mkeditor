@@ -1,7 +1,6 @@
 import {
   app,
   BrowserWindow,
-  ipcMain,
   nativeImage,
   nativeTheme,
   protocol,
@@ -12,25 +11,28 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log/main';
 import { existsSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
-import { dirname, join, normalize, resolve } from 'path';
+import { join, normalize } from 'path';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
+import { Logger } from './interfaces/Providers';
 
 // Set the log path
-const logPath = join(normalize(homedir()), '.mkeditor/main.log');
+const logpath = join(normalize(homedir()), '.mkeditor/main.log');
 
 // Truncate the log file
-if (existsSync(logPath)) {
-  writeFileSync(logPath, '');
+if (existsSync(logpath)) {
+  writeFileSync(logpath, '');
 }
 
 // Configure the logger
-log.transports.file.resolvePathFn = () => logPath;
+log.transports.file.resolvePathFn = () => logpath;
 log.transports.file.level = 'info';
 log.initialize();
+
+const logconfig: Logger = { log, logpath };
 
 // Configure auto-updater
 autoUpdater.logger = log;
@@ -51,19 +53,6 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-ipcMain.handle('mked:path:dirname', (_e, p: string) => dirname(p));
-ipcMain.handle('mked:path:resolve', (_e, base: string, rel: string) =>
-  resolve(base, rel),
-);
-
-ipcMain.on('mked:open-url', (_e, url: string) => {
-  try {
-    handleMkedUrl(url);
-  } catch (e) {
-    log.error('[mked:open-url]', e);
-  }
-});
-
 /**
  * Main entry point for MKEditor app.
  *
@@ -80,25 +69,17 @@ function main(file: string | null = null) {
     },
   });
 
-  context.webContents.on('will-navigate', (event, url) => {
-    if (url.startsWith('mked://')) {
-      event.preventDefault();
-      handleMkedUrl(url);
-    } else {
-      event.preventDefault();
-      shell.openExternal(url);
-    }
-  });
-
   context.loadFile(join(__dirname, '../index.html'));
 
   const settings = new AppSettings(context);
 
   const bridge = new AppBridge(context);
   bridge.provide('settings', settings);
+  bridge.provide('logger', logconfig);
   bridge.register();
 
-  const menu = new AppMenu(context, logPath);
+  const menu = new AppMenu(context);
+  menu.provide('logger', logconfig);
   menu.register();
 
   const tray = new Tray(nativeImage.createFromDataURL(iconBase64()));
@@ -106,9 +87,24 @@ function main(file: string | null = null) {
   tray.setToolTip('MKEditor');
   tray.setTitle('MKEditor');
 
+  protocol.registerStringProtocol('mked', ({ url }, callback) => {
+    bridge.handleMkedUrl(url);
+    callback('');
+  });
+
+  context.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('mked://')) {
+      event.preventDefault();
+      bridge.handleMkedUrl(url);
+    } else {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
   context.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('mked://')) {
-      handleMkedUrl(url);
+      bridge.handleMkedUrl(url);
     } else {
       shell.openExternal(url);
     }
@@ -128,7 +124,7 @@ function main(file: string | null = null) {
 
       context.webContents.send('from:settings:set', settings.loadFile());
 
-      openActiveFile(file);
+      AppStorage.openActiveFile(context, file);
     }
   });
 
@@ -144,31 +140,6 @@ function main(file: string | null = null) {
   context.show();
 }
 
-function openActiveFile(file: string | null) {
-  if (
-    context &&
-    file &&
-    file !== '.' &&
-    !file.startsWith('-') &&
-    file.indexOf('MKEditor.lnk') === -1
-  ) {
-    AppStorage.setActiveFile(context, file);
-  }
-}
-
-function handleMkedUrl(url: string) {
-  try {
-    const parsed = new URL(url);
-    console.log({ parsed });
-    if (parsed.hostname === 'open') {
-      const path = parsed.searchParams.get('path');
-      openActiveFile(path);
-    }
-  } catch {
-    // ignore malformed URLs
-  }
-}
-
 /** --------------------App Lifecycle ---------------------------- */
 
 if (!app.requestSingleInstanceLock()) {
@@ -177,18 +148,13 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', (event, args) => {
     app.focus();
     if (args.length >= 2) {
-      openActiveFile(args[2]);
+      if (context) AppStorage.openActiveFile(context, args[2]);
     }
   });
 }
 
 app.on('ready', () => {
   autoUpdater.checkForUpdatesAndNotify();
-
-  protocol.registerStringProtocol('mked', ({ url }, callback) => {
-    handleMkedUrl(url);
-    callback('');
-  });
 
   let file: string | null = null;
   if (process.platform === 'win32' && process.argv.length >= 2) {
@@ -232,7 +198,7 @@ app.on('open-file', (event) => {
   if (!context) {
     main(file);
   } else {
-    openActiveFile(file);
+    AppStorage.openActiveFile(context, file);
   }
 });
 

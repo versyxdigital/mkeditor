@@ -265,4 +265,16 @@ export class AppStorage {
       content,
     };
   }
+
+  static openActiveFile(context: BrowserWindow, file: string | null) {
+    if (
+      context &&
+      file &&
+      file !== '.' &&
+      !file.startsWith('-') &&
+      file.indexOf('MKEditor.lnk') === -1
+    ) {
+      AppStorage.setActiveFile(context, file);
+    }
+  }
 }

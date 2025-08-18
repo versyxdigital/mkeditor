@@ -5,15 +5,13 @@ import { AppStorage } from './AppStorage';
 export class AppMenu {
   private context: BrowserWindow;
 
-  private logpath: string;
-
   private providers: BridgeProviders = {
     bridge: null,
+    logger: null,
   };
 
-  constructor(context: BrowserWindow, logpath: string, register = false) {
+  constructor(context: BrowserWindow, register = false) {
     this.context = context;
-    this.logpath = logpath;
 
     if (register) {
       this.register();
@@ -82,7 +80,7 @@ export class AppMenu {
           {
             label: 'Open Log...',
             click: () => {
-              AppStorage.openPath(this.context, this.logpath);
+              AppStorage.openPath(this.context, <string>this.providers.logger?.logpath);
             },
           },
           { type: 'separator' },

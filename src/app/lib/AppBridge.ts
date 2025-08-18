@@ -1,4 +1,5 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { dirname, resolve } from 'path';
 import { SettingsProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
 
@@ -10,6 +11,7 @@ export class AppBridge {
   private contextBridgedContentHasChanged: boolean = false;
 
   private providers: SettingsProviders = {
+    logger: null,
     settings: null,
   };
 
@@ -130,9 +132,36 @@ export class AppBridge {
       });
     });
 
+    // mked:// protocol handlers
     ipcMain.on('mked:get-active-file', (event) => {
       event.returnValue = AppStorage.getActiveFilePath();
     });
+
+    ipcMain.handle('mked:path:dirname', (_e, p: string) => dirname(p));
+    ipcMain.handle('mked:path:resolve', (_e, base: string, rel: string) =>
+      resolve(base, rel),
+    );
+
+    ipcMain.on('mked:open-url', (_e, url: string) => {
+      try {
+        this.handleMkedUrl(url);
+      } catch (e) {
+        this.providers.logger?.log.error('[mked:open-url]', e);
+      }
+    });
+  }
+
+  handleMkedUrl(url: string) {
+    try {
+      const parsed = new URL(url);
+      console.log({ parsed });
+      if (parsed.hostname === 'open') {
+        const path = parsed.searchParams.get('path');
+        AppStorage.openActiveFile(this.context, path);
+      }
+    } catch {
+      // ignore malformed URLs
+    }
   }
 
   promptUserBeforeQuit(event: Event) {
