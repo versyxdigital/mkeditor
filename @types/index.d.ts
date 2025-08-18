@@ -5,8 +5,8 @@ declare global {
     executionBridge?: any;
     mked?: {
       getActiveFilePath: () => string | null;
-      pathDirname: (p: string) => string;
-      resolvePath: (base: string, rel: string) => string;
+      pathDirname: (p: string) => Promise<string>;
+      resolvePath: (base: string, rel: string) => Promise<string>;
       openMkedUrl: (url: string) => string;
     };
   }

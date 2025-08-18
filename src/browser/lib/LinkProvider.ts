@@ -26,7 +26,6 @@ export class LinkProvider {
 
           let exists = false;
           if (dom.filetree) {
-            console.log('filetree exists');
             exists = Array.from(dom.filetree.querySelectorAll('li.file')).some(
               (el) => (el as HTMLElement).dataset.path === resolved,
             );
@@ -55,15 +54,12 @@ export class LinkProvider {
           links.push(link);
         }
 
-        console.log(links);
         return { links };
       },
       resolveLink: async (link) => {
         const abs = (link as any).__absPath as string | undefined;
         if (!abs) return link;
 
-        // Your preload should expose this IPC
-        // window.mked.openMkedUrl('mked://open?path=...')
         if (window && window.mked) {
           window.mked.openMkedUrl(
             `mked://open?path=${encodeURIComponent(abs)}`,
