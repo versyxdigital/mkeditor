@@ -31,15 +31,19 @@ if (existsSync(logpath)) {
 log.transports.file.resolvePathFn = () => logpath;
 log.transports.file.level = 'info';
 log.initialize();
-
+// Define log config to pass to app handlers
 const logconfig: Logger = { log, logpath };
 
-// Configure auto-updater
+// Configure the auto-update
+// NOTE: This does not work for MacOS without code signing and
+// other bits... Mac users stuck on manual downloads for now.
 autoUpdater.logger = log;
 autoUpdater.autoDownload = true;
 
 let context: BrowserWindow | null;
 
+// Register the mked:// protocol scheme for opening linked
+// markdown documents in new tabs from within the editor.
 protocol.registerSchemesAsPrivileged([
   {
     scheme: 'mked',
@@ -59,6 +63,7 @@ protocol.registerSchemesAsPrivileged([
  * @param file - present if we are opening the app from a file
  */
 function main(file: string | null = null) {
+  // Create a new browser window
   context = new BrowserWindow({
     show: false,
     icon: join(__dirname, 'assets/icon.ico'),
@@ -69,29 +74,39 @@ function main(file: string | null = null) {
     },
   });
 
+  // Load the editor frontend
   context.loadFile(join(__dirname, '../index.html'));
 
+  // Load the main process settings handler
   const settings = new AppSettings(context);
+  settings.provide('logger', logconfig);
 
+  // Load the main process bridge handler to handle IPC traffic across
+  // execution contexts.
   const bridge = new AppBridge(context);
   bridge.provide('settings', settings);
   bridge.provide('logger', logconfig);
-  bridge.register();
+  bridge.register(); // Register all IPC event listeners
 
+  // Load the electron application menu
   const menu = new AppMenu(context);
   menu.provide('logger', logconfig);
-  menu.register();
+  menu.register(); // Register all menu items
 
+  // Configure the app's tray icon and context menu
   const tray = new Tray(nativeImage.createFromDataURL(iconBase64()));
   tray.setContextMenu(menu.buildTrayContextMenu(context));
   tray.setToolTip('MKEditor');
   tray.setTitle('MKEditor');
 
-  protocol.registerStringProtocol('mked', ({ url }, callback) => {
-    bridge.handleMkedUrl(url);
-    callback('');
+  // Register the mked:// protocol for opening linked markdown documents
+  // in new tabs from within the editor.
+  protocol.handle('mked', (request) => {
+    bridge.handleMkedUrl(request.url);
+    return new Response(''); // satisfy the protocol
   });
 
+  // TODO unfudge this
   context.webContents.on('will-navigate', (event, url) => {
     if (url.startsWith('mked://')) {
       event.preventDefault();
@@ -102,6 +117,7 @@ function main(file: string | null = null) {
     }
   });
 
+  // TODO unfudge this
   context.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('mked://')) {
       bridge.handleMkedUrl(url);
@@ -111,6 +127,8 @@ function main(file: string | null = null) {
     return { action: 'deny' };
   });
 
+  // On finished loading, set the editor theme and settings, and
+  // set the active file.
   context.webContents.on('did-finish-load', () => {
     if (context) {
       if (settings.applied && settings.applied.systemtheme) {
@@ -121,9 +139,7 @@ function main(file: string | null = null) {
       } else {
         context.webContents.send('from:theme:set', settings.applied?.darkmode);
       }
-
       context.webContents.send('from:settings:set', settings.loadFile());
-
       AppStorage.openActiveFile(context, file);
     }
   });

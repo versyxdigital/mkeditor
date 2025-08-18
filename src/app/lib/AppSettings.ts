@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { normalize } from 'path';
 import { BrowserWindow } from 'electron';
 import { EditorSettings } from '../interfaces/Settings';
+import { Providers } from '../interfaces/Providers';
 
 export class AppSettings {
   private context: BrowserWindow;
@@ -10,6 +11,10 @@ export class AppSettings {
   private appPath: string;
 
   private filePath: string;
+
+  private providers: Providers = {
+    logger: null
+  };
 
   private settings: EditorSettings = {
     autoindent: false,
@@ -30,6 +35,10 @@ export class AppSettings {
     this.createFileIfNotExists(this.settings);
 
     this.applied = this.loadFile() as EditorSettings;
+  }
+
+  provide<T>(provider: string, instance: T) {
+    this.providers[provider] = instance;
   }
 
   loadFile() {
@@ -69,6 +78,8 @@ export class AppSettings {
         detail.code === 'EPERM'
           ? 'Unable to save settings: permission denied.'
           : 'Unable to save settings: unknown error.';
+
+      this.providers.logger?.log.error(message, err);
 
       this.context.webContents.send('from:notification:display', {
         status: 'error',
