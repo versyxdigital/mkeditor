@@ -19,6 +19,8 @@ import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
 import { Logger } from './interfaces/Providers';
 
+/** --------------------App Logging------------------------------- */
+
 // Set the log path
 const logpath = join(normalize(homedir()), '.mkeditor/main.log');
 
@@ -31,8 +33,11 @@ if (existsSync(logpath)) {
 log.transports.file.resolvePathFn = () => logpath;
 log.transports.file.level = 'info';
 log.initialize();
+
 // Define log config to pass to app handlers
 const logconfig: Logger = { log, logpath };
+
+/** --------------------Auto Updates------------------------------ */
 
 // Configure the auto-update
 // NOTE: This does not work for MacOS without code signing and
@@ -40,7 +45,7 @@ const logconfig: Logger = { log, logpath };
 autoUpdater.logger = log;
 autoUpdater.autoDownload = true;
 
-let context: BrowserWindow | null;
+/** --------------------Custom Protocol--------------------------- */
 
 // Register the mked:// protocol scheme for opening linked
 // markdown documents in new tabs from within the editor.
@@ -56,6 +61,10 @@ protocol.registerSchemesAsPrivileged([
     },
   },
 ]);
+
+/** --------------------App Entry--------------------------------- */
+
+let context: BrowserWindow | null;
 
 /**
  * Main entry point for MKEditor app.
@@ -81,7 +90,7 @@ function main(file: string | null = null) {
   const settings = new AppSettings(context);
   settings.provide('logger', logconfig);
 
-  // Load the main process bridge handler to handle IPC traffic across
+  // Load the main process "bridge" to handle IPC traffic across
   // execution contexts.
   const bridge = new AppBridge(context);
   bridge.provide('settings', settings);
@@ -163,6 +172,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', (event, args) => {
     app.focus();
+    // TODO prompt
     if (args.length >= 2) {
       if (context) AppStorage.openActiveFile(context, args[2]);
     }
@@ -197,6 +207,7 @@ autoUpdater.on('update-downloaded', async (event) => {
   }
 });
 
+// Mainly MacOS...
 app.on('activate', () => {
   if (!context) {
     main();
@@ -219,6 +230,6 @@ app.on('open-file', (event) => {
 });
 
 app.on('window-all-closed', () => {
-  app.clearRecentDocuments();
+  app.clearRecentDocuments(); // TODO get recent documents working or remove
   app.quit();
 });
