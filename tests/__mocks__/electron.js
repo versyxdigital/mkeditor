@@ -60,7 +60,8 @@ const ipcMain = {
 };
 
 const protocol = {
-  registerStringProtocol: jest.fn(),
+  registerSchemesAsPrivileged: jest.fn(),
+  handle: jest.fn(),
 };
 
 module.exports = {
