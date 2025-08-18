@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  ipcMain,
   nativeImage,
   nativeTheme,
   protocol,
@@ -11,7 +12,7 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log/main';
 import { existsSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
-import { join, normalize } from 'path';
+import { dirname, join, normalize, resolve } from 'path';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
 import { AppSettings } from './lib/AppSettings';
@@ -36,6 +37,11 @@ autoUpdater.logger = log;
 autoUpdater.autoDownload = true;
 
 let context: BrowserWindow | null;
+
+ipcMain.handle('mked:path:dirname', (_e, p: string) => dirname(p));
+ipcMain.handle('mked:path:resolve', (_e, base: string, rel: string) =>
+  resolve(base, rel),
+);
 
 /**
  * Main entry point for MKEditor app.

@@ -13,6 +13,7 @@ import {
   createSidebarToggle,
 } from './dom';
 import { getExecutionBridge } from './util';
+import { LinkProvider } from './lib/LinkProvider';
 
 // The bi-directional synchronous bridge to the main execution context.
 // Exposed on the window object through the preloader.
@@ -60,6 +61,9 @@ if (model) {
     bridge.provide('settings', mkeditor.providers.settings);
     bridge.provide('commands', mkeditor.providers.commands);
     mkeditor.provide('bridge', bridge);
+
+    // Register link provider for markdown file navigation.
+    new LinkProvider(model);
 
     // Initialize content tracker for the execution bridge.
     mkeditor.updateBridgedContent({ initialize: true });

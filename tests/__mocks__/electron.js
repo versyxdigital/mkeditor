@@ -56,6 +56,7 @@ const dialog = {
 
 const ipcMain = {
   on: jest.fn(),
+  handle: jest.fn(),
 };
 
 const protocol = {
