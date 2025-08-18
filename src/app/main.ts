@@ -85,6 +85,11 @@ function main(file: string | null = null) {
 
   // Load the editor frontend
   context.loadFile(join(__dirname, '../index.html'));
+
+  // Prevent navigation to links within the BrowserWindow. This is usually
+  // emitted when a user clicks a link that would cause a full page load.
+  // Instead of preventing the app's main window from being redirected, we
+  // block it here and then handle links navigation further down below.*
   context.webContents.on('will-navigate', (event) => event.preventDefault());
 
   // Load the main process settings handler
@@ -110,20 +115,20 @@ function main(file: string | null = null) {
   tray.setTitle('MKEditor');
 
   // Register the mked:// protocol for opening linked markdown documents
-  // in new tabs from within the editor.
+  // in new tabs from within the editor.*
   protocol.handle('mked', (request) => {
     bridge.handleMkedUrl(request.url);
     return new Response(''); // satisfy the protocol
   });
 
-  // Set the window open handler for HTTP(S) URLs
+  // Set the window open handler for HTTP(S) URLs.*
   context.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
-    return { action: 'deny' };
+    shell.openExternal(url); // Use the user's default browser
+    return { action: 'deny' }; // No new window in main process
   });
 
-  // On finished loading, set the editor theme and settings, and
-  // set the active file.
+  // On finished frotend loading, set the editor theme and settings,
+  // and set the active file (untitled new file if no file open).
   context.webContents.on('did-finish-load', () => {
     if (context) {
       if (settings.applied && settings.applied.systemtheme) {
@@ -153,12 +158,13 @@ function main(file: string | null = null) {
 
 /** --------------------App Lifecycle ---------------------------- */
 
+// If the app is already running then handle it.
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', (event, args) => {
     app.focus();
-    // TODO prompt
+    // If user has opened the app via a file, then set active file.
     if (args.length >= 2) {
       if (context) AppStorage.openActiveFile(context, args[2]);
     }
@@ -167,7 +173,6 @@ if (!app.requestSingleInstanceLock()) {
 
 app.on('ready', () => {
   autoUpdater.checkForUpdatesAndNotify();
-
   let file: string | null = null;
   if (process.platform === 'win32' && process.argv.length >= 2) {
     file = process.argv[1];
