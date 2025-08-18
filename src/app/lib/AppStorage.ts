@@ -3,37 +3,84 @@ import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
 import { join } from 'path';
 import { SaveFileOptions } from '../interfaces/Storage';
 
+/**
+ * AppStorage
+ */
 export class AppStorage {
   /** The active file path */
   private static activeFilePath: string | null = null;
 
+  /**
+   * Get the path to the active file
+   * @returns - the active file path or null
+   */
   static getActiveFilePath() {
     return AppStorage.activeFilePath;
   }
 
-  static async create(context: BrowserWindow) {
+  /**
+   * Set the active file.
+   *
+   * @param context
+   * @param file
+   * @returns
+   */
+  static setActiveFile(context: BrowserWindow, file: string | null = null) {
+    const filename = file ? file.split('\\').slice(-1).pop() : '';
+    const content = file ? readFileSync(file, { encoding: 'utf-8' }) : '';
+
+    AppStorage.activeFilePath = file;
+
+    if (file) app.addRecentDocument(file);
+
+    context.webContents.send('from:file:opened', {
+      file,
+      filename,
+      content,
+    });
+
+    return {
+      filename,
+      content,
+    };
+  }
+
+  /**
+   * Open the active file.
+   *
+   * @param context - the browser window
+   * @param file - the file to open
+   * @returns
+   */
+  static openActiveFile(context: BrowserWindow, file: string | null) {
+    if (
+      context &&
+      file &&
+      file !== '.' &&
+      !file.startsWith('-') &&
+      file.indexOf('MKEditor.lnk') === -1
+    ) {
+      AppStorage.setActiveFile(context, file);
+    }
+  }
+
+  /**
+   * Create a new file.
+   *
+   * @param context - the browser window
+   */
+  static async createNewFile(context: BrowserWindow) {
     AppStorage.setActiveFile(context, null);
   }
 
-  static async promptUserConfirmSave(
-    context: BrowserWindow,
-    shouldShowPrompt = true,
-  ) {
-    if (!shouldShowPrompt) {
-      return true;
-    }
-
-    const check = await dialog.showMessageBox(context, {
-      type: 'question',
-      buttons: ['Yes', 'No'],
-      title: 'Save changes',
-      message: 'Would you like to save changes to your existing file first?',
-    });
-
-    return check.response === 0;
-  }
-
-  static async save(context: BrowserWindow, options: SaveFileOptions) {
+  /**
+   * Save a file.
+   *
+   * @param context - the browser window
+   * @param options - save file options
+   * @returns
+   */
+  static async saveFile(context: BrowserWindow, options: SaveFileOptions) {
     const config = {
       title: 'Save file',
       defaultPath: 'Untitled',
@@ -130,7 +177,13 @@ export class AppStorage {
     }
   }
 
-  static async open(context: BrowserWindow) {
+  /**
+   * Show the open file dialog.
+   *
+   * @param context - the browser window
+   * @returns
+   */
+  static async showOpenDialog(context: BrowserWindow) {
     return new Promise((resolve) => {
       dialog
         .showOpenDialog({
@@ -164,54 +217,13 @@ export class AppStorage {
     });
   }
 
-  static async openDirectory(context: BrowserWindow) {
-    try {
-      const { filePaths } = await dialog.showOpenDialog({
-        properties: ['openDirectory'],
-      });
-
-      if (filePaths.length === 0) {
-        throw new Error('noselection');
-      }
-
-      const tree = await AppStorage.readDirectory(filePaths[0]);
-      context.webContents.send('from:folder:opened', {
-        path: filePaths[0],
-        tree,
-      });
-      return tree;
-    } catch (err) {
-      if ((err as Error).message !== 'noselection') {
-        context.webContents.send('from:notification:display', {
-          status: 'error',
-          message: 'Unable to open folder.',
-        });
-      }
-    }
-  }
-
-  private static async readDirectory(dir: string): Promise<any[]> {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    const filtered = entries.filter(
-      (d) => d.isDirectory() || d.name.endsWith('.md'),
-    );
-    return Promise.all(
-      filtered.map(async (entry) => {
-        const full = join(dir, entry.name);
-        if (entry.isDirectory()) {
-          return {
-            type: 'directory',
-            name: entry.name,
-            path: full,
-            hasChildren: true,
-          };
-        }
-
-        return { type: 'file', name: entry.name, path: full };
-      }),
-    );
-  }
-
+  /**
+   * Open a folder/directory path.
+   *
+   * @param context - the browser window
+   * @param filePath - the filepath
+   * @returns
+   */
   static async openPath(context: BrowserWindow, filePath: string) {
     try {
       if (!filePath || typeof filePath !== 'string') {
@@ -246,35 +258,63 @@ export class AppStorage {
     }
   }
 
-  static setActiveFile(context: BrowserWindow, file: string | null = null) {
-    const filename = file ? file.split('\\').slice(-1).pop() : '';
-    const content = file ? readFileSync(file, { encoding: 'utf-8' }) : '';
+  /**
+   * Open a directory.
+   *
+   * @param context - the browser window
+   * @returns
+   */
+  static async openDirectory(context: BrowserWindow) {
+    try {
+      const { filePaths } = await dialog.showOpenDialog({
+        properties: ['openDirectory'],
+      });
 
-    AppStorage.activeFilePath = file;
+      if (filePaths.length === 0) {
+        throw new Error('noselection');
+      }
 
-    if (file) app.addRecentDocument(file);
-
-    context.webContents.send('from:file:opened', {
-      file,
-      filename,
-      content,
-    });
-
-    return {
-      filename,
-      content,
-    };
+      const tree = await AppStorage.readDirectory(filePaths[0]);
+      context.webContents.send('from:folder:opened', {
+        path: filePaths[0],
+        tree,
+      });
+      return tree;
+    } catch (err) {
+      if ((err as Error).message !== 'noselection') {
+        context.webContents.send('from:notification:display', {
+          status: 'error',
+          message: 'Unable to open folder.',
+        });
+      }
+    }
   }
 
-  static openActiveFile(context: BrowserWindow, file: string | null) {
-    if (
-      context &&
-      file &&
-      file !== '.' &&
-      !file.startsWith('-') &&
-      file.indexOf('MKEditor.lnk') === -1
-    ) {
-      AppStorage.setActiveFile(context, file);
-    }
+  /**
+   * Read directory contents.
+   *
+   * @param dir - the directory to read
+   * @returns - the directory contents
+   */
+  private static async readDirectory(dir: string): Promise<any[]> {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const filtered = entries.filter(
+      (d) => d.isDirectory() || d.name.endsWith('.md'),
+    );
+    return Promise.all(
+      filtered.map(async (entry) => {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          return {
+            type: 'directory',
+            name: entry.name,
+            path: full,
+            hasChildren: true,
+          };
+        }
+
+        return { type: 'file', name: entry.name, path: full };
+      }),
+    );
   }
 }

@@ -2,14 +2,26 @@ import { app, BrowserWindow, Menu } from 'electron';
 import { BridgeProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
 
+/**
+ * AppMenu
+ */
 export class AppMenu {
+  /** The browser window */
   private context: BrowserWindow;
 
+  /** Providers to provide functions to the menu */
   private providers: BridgeProviders = {
     bridge: null,
     logger: null,
   };
 
+  /**
+   * Create a new app menu handler to manage the app menu.
+   *
+   * @param context - the browser window
+   * @param register - register all menu items immediately
+   * @returns
+   */
   constructor(context: BrowserWindow, register = false) {
     this.context = context;
 
@@ -18,10 +30,21 @@ export class AppMenu {
     }
   }
 
+  /**
+   * Provide access to a provider.
+   *
+   * @param provider - the provider to access
+   * @param instance - the associated provider instance
+   * @returns
+   */
   provide<T>(provider: string, instance: T) {
     this.providers[provider] = instance;
   }
 
+  /**
+   * Register all menu items.
+   * @returns
+   */
   register() {
     app.applicationMenu = Menu.buildFromTemplate([
       {
@@ -148,19 +171,12 @@ export class AppMenu {
     ]);
   }
 
-  setJumpListTasks() {
-    app.setUserTasks([
-      {
-        program: process.execPath,
-        arguments: '--new-window',
-        iconPath: process.execPath,
-        iconIndex: 0,
-        title: 'New Window',
-        description: 'Create a new window',
-      },
-    ]);
-  }
-
+  /**
+   * Build the context menu for the system tray.
+   *
+   * @param context - the browser window
+   * @returns
+   */
   buildTrayContextMenu(context: BrowserWindow) {
     return Menu.buildFromTemplate([
       {
@@ -186,9 +202,5 @@ export class AppMenu {
         click: () => app.quit(),
       },
     ]);
-  }
-
-  setAppContext(context: BrowserWindow) {
-    this.context = context;
   }
 }
