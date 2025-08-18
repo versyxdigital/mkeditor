@@ -3,6 +3,7 @@ import {
   BrowserWindow,
   nativeImage,
   nativeTheme,
+  protocol,
   shell,
   Tray,
 } from 'electron';
@@ -52,7 +53,16 @@ function main(file: string | null = null) {
     },
   });
 
-  context.webContents.on('will-navigate', (event) => event.preventDefault());
+  context.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('mked://')) {
+      event.preventDefault();
+      handleMkedUrl(url);
+    } else {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
   context.loadFile(join(__dirname, '../index.html'));
 
   const settings = new AppSettings(context);
@@ -70,7 +80,11 @@ function main(file: string | null = null) {
   tray.setTitle('MKEditor');
 
   context.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (url.startsWith('mked://')) {
+      handleMkedUrl(url);
+    } else {
+      shell.openExternal(url);
+    }
     return { action: 'deny' };
   });
 
@@ -87,9 +101,7 @@ function main(file: string | null = null) {
 
       context.webContents.send('from:settings:set', settings.loadFile());
 
-      if (file && file !== '.' && !file.startsWith('-')) {
-        AppStorage.setActiveFile(context, file);
-      }
+      openActiveFile(file);
     }
   });
 
@@ -105,6 +117,30 @@ function main(file: string | null = null) {
   context.show();
 }
 
+function openActiveFile(file: string | null) {
+  if (
+    context &&
+    file &&
+    file !== '.' &&
+    !file.startsWith('-') &&
+    file.indexOf('MKEditor.lnk') === -1
+  ) {
+    AppStorage.setActiveFile(context, file);
+  }
+}
+
+function handleMkedUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === 'open') {
+      const path = parsed.searchParams.get('path');
+      openActiveFile(path);
+    }
+  } catch {
+    // ignore malformed URLs
+  }
+}
+
 /** --------------------App Lifecycle ---------------------------- */
 
 if (!app.requestSingleInstanceLock()) {
@@ -113,22 +149,19 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', (event, args) => {
     app.focus();
     if (args.length >= 2) {
-      const file: string = args[2];
-      if (
-        file &&
-        file !== '.' &&
-        !file.startsWith('-') &&
-        file.indexOf('MKEditor.lnk') === -1 &&
-        context
-      ) {
-        AppStorage.setActiveFile(context, file);
-      }
+      openActiveFile(args[2]);
     }
   });
 }
 
 app.on('ready', () => {
   autoUpdater.checkForUpdatesAndNotify();
+
+  protocol.registerStringProtocol('mked', ({ url }, callback) => {
+    handleMkedUrl(url);
+    callback('');
+  });
+
   let file: string | null = null;
   if (process.platform === 'win32' && process.argv.length >= 2) {
     file = process.argv[1];
@@ -149,8 +182,7 @@ autoUpdater.on('update-downloaded', async (event) => {
   if (context) {
     context.webContents.send('from:notification:display', {
       status: 'success',
-      message:
-        `Update ${event.version} has been downloaded, restart to update.`,
+      message: `Update ${event.version} has been downloaded, restart to update.`,
     });
   }
 });
@@ -171,8 +203,8 @@ app.on('open-file', (event) => {
 
   if (!context) {
     main(file);
-  } else if (file && file !== '.' && !file.startsWith('-')) {
-    AppStorage.setActiveFile(context, file);
+  } else {
+    openActiveFile(file);
   }
 });
 

@@ -8,6 +8,7 @@
  * bridge across the isolated contexts.
  */
 import { contextBridge, ipcRenderer } from 'electron';
+import { dirname, resolve } from 'path';
 
 // Can be sent from the renderer process and
 // received by the main process
@@ -79,3 +80,9 @@ const contextBridgeChannel = () => {
  * Docs: https://electronjs.org/docs/api/context-bridge
  */
 contextBridge.exposeInMainWorld('executionBridge', contextBridgeChannel());
+
+contextBridge.exposeInMainWorld('mked', {
+  getActiveFilePath: () => ipcRenderer.sendSync('mked:get-active-file'),
+  pathDirname: (p: string) => dirname(p),
+  resolvePath: (base: string, rel: string) => resolve(base, rel),
+});

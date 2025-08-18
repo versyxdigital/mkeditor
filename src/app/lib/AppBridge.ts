@@ -129,6 +129,10 @@ export class AppBridge {
         this.resetContextBridgedContent();
       });
     });
+
+    ipcMain.on('mked:get-active-file', (event) => {
+      event.returnValue = AppStorage.getActiveFilePath();
+    });
   }
 
   promptUserBeforeQuit(event: Event) {

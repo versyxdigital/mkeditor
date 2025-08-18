@@ -58,6 +58,10 @@ const ipcMain = {
   on: jest.fn(),
 };
 
+const protocol = {
+  registerStringProtocol: jest.fn(),
+};
+
 module.exports = {
   app,
   BrowserWindow,
@@ -67,4 +71,5 @@ module.exports = {
   Tray,
   dialog,
   ipcMain,
+  protocol,
 };

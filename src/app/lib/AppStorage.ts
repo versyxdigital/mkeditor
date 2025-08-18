@@ -4,6 +4,13 @@ import { join } from 'path';
 import { SaveFileOptions } from '../interfaces/Storage';
 
 export class AppStorage {
+  /** The active file path */
+  private static activeFilePath: string | null = null;
+
+  static getActiveFilePath() {
+    return AppStorage.activeFilePath;
+  }
+
   static async create(context: BrowserWindow) {
     AppStorage.setActiveFile(context, null);
   }
@@ -242,6 +249,8 @@ export class AppStorage {
   static setActiveFile(context: BrowserWindow, file: string | null = null) {
     const filename = file ? file.split('\\').slice(-1).pop() : '';
     const content = file ? readFileSync(file, { encoding: 'utf-8' }) : '';
+
+    AppStorage.activeFilePath = file;
 
     if (file) app.addRecentDocument(file);
 
