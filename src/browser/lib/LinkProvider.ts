@@ -37,7 +37,7 @@ export class LinkProvider {
           const startPos = m.getPositionAt(startOffset);
           const endPos = m.getPositionAt(endOffset);
 
-          // NOTE: no 'url' here — let resolveLink handle it
+          // NOTE: no 'url' here - let resolveLink handle it
           const link: languages.ILink = {
             range: {
               startLineNumber: startPos.lineNumber,
@@ -57,14 +57,14 @@ export class LinkProvider {
         return { links };
       },
       resolveLink: async (link) => {
+        const mked = window.mked;
+        if (!mked) return link;
         const abs = (link as any).__absPath as string | undefined;
         if (!abs) return link;
 
-        if (window && window.mked) {
-          window.mked.openMkedUrl(
-            `mked://open?path=${encodeURIComponent(abs)}`,
-          );
-        }
+        await mked.openMkedUrl(
+          `mked://open?path=${encodeURIComponent(abs)}`,
+        );
 
         // Returning null tells Monaco "we handled it; don't navigate"
         return null;
