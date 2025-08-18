@@ -31,7 +31,7 @@ if (existsSync(logpath)) {
 
 // Configure the logger
 log.transports.file.resolvePathFn = () => logpath;
-log.transports.file.level = 'info';
+log.transports.file.level = 'info'; // TODO make this a setting
 log.initialize();
 
 // Define log config to pass to app handlers

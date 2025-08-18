@@ -13,7 +13,7 @@ export class AppSettings {
   private filePath: string;
 
   private providers: Providers = {
-    logger: null
+    logger: null,
   };
 
   private settings: EditorSettings = {
