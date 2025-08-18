@@ -1,7 +1,7 @@
 {
   "name": "mkeditor",
   "productName": "MKEditor",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "license": "MIT",
   "author": "Chris Rowles <christopher.rowles@outlook.com>",
   "description": "Markdown Editor",
@@ -16,7 +16,12 @@
     "build-installer": "electron-builder",
     "build-all": "node ./make.mjs",
     "serve-web": "http-server dist",
-    "serve-app": "electron ."
+    "serve-app": "electron .",
+    "publish": "npm run build-editor && npm run build-app && electron-builder --publish always"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/versyxdigital/mkeditor"
   },
   "devDependencies": {
     "@electron/asar": "^4.0.1",
@@ -57,11 +62,15 @@
     "style-loader": "^4.0.0",
     "sweetalert2": "^11.22.4",
     "terser-webpack-plugin": "^5.3.14",
-    "ts-loader": "^9.5.2",
     "ts-jest": "^29.4.1",
+    "ts-loader": "^9.5.2",
     "typescript": "^5.9.2",
     "webpack": "^5.101.2",
     "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "electron-log": "^5.4.2",
+    "electron-updater": "^6.6.2"
   },
   "build": {
     "appId": "com.mkeditor.app",
@@ -98,13 +107,13 @@
       "installerIcon": "build/resources/icon.ico",
       "license": "build/resources/license.txt"
     },
-    "msi": {
-      "oneClick": false,
-      "perMachine": true,
-      "runAfterFinish": true
-    },
     "pkg": {
       "license": "build/resources/license.txt"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "versyxdigital",
+      "repo": "mkeditor"
     }
   }
 }

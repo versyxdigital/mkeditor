@@ -71,6 +71,7 @@ module.exports = {
         'inlineCompletions',
         'inPlaceReplace',
         'indentation',
+        'inspectTokens',
         'lineSelection',
         'linesOperations',
         'links',

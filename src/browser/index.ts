@@ -3,6 +3,7 @@ import { Editor } from './lib/Editor';
 import { EditorDispatcher } from './events/EditorDispatcher';
 import { Completion } from './lib/Completion';
 import { Commands } from './lib/Commands';
+import { MkedLinks } from './lib/MkedLinks';
 import { Settings } from './lib/Settings';
 import { Bridge } from './lib/Bridge';
 import {
@@ -60,6 +61,9 @@ if (model) {
     bridge.provide('settings', mkeditor.providers.settings);
     bridge.provide('commands', mkeditor.providers.commands);
     mkeditor.provide('bridge', bridge);
+
+    // Register link provider for mked:// navigation for linked documents.
+    new MkedLinks(model);
 
     // Initialize content tracker for the execution bridge.
     mkeditor.updateBridgedContent({ initialize: true });
