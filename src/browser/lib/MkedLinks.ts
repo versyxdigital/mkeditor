@@ -1,7 +1,7 @@
 import { editor, languages } from 'monaco-editor/esm/vs/editor/editor.api';
 import { dom } from '../dom';
 
-export class LinkProvider {
+export class MkedLinks {
   constructor(_model: editor.IStandaloneCodeEditor) {
     languages.registerLinkProvider('markdown', {
       provideLinks: async (m) => {
@@ -62,9 +62,7 @@ export class LinkProvider {
         const abs = (link as any).__absPath as string | undefined;
         if (!abs) return link;
 
-        await mked.openMkedUrl(
-          `mked://open?path=${encodeURIComponent(abs)}`,
-        );
+        await mked.openMkedUrl(`mked://open?path=${encodeURIComponent(abs)}`);
 
         // Returning null tells Monaco "we handled it; don't navigate"
         return null;
