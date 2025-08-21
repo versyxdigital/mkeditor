@@ -14,7 +14,7 @@ describe('Editor', () => {
       <div id="app-about"><span id="app-version"></span></div>
       <span id="app-build-id"></span>
     `;
-    ({ EditorManager } = await import('../src/browser/lib/EditorManager'));
+    ({ EditorManager } = await import('../src/browser/core/EditorManager'));
     ({ EditorDispatcher } = await import(
       '../src/browser/events/EditorDispatcher'
     ));

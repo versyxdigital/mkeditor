@@ -1,4 +1,4 @@
-import { Markdown } from '../src/browser/lib/Markdown';
+import { Markdown } from '../src/browser/core/Markdown';
 
 describe('Markdown', () => {
   it('initializes with extensions', () => {

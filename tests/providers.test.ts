@@ -24,17 +24,17 @@ beforeEach(async () => {
     <label id="darkmode-icon"></label>
     <span id="app-build-id"></span>
   `;
-  ({ EditorManager } = await import('../src/browser/lib/EditorManager'));
+  ({ EditorManager } = await import('../src/browser/core/EditorManager'));
   ({ EditorDispatcher } = await import(
     '../src/browser/events/EditorDispatcher'
   ));
   ({ SettingsProvider } = await import(
-    '../src/browser/lib/providers/SettingsProvider'
+    '../src/browser/core/providers/SettingsProvider'
   ));
   ({ CompletionProvider } = await import(
-    '../src/browser/lib/providers/CompletionProvider'
+    '../src/browser/core/providers/CompletionProvider'
   ));
-  ({ BridgeManager } = await import('../src/browser/lib/BridgeManager'));
+  ({ BridgeManager } = await import('../src/browser/core/BridgeManager'));
 });
 
 describe('Providers', () => {

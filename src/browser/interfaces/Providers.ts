@@ -1,8 +1,8 @@
 import { Dropdown, Modal } from 'bootstrap';
-import { BridgeManager } from '../lib/BridgeManager';
-import { CommandProvider } from '../lib/providers/CommandProvider';
-import { SettingsProvider } from '../lib/providers/SettingsProvider';
-import { CompletionProvider } from '../lib/providers/CompletionProvider';
+import { BridgeManager } from '../core/BridgeManager';
+import { CommandProvider } from '../core/providers/CommandProvider';
+import { SettingsProvider } from '../core/providers/SettingsProvider';
+import { CompletionProvider } from '../core/providers/CompletionProvider';
 
 export interface Providers {
   bridge: BridgeManager | null;

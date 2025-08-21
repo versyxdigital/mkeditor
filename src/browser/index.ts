@@ -1,11 +1,11 @@
 import './icons';
-import { EditorManager } from './lib/EditorManager';
+import { EditorManager } from './core/EditorManager';
 import { EditorDispatcher } from './events/EditorDispatcher';
-import { CompletionProvider } from './lib/providers/CompletionProvider';
-import { CommandProvider } from './lib/providers/CommandProvider';
-import { MkedLinkProvider } from './lib/providers/MkedLinkProvider';
-import { SettingsProvider } from './lib/providers/SettingsProvider';
-import { BridgeManager } from './lib/BridgeManager';
+import { CompletionProvider } from './core/providers/CompletionProvider';
+import { CommandProvider } from './core/providers/CommandProvider';
+import { MkedLinkProvider } from './core/providers/MkedLinkProvider';
+import { SettingsProvider } from './core/providers/SettingsProvider';
+import { BridgeManager } from './core/BridgeManager';
 import {
   dom,
   showSplashScreen,
