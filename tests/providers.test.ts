@@ -36,8 +36,11 @@ beforeEach(async () => {
 describe('Providers', () => {
   it('initialize and attach to mkeditor', () => {
     const dispatcher = new EditorDispatcher();
-    const mkeditor = new Editor('web', dispatcher);
-    mkeditor.create({ watch: false });
+    const mkeditor = new Editor({
+      dispatcher,
+      init: true,
+      watch: false,
+    });
     const model = mkeditor.getModel();
     expect(model).not.toBeNull();
 

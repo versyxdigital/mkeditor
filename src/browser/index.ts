@@ -33,8 +33,7 @@ if (mode === 'web') {
 const dispatcher = new EditorDispatcher();
 
 // Create a new editor.
-const mkeditor = new Editor(mode, dispatcher);
-mkeditor.create({ watch: true });
+const mkeditor = new Editor({ dispatcher, init: true, watch: true });
 
 // Get the editor model.
 const model = mkeditor.getModel();
@@ -42,7 +41,7 @@ const model = mkeditor.getModel();
 if (model) {
   // Register new command handler for the model to provide and handle editor
   // commands and actions (e.g. bold, alertblock etc.)
-  mkeditor.provide('commands', new Commands(mode, model, dispatcher));
+  mkeditor.provide('commands', new Commands(model, dispatcher));
 
   // Register a new settings handler for the model to provide editor settings
   // and to persist settings either to localStorage or file depending on context.
@@ -66,7 +65,7 @@ if (model) {
     new MkedLinks(model);
 
     // Initialize content tracker for the execution bridge.
-    mkeditor.updateBridgedContent({ initialize: true });
+    mkeditor.updateBridgedContent({ init: true });
   }
 
   // Setup application tooltips.

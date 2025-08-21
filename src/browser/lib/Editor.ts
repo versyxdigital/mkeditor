@@ -23,10 +23,13 @@ const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
   };
 };
 
-export class Editor {
-  /** Execution mode */
-  private mode: 'web' | 'desktop' = 'web';
+interface EditorConstructArgs {
+  dispatcher: EditorDispatcher;
+  init?: boolean | undefined;
+  watch?: boolean | undefined;
+}
 
+export class Editor {
   /** Editor model instance */
   private model: editor.IStandaloneCodeEditor | null = null;
 
@@ -52,16 +55,9 @@ export class Editor {
 
   /**
    * Create a new mkeditor.
-   *
-   * @param mode - the execution mode
-   * @param dispatcher - the editor event dispatcher
    */
-  public constructor(
-    mode: 'web' | 'desktop' = 'web',
-    dispatcher: EditorDispatcher,
-  ) {
-    this.mode = mode;
-    this.dispatcher = dispatcher;
+  public constructor(opts: EditorConstructArgs) {
+    this.dispatcher = opts.dispatcher;
     this.editorHTMLElement = dom.editor.dom;
     this.previewHTMLElement = dom.preview.dom;
 
@@ -74,15 +70,10 @@ export class Editor {
       CharacterCount(value);
       this.render(value);
     });
-  }
 
-  /**
-   * Sets the app execution mode.
-   *
-   * @param mode - the execution mode
-   */
-  public setAppMode(mode: 'web' | 'desktop') {
-    this.mode = mode;
+    if (opts.init) {
+      this.create({ watch: opts.watch });
+    }
   }
 
   /**
@@ -161,12 +152,12 @@ export class Editor {
   /**
    * Track content over the execution bridge.
    */
-  public updateBridgedContent({ initialize }: { initialize?: boolean } = {}) {
+  public updateBridgedContent({ init }: { init?: boolean } = {}) {
     if (!this.providers.bridge) {
       return false;
     }
 
-    const hasChanged = initialize
+    const hasChanged = init
       ? false
       : this.loadedInitialEditorValue !== this.model?.getValue();
 

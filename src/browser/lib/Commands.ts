@@ -16,9 +16,6 @@ import { getOSPlatform } from '../util';
 import { dom } from '../dom';
 
 export class Commands {
-  /** Execution mode */
-  private mode: 'web' | 'desktop' = 'web';
-
   /** Editor model instance */
   private model: editor.IStandaloneCodeEditor;
 
@@ -39,16 +36,13 @@ export class Commands {
    *
    * Responsible for creating a command handler and handling editor commands.
    *
-   * @param mode  - the execution mode
    * @param model - the editor model instance
    * @param dispatcher - the editor event dispatcher
    */
   public constructor(
-    mode: 'web' | 'desktop' = 'web',
     model: editor.IStandaloneCodeEditor,
     dispatcher: EditorDispatcher,
   ) {
-    this.mode = mode;
     this.model = model;
     this.dispatcher = dispatcher;
 
@@ -65,15 +59,6 @@ export class Commands {
     };
 
     this.register();
-  }
-
-  /**
-   * Sets the app execution mode.
-   *
-   * @param mode - the execution mode
-   */
-  public setAppMode(mode: 'web' | 'desktop') {
-    this.mode = mode;
   }
 
   /**

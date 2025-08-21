@@ -22,8 +22,11 @@ describe('Editor', () => {
 
   it('creates editor with correct parameters', () => {
     const dispatcher = new EditorDispatcher();
-    const mkeditor = new Editor('web', dispatcher);
-    mkeditor.create({ watch: false });
+    const mkeditor = new Editor({
+      dispatcher,
+      init: true,
+      watch: false,
+    });
 
     expect(monacoEditor.create).toHaveBeenCalledWith(
       expect.anything(),

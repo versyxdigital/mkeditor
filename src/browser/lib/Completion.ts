@@ -94,11 +94,24 @@ export class Completion {
   }
 
   /**
+   * Set the model.
+   *
+   * @param model - the model instance to set.
+   */
+  public setModel(model: editor.IStandaloneCodeEditor) {
+    this.model = model;
+  }
+
+  /**
    * Update the completion provider.
    *
    * @param type - the type of provider for the matching criteria
    */
-  private async updateCompletionProvider(type: keyof typeof this.matchers) {
+  public async updateCompletionProvider(type: keyof typeof this.matchers) {
+    if (!this.model) {
+      return;
+    }
+
     // Remove the existing provider (otherwise you get duplicates).
     await this.disposeCompletionProvider();
 
