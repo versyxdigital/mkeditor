@@ -1,6 +1,6 @@
 import './icons';
-import { EditorManager } from './core/EditorManager';
 import { EditorDispatcher } from './events/EditorDispatcher';
+import { EditorManager } from './core/EditorManager';
 import { CompletionProvider } from './core/providers/CompletionProvider';
 import { CommandProvider } from './core/providers/CommandProvider';
 import { MkedLinkProvider } from './core/providers/MkedLinkProvider';
