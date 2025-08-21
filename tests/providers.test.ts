@@ -1,8 +1,8 @@
-let Editor: any;
+let BridgeManager: any;
+let EditorManager: any;
 let EditorDispatcher: any;
-let Settings: any;
-let Completion: any;
-let Bridge: any;
+let SettingsProvider: any;
+let CompletionProvider: any;
 
 jest.mock('../src/browser/assets/intro', () => ({
   welcomeMarkdown: '# Welcome',
@@ -24,30 +24,37 @@ beforeEach(async () => {
     <label id="darkmode-icon"></label>
     <span id="app-build-id"></span>
   `;
-  ({ Editor } = await import('../src/browser/lib/Editor'));
+  ({ EditorManager } = await import('../src/browser/core/EditorManager'));
   ({ EditorDispatcher } = await import(
     '../src/browser/events/EditorDispatcher'
   ));
-  ({ Settings } = await import('../src/browser/lib/Settings'));
-  ({ Completion } = await import('../src/browser/lib/Completion'));
-  ({ Bridge } = await import('../src/browser/lib/Bridge'));
+  ({ SettingsProvider } = await import(
+    '../src/browser/core/providers/SettingsProvider'
+  ));
+  ({ CompletionProvider } = await import(
+    '../src/browser/core/providers/CompletionProvider'
+  ));
+  ({ BridgeManager } = await import('../src/browser/core/BridgeManager'));
 });
 
 describe('Providers', () => {
   it('initialize and attach to mkeditor', () => {
     const dispatcher = new EditorDispatcher();
-    const mkeditor = new Editor('web', dispatcher);
-    mkeditor.create({ watch: false });
-    const model = mkeditor.getModel();
+    const mkeditor = new EditorManager({
+      dispatcher,
+      init: true,
+      watch: false,
+    });
+    const model = mkeditor.getMkEditor();
     expect(model).not.toBeNull();
 
-    const settings = new Settings('web', model!, dispatcher);
-    const completion = new Completion(model!, dispatcher);
+    const settings = new SettingsProvider('web', model!, dispatcher);
+    const completion = new CompletionProvider(model!, dispatcher);
     mkeditor.provide('settings', settings);
     mkeditor.provide('completion', completion);
 
     const api = { send: jest.fn(), receive: jest.fn() };
-    const bridge = new Bridge(api as any, model!, dispatcher);
+    const bridge = new BridgeManager(api as any, model!, dispatcher);
     bridge.provide('settings', settings);
     bridge.provide('completion', completion);
     mkeditor.provide('bridge', bridge);

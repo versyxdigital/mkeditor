@@ -1,4 +1,4 @@
-let Bridge: any;
+let BridgeManager: any;
 let EditorDispatcher: any;
 
 describe('Bridge communication', () => {
@@ -8,7 +8,7 @@ describe('Bridge communication', () => {
       <div id="preview"></div>
       <div id="app-about"><span id="app-version"></span></div>
     `;
-    ({ Bridge } = await import('../src/browser/lib/Bridge'));
+    ({ BridgeManager } = await import('../src/browser/core/BridgeManager'));
     ({ EditorDispatcher } = await import(
       '../src/browser/events/EditorDispatcher'
     ));
@@ -33,7 +33,7 @@ describe('Bridge communication', () => {
     } as any;
 
     const dispatcher = new EditorDispatcher();
-    const bridge = new Bridge(api as any, model, dispatcher);
+    const bridge = new BridgeManager(api as any, model, dispatcher);
 
     expect(api.receive).toHaveBeenCalledWith(
       'from:theme:set',

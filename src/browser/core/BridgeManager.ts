@@ -3,10 +3,10 @@ import { ContextBridgeAPI } from '../interfaces/Bridge';
 import { BridgeProviders } from '../interfaces/Providers';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { EditorSettings } from '../interfaces/Editor';
-import { FileManager } from './bridge/FileManager';
-import { FileTreeManager } from './bridge/FileTreeManager';
-import { BridgeSettings } from './bridge/BridgeSettings';
-import { registerBridgeListeners } from './bridge/BridgeListeners';
+import { FileManager } from './FileManager';
+import { FileTreeManager } from './FileTreeManager';
+import { BridgeSettings } from './BridgeSettings';
+import { registerBridgeListeners } from './BridgeListeners';
 import { dom } from '../dom';
 
 /**
@@ -15,12 +15,12 @@ import { dom } from '../dom';
  * This is an orchestrator class for orchestrating operations between
  * the renderer context and the main process.
  */
-export class Bridge {
+export class BridgeManager {
   /** Execution context bridge */
   public bridge: ContextBridgeAPI;
 
-  /** Editor model instance */
-  public model: editor.IStandaloneCodeEditor;
+  /** Editor instance */
+  public mkeditor: editor.IStandaloneCodeEditor;
 
   /** Editor event dispatcher */
   public dispatcher: EditorDispatcher;
@@ -46,28 +46,28 @@ export class Bridge {
    */
   public constructor(
     bridge: ContextBridgeAPI,
-    model: editor.IStandaloneCodeEditor,
+    mkeditor: editor.IStandaloneCodeEditor,
     dispatcher: EditorDispatcher,
   ) {
     this.bridge = bridge;
-    this.model = model;
+    this.mkeditor = mkeditor;
     this.dispatcher = dispatcher;
 
     this.fileManager = new FileManager(
       this.bridge,
-      this.model,
+      this.mkeditor,
       this.dispatcher,
     );
     this.fileTreeManager = new FileTreeManager(this.bridge, (path) =>
       this.fileManager.openFileFromPath(path),
     );
 
-    this.settings = new BridgeSettings(this.bridge, this.model);
+    this.settings = new BridgeSettings(this.bridge, this.mkeditor);
 
     // Register event listeners for events sent through IPC channels.
     registerBridgeListeners(
       this.bridge,
-      this.model,
+      this.mkeditor,
       this.dispatcher,
       this.providers,
       this.fileManager,

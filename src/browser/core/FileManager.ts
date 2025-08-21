@@ -1,8 +1,8 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import Swal from 'sweetalert2';
-import { ContextBridgeAPI } from '../../interfaces/Bridge';
-import { EditorDispatcher } from '../../events/EditorDispatcher';
-import { dom } from '../../dom';
+import { ContextBridgeAPI } from '../interfaces/Bridge';
+import { EditorDispatcher } from '../events/EditorDispatcher';
+import { dom } from '../dom';
 
 /**
  * Handle editor files, models and tabs.
@@ -29,16 +29,19 @@ export class FileManager {
   /** Flag to indicate that a file is being opened */
   public openingFile = false;
 
+  /** Is the app log */
+  private isLogFile: boolean = false;
+
   /**
    * Create a new file manager instance.
    *
    * @param bridge - the execution bridge
-   * @param model - the editor model
+   * @param mkeditor - the editor instance
    * @param dispatcher - the event dispatcher
    */
   constructor(
     private bridge: ContextBridgeAPI,
-    private model: editor.IStandaloneCodeEditor,
+    private mkeditor: editor.IStandaloneCodeEditor,
     private dispatcher: EditorDispatcher,
   ) {}
 
@@ -100,7 +103,7 @@ export class FileManager {
     const original = this.originals.get(path) ?? '';
     const current = mdl.getValue();
 
-    if (original !== current) {
+    if (original !== current && !this.isLogFile) {
       const result = await Swal.fire({
         customClass: { container: 'unsaved-changes-popup' },
         title: 'Unsaved changes',
@@ -209,15 +212,21 @@ export class FileManager {
     }
 
     this.activeFile = path;
-    this.model.setModel(mdl);
+    this.mkeditor.setModel(mdl);
     const filename = name || path.split(/[\\/]/).pop() || '';
     dom.meta.file.active.innerText = filename;
 
     const original = this.originals.get(path) ?? '';
-    const current = this.model.getValue();
+    const current = this.mkeditor.getValue();
 
-    this.dispatcher.setTrackedContent({ content: original });
-    this.trackContentHasChanged(original !== current);
+    this.isLogFile = filename.endsWith('.log');
+
+    if (!this.isLogFile) {
+      this.dispatcher.setTrackedContent({ content: original });
+      this.trackContentHasChanged(original !== current);
+    } else {
+      this.contentHasChanged = false;
+    }
 
     this.tabs.forEach((tab, p) => {
       const li = tab.parentElement as HTMLElement;
@@ -236,7 +245,7 @@ export class FileManager {
     }
 
     this.dispatcher.render();
-    this.model.focus();
+    this.mkeditor.focus();
 
     this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
   }
@@ -258,7 +267,7 @@ export class FileManager {
 
     if (this.contentHasChanged && this.activeFile !== path) {
       this.dispatcher.setTrackedContent({
-        content: this.model.getValue(),
+        content: this.mkeditor.getValue(),
       });
     }
 
@@ -272,6 +281,7 @@ export class FileManager {
    * @returns
    */
   public trackContentHasChanged(hasChanged: boolean) {
+    if (this.isLogFile) hasChanged = false;
     this.bridge.send('to:editor:state', hasChanged);
     this.contentHasChanged = hasChanged;
   }
@@ -283,15 +293,15 @@ export class FileManager {
   public saveContentToFile() {
     if (this.activeFile && !this.activeFile.startsWith('untitled')) {
       this.bridge.send('to:file:save', {
-        content: this.model.getValue(),
+        content: this.mkeditor.getValue(),
         file: this.activeFile,
       });
-      this.originals.set(this.activeFile, this.model.getValue());
+      this.originals.set(this.activeFile, this.mkeditor.getValue());
       this.dispatcher.setTrackedContent({
-        content: this.model.getValue(),
+        content: this.mkeditor.getValue(),
       });
     } else {
-      this.bridge.send('to:file:saveas', this.model.getValue());
+      this.bridge.send('to:file:saveas', this.mkeditor.getValue());
     }
   }
 

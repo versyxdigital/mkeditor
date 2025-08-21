@@ -1,5 +1,5 @@
 import { KeyMod, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api';
-import { EditorCommand } from '../interfaces/Editor';
+import { EditorCommand } from '../../interfaces/Editor';
 
 export const alertblocks = [
   { type: 'Primary', key: 'P' },
@@ -54,6 +54,15 @@ export const commands: Record<string, EditorCommand> = {
     isInline: true,
     syntax: '~~',
   },
+  mdLinkAdd: {
+    id: 'md-link-add',
+    label: 'Insert a link',
+    contextMenuGroupId: 'navigation',
+    contextMenuOrder: 4,
+    keybindings: [KeyMod.CtrlCmd | KeyCode.KeyH],
+    isInline: true,
+    syntax: '[]()',
+  },
   unorderedList: {
     id: 'unordered-list',
     label: 'Convert To Unordered List',
@@ -69,14 +78,5 @@ export const commands: Record<string, EditorCommand> = {
     contextMenuOrder: 5,
     keybindings: [KeyMod.CtrlCmd | KeyCode.Digit3], // todo find an available accelerator
     isInline: false,
-  },
-  mdLinkAdd: {
-    id: 'md-link-add',
-    label: 'Add a link',
-    contextMenuGroupId: 'navigation',
-    contextMenuOrder: 6,
-    keybindings: [KeyMod.CtrlCmd | KeyCode.KeyH],
-    isInline: true,
-    syntax: '[]()',
   },
 };

@@ -1,15 +1,15 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { EditorSettings, ValidSetting } from '../interfaces/Editor';
-import { EditorDispatcher } from '../events/EditorDispatcher';
-import { settings } from '../config';
-import { dom } from '../dom';
+import { EditorSettings, ValidSetting } from '../../interfaces/Editor';
+import { EditorDispatcher } from '../../events/EditorDispatcher';
+import { settings } from '../../config';
+import { dom } from '../../dom';
 
-export class Settings {
+export class SettingsProvider {
   /** Execution mode */
   private mode: 'web' | 'desktop' = 'web';
 
-  /** Editor model instance */
-  private model: editor.IStandaloneCodeEditor;
+  /** Editor instance */
+  private mkeditor: editor.IStandaloneCodeEditor;
 
   /** Editor event dispatcher */
   private dispatcher: EditorDispatcher;
@@ -25,11 +25,11 @@ export class Settings {
    */
   public constructor(
     mode: 'web' | 'desktop' = 'web',
-    model: editor.IStandaloneCodeEditor,
+    mkeditor: editor.IStandaloneCodeEditor,
     dispatcher: EditorDispatcher,
   ) {
     this.mode = mode;
-    this.model = model;
+    this.mkeditor = mkeditor;
     this.dispatcher = dispatcher;
 
     this.loadSettings();
@@ -200,7 +200,7 @@ export class Settings {
    * @returns this
    */
   public setAudoIndent() {
-    this.model.updateOptions({
+    this.mkeditor.updateOptions({
       autoIndent: this.settings.autoindent ? 'advanced' : 'none',
     });
 
@@ -264,7 +264,7 @@ export class Settings {
    * @returns this
    */
   public setMinimap() {
-    this.model.updateOptions({
+    this.mkeditor.updateOptions({
       minimap: { enabled: this.settings.minimap },
     });
 
@@ -294,7 +294,7 @@ export class Settings {
    * @returns this
    */
   public setWordWrap() {
-    this.model.updateOptions({
+    this.mkeditor.updateOptions({
       wordWrap: this.settings.wordwrap ? 'on' : 'off',
     });
 
@@ -324,7 +324,7 @@ export class Settings {
    * @returns this
    */
   public setWhitespace() {
-    this.model.updateOptions({
+    this.mkeditor.updateOptions({
       renderWhitespace: this.settings.whitespace ? 'all' : 'none',
     });
 

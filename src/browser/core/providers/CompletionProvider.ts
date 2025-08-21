@@ -6,13 +6,13 @@ import {
   languages,
 } from 'monaco-editor/esm/vs/editor/editor.api';
 import { CircularBuffer } from 'circle-buffer';
-import { CompletionItem, Matcher } from '../interfaces/Completion';
-import { EditorDispatcher } from '../events/EditorDispatcher';
+import { CompletionItem, Matcher } from '../../interfaces/Completion';
+import { EditorDispatcher } from '../../events/EditorDispatcher';
 import { completion } from '../mappings/completion';
 
-export class Completion {
-  /** Editor model instance */
-  private model: editor.IStandaloneCodeEditor;
+export class CompletionProvider {
+  /** Editor instance */
+  private mkeditor: editor.IStandaloneCodeEditor;
 
   /** Editor event dispatcher */
   private dispatcher: EditorDispatcher;
@@ -32,14 +32,14 @@ export class Completion {
    * Responsible for creating a completion provider and providing completion
    * auto-suggestions.
    *
-   * @param model - the editor model instance
+   * @param mkeditor - the editor instance
    * @param dispatcher - the editor event dispatcher
    */
   public constructor(
-    model: editor.IStandaloneCodeEditor,
+    mkeditor: editor.IStandaloneCodeEditor,
     dispatcher: EditorDispatcher,
   ) {
-    this.model = model;
+    this.mkeditor = mkeditor;
 
     this.dispatcher = dispatcher;
 
@@ -98,7 +98,11 @@ export class Completion {
    *
    * @param type - the type of provider for the matching criteria
    */
-  private async updateCompletionProvider(type: keyof typeof this.matchers) {
+  public async updateCompletionProvider(type: keyof typeof this.matchers) {
+    if (!this.mkeditor) {
+      return;
+    }
+
     // Remove the existing provider (otherwise you get duplicates).
     await this.disposeCompletionProvider();
 
@@ -109,7 +113,7 @@ export class Completion {
       this.matchers[type].proposals,
     );
 
-    this.model.trigger('completion', 'editor.action.triggerSuggest', {});
+    this.mkeditor.trigger('completion', 'editor.action.triggerSuggest', {});
 
     console.log(`Registered new completion provider for ${type}`);
   }

@@ -131,7 +131,7 @@ const css = `@media print {
 
 type ProviderKey = keyof typeof cdn;
 
-export class Exporter {
+export class HTMLExporter {
   /**
    * Generate HTML export.
    *
@@ -140,7 +140,7 @@ export class Exporter {
    * @param providers - style providers
    * @returns - the generated HTML
    */
-  static generateExportHTML(
+  static generateHTML(
     content: string,
     { styled = true, providers = ['highlightjs'] },
   ) {
@@ -150,7 +150,7 @@ export class Exporter {
     }
 
     // Create a full HTML document and remove unnecessary attributes and classes
-    const document = Exporter.sanitizeHTML(
+    const document = HTMLExporter.sanitizeHTML(
       new DOMParser().parseFromString(content, 'text/html'),
     );
 
@@ -245,7 +245,7 @@ export class Exporter {
    * @param mimeType- the mime type
    * @param extension - the file extension
    */
-  static webExportToFile(
+  static exportHTML(
     content: string,
     mimeType: MIMEType = 'text/plain',
     extension: FileExtension = '.md',

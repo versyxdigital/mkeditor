@@ -1,18 +1,34 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { dirname, resolve } from 'path';
 import { SettingsProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
 
+/**
+ * AppBridge
+ */
 export class AppBridge {
+  /** The browser window */
   private context: BrowserWindow;
 
+  /** The browser window title */
   private contextWindowTitle: string = 'MKEditor';
 
-  private contextBridgedContentHasChanged: boolean = false;
+  /** Flag to determine whether content has changed */
+  private editorContentHasChanged: boolean = false;
 
+  /** Providers to provide functions to the bridge */
   private providers: SettingsProviders = {
+    logger: null,
     settings: null,
   };
 
+  /**
+   * Create a new AppBridge instance to manage IPC traffic.
+   *
+   * @param context - the browser window
+   * @param register - register all IPC listeners immediately
+   * @returns
+   */
   constructor(context: BrowserWindow, register = false) {
     this.context = context;
 
@@ -21,10 +37,21 @@ export class AppBridge {
     }
   }
 
+  /**
+   * Provide access to a provider.
+   *
+   * @param provider - the provider to access
+   * @param instance - the associated provider instance
+   * @returns
+   */
   provide<T>(provider: string, instance: T) {
     this.providers[provider] = instance;
   }
 
+  /**
+   * Register all IPC event listeners.
+   * @returns
+   */
   register() {
     // Set the app window title
     ipcMain.on('to:title:set', (event, title = null) => {
@@ -34,7 +61,7 @@ export class AppBridge {
 
     // Set the editor state to track content changes in the main process.
     ipcMain.on('to:editor:state', (event, hasChanged: boolean) => {
-      this.contextBridgedContentHasChanged = hasChanged;
+      this.editorContentHasChanged = hasChanged;
       this.setWindowTitle();
     });
 
@@ -45,7 +72,7 @@ export class AppBridge {
 
     // Export rendered HTML, triggered from the renderer process
     ipcMain.on('to:html:export', (event, { content }) => {
-      AppStorage.save(this.context, {
+      AppStorage.saveFile(this.context, {
         id: event.sender.id,
         data: content,
         encoding: 'utf-8',
@@ -54,15 +81,15 @@ export class AppBridge {
 
     // Create a new file, linked to the application menu
     ipcMain.on('to:file:new', () => {
-      AppStorage.create(this.context).then(() => {
-        this.resetContextBridgedContent();
+      AppStorage.createNewFile(this.context).then(() => {
+        this.setWindowTitle();
       });
     });
 
     // Open a new file, forwarded from the renderer process
     // via received from:file:open event.
     ipcMain.on('to:file:open', () => {
-      AppStorage.open(this.context);
+      AppStorage.showOpenDialog(this.context);
     });
 
     ipcMain.on('to:folder:open', () => {
@@ -90,8 +117,8 @@ export class AppBridge {
           openFile = true,
         },
       ) => {
-        if (await AppStorage.promptUserConfirmSave(this.context, prompt)) {
-          AppStorage.save(this.context, {
+        if (await this.promptUserConfirmSave(this.context, prompt)) {
+          AppStorage.saveFile(this.context, {
             id: event.sender.id,
             data: content,
             filePath: file,
@@ -101,16 +128,16 @@ export class AppBridge {
             if (openPath) {
               AppStorage.openPath(this.context, openPath);
             } else if (fromOpen) {
-              AppStorage.open(this.context);
+              AppStorage.showOpenDialog(this.context);
             }
 
-            this.resetContextBridgedContent();
+            this.setWindowTitle();
           });
         } else {
           if (openPath) {
             AppStorage.openPath(this.context, openPath);
           } else if (fromOpen) {
-            AppStorage.open(this.context);
+            AppStorage.showOpenDialog(this.context);
           }
         }
       },
@@ -121,18 +148,86 @@ export class AppBridge {
     // the dialog for the user to save the file to the location
     // of their choice.
     ipcMain.on('to:file:saveas', (event, data) => {
-      AppStorage.save(this.context, {
+      AppStorage.saveFile(this.context, {
         id: event.sender.id,
         data,
         encoding: 'utf-8',
       }).then(() => {
-        this.resetContextBridgedContent();
+        this.setWindowTitle();
       });
+    });
+
+    // mked:// protocol handlers
+    ipcMain.on('mked:get-active-file', (event) => {
+      event.returnValue = AppStorage.getActiveFilePath();
+    });
+
+    // Provide path resolution through IPC to avoid having to set
+    // nodeIntegration to true.
+    ipcMain.handle('mked:path:dirname', (_e, p: string) => dirname(p));
+    ipcMain.handle('mked:path:resolve', (_e, base: string, rel: string) =>
+      resolve(base, rel),
+    );
+
+    ipcMain.on('mked:open-url', (_e, url: string) => {
+      try {
+        this.handleMkedUrl(url);
+      } catch (e) {
+        this.providers.logger?.log.error('[mked:open-url]', e);
+      }
     });
   }
 
+  /**
+   * Handle an mked:// URL
+   *
+   * @param url - the URL
+   * @returns
+   */
+  handleMkedUrl(url: string) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.hostname === 'open') {
+        const path = parsed.searchParams.get('path');
+        AppStorage.openActiveFile(this.context, path);
+      }
+    } catch {
+      this.providers.logger?.log.error(
+        `Malformed path to linked document: ${url}`,
+      );
+    }
+  }
+
+  /**
+   * Prompt the user to save.
+   *
+   * @param context - the browser window
+   * @param shouldShowPrompt - disable if true
+   * @returns
+   */
+  async promptUserConfirmSave(context: BrowserWindow, shouldShowPrompt = true) {
+    if (!shouldShowPrompt) {
+      return true;
+    }
+
+    const check = await dialog.showMessageBox(context, {
+      type: 'question',
+      buttons: ['Yes', 'No'],
+      title: 'Save changes',
+      message: 'Would you like to save changes to your existing file?',
+    });
+
+    return check.response === 0;
+  }
+
+  /**
+   * Prompt the user to save before quitting the app.
+   *
+   * @param event - the trigger event
+   * @returns
+   */
   promptUserBeforeQuit(event: Event) {
-    if (this.contextBridgedContentHasChanged) {
+    if (this.editorContentHasChanged) {
       return this.displayPrompt(
         event,
         'Confirm',
@@ -141,6 +236,14 @@ export class AppBridge {
     }
   }
 
+  /**
+   * Display a user prompt dialog.
+   *
+   * @param event - the trigger event
+   * @param title - the prompt title
+   * @param message - the prompt message
+   * @returns
+   */
   displayPrompt(event: Event, title: string, message: string) {
     const choice = dialog.showMessageBoxSync(this.context, {
       type: 'question',
@@ -154,12 +257,12 @@ export class AppBridge {
     }
   }
 
+  /**
+   * Set the app window title.
+   * @returns
+   */
   private setWindowTitle() {
-    const suffix = this.contextBridgedContentHasChanged ? ' *' : '';
+    const suffix = this.editorContentHasChanged ? ' *' : '';
     this.context.setTitle(`${this.contextWindowTitle}${suffix}`);
-  }
-
-  resetContextBridgedContent() {
-    this.setWindowTitle();
   }
 }

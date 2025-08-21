@@ -1,5 +1,5 @@
-import { ContextBridgeAPI } from '../../interfaces/Bridge';
-import { dom } from '../../dom';
+import { ContextBridgeAPI } from '../interfaces/Bridge';
+import { dom } from '../dom';
 
 /**
  * Handle the file explorer tree.

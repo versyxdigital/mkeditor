@@ -9,21 +9,14 @@ import {
   ValidModal,
   ValidCommand,
   DropdownProviders,
-} from '../interfaces/Providers';
-import { EditorDispatcher } from '../events/EditorDispatcher';
+} from '../../interfaces/Providers';
 import { commands, alertblocks, codeblocks } from '../mappings/commands';
-import { getOSPlatform } from '../util';
-import { dom } from '../dom';
+import { getOSPlatform } from '../../util';
+import { dom } from '../../dom';
 
-export class Commands {
-  /** Execution mode */
-  private mode: 'web' | 'desktop' = 'web';
-
-  /** Editor model instance */
-  private model: editor.IStandaloneCodeEditor;
-
-  /** Editor event dispatcher */
-  private dispatcher: EditorDispatcher;
+export class CommandProvider {
+  /** Editor instance */
+  private mkeditor: editor.IStandaloneCodeEditor;
 
   /** Editor command dropdown triggers */
   private dropdowns: DropdownProviders;
@@ -39,18 +32,10 @@ export class Commands {
    *
    * Responsible for creating a command handler and handling editor commands.
    *
-   * @param mode  - the execution mode
-   * @param model - the editor model instance
-   * @param dispatcher - the editor event dispatcher
+   * @param mkeditor - the editor instance
    */
-  public constructor(
-    mode: 'web' | 'desktop' = 'web',
-    model: editor.IStandaloneCodeEditor,
-    dispatcher: EditorDispatcher,
-  ) {
-    this.mode = mode;
-    this.model = model;
-    this.dispatcher = dispatcher;
+  public constructor(mkeditor: editor.IStandaloneCodeEditor) {
+    this.mkeditor = mkeditor;
 
     this.modals = {
       about: new Modal(dom.about.modal),
@@ -68,20 +53,11 @@ export class Commands {
   }
 
   /**
-   * Sets the app execution mode.
-   *
-   * @param mode - the execution mode
-   */
-  public setAppMode(mode: 'web' | 'desktop') {
-    this.mode = mode;
-  }
-
-  /**
    * Register editor commands.
    */
   public register() {
     // Register command keybinding for displaying settings modal action
-    this.model.addAction({
+    this.mkeditor.addAction({
       id: 'settings',
       label: 'Open Settings Dialog',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Semicolon],
@@ -89,7 +65,7 @@ export class Commands {
     });
 
     // Register command keybinding for displaying shortcuts modal action
-    this.model.addAction({
+    this.mkeditor.addAction({
       id: 'shortcuts',
       label: 'Open Shortcuts Help',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Backquote],
@@ -97,7 +73,7 @@ export class Commands {
     });
 
     // Register command keybinding for displaying about modal action
-    this.model.addAction({
+    this.mkeditor.addAction({
       id: 'About',
       label: 'Open About Information',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Slash],
@@ -108,7 +84,7 @@ export class Commands {
     // The reason for this is because alertblocks and codeblocks are "2-stage" commands.
     // For example, the user presses Ctrl+K, to display the codeblocks dropdown, and then
     // presses J to insert a Javascript codeblock.
-    this.model.onKeyDown((e) => {
+    this.mkeditor.onKeyDown((e) => {
       const holdKey = getOSPlatform() !== 'MacOS' ? e.ctrlKey : e.metaKey;
       if (holdKey && e.keyCode === 42 /* L */) {
         this.dropdowns.alertblocks.toggle();
@@ -119,7 +95,7 @@ export class Commands {
       if (holdKey && e.keyCode === 50 /* T */) {
         this.dropdowns.tables.toggle();
       }
-      this.model.focus();
+      this.mkeditor.focus();
     });
 
     // Register command keybindings for editor actions i.e. bold, italic, strikethrough.
@@ -142,7 +118,7 @@ export class Commands {
         }
       }
 
-      this.model.addAction(<editor.IActionDescriptor>commands[cmd]);
+      this.mkeditor.addAction(<editor.IActionDescriptor>commands[cmd]);
     }
 
     // Map editor commands to editor UI buttons
@@ -160,7 +136,7 @@ export class Commands {
               // Same fenced block edit functionality explained in the loop above.
               (this[cmd as ValidCommand] as (t: HTMLElement) => any)(target);
             }
-            this.model.focus();
+            this.mkeditor.focus();
           }
         });
       }
@@ -176,7 +152,7 @@ export class Commands {
     for (const block of alertblocks) {
       // Register command keybindings for each alertblock type.
       const binding = `Key${block.key}` as keyof typeof KeyCode;
-      this.model.addAction({
+      this.mkeditor.addAction({
         id: `alert-${block.type}`,
         label: `Insert ${block.type} Alert`,
         keybindings: [
@@ -192,7 +168,7 @@ export class Commands {
     for (const block of codeblocks) {
       // Register command keybinding for each codeblock language.
       const binding = `Key${block.key}` as keyof typeof KeyCode;
-      this.model.addAction({
+      this.mkeditor.addAction({
         id: `codeblock-${block.type}`,
         label: `Insert ${
           block.type.charAt(0).toUpperCase() + block.type.slice(1)
@@ -229,7 +205,7 @@ export class Commands {
     // Handle inline links
     if (syntax === '[]()') {
       const text = selected && selected.trim().length > 0 ? selected : 'link';
-      edit = `[${text}](.)`;
+      edit = `[${text}](#)`;
     } else {
       edit = syntax + this.getModel() + syntax;
     }
@@ -243,7 +219,7 @@ export class Commands {
    * @param content - the content to manipulate
    */
   private executeEdit(content: string) {
-    this.model.executeEdits(null, [
+    this.mkeditor.executeEdits(null, [
       {
         range: this.getRange(),
         text: content,
@@ -259,7 +235,7 @@ export class Commands {
    */
   private getModel() {
     const model =
-      this.model.getModel()?.getValueInRange(this.getRange()) ?? ' ';
+      this.mkeditor.getModel()?.getValueInRange(this.getRange()) ?? ' ';
 
     return model;
   }
@@ -271,7 +247,7 @@ export class Commands {
    */
   private getRange() {
     return (
-      this.model.getSelection() ?? {
+      this.mkeditor.getSelection() ?? {
         startLineNumber: 0,
         startColumn: 0,
         endLineNumber: 0,

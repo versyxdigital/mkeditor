@@ -8,6 +8,7 @@ jest.mock('../src/app/lib/AppBridge', () => ({
 
 jest.mock('../src/app/lib/AppMenu', () => ({
   AppMenu: jest.fn().mockImplementation(() => ({
+    provide: jest.fn(),
     register: jest.fn(),
     buildTrayContextMenu: jest.fn(() => ({})),
   })),
@@ -16,6 +17,7 @@ jest.mock('../src/app/lib/AppMenu', () => ({
 jest.mock('../src/app/lib/AppSettings', () => ({
   AppSettings: jest.fn().mockImplementation(() => ({
     applied: { systemtheme: false },
+    provide: jest.fn(),
     loadFile: jest.fn(() => ({})),
   })),
 }));
