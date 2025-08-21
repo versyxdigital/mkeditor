@@ -5,7 +5,7 @@ import { CharacterCount, WordCount } from '../extensions/WordCount';
 import { ScrollSync, invalidateLineElements } from '../extensions/ScrollSync';
 import { welcomeMarkdown } from '../assets/intro';
 import { Markdown } from './Markdown';
-import { Exporter } from './Exporter';
+import { HTMLExporter } from './HTMLExporter';
 import { APP_VERSION } from '../version';
 import { dom } from '../dom';
 
@@ -255,7 +255,7 @@ export class EditorManager {
           if (this.providers.bridge) {
             this.providers.bridge.saveContentToFile();
           } else {
-            Exporter.webExportToFile(
+            HTMLExporter.exportHTML(
               this.mkeditor.getValue(),
               'text/plain',
               '.md',
@@ -272,7 +272,7 @@ export class EditorManager {
       dom.buttons.save.preview.addEventListener('click', (event) => {
         event.preventDefault();
         const styled = <HTMLInputElement>dom.buttons.save.styled;
-        const html = Exporter.generateExportHTML(
+        const html = HTMLExporter.generateHTML(
           this.previewHTMLElement.innerHTML,
           {
             styled: styled.checked,
@@ -283,7 +283,7 @@ export class EditorManager {
         if (this.providers.bridge) {
           this.providers.bridge.exportPreviewToFile(html);
         } else {
-          Exporter.webExportToFile(html, 'text/html', '.html');
+          HTMLExporter.exportHTML(html, 'text/html', '.html');
         }
       });
     }
