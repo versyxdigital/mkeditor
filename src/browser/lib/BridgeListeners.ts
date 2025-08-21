@@ -1,12 +1,12 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { ContextBridgeAPI, ContextBridgedFile } from '../../interfaces/Bridge';
-import { BridgeProviders, ValidModal } from '../../interfaces/Providers';
-import { EditorSettings } from '../../interfaces/Editor';
-import { EditorDispatcher } from '../../events/EditorDispatcher';
-import { Notify } from '../Notify';
+import { ContextBridgeAPI, ContextBridgedFile } from '../interfaces/Bridge';
+import { BridgeProviders, ValidModal } from '../interfaces/Providers';
+import { EditorSettings } from '../interfaces/Editor';
+import { EditorDispatcher } from '../events/EditorDispatcher';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
 import { BridgeSettings } from './BridgeSettings';
+import { notify } from '../util';
 
 /**
  * Register bridge channel listeners.
@@ -173,7 +173,7 @@ export function registerBridgeListeners(
   bridge.receive(
     'from:notification:display',
     (event: { status: string; message: string }) => {
-      Notify.send(event.status, event.message);
+      notify.send(event.status, event.message);
     },
   );
 }

@@ -3,10 +3,10 @@ import { ContextBridgeAPI } from '../interfaces/Bridge';
 import { BridgeProviders } from '../interfaces/Providers';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { EditorSettings } from '../interfaces/Editor';
-import { FileManager } from './bridge/FileManager';
-import { FileTreeManager } from './bridge/FileTreeManager';
-import { BridgeSettings } from './bridge/BridgeSettings';
-import { registerBridgeListeners } from './bridge/BridgeListeners';
+import { FileManager } from './FileManager';
+import { FileTreeManager } from './FileTreeManager';
+import { BridgeSettings } from './BridgeSettings';
+import { registerBridgeListeners } from './BridgeListeners';
 import { dom } from '../dom';
 
 /**

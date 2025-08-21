@@ -1,8 +1,8 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import Swal from 'sweetalert2';
-import { ContextBridgeAPI } from '../../interfaces/Bridge';
-import { EditorDispatcher } from '../../events/EditorDispatcher';
-import { dom } from '../../dom';
+import { ContextBridgeAPI } from '../interfaces/Bridge';
+import { EditorDispatcher } from '../events/EditorDispatcher';
+import { dom } from '../dom';
 
 /**
  * Handle editor files, models and tabs.

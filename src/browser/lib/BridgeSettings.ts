@@ -1,6 +1,6 @@
-import { ContextBridgeAPI } from '../../interfaces/Bridge';
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { EditorSettings } from '../../interfaces/Editor';
+import { ContextBridgeAPI } from '../interfaces/Bridge';
+import { EditorSettings } from '../interfaces/Editor';
 
 /**
  * Handle bridge settings logic.
