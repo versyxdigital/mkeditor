@@ -163,12 +163,12 @@ export function showSplashScreen({ duration }: { duration: number }) {
 }
 
 export function createDraggableSplitPanels(
-  model: editor.IStandaloneCodeEditor,
+  mkeditor: editor.IStandaloneCodeEditor,
 ) {
   Split(['#editor-split', '#preview-split'], {
     minSize: 0,
     onDrag() {
-      model.layout();
+      mkeditor.layout();
     },
   });
 
@@ -183,13 +183,13 @@ export function createDraggableSplitPanels(
       width: '3px',
     }),
     onDrag() {
-      model.layout();
+      mkeditor.layout();
     },
   });
 }
 
 // Toggle sidebar visibility.
-export function createSidebarToggle(model: editor.IStandaloneCodeEditor) {
+export function createSidebarToggle(mkeditor: editor.IStandaloneCodeEditor) {
   const sidebarGutter = document.querySelector(
     '.gutter.sidebar-gutter-horizontal',
   ) as HTMLDivElement | null;
@@ -204,6 +204,6 @@ export function createSidebarToggle(model: editor.IStandaloneCodeEditor) {
       if (sidebarGutter) sidebarGutter.style.display = 'none';
     }
 
-    model.layout();
+    mkeditor.layout();
   });
 }
