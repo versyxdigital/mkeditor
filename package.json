@@ -74,6 +74,7 @@
   },
   "build": {
     "appId": "com.mkeditor.app",
+    "artifactName": "mkeditor-setup-${version}.${ext}",
     "directories": {
       "output": "releases/${platform}/${arch}"
     },
