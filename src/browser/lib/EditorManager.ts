@@ -29,9 +29,9 @@ interface EditorConstructArgs {
   watch?: boolean | undefined;
 }
 
-export class Editor {
-  /** Editor model instance */
-  private model: editor.IStandaloneCodeEditor | null = null;
+export class EditorManager {
+  /** Editor instance */
+  private mkeditor: editor.IStandaloneCodeEditor | null = null;
 
   /** Editor event dispatcher */
   private dispatcher: EditorDispatcher;
@@ -65,7 +65,7 @@ export class Editor {
     dom.build.innerHTML = `v${APP_VERSION}`;
 
     this.dispatcher.addEventListener('editor:render', () => {
-      const value = this.model?.getValue() ?? '';
+      const value = this.mkeditor?.getValue() ?? '';
       WordCount(value);
       CharacterCount(value);
       this.render(value);
@@ -96,7 +96,7 @@ export class Editor {
     try {
       // Create the underlying monaco editor.
       // See https://microsoft.github.io/monaco-editor/
-      this.model = editor.create(this.editorHTMLElement, {
+      this.mkeditor = editor.create(this.editorHTMLElement, {
         value: welcomeMarkdown,
         language: 'markdown',
         wordBasedSuggestions: 'off',
@@ -114,7 +114,7 @@ export class Editor {
       // occurred, the result of this comparison is used for various things
       // such as modifying the title to notify the user of unsaved changes,
       // prompting the user to save before opening new files, etc.
-      this.loadedInitialEditorValue = this.model.getValue();
+      this.loadedInitialEditorValue = this.mkeditor.getValue();
       this.dispatcher.addEventListener('editor:track:content', (event) => {
         this.loadedInitialEditorValue = event.message;
       });
@@ -123,12 +123,12 @@ export class Editor {
       this.registerUIToolbarListeners();
 
       // Resize listeners to resize the editor.
-      window.onload = () => this.model?.layout();
-      window.onresize = () => this.model?.layout();
-      this.previewHTMLElement.onresize = () => this.model?.layout();
+      window.onload = () => this.mkeditor?.layout();
+      window.onresize = () => this.mkeditor?.layout();
+      this.previewHTMLElement.onresize = () => this.mkeditor?.layout();
 
       // Initialize word count and character count values
-      const value = this.model.getValue();
+      const value = this.mkeditor.getValue();
       WordCount(value);
       CharacterCount(value);
 
@@ -142,7 +142,7 @@ export class Editor {
         this.watch();
       }
     } catch (err) {
-      this.model = null;
+      this.mkeditor = null;
       console.log(err);
     }
 
@@ -159,7 +159,7 @@ export class Editor {
 
     const hasChanged = init
       ? false
-      : this.loadedInitialEditorValue !== this.model?.getValue();
+      : this.loadedInitialEditorValue !== this.mkeditor?.getValue();
 
     this.providers.bridge.sendFileContentHasChanged(hasChanged);
   }
@@ -168,8 +168,8 @@ export class Editor {
    * Render the editor.
    */
   public render(value?: string) {
-    if (this.model) {
-      const content = value ?? this.model.getValue();
+    if (this.mkeditor) {
+      const content = value ?? this.mkeditor.getValue();
       this.previewHTMLElement.innerHTML = Markdown.render(content);
       invalidateLineElements();
     }
@@ -187,7 +187,7 @@ export class Editor {
     // When the editor content changes, update the main process through the IPC handler
     // so that it can do things such as set the title notifying the user of unsaved changes,
     // prompt the user to save if they try to close the app or open a new file, etc.
-    this.model?.onDidChangeModelContent((event) => {
+    this.mkeditor?.onDidChangeModelContent((event) => {
       // Update the tracked content over the execution bridge.
       debouncedUpdateBridgedContent();
 
@@ -197,7 +197,7 @@ export class Editor {
 
       // Add a small timeout for the render.
       setTimeout(() => {
-        const value = this.model?.getValue() ?? '';
+        const value = this.mkeditor?.getValue() ?? '';
         WordCount(value);
         CharacterCount(value);
 
@@ -209,8 +209,8 @@ export class Editor {
     // Track the editor scroll state and update the preview scroll position to match.
     // Note: this method isn't perfect, for example, in cases of large images there is
     // a slight discrepancy of about 20-30px, but for the most part it works.
-    this.model?.onDidScrollChange(() => {
-      const visibleRange = this.model?.getVisibleRanges()[0];
+    this.mkeditor?.onDidScrollChange(() => {
+      const visibleRange = this.mkeditor?.getVisibleRanges()[0];
       if (visibleRange) {
         // Note: requires markdown line-numbers extension to be active
         ScrollSync(visibleRange.startLineNumber, this.previewHTMLElement);
@@ -219,11 +219,11 @@ export class Editor {
   }
 
   /**
-   * Get the current editor model.
+   * Get the current editor instance.
    * @returns
    */
-  public getModel() {
-    return this.model;
+  public getMkEditor() {
+    return this.mkeditor;
   }
 
   /**
@@ -251,12 +251,12 @@ export class Editor {
     if (dom.buttons.save.markdown) {
       dom.buttons.save.markdown.addEventListener('click', (event) => {
         event.preventDefault();
-        if (this.model) {
+        if (this.mkeditor) {
           if (this.providers.bridge) {
             this.providers.bridge.saveContentToFile();
           } else {
             Exporter.webExportToFile(
-              this.model.getValue(),
+              this.mkeditor.getValue(),
               'text/plain',
               '.md',
             );

@@ -13,7 +13,7 @@ import { BridgeSettings } from './BridgeSettings';
  */
 export function registerBridgeListeners(
   bridge: ContextBridgeAPI,
-  model: editor.IStandaloneCodeEditor,
+  mkeditor: editor.IStandaloneCodeEditor,
   dispatcher: EditorDispatcher,
   providers: BridgeProviders,
   files: FileManager,
@@ -40,7 +40,7 @@ export function registerBridgeListeners(
   bridge.receive('from:file:new', (channel: string) => {
     bridge.send('to:title:set', '');
     bridge.send(channel, {
-      content: model.getValue(),
+      content: mkeditor.getValue(),
       file: files.activeFile,
     });
   });
@@ -49,22 +49,22 @@ export function registerBridgeListeners(
   bridge.receive('from:file:save', (channel: string) => {
     if (files.activeFile && !files.activeFile.startsWith('untitled')) {
       bridge.send(channel, {
-        content: model.getValue(),
+        content: mkeditor.getValue(),
         file: files.activeFile,
       });
 
-      files.originals.set(files.activeFile, model.getValue());
+      files.originals.set(files.activeFile, mkeditor.getValue());
       dispatcher.setTrackedContent({
-        content: model.getValue(),
+        content: mkeditor.getValue(),
       });
     } else {
-      bridge.send('to:file:saveas', model.getValue());
+      bridge.send('to:file:saveas', mkeditor.getValue());
     }
   });
 
   // Handle file save-as events
   bridge.receive('from:file:saveas', (channel: string) => {
-    bridge.send(channel, model.getValue());
+    bridge.send(channel, mkeditor.getValue());
   });
 
   // Handle opening folders and constructing file tree
@@ -159,8 +159,8 @@ export function registerBridgeListeners(
 
   // Enable access to the monaco editor command palette.
   bridge.receive('from:command:palette', (command: string) => {
-    model.focus();
-    model.trigger(command, 'editor.action.quickCommand', {});
+    mkeditor.focus();
+    mkeditor.trigger(command, 'editor.action.quickCommand', {});
   });
 
   // Enable access to the monaco editor shortcuts modal.

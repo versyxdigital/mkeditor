@@ -1,11 +1,11 @@
 import './icons';
-import { Editor } from './lib/Editor';
+import { EditorManager } from './lib/EditorManager';
 import { EditorDispatcher } from './events/EditorDispatcher';
-import { Completion } from './lib/Completion';
-import { Commands } from './lib/Commands';
-import { MkedLinks } from './lib/MkedLinks';
-import { Settings } from './lib/Settings';
-import { Bridge } from './lib/Bridge';
+import { CompletionProvider } from './lib/providers/CompletionProvider';
+import { CommandProvider } from './lib/providers/CommandProvider';
+import { MkedLinkProvider } from './lib/providers/MkedLinkProvider';
+import { SettingsProvider } from './lib/providers/SettingsProvider';
+import { BridgeManager } from './lib/BridgeManager';
 import {
   dom,
   showSplashScreen,
@@ -29,53 +29,63 @@ if (mode === 'web') {
   });
 }
 
-// Create new custom event dispatcher.
+// Create new editor event dispatcher.
 const dispatcher = new EditorDispatcher();
 
-// Create a new editor.
-const mkeditor = new Editor({ dispatcher, init: true, watch: true });
+// Create a new editor manager.
+const editorManager = new EditorManager({
+  dispatcher,
+  init: true,
+  watch: true,
+});
 
-// Get the editor model.
-const model = mkeditor.getModel();
+// Get the editor instance.
+const mkeditor = editorManager.getMkEditor();
 
-if (model) {
-  // Register new command handler for the model to provide and handle editor
+if (mkeditor) {
+  // Register new command handler for the editor to provide and handle editor
   // commands and actions (e.g. bold, alertblock etc.)
-  mkeditor.provide('commands', new Commands(model, dispatcher));
+  editorManager.provide('commands', new CommandProvider(mkeditor));
 
-  // Register a new settings handler for the model to provide editor settings
+  // Register a new settings handler for the editor to provide editor settings
   // and to persist settings either to localStorage or file depending on context.
-  mkeditor.provide('settings', new Settings(mode, model, dispatcher));
+  editorManager.provide(
+    'settings',
+    new SettingsProvider(mode, mkeditor, dispatcher),
+  );
 
   // Register a new completion provider for the editor auto-completion
-  mkeditor.provide('completion', new Completion(model, dispatcher));
+  editorManager.provide(
+    'completion',
+    new CompletionProvider(mkeditor, dispatcher),
+  );
 
   // If running within electron app, register IPC handler for communication between
   // main and renderer execution contexts.
   if (api !== 'web') {
     // Create a new bridge communication handler.
-    const bridge = new Bridge(api, model, dispatcher);
+    const bridgeManager = new BridgeManager(api, mkeditor, dispatcher);
 
     // Attach providers.
-    bridge.provide('settings', mkeditor.providers.settings);
-    bridge.provide('commands', mkeditor.providers.commands);
-    mkeditor.provide('bridge', bridge);
+    bridgeManager.provide('settings', editorManager.providers.settings);
+    bridgeManager.provide('commands', editorManager.providers.commands);
+    editorManager.provide('bridge', bridgeManager);
 
     // Register link provider for mked:// navigation for linked documents.
-    new MkedLinks(model);
+    new MkedLinkProvider(mkeditor);
 
     // Initialize content tracker for the execution bridge.
-    mkeditor.updateBridgedContent({ init: true });
+    editorManager.updateBridgedContent({ init: true });
   }
 
   // Setup application tooltips.
   setupTooltips();
 
   // Implement draggable split.
-  createDraggableSplitPanels(model);
+  createDraggableSplitPanels(mkeditor);
 
   // Implement sidebar toggle.
-  createSidebarToggle(model);
+  createSidebarToggle(mkeditor);
 
   // Display splash screen
   showSplashScreen({

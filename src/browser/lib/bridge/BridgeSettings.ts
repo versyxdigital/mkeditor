@@ -10,11 +10,11 @@ export class BridgeSettings {
    * Create a new bridge settings handler
    *
    * @param bridge - the execution bridge
-   * @param model - the editor model
+   * @param mkeditor - the editor instance
    */
   constructor(
     private bridge: ContextBridgeAPI,
-    private model: editor.IStandaloneCodeEditor,
+    private mkeditor: editor.IStandaloneCodeEditor,
   ) {}
 
   /**
@@ -34,19 +34,19 @@ export class BridgeSettings {
    * @returns
    */
   public loadSettingsFromBridgeListener(settings: EditorSettings) {
-    this.model.updateOptions({
+    this.mkeditor.updateOptions({
       autoIndent: settings.autoindent ? 'advanced' : 'none',
     });
 
-    this.model.updateOptions({
+    this.mkeditor.updateOptions({
       wordWrap: settings.wordwrap ? 'on' : 'off',
     });
 
-    this.model.updateOptions({
+    this.mkeditor.updateOptions({
       renderWhitespace: settings.whitespace ? 'all' : 'none',
     });
 
-    this.model.updateOptions({
+    this.mkeditor.updateOptions({
       minimap: { enabled: settings.minimap },
     });
   }

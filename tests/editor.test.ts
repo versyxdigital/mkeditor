@@ -3,7 +3,7 @@ jest.mock('../src/browser/assets/intro', () => ({
 }));
 import { editor as monacoEditor } from 'monaco-editor/esm/vs/editor/editor.api';
 
-let Editor: any;
+let EditorManager: any;
 let EditorDispatcher: any;
 
 describe('Editor', () => {
@@ -14,7 +14,7 @@ describe('Editor', () => {
       <div id="app-about"><span id="app-version"></span></div>
       <span id="app-build-id"></span>
     `;
-    ({ Editor } = await import('../src/browser/lib/Editor'));
+    ({ EditorManager } = await import('../src/browser/lib/EditorManager'));
     ({ EditorDispatcher } = await import(
       '../src/browser/events/EditorDispatcher'
     ));
@@ -22,7 +22,7 @@ describe('Editor', () => {
 
   it('creates editor with correct parameters', () => {
     const dispatcher = new EditorDispatcher();
-    const mkeditor = new Editor({
+    const mkeditor = new EditorManager({
       dispatcher,
       init: true,
       watch: false,
@@ -37,6 +37,6 @@ describe('Editor', () => {
       }),
     );
 
-    expect(mkeditor.getModel()).not.toBeNull();
+    expect(mkeditor.getMkEditor()).not.toBeNull();
   });
 });

@@ -36,12 +36,12 @@ export class FileManager {
    * Create a new file manager instance.
    *
    * @param bridge - the execution bridge
-   * @param model - the editor model
+   * @param mkeditor - the editor instance
    * @param dispatcher - the event dispatcher
    */
   constructor(
     private bridge: ContextBridgeAPI,
-    private model: editor.IStandaloneCodeEditor,
+    private mkeditor: editor.IStandaloneCodeEditor,
     private dispatcher: EditorDispatcher,
   ) {}
 
@@ -212,12 +212,12 @@ export class FileManager {
     }
 
     this.activeFile = path;
-    this.model.setModel(mdl);
+    this.mkeditor.setModel(mdl);
     const filename = name || path.split(/[\\/]/).pop() || '';
     dom.meta.file.active.innerText = filename;
 
     const original = this.originals.get(path) ?? '';
-    const current = this.model.getValue();
+    const current = this.mkeditor.getValue();
 
     this.isLogFile = filename.endsWith('.log');
 
@@ -245,7 +245,7 @@ export class FileManager {
     }
 
     this.dispatcher.render();
-    this.model.focus();
+    this.mkeditor.focus();
 
     this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
   }
@@ -267,7 +267,7 @@ export class FileManager {
 
     if (this.contentHasChanged && this.activeFile !== path) {
       this.dispatcher.setTrackedContent({
-        content: this.model.getValue(),
+        content: this.mkeditor.getValue(),
       });
     }
 
@@ -293,15 +293,15 @@ export class FileManager {
   public saveContentToFile() {
     if (this.activeFile && !this.activeFile.startsWith('untitled')) {
       this.bridge.send('to:file:save', {
-        content: this.model.getValue(),
+        content: this.mkeditor.getValue(),
         file: this.activeFile,
       });
-      this.originals.set(this.activeFile, this.model.getValue());
+      this.originals.set(this.activeFile, this.mkeditor.getValue());
       this.dispatcher.setTrackedContent({
-        content: this.model.getValue(),
+        content: this.mkeditor.getValue(),
       });
     } else {
-      this.bridge.send('to:file:saveas', this.model.getValue());
+      this.bridge.send('to:file:saveas', this.mkeditor.getValue());
     }
   }
 

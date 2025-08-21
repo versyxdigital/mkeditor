@@ -1,14 +1,14 @@
 import { Dropdown, Modal } from 'bootstrap';
-import { Bridge } from '../lib/Bridge';
-import { Commands } from '../lib/Commands';
-import { Settings } from '../lib/Settings';
-import { Completion } from '../lib/Completion';
+import { BridgeManager } from '../lib/BridgeManager';
+import { CommandProvider } from '../lib/providers/CommandProvider';
+import { SettingsProvider } from '../lib/providers/SettingsProvider';
+import { CompletionProvider } from '../lib/providers/CompletionProvider';
 
 export interface Providers {
-  bridge: Bridge | null;
-  commands: Commands | null;
-  completion: Completion | null;
-  settings: Settings | null;
+  bridge: BridgeManager | null;
+  commands: CommandProvider | null;
+  completion: CompletionProvider | null;
+  settings: SettingsProvider | null;
 }
 
 export interface ModalProviders {
@@ -31,6 +31,6 @@ export interface EditorProviders extends Providers {
   [key: string]: unknown | null;
 }
 
-export type ValidCommand = keyof Commands;
+export type ValidCommand = keyof CommandProvider;
 export type ValidDropdown = keyof DropdownProviders;
 export type ValidModal = keyof ModalProviders;

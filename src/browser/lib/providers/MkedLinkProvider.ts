@@ -1,8 +1,8 @@
 import { editor, languages } from 'monaco-editor/esm/vs/editor/editor.api';
-import { dom } from '../dom';
+import { dom } from '../../dom';
 
-export class MkedLinks {
-  constructor(_model: editor.IStandaloneCodeEditor) {
+export class MkedLinkProvider {
+  constructor(_: editor.IStandaloneCodeEditor) {
     languages.registerLinkProvider('markdown', {
       provideLinks: async (m) => {
         const mked = window.mked;
