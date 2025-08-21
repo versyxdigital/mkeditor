@@ -1,5 +1,5 @@
 import { KeyMod, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api';
-import { EditorCommand } from '../interfaces/Editor';
+import { EditorCommand } from '../../interfaces/Editor';
 
 export const alertblocks = [
   { type: 'Primary', key: 'P' },

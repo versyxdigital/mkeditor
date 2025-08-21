@@ -8,7 +8,7 @@ import {
 import { CircularBuffer } from 'circle-buffer';
 import { CompletionItem, Matcher } from '../../interfaces/Completion';
 import { EditorDispatcher } from '../../events/EditorDispatcher';
-import { completion } from '../../mappings/completion';
+import { completion } from '../mappings/completion';
 
 export class CompletionProvider {
   /** Editor instance */

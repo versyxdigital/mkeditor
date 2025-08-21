@@ -10,7 +10,7 @@ import {
   ValidCommand,
   DropdownProviders,
 } from '../../interfaces/Providers';
-import { commands, alertblocks, codeblocks } from '../../mappings/commands';
+import { commands, alertblocks, codeblocks } from '../mappings/commands';
 import { getOSPlatform } from '../../util';
 import { dom } from '../../dom';
 
