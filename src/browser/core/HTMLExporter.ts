@@ -57,7 +57,7 @@ const cdn = {
   },
 };
 
-const css = `@media print {
+const inlineCSS = `@media print {
 .hljs-meta .hljs-string, .hljs-regexp, .hljs-string {
     color: #f7a857;
 }
@@ -138,7 +138,7 @@ export class HTMLExporter {
 
       // Custom style for the styled copyable code blocks
       const style = document.createElement('style');
-      style.appendChild(document.createTextNode(css));
+      style.appendChild(document.createTextNode(inlineCSS));
       document.head.appendChild(style);
     } else {
       // If not using styles then strip all classes
