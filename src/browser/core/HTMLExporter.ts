@@ -5,30 +5,30 @@ const cdn = {
   bootstrap: {
     css: {
       rel: 'stylesheet',
-      href: 'https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css',
+      href: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
       integrity:
-        'sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC',
+        'sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH',
       crossorigin: 'anonymous',
     },
     js: {
-      src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js',
+      src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js',
       integrity:
-        'sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM',
+        'sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy',
       crossorigin: 'anonymous',
     },
   },
   fontawesome: {
     css: {
       rel: 'stylesheet',
-      href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css',
+      href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css',
       integrity:
-        'sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==',
+        'sha512-DxV+EoADOkOygM4IR9yXP8Sb2qwgidEmeqAEmDKIOfPRQZOWbXCzLC6vjbZyy0vPisbH2SyW27+ddLVCN+OMzQ==',
       crossorigin: 'anonymous',
     },
     js: {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/js/all.min.js',
+      src: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/js/all.min.js',
       integrity:
-        'sha512-uKQ39gEGiyUJl4AI6L+ekBdGKpGw4xJ55+xyJG7YFlJokPNYegn9KwQ3P8A7aFQAUtUsAQHep+d/lrGqrbPIDQ==',
+        'sha512-gBYquPLlR76UWqCwD06/xwal4so02RjIR0oyG1TIhSGwmBTRrIkQbaPehPF8iwuY9jFikDHMGEelt0DtY7jtvQ==',
       crossorigin: 'anonymous',
     },
   },
@@ -41,69 +41,24 @@ const cdn = {
     },
     js: null,
   },
+  katex: {
+    css: {
+      rel: 'stylesheet',
+      href: 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css',
+      integrity:
+        'sha512-fHwaWebuwA7NSF5Qg/af4UeDx9XqUpYpOGgubo3yWu+b2IQR4UeQwbb42Ti7gVAjNtVoI/I9TEoYeu9omwcC6g==',
+      crossorigin: 'anonymous',
+    },
+    js: {
+      src: 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js',
+      integrity:
+        'sha512-LQNxIMR5rXv7o+b1l8+N1EZMfhG7iFZ9HhnbJkTp4zjNr5Wvst75AqUeFDxeRUa7l5vEDyUiAip//r+EFLLCyA==',
+      crossorigin: 'anonymous',
+    },
+  },
 };
 
 const css = `@media print {
-    .copy-code {
-            display: none;
-    }
-}
-
-.copy-code-pre {
-    position: relative;
-}
-
-.copy-code-pre code {
-    background: #111111 !important;
-    color: #c4c4c4;
-}
-
-.copy-code {
-    display: flex;
-    flex-direction: row;
-    white-space: normal;
-    background: rgba(51, 51, 51, 0.8);
-    color: white;
-    font-size: 0.875em;
-    opacity: 0.5;
-    transition: opacity linear 0.5s;
-    border-radius: 0 0 0 5px;
-    padding: 3px 6px 3px 6px;
-    position: absolute;
-    right: 0;
-    top: 0;
-}
-
-.copy-code.active {
-    opacity: 0.8;
-}
-
-.copy-code:hover {
-    opacity: .95;
-}
-
-.copy-code a,
-.copy-code a:hover {
-    text-decoration: none;
-}
-
-.copy-code-language {
-    margin-right: 10px;
-    font-weight: 600;
-    color: goldenrod;
-}
-
-.copy-code-copy-icon {
-    font-size: 1.2em;
-    cursor: pointer;
-    padding: 0 7px;
-    margin-top: 2px;
-}
-
-.fa.text-success {
-    color: limegreen !important
-}
-
 .hljs-meta .hljs-string, .hljs-regexp, .hljs-string {
     color: #f7a857;
 }
@@ -140,44 +95,45 @@ export class HTMLExporter {
    * @param providers - style providers
    * @returns - the generated HTML
    */
-  static generateHTML(
-    content: string,
-    { styled = true, providers = ['highlightjs'] },
-  ) {
+  static generateHTML(content: string, { styled = true }) {
+    let providers: ProviderKey[] = [
+      'bootstrap',
+      'fontawesome',
+      'highlightjs',
+      'katex',
+    ];
+
     // If using bootstrap styles then wrap the content inside a container with padding
-    if (styled && providers.includes('bootstrap')) {
-      content = '<div class="container py-5">' + content + '</div>';
+    if (styled) {
+      content = '<div class="container py-5">' + content.trim() + '</div>';
     }
 
     // Create a full HTML document and remove unnecessary attributes and classes
     const document = HTMLExporter.sanitizeHTML(
-      new DOMParser().parseFromString(content, 'text/html'),
+      new DOMParser().parseFromString(content.trim(), 'text/html'),
     );
 
     if (styled) {
       // Apply styles/scripts based on selected provider(s)
-      if (providers) {
-        for (const provider of providers) {
-          const key = <ProviderKey>provider;
-          if (cdn[key]) {
-            const { css, js } = cdn[key];
+      for (const provides of providers) {
+        if (cdn[provides]) {
+          const { css, js } = cdn[provides];
 
-            if (css) {
-              const stylesheet = document.createElement('link');
-              stylesheet.rel = css.rel;
-              stylesheet.href = css.href;
-              stylesheet.integrity = css.integrity;
-              stylesheet.crossOrigin = css.crossorigin;
-              document.head.appendChild(stylesheet);
-            }
+          if (css) {
+            const stylesheet = document.createElement('link');
+            stylesheet.rel = css.rel;
+            stylesheet.href = css.href;
+            stylesheet.integrity = css.integrity;
+            stylesheet.crossOrigin = css.crossorigin;
+            document.head.appendChild(stylesheet);
+          }
 
-            if (js) {
-              const script = document.createElement('script');
-              script.src = js.src;
-              script.integrity = js.integrity;
-              script.crossOrigin = js.crossorigin;
-              document.body.appendChild(script);
-            }
+          if (js) {
+            const script = document.createElement('script');
+            script.src = js.src;
+            script.integrity = js.integrity;
+            script.crossOrigin = js.crossorigin;
+            document.body.appendChild(script);
           }
         }
       }
@@ -194,8 +150,7 @@ export class HTMLExporter {
       }
     }
 
-    // Beautify the HTML and return it
-    return formatHTML(`<!DOCTYPE html>${document.documentElement.outerHTML}`);
+    return `<!DOCTYPE html>${document.documentElement.outerHTML}`;
   }
 
   /**

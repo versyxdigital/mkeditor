@@ -276,7 +276,6 @@ export class EditorManager {
           this.previewHTMLElement.innerHTML,
           {
             styled: styled.checked,
-            providers: ['bootstrap', 'fontawesome', 'highlightjs'],
           },
         );
 
