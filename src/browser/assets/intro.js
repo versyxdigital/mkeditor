@@ -40,7 +40,7 @@ Format some code:
 
 \`\`\`javascript
 document.addEventListener('DOMContentLoaded', () => {
-    document.body.write('Syntax-highlighted, copyable codeblock!')
+    document.body.write('Syntax-highlighted codeblock!')
 })
 \`\`\`
 

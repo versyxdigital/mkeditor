@@ -136,7 +136,7 @@ export class HTMLExporter {
         }
       }
 
-      // Custom style for the styled copyable code blocks
+      // Custom styling
       const style = document.createElement('style');
       style.appendChild(document.createTextNode(inlineCSS));
       document.head.appendChild(style);
