@@ -1,4 +1,3 @@
-import { formatHTML } from '../util';
 import { dom } from '../dom';
 
 const cdn = {
@@ -86,23 +85,22 @@ const css = `@media print {
 
 type ProviderKey = keyof typeof cdn;
 
+const providers: ProviderKey[] = [
+  'bootstrap',
+  'fontawesome',
+  'highlightjs',
+  'katex',
+];
+
 export class HTMLExporter {
   /**
    * Generate HTML export.
    *
    * @param content - the editor content
-   * @param styled - style the HTML
-   * @param providers - style providers
+   * @param styled - flag to determine whether to style the HTML
    * @returns - the generated HTML
    */
   static generateHTML(content: string, { styled = true }) {
-    let providers: ProviderKey[] = [
-      'bootstrap',
-      'fontawesome',
-      'highlightjs',
-      'katex',
-    ];
-
     // If using bootstrap styles then wrap the content inside a container with padding
     if (styled) {
       content = '<div class="container py-5">' + content.trim() + '</div>';
