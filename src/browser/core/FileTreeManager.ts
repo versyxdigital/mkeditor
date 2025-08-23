@@ -30,7 +30,12 @@ export class FileTreeManager {
   constructor(
     private bridge: ContextBridgeAPI,
     private openFileFromPath: (path: string) => void,
-  ) {}
+  ) {
+    dom.filetree.addEventListener(
+      'contextmenu',
+      this.handleFileTreeContextMenu,
+    );
+  }
 
   /**
    * Build the file explorer tree.
@@ -46,10 +51,6 @@ export class FileTreeManager {
 
     if (!this.fileTreeListenerRegistered) {
       dom.filetree.addEventListener('click', this.handleFileTreeClick);
-      dom.filetree.addEventListener(
-        'contextmenu',
-        this.handleFileTreeContextMenu,
-      );
       this.fileTreeListenerRegistered = true;
     }
 
@@ -247,6 +248,7 @@ export class FileTreeManager {
   private handleFileTreeContextMenu = async (e: MouseEvent) => {
     e.preventDefault();
     const target = e.target as HTMLElement;
+    console.log({ root: this.treeRoot });
     const items = getContextMenuItems(
       this.bridge,
       this.treeRoot,

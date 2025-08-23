@@ -21,7 +21,7 @@ export function getContextMenuItems(
     if (treeRoot) {
       items.push(
         {
-          label: 'New File',
+          label: 'New File...',
           action: async () => {
             const result = await Swal.fire({
               title: 'New file name',
@@ -44,7 +44,7 @@ export function getContextMenuItems(
           },
         },
         {
-          label: 'New Folder',
+          label: 'New Folder...',
           action: async () => {
             const result = await Swal.fire({
               title: 'New folder name',
@@ -66,20 +66,33 @@ export function getContextMenuItems(
           },
         },
         { divider: true, label: '', action: () => {} },
+      );
+    } else {
+      items.push(
         {
-          label: 'Collapse Explorer',
+          label: 'Open Folder...',
           action: () => {
-            dom.buttons.sidebar.click();
+            bridge.send('to:folder:open', true);
           },
         },
-        {
-          label: 'Open Settings',
-          action: () => {
-            dom.buttons.settings.click();
-          },
-        },
+        { divider: true, label: '', action: () => {} },
       );
     }
+    // Defaults
+    items.push(
+      {
+        label: 'Collapse Explorer',
+        action: () => {
+          dom.buttons.sidebar.click();
+        },
+      },
+      {
+        label: 'Open Settings',
+        action: () => {
+          dom.buttons.settings.click();
+        },
+      },
+    );
   } else if (li.classList.contains('file') && li.dataset.path) {
     const path = li.dataset.path;
     items.push(
@@ -157,7 +170,7 @@ export function getContextMenuItems(
     const path = li.dataset.path;
     items.push(
       {
-        label: 'Open Folder',
+        label: 'Expand Folder',
         action: () => {
           const span = li.querySelector(':scope > span.file-name');
           const ul = li.querySelector(':scope > ul') as HTMLElement | null;
@@ -166,6 +179,7 @@ export function getContextMenuItems(
           }
         },
       },
+      { divider: true, label: '', action: () => {} },
       {
         label: 'New File...',
         action: async () => {
