@@ -96,6 +96,21 @@ export function selfRender(
 }
 
 /**
+ * Return a filename with .md extension.
+ *
+ * @param name - the file name
+ * @returns
+ */
+export function withMdExtension(name: string) {
+  let filename = name.trim();
+  if (!filename.toLowerCase().endsWith('.md')) {
+    filename += '.md';
+  }
+
+  return filename;
+}
+
+/**
  * Configure a sweetalert2 mixin for toast notifications.
  */
 const toast: ReturnType<typeof Swal.mixin> = Swal.mixin({

@@ -1,5 +1,6 @@
 import Swal from 'sweetalert2';
 import type { ContextBridgeAPI } from '../../interfaces/Bridge';
+import { withMdExtension } from '../../util';
 import { dom } from '../../dom';
 
 interface ContextMenuItem {
@@ -36,7 +37,7 @@ export function getContextMenuItems(
             if (result.isConfirmed && result.value) {
               bridge.send('to:file:create', {
                 parent: treeRoot,
-                name: result.value,
+                name: withMdExtension(result.value),
               });
             }
           },
@@ -101,7 +102,10 @@ export function getContextMenuItems(
             },
           });
           if (result.isConfirmed && result.value) {
-            bridge.send('to:file:rename', { path, name: result.value });
+            bridge.send('to:file:rename', {
+              path,
+              name: withMdExtension(result.value),
+            });
           }
         },
       },
