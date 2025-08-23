@@ -250,7 +250,6 @@ export class FileTreeManager {
   private handleFileTreeContextMenu = async (e: MouseEvent) => {
     e.preventDefault();
     const target = e.target as HTMLElement;
-    console.log({ root: this.treeRoot });
     const items = getContextMenuItems(
       this.bridge,
       this.treeRoot,
