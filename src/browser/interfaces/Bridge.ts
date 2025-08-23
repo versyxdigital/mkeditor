@@ -3,8 +3,16 @@ export interface ContextBridgeAPI {
   receive: (channel: string, fn: (...args: any[]) => void) => void;
 }
 
-export interface ContextBridgedFile {
+export interface BridgedFile {
   file: string | null;
   filename: string;
   content: string;
+}
+
+export interface FileProperties {
+  path: string;
+  isDirectory: boolean;
+  size: number;
+  created: string;
+  modified: string;
 }

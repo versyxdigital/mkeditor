@@ -1,12 +1,16 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { ContextBridgeAPI, ContextBridgedFile } from '../interfaces/Bridge';
-import Swal from 'sweetalert2';
+import {
+  ContextBridgeAPI,
+  BridgedFile,
+  FileProperties,
+} from '../interfaces/Bridge';
 import { BridgeProviders, ValidModal } from '../interfaces/Providers';
 import { EditorSettings } from '../interfaces/Editor';
 import { EditorDispatcher } from '../events/EditorDispatcher';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
 import { BridgeSettings } from './BridgeSettings';
+import { showFilePropertiesWindow } from '../dom';
 import { notify } from '../util';
 
 /**
@@ -96,7 +100,7 @@ export function registerBridgeListeners(
   // Handle post-file open events
   bridge.receive(
     'from:file:opened',
-    ({ content, filename, file }: ContextBridgedFile) => {
+    ({ content, filename, file }: BridgedFile) => {
       const path = file || `untitled-${files.untitledCounter++}`;
       const name = filename || `Untitled ${files.untitledCounter - 1}`;
       let mdl = files.models.get(path);
@@ -178,42 +182,8 @@ export function registerBridgeListeners(
     },
   );
 
-  bridge.receive(
-    'from:path:properties',
-    (info: {
-      path: string;
-      isDirectory: boolean;
-      size: number;
-      created: string;
-      modified: string;
-    }) => {
-      const html = `
-        <dl class="mb-0 small text-start">
-          <dt class="col-auto fw-semibold me-2">Path:</dt>
-          <dd class="col-auto me-4">${info.path}</dd>
-
-          <dt class="col-auto fw-semibold me-2">Type:</dt>
-          <dd class="col-auto me-4">${info.isDirectory ? 'Directory' : 'File'}</dd>
-
-          <dt class="col-auto fw-semibold me-2">Size:</dt>
-          <dd class="col-auto me-4">${info.size.toLocaleString()} bytes</dd>
-
-          <dt class="col-auto fw-semibold me-2">Created:</dt>
-          <dd class="col-auto me-4">${new Date(info.created).toLocaleString()}</dd>
-
-          <dt class="col-auto fw-semibold me-2">Modified:</dt>
-          <dd class="col-auto">${new Date(info.modified).toLocaleString()}</dd>
-        </dl>
-        `;
-      Swal.fire({
-        html,
-        draggable: true,
-        customClass: {
-          actions: 'mt-0',
-          popup: ['shadow', 'rounded'],
-        },
-        width: 325,
-      });
-    },
-  );
+  // Trigger the file properties window from the context menu.
+  bridge.receive('from:path:properties', (info: FileProperties) => {
+    showFilePropertiesWindow(info);
+  });
 }

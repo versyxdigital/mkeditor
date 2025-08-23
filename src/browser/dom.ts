@@ -1,7 +1,9 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { Tooltip } from 'bootstrap';
 import Split from 'split.js';
+import Swal from 'sweetalert2';
 import { getOSPlatform } from './util';
+import { FileProperties } from './interfaces/Bridge';
 
 export const dom = {
   splash: <HTMLDivElement>document.querySelector('#splashscreen'),
@@ -208,5 +210,36 @@ export function createSidebarToggle(mkeditor: editor.IStandaloneCodeEditor) {
     }
 
     mkeditor.layout();
+  });
+}
+
+export function showFilePropertiesWindow(info: FileProperties) {
+  const html = `
+    <dl class="mb-0 small text-start">
+      <dt class="col-auto fw-semibold me-2">Path:</dt>
+      <dd class="col-auto me-4">${info.path}</dd>
+
+      <dt class="col-auto fw-semibold me-2">Type:</dt>
+      <dd class="col-auto me-4">${info.isDirectory ? 'Directory' : 'File'}</dd>
+
+      <dt class="col-auto fw-semibold me-2">Size:</dt>
+      <dd class="col-auto me-4">${info.size.toLocaleString()} bytes</dd>
+
+      <dt class="col-auto fw-semibold me-2">Created:</dt>
+      <dd class="col-auto me-4">${new Date(info.created).toLocaleString()}</dd>
+
+      <dt class="col-auto fw-semibold me-2">Modified:</dt>
+      <dd class="col-auto">${new Date(info.modified).toLocaleString()}</dd>
+    </dl>
+  `;
+
+  Swal.fire({
+    html,
+    draggable: true,
+    customClass: {
+      actions: 'mt-0',
+      popup: ['shadow', 'rounded'],
+    },
+    width: 325,
   });
 }
