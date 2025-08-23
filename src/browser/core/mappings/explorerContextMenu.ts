@@ -28,6 +28,7 @@ export function getContextMenuItems(
               input: 'text',
               inputPlaceholder: 'Untitled.md',
               showCancelButton: true,
+              draggable: true,
               customClass: {
                 popup: ['rounded', 'shadow'],
                 actions: 'mt-2',
@@ -49,6 +50,7 @@ export function getContextMenuItems(
               title: 'New folder name',
               input: 'text',
               showCancelButton: true,
+              draggable: true,
               customClass: {
                 popup: ['rounded', 'shadow'],
                 actions: 'mt-2',
@@ -96,6 +98,7 @@ export function getContextMenuItems(
             input: 'text',
             inputValue: path.split(/[/\\]/).pop(),
             showCancelButton: true,
+            draggable: true,
             customClass: {
               popup: ['rounded', 'shadow'],
               actions: 'mt-2',
@@ -117,6 +120,7 @@ export function getContextMenuItems(
             title: 'Delete file?',
             icon: 'warning',
             showCancelButton: true,
+            draggable: true,
             confirmButtonText: 'Delete',
             customClass: {
               popup: ['rounded', 'shadow'],
@@ -170,6 +174,7 @@ export function getContextMenuItems(
             input: 'text',
             inputPlaceholder: 'Untitled.md',
             showCancelButton: true,
+            draggable: true,
             customClass: {
               popup: ['rounded', 'shadow'],
               actions: 'mt-2',
@@ -191,6 +196,7 @@ export function getContextMenuItems(
             title: 'New folder name',
             input: 'text',
             showCancelButton: true,
+            draggable: true,
             customClass: {
               popup: ['rounded', 'shadow'],
               actions: 'mt-2',
@@ -214,6 +220,12 @@ export function getContextMenuItems(
             input: 'text',
             inputValue: path.split(/[/\\]/).pop(),
             showCancelButton: true,
+            draggable: true,
+            customClass: {
+              popup: ['rounded', 'shadow'],
+              actions: 'mt-2',
+              input: 'small',
+            },
           });
           if (result.isConfirmed && result.value) {
             bridge.send('to:file:rename', { path, name: result.value });
@@ -228,6 +240,12 @@ export function getContextMenuItems(
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Delete',
+            draggable: true,
+            customClass: {
+              popup: ['rounded', 'shadow'],
+              actions: 'mt-2',
+              input: 'small',
+            },
           });
           if (confirm.isConfirmed) {
             bridge.send('to:file:delete', { path });

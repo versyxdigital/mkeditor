@@ -12,7 +12,7 @@ export interface BridgedFile {
 export interface FileProperties {
   path: string;
   isDirectory: boolean;
-  size: number;
+  size: string;
   created: string;
   modified: string;
 }

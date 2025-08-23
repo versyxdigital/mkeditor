@@ -392,10 +392,17 @@ export class AppStorage {
    */
   static async getPathProperties(path: string) {
     const stats = await fs.stat(path);
+    let size: string;
+    if (stats.size >= 1024 * 1024) {
+      size = `${(stats.size / (1024 * 1024)).toFixed(2)} MB`;
+    } else {
+      size = `${(stats.size / 1024).toFixed(2)} KB`;
+    }
+
     return {
       path,
       isDirectory: stats.isDirectory(),
-      size: stats.size,
+      size,
       created: stats.birthtime.toISOString(),
       modified: stats.mtime.toISOString(),
     };

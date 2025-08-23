@@ -218,7 +218,7 @@ export function showFilePropertiesWindow(info: FileProperties) {
       <dd class="col-auto me-4">${info.isDirectory ? 'Directory' : 'File'}</dd>
 
       <dt class="col-auto fw-semibold me-2">Size:</dt>
-      <dd class="col-auto me-4">${info.size.toLocaleString()} bytes</dd>
+      <dd class="col-auto me-4">${info.size}</dd>
 
       <dt class="col-auto fw-semibold me-2">Created:</dt>
       <dd class="col-auto me-4">${new Date(info.created).toLocaleString()}</dd>
