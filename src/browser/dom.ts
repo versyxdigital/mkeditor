@@ -34,6 +34,9 @@ export const dom = {
   },
   buttons: {
     sidebar: <HTMLButtonElement>document.querySelector('#sidebar-toggle'),
+    settings: <HTMLElement>(
+      document.querySelector('[data-bs-target="#app-settings"]')
+    ),
     save: {
       settings: <HTMLButtonElement>document.querySelector('#app-settings-save'),
       markdown: <HTMLButtonElement>document.querySelector('#app-markdown-save'),

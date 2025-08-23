@@ -1,5 +1,6 @@
 import Swal from 'sweetalert2';
 import { ContextBridgeAPI } from 'src/browser/interfaces/Bridge';
+import { dom } from '../../dom';
 
 interface ExplorerContextMenu {
   label: string;
@@ -55,19 +56,13 @@ export function getContextMenuItems(
         {
           label: 'Collapse Explorer',
           action: () => {
-            document
-              .querySelector<HTMLButtonElement>('#sidebar-toggle')
-              ?.click();
+            dom.buttons.sidebar.click();
           },
         },
         {
           label: 'Open Settings',
           action: () => {
-            (
-              document.querySelector(
-                '[data-bs-target="#app-settings"]',
-              ) as HTMLElement | null
-            )?.click();
+            dom.buttons.settings.click();
           },
         },
       );
@@ -119,17 +114,13 @@ export function getContextMenuItems(
       {
         label: 'Collapse Explorer',
         action: () => {
-          document.querySelector<HTMLButtonElement>('#sidebar-toggle')?.click();
+          dom.buttons.sidebar.click();
         },
       },
       {
         label: 'Open Settings...',
         action: () => {
-          (
-            document.querySelector(
-              '[data-bs-target="#app-settings"]',
-            ) as HTMLElement | null
-          )?.click();
+          dom.buttons.settings.click();
         },
       },
     );
@@ -184,17 +175,13 @@ export function getContextMenuItems(
       {
         label: 'Collapse Explorer',
         action: () => {
-          document.querySelector<HTMLButtonElement>('#sidebar-toggle')?.click();
+          dom.buttons.sidebar.click();
         },
       },
       {
         label: 'Open Settings...',
         action: () => {
-          (
-            document.querySelector(
-              '[data-bs-target="#app-settings"]',
-            ) as HTMLElement | null
-          )?.click();
+          dom.buttons.settings.click();
         },
       },
     );
