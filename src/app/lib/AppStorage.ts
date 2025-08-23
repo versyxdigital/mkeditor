@@ -354,6 +354,11 @@ export class AppStorage {
       await fs.rename(path, newPath);
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
+      context.webContents.send('from:path:renamed', {
+        oldPath: path,
+        newPath,
+        name,
+      });
       context.webContents.send('from:notification:display', {
         status: 'success',
         message: 'Renamed.',

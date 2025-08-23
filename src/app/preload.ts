@@ -45,6 +45,7 @@ const receiverWhitelist = [
   'from:command:palette',
   'from:notification:display',
   'from:path:properties',
+  'from:path:renamed',
 ];
 
 /**

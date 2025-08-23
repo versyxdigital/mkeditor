@@ -3,6 +3,7 @@ import type {
   ContextBridgeAPI,
   BridgedFile,
   FileProperties,
+  RenamedPath,
 } from '../interfaces/Bridge';
 import type { BridgeProviders, ValidModal } from '../interfaces/Providers';
 import type { EditorSettings } from '../interfaces/Editor';
@@ -159,6 +160,54 @@ export function registerBridgeListeners(
       tree.addFileToTree(path);
       files.activateFile(path, name);
       files.openingFile = false;
+    },
+  );
+
+  // Enable renaming of files and folders
+  bridge.receive(
+    'from:path:renamed',
+    ({ oldPath, newPath, name }: RenamedPath) => {
+      const mdl = files.models.get(oldPath);
+      if (!mdl) return;
+
+      const original = files.originals.get(oldPath);
+      if (original !== undefined) {
+        files.originals.delete(oldPath);
+        files.originals.set(newPath, original);
+      }
+
+      files.models.delete(oldPath);
+      files.models.set(newPath, mdl);
+
+      const tab = files.tabs.get(oldPath);
+      if (tab) {
+        const newTab = tab.cloneNode(true) as HTMLAnchorElement;
+        newTab.textContent = name;
+        newTab.addEventListener('click', (e) => {
+          e.preventDefault();
+          files.activateFile(newPath);
+        });
+        const li = tab.parentElement as HTMLLIElement | null;
+        if (li) li.dataset.path = newPath;
+        tab.replaceWith(newTab);
+        files.tabs.delete(oldPath);
+        files.tabs.set(newPath, newTab);
+
+        const closeBtn = newTab.nextElementSibling as HTMLButtonElement | null;
+        if (closeBtn) {
+          const newBtn = closeBtn.cloneNode(true) as HTMLButtonElement;
+          newBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            await files.closeTab(newPath);
+          });
+          closeBtn.replaceWith(newBtn);
+        }
+      }
+
+      if (files.activeFile === oldPath) {
+        files.activateFile(newPath, name);
+      }
     },
   );
 

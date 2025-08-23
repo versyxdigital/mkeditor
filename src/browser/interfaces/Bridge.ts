@@ -16,3 +16,9 @@ export interface FileProperties {
   created: string;
   modified: string;
 }
+
+export interface RenamedPath {
+  oldPath: string;
+  newPath: string;
+  name: string;
+}

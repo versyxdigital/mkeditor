@@ -31,10 +31,12 @@ export class FileTreeManager {
     private bridge: ContextBridgeAPI,
     private openFileFromPath: (path: string) => void,
   ) {
-    dom.filetree.addEventListener(
-      'contextmenu',
-      this.handleFileTreeContextMenu,
-    );
+    if (dom.filetree) {
+      dom.filetree.addEventListener(
+        'contextmenu',
+        this.handleFileTreeContextMenu,
+      );
+    }
   }
 
   /**
