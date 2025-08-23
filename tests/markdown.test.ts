@@ -22,4 +22,12 @@ describe('Markdown', () => {
     const output = Markdown.render('The area is $A = \\pi r^2$');
     expect(output).toContain('katex');
   });
+
+  it('only auto-links explicit URLs', () => {
+    const urlOutput = Markdown.render('http://example.com');
+    expect(urlOutput).toContain('<a href="http://example.com"');
+
+    const fileOutput = Markdown.render('hello.py');
+    expect(fileOutput).not.toContain('<a');
+  });
 });
