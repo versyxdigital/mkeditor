@@ -87,6 +87,7 @@ export function getContextMenuItems(
           openFile(path);
         },
       },
+      { divider: true, label: '', action: () => {} },
       {
         label: 'Rename File...',
         action: async () => {
@@ -127,6 +128,7 @@ export function getContextMenuItems(
           }
         },
       },
+      { divider: true, label: '', action: () => {} },
       {
         label: 'Show Properties...',
         action: () => {
@@ -161,7 +163,7 @@ export function getContextMenuItems(
         },
       },
       {
-        label: 'New File',
+        label: 'New File...',
         action: async () => {
           const result = await Swal.fire({
             title: 'New file name',
@@ -183,7 +185,7 @@ export function getContextMenuItems(
         },
       },
       {
-        label: 'New Folder',
+        label: 'New Folder...',
         action: async () => {
           const result = await Swal.fire({
             title: 'New folder name',
@@ -203,6 +205,7 @@ export function getContextMenuItems(
           }
         },
       },
+      { divider: true, label: '', action: () => {} },
       {
         label: 'Rename Folder...',
         action: async () => {
@@ -231,6 +234,7 @@ export function getContextMenuItems(
           }
         },
       },
+      { divider: true, label: '', action: () => {} },
       {
         label: 'Show Properties...',
         action: () => {
