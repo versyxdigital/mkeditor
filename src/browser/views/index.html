@@ -630,7 +630,7 @@
     <!-- shortcuts modal -->
     <div class="modal" tabindex="-1" id="app-shortcuts">
       <div class="modal-dialog mw-100 w-75" role="document">
-        <div class="modal-content">
+        <div class="modal-content small text-muted">
           <div class="modal-header border-bottom-0">
             <h5 class="modal-title">MKEditor Shortcuts</h5>
             <button
@@ -653,12 +653,28 @@
                   </thead>
                   <tbody>
                     <tr>
+                      <td><strong>F1</strong></td>
+                      <td>Open command palette</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + Z</strong></td>
+                      <td>Undo last edit</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + Y</strong></td>
+                      <td>Redo last edit</td>
+                    </tr>
+                    <tr>
                       <td><strong>Ctrl + X</strong></td>
                       <td>Cut line (empty selection)</td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + C</strong></td>
                       <td>Copy line (empty selection)</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Ctrl + K, Ctrl + X</strong></td>
+                      <td>Trim trailing whitespace from selection</td>
                     </tr>
                     <tr>
                       <td><strong>Alt + ↑ / ↓</strong></td>
@@ -699,7 +715,6 @@
                     <tr>
                       <td><strong>Ctrl + ↑ / ↓</strong></td>
                       <td>Scroll line up/down</td>
-                      <td></td>
                     </tr>
                     <tr>
                       <td><strong>Alt + PgUp / PgDn</strong></td>
@@ -733,12 +748,28 @@
                           <td>Strikethrough text</td>
                         </tr>
                         <tr>
-                          <td><strong>Ctrl + 1</strong></td>
+                          <td><strong>Ctrl + 2</strong></td>
                           <td>Create unordered list</td>
                         </tr>
                         <tr>
-                          <td><strong>Ctrl + 2</strong></td>
+                          <td><strong>Ctrl + 3</strong></td>
                           <td>Create ordered list</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Ctrl + H</strong></td>
+                          <td>Insert a link (selection or empty selection)</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Ctrl + T</strong></td>
+                          <td>Insert a markdown table (opens the configuration menu)</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Ctrl + K, _</strong></td>
+                          <td>Insert a codeblock (_ = the underlined letter from the menu)</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Ctrl + L, _</strong></td>
+                          <td>Insert an alert block (_ = the underlined letter from the menu)</td>
                         </tr>
                       </tbody>
                     </table>

@@ -113,6 +113,10 @@ export function getContextMenuItems(
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Delete',
+            customClass: {
+              popup: ['rounded', 'shadow'],
+              actions: 'mt-2',
+            },
           });
           if (confirm.isConfirmed) {
             bridge.send('to:file:delete', { path });
