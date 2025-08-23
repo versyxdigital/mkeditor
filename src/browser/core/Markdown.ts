@@ -80,6 +80,11 @@ const Markdown = new MarkdownIt({
   },
 });
 
+// Only autolink URLs that explicitly include a protocol
+Markdown.linkify.set({ fuzzyLink: false, fuzzyEmail: false, fuzzyIP: false });
+// Disable non-http(s) protocols
+Markdown.linkify.add('ftp:', null).add('mailto:', null);
+
 Markdown.use(AlertBlock);
 Markdown.use(LineNumber);
 Markdown.use(LinkTarget);
