@@ -1,0 +1,204 @@
+import Swal from 'sweetalert2';
+import { ContextBridgeAPI } from 'src/browser/interfaces/Bridge';
+
+interface ExplorerContextMenu {
+  label: string;
+  action: () => void;
+  divider?: boolean;
+}
+
+export function getContextMenuItems(
+  bridge: ContextBridgeAPI,
+  treeRoot: string | null,
+  li: HTMLElement | null,
+  openFile: (path: string) => void,
+) {
+  const items: ExplorerContextMenu[] = [];
+
+  if (!li) {
+    if (treeRoot) {
+      items.push(
+        {
+          label: 'New File',
+          action: async () => {
+            const result = await Swal.fire({
+              title: 'New file name',
+              input: 'text',
+              inputPlaceholder: 'Untitled.md',
+              showCancelButton: true,
+            });
+            if (result.isConfirmed && result.value) {
+              bridge.send('to:file:create', {
+                parent: treeRoot,
+                name: result.value,
+              });
+            }
+          },
+        },
+        {
+          label: 'New Folder',
+          action: async () => {
+            const result = await Swal.fire({
+              title: 'New folder name',
+              input: 'text',
+              showCancelButton: true,
+            });
+            if (result.isConfirmed && result.value) {
+              bridge.send('to:folder:create', {
+                parent: treeRoot,
+                name: result.value,
+              });
+            }
+          },
+        },
+        { divider: true, label: '', action: () => {} },
+        {
+          label: 'Collapse Explorer',
+          action: () => {
+            document
+              .querySelector<HTMLButtonElement>('#sidebar-toggle')
+              ?.click();
+          },
+        },
+        {
+          label: 'Open Settings',
+          action: () => {
+            (
+              document.querySelector(
+                '[data-bs-target="#app-settings"]',
+              ) as HTMLElement | null
+            )?.click();
+          },
+        },
+      );
+    }
+  } else if (li.classList.contains('file') && li.dataset.path) {
+    const path = li.dataset.path;
+    items.push(
+      {
+        label: 'Open File',
+        action: () => {
+          openFile(path);
+        },
+      },
+      {
+        label: 'Rename File...',
+        action: async () => {
+          const result = await Swal.fire({
+            title: 'Rename file',
+            input: 'text',
+            inputValue: path.split(/[/\\]/).pop(),
+            showCancelButton: true,
+          });
+          if (result.isConfirmed && result.value) {
+            bridge.send('to:file:rename', { path, name: result.value });
+          }
+        },
+      },
+      {
+        label: 'Delete File...',
+        action: async () => {
+          const confirm = await Swal.fire({
+            title: 'Delete file?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+          });
+          if (confirm.isConfirmed) {
+            bridge.send('to:file:delete', { path });
+          }
+        },
+      },
+      {
+        label: 'Show Properties...',
+        action: () => {
+          bridge.send('to:file:properties', { path });
+        },
+      },
+      { divider: true, label: '', action: () => {} },
+      {
+        label: 'Collapse Explorer',
+        action: () => {
+          document.querySelector<HTMLButtonElement>('#sidebar-toggle')?.click();
+        },
+      },
+      {
+        label: 'Open Settings...',
+        action: () => {
+          (
+            document.querySelector(
+              '[data-bs-target="#app-settings"]',
+            ) as HTMLElement | null
+          )?.click();
+        },
+      },
+    );
+  } else if (li.classList.contains('directory') && li.dataset.path) {
+    const path = li.dataset.path;
+    items.push(
+      {
+        label: 'Open Folder',
+        action: () => {
+          const span = li.querySelector(':scope > span.file-name');
+          const ul = li.querySelector(':scope > ul') as HTMLElement | null;
+          if (span && ul && ul.style.display === 'none') {
+            span.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          }
+        },
+      },
+      {
+        label: 'Rename Folder...',
+        action: async () => {
+          const result = await Swal.fire({
+            title: 'Rename folder',
+            input: 'text',
+            inputValue: path.split(/[/\\]/).pop(),
+            showCancelButton: true,
+          });
+          if (result.isConfirmed && result.value) {
+            bridge.send('to:file:rename', { path, name: result.value });
+          }
+        },
+      },
+      {
+        label: 'Delete Folder...',
+        action: async () => {
+          const confirm = await Swal.fire({
+            title: 'Delete folder?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+          });
+          if (confirm.isConfirmed) {
+            bridge.send('to:file:delete', { path });
+          }
+        },
+      },
+      {
+        label: 'Show Properties...',
+        action: () => {
+          bridge.send('to:file:properties', { path });
+        },
+      },
+      { divider: true, label: '', action: () => {} },
+      {
+        label: 'Collapse Explorer',
+        action: () => {
+          document.querySelector<HTMLButtonElement>('#sidebar-toggle')?.click();
+        },
+      },
+      {
+        label: 'Open Settings...',
+        action: () => {
+          (
+            document.querySelector(
+              '[data-bs-target="#app-settings"]',
+            ) as HTMLElement | null
+          )?.click();
+        },
+      },
+    );
+  }
+
+  return items;
+}
