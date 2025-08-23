@@ -1,6 +1,6 @@
-import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { dialog, ipcMain, type BrowserWindow } from 'electron';
 import { dirname, resolve } from 'path';
-import { SettingsProviders } from '../interfaces/Providers';
+import type { SettingsProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
 
 /**
@@ -155,6 +155,27 @@ export class AppBridge {
       }).then(() => {
         this.setWindowTitle();
       });
+    });
+
+    ipcMain.on('to:file:create', async (_e, { parent, name }) => {
+      await AppStorage.createFile(this.context, parent, name);
+    });
+
+    ipcMain.on('to:folder:create', async (_e, { parent, name }) => {
+      await AppStorage.createFolder(this.context, parent, name);
+    });
+
+    ipcMain.on('to:file:rename', async (_e, { path, name }) => {
+      await AppStorage.renamePath(this.context, path, name);
+    });
+
+    ipcMain.on('to:file:delete', async (_e, { path }) => {
+      await AppStorage.deletePath(this.context, path);
+    });
+
+    ipcMain.on('to:file:properties', async (event, { path }) => {
+      const info = await AppStorage.getPathProperties(path);
+      event.sender.send('from:path:properties', info);
     });
 
     // mked:// protocol handlers

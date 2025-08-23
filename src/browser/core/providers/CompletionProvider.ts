@@ -1,14 +1,14 @@
 import {
-  IDisposable,
-  IRange,
-  Position,
-  editor,
+  type IDisposable,
+  type IRange,
+  type Position,
+  type editor,
   languages,
 } from 'monaco-editor/esm/vs/editor/editor.api';
 import { CircularBuffer } from 'circle-buffer';
-import { CompletionItem, Matcher } from '../../interfaces/Completion';
-import { EditorDispatcher } from '../../events/EditorDispatcher';
-import { completion } from '../mappings/completion';
+import type { CompletionItem, Matcher } from '../../interfaces/Completion';
+import type { EditorDispatcher } from '../../events/EditorDispatcher';
+import { completion } from '../mappings/completionItems';
 
 export class CompletionProvider {
   /** Editor instance */

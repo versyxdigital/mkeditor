@@ -1,8 +1,8 @@
-import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { ContextBridgeAPI } from '../interfaces/Bridge';
-import { BridgeProviders } from '../interfaces/Providers';
-import { EditorDispatcher } from '../events/EditorDispatcher';
-import { EditorSettings } from '../interfaces/Editor';
+import type { editor } from 'monaco-editor/esm/vs/editor/editor.api';
+import type { ContextBridgeAPI } from '../interfaces/Bridge';
+import type { BridgeProviders } from '../interfaces/Providers';
+import type { EditorSettings } from '../interfaces/Editor';
+import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
 import { BridgeSettings } from './BridgeSettings';

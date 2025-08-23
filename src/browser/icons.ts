@@ -25,6 +25,7 @@ import { faRefresh } from '@fortawesome/free-solid-svg-icons/faRefresh';
 import { faSave } from '@fortawesome/free-solid-svg-icons/faSave';
 import { faStrikethrough } from '@fortawesome/free-solid-svg-icons/faStrikethrough';
 import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
+import { faTableColumns } from '@fortawesome/free-solid-svg-icons/faTableColumns';
 import { faTasks } from '@fortawesome/free-solid-svg-icons/faTasks';
 import { faTerminal } from '@fortawesome/free-solid-svg-icons/faTerminal';
 
@@ -55,6 +56,7 @@ library.add(
   faSave,
   faStrikethrough,
   faTable,
+  faTableColumns,
   faTasks,
   faTerminal,
 );

@@ -1,7 +1,7 @@
-import MarkdownIt, { Token } from 'markdown-it';
-import Renderer from 'markdown-it/lib/renderer.mjs';
-import Swal, { SweetAlertIcon } from 'sweetalert2';
-import { ContextBridgeAPI } from './interfaces/Bridge';
+import type { Options, Token } from 'markdown-it';
+import type Renderer from 'markdown-it/lib/renderer.mjs';
+import Swal, { type SweetAlertIcon } from 'sweetalert2';
+import type { ContextBridgeAPI } from './interfaces/Bridge';
 
 /**
  * Generate a random number between two numbers.
@@ -88,11 +88,26 @@ export function getExecutionBridge() {
 export function selfRender(
   tokens: Token[],
   idx: number,
-  options: MarkdownIt.Options,
+  options: Options,
   env: any,
   self: Renderer,
 ) {
   return self.renderToken(tokens, idx, options);
+}
+
+/**
+ * Return a filename with .md extension.
+ *
+ * @param name - the file name
+ * @returns
+ */
+export function withMdExtension(name: string) {
+  let filename = name.trim();
+  if (!filename.toLowerCase().endsWith('.md')) {
+    filename += '.md';
+  }
+
+  return filename;
 }
 
 /**

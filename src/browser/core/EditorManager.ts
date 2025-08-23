@@ -1,6 +1,6 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { EditorProviders } from '../interfaces/Providers';
-import { EditorDispatcher } from '../events/EditorDispatcher';
+import type { EditorProviders } from '../interfaces/Providers';
+import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { CharacterCount, WordCount } from '../extensions/WordCount';
 import { ScrollSync, invalidateLineElements } from '../extensions/ScrollSync';
 import { welcomeMarkdown } from '../assets/intro';
@@ -23,7 +23,7 @@ const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
   };
 };
 
-interface EditorConstructArgs {
+interface EditorConstructOptions {
   dispatcher: EditorDispatcher;
   init?: boolean | undefined;
   watch?: boolean | undefined;
@@ -56,7 +56,7 @@ export class EditorManager {
   /**
    * Create a new mkeditor.
    */
-  public constructor(opts: EditorConstructArgs) {
+  public constructor(opts: EditorConstructOptions) {
     this.dispatcher = opts.dispatcher;
     this.editorHTMLElement = dom.editor.dom;
     this.previewHTMLElement = dom.preview.dom;

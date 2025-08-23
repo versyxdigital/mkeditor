@@ -1,4 +1,4 @@
-import { EditorSettings } from './interfaces/Editor';
+import type { EditorSettings } from './interfaces/Editor';
 
 export const config = {};
 

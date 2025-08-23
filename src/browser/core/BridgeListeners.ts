@@ -1,11 +1,17 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { ContextBridgeAPI, ContextBridgedFile } from '../interfaces/Bridge';
-import { BridgeProviders, ValidModal } from '../interfaces/Providers';
-import { EditorSettings } from '../interfaces/Editor';
-import { EditorDispatcher } from '../events/EditorDispatcher';
-import { FileManager } from './FileManager';
-import { FileTreeManager } from './FileTreeManager';
-import { BridgeSettings } from './BridgeSettings';
+import type {
+  ContextBridgeAPI,
+  BridgedFile,
+  FileProperties,
+  RenamedPath,
+} from '../interfaces/Bridge';
+import type { BridgeProviders, ValidModal } from '../interfaces/Providers';
+import type { EditorSettings } from '../interfaces/Editor';
+import type { EditorDispatcher } from '../events/EditorDispatcher';
+import type { FileManager } from './FileManager';
+import type { FileTreeManager } from './FileTreeManager';
+import type { BridgeSettings } from './BridgeSettings';
+import { showFilePropertiesWindow } from '../dom';
 import { notify } from '../util';
 
 /**
@@ -95,7 +101,7 @@ export function registerBridgeListeners(
   // Handle post-file open events
   bridge.receive(
     'from:file:opened',
-    ({ content, filename, file }: ContextBridgedFile) => {
+    ({ content, filename, file }: BridgedFile) => {
       const path = file || `untitled-${files.untitledCounter++}`;
       const name = filename || `Untitled ${files.untitledCounter - 1}`;
       let mdl = files.models.get(path);
@@ -157,6 +163,54 @@ export function registerBridgeListeners(
     },
   );
 
+  // Enable renaming of files and folders
+  bridge.receive(
+    'from:path:renamed',
+    ({ oldPath, newPath, name }: RenamedPath) => {
+      const mdl = files.models.get(oldPath);
+      if (!mdl) return;
+
+      const original = files.originals.get(oldPath);
+      if (original !== undefined) {
+        files.originals.delete(oldPath);
+        files.originals.set(newPath, original);
+      }
+
+      files.models.delete(oldPath);
+      files.models.set(newPath, mdl);
+
+      const tab = files.tabs.get(oldPath);
+      if (tab) {
+        const newTab = tab.cloneNode(true) as HTMLAnchorElement;
+        newTab.textContent = name;
+        newTab.addEventListener('click', (e) => {
+          e.preventDefault();
+          files.activateFile(newPath);
+        });
+        const li = tab.parentElement as HTMLLIElement | null;
+        if (li) li.dataset.path = newPath;
+        tab.replaceWith(newTab);
+        files.tabs.delete(oldPath);
+        files.tabs.set(newPath, newTab);
+
+        const closeBtn = newTab.nextElementSibling as HTMLButtonElement | null;
+        if (closeBtn) {
+          const newBtn = closeBtn.cloneNode(true) as HTMLButtonElement;
+          newBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            await files.closeTab(newPath);
+          });
+          closeBtn.replaceWith(newBtn);
+        }
+      }
+
+      if (files.activeFile === oldPath) {
+        files.activateFile(newPath, name);
+      }
+    },
+  );
+
   // Enable access to the monaco editor command palette.
   bridge.receive('from:command:palette', (command: string) => {
     mkeditor.focus();
@@ -176,4 +230,9 @@ export function registerBridgeListeners(
       notify.send(event.status, event.message);
     },
   );
+
+  // Trigger the file properties window from the context menu.
+  bridge.receive('from:path:properties', (info: FileProperties) => {
+    showFilePropertiesWindow(info);
+  });
 }
