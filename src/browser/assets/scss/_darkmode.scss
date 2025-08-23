@@ -77,6 +77,11 @@
     --bs-dropdown-divider-bg: #333333;
   }
 
+  .dropdown-item.active,
+  .dropdown-item:active {
+    background-color: #3f3f3f !important;
+  }
+
   input.form-control {
     background: #1a1a1a !important;
     color: #eeeeee !important;

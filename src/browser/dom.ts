@@ -202,7 +202,7 @@ export function createSidebarToggle(mkeditor: editor.IStandaloneCodeEditor) {
   dom.buttons.sidebar?.addEventListener('click', () => {
     const isHidden = dom.sidebar.classList.toggle('d-none');
     dom.sidebar.classList.toggle('d-flex', !isHidden);
-    sidebarGutter && (sidebarGutter.hidden = isHidden);
+    if (sidebarGutter) sidebarGutter.hidden = isHidden;
 
     mkeditor.layout();
   });

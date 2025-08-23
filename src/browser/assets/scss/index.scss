@@ -73,6 +73,12 @@ body[data-theme='dark'] {
   border-color: #8694a9;
 }
 
+.dropdown-item.active,
+.dropdown-item:active {
+  background-color: #eeeeee;
+  color: #222222;
+}
+
 .btn-sm {
   font-size: 0.75rem;
 }
