@@ -161,6 +161,49 @@ export function getContextMenuItems(
         },
       },
       {
+        label: 'New File',
+        action: async () => {
+          const result = await Swal.fire({
+            title: 'New file name',
+            input: 'text',
+            inputPlaceholder: 'Untitled.md',
+            showCancelButton: true,
+            customClass: {
+              popup: ['rounded', 'shadow'],
+              actions: 'mt-2',
+              input: 'small',
+            },
+          });
+          if (result.isConfirmed && result.value) {
+            bridge.send('to:file:create', {
+              parent: path,
+              name: withMdExtension(result.value),
+            });
+          }
+        },
+      },
+      {
+        label: 'New Folder',
+        action: async () => {
+          const result = await Swal.fire({
+            title: 'New folder name',
+            input: 'text',
+            showCancelButton: true,
+            customClass: {
+              popup: ['rounded', 'shadow'],
+              actions: 'mt-2',
+              input: 'small',
+            },
+          });
+          if (result.isConfirmed && result.value) {
+            bridge.send('to:folder:create', {
+              parent: path,
+              name: result.value,
+            });
+          }
+        },
+      },
+      {
         label: 'Rename Folder...',
         action: async () => {
           const result = await Swal.fire({
