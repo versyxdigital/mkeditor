@@ -2,7 +2,7 @@ import Swal from 'sweetalert2';
 import { ContextBridgeAPI } from '../../interfaces/Bridge';
 import { dom } from '../../dom';
 
-interface ExplorerContextMenu {
+interface ContextMenuItem {
   label: string;
   action: () => void;
   divider?: boolean;
@@ -14,7 +14,7 @@ export function getContextMenuItems(
   li: HTMLElement | null,
   openFile: (path: string) => void,
 ) {
-  const items: ExplorerContextMenu[] = [];
+  const items: ContextMenuItem[] = [];
 
   if (!li) {
     if (treeRoot) {
