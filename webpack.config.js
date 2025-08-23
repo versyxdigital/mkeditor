@@ -83,9 +83,6 @@ module.exports = {
         'wordPartOperations',
       ],
     }),
-    new webpack.optimize.LimitChunkCountPlugin({
-      maxChunks: 1,
-    }),
     new CopyWebpackPlugin({
       patterns: [
         {

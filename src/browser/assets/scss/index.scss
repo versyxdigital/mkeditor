@@ -11,6 +11,10 @@
 
 @include meta.load-css('katex/dist/katex.min.css');
 
+html {
+  overflow-y: hidden !important;
+}
+
 body[data-theme='light'] {
   @include meta.load-css('highlight.js/styles/github');
 }
@@ -69,6 +73,12 @@ body[data-theme='dark'] {
   border-color: #8694a9;
 }
 
+.dropdown-item.active,
+.dropdown-item:active {
+  background-color: #eeeeee;
+  color: #222222;
+}
+
 .btn-sm {
   font-size: 0.75rem;
 }
@@ -96,6 +106,10 @@ body[data-theme='dark'] {
 
 .alert p {
   margin-bottom: 0;
+}
+
+.extra-small {
+  font-size: 0.8em;
 }
 
 .gutter {

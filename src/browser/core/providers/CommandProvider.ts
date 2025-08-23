@@ -1,16 +1,16 @@
 import {
-  editor,
+  type editor,
   KeyCode,
   KeyMod,
 } from 'monaco-editor/esm/vs/editor/editor.api';
 import { Modal, Dropdown } from 'bootstrap';
-import {
+import type {
   ModalProviders,
   ValidModal,
   ValidCommand,
   DropdownProviders,
 } from '../../interfaces/Providers';
-import { commands, alertblocks, codeblocks } from '../mappings/commands';
+import { commands, alertblocks, codeblocks } from '../mappings/editorCommands';
 import { getOSPlatform } from '../../util';
 import { dom } from '../../dom';
 
@@ -99,7 +99,7 @@ export class CommandProvider {
     });
 
     // Register command keybindings for editor actions i.e. bold, italic, strikethrough.
-    // These commands are mapped from their own file in mappings/commands.ts
+    // These commands are mapped from their own file in mappings/editorCommands.ts
     for (const cmd in commands) {
       if (commands[cmd].isInline && commands[cmd].syntax) {
         // Inline edits are performed by passing the command's syntax into this class' inline()

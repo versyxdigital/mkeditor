@@ -1,4 +1,5 @@
-import { ContextBridgeAPI } from '../interfaces/Bridge';
+import type { ContextBridgeAPI } from '../interfaces/Bridge';
+import { getContextMenuItems } from './mappings/explorerContextMenu';
 import { dom } from '../dom';
 
 /**
@@ -17,6 +18,9 @@ export class FileTreeManager {
   /** Flag to indicate a new root folder is being opened */
   public openingFolder = false;
 
+  /** reference to the active context menu */
+  private contextMenu: HTMLDivElement | null = null;
+
   /**
    * Create a new file tree manager instance.
    *
@@ -26,7 +30,14 @@ export class FileTreeManager {
   constructor(
     private bridge: ContextBridgeAPI,
     private openFileFromPath: (path: string) => void,
-  ) {}
+  ) {
+    if (dom.filetree) {
+      dom.filetree.addEventListener(
+        'contextmenu',
+        this.handleFileTreeContextMenu,
+      );
+    }
+  }
 
   /**
    * Build the file explorer tree.
@@ -186,6 +197,68 @@ export class FileTreeManager {
     } else if (li.classList.contains('file') && li.dataset.path) {
       e.preventDefault();
       this.openFileFromPath(li.dataset.path);
+    }
+  };
+
+  /** hide any active context menu */
+  private hideContextMenu = () => {
+    this.contextMenu?.remove();
+    this.contextMenu = null;
+  };
+
+  /** show a context menu at a given position */
+  private showContextMenu(
+    items: { label: string; action: () => void; divider?: boolean }[],
+    x: number,
+    y: number,
+  ) {
+    this.hideContextMenu();
+    const menu = document.createElement('div');
+    menu.classList.add('dropdown-menu', 'show', 'shadow', 'rounded');
+    menu.style.opacity = '0.9';
+    menu.style.position = 'fixed';
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+
+    items.forEach((item) => {
+      if (item.divider) {
+        const div = document.createElement('div');
+        div.classList.add('dropdown-divider');
+        menu.appendChild(div);
+      } else {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.classList.add('dropdown-item', 'extra-small');
+        btn.textContent = item.label;
+        btn.addEventListener('click', () => {
+          item.action();
+          this.hideContextMenu();
+        });
+        menu.appendChild(btn);
+      }
+    });
+
+    document.body.appendChild(menu);
+    this.contextMenu = menu;
+
+    setTimeout(() =>
+      document.addEventListener('click', this.hideContextMenu, { once: true }),
+    );
+  }
+
+  /** handle right click events */
+  private handleFileTreeContextMenu = async (e: MouseEvent) => {
+    e.preventDefault();
+    const target = e.target as HTMLElement;
+    const items = getContextMenuItems(
+      this.bridge,
+      this.treeRoot,
+      target.closest('li.ft-node') as HTMLElement | null,
+      this.openFileFromPath,
+    );
+
+    if (items.length > 0) {
+      this.showContextMenu(items, e.clientX, e.clientY);
     }
   };
 

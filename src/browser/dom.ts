@@ -1,7 +1,11 @@
-import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
+import type { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { Tooltip } from 'bootstrap';
 import Split from 'split.js';
+import Swal from 'sweetalert2';
+import type { FileProperties } from './interfaces/Bridge';
 import { getOSPlatform } from './util';
+
+let editorPreviewSplit: Split.Instance | null = null;
 
 export const dom = {
   splash: <HTMLDivElement>document.querySelector('#splashscreen'),
@@ -34,6 +38,9 @@ export const dom = {
   },
   buttons: {
     sidebar: <HTMLButtonElement>document.querySelector('#sidebar-toggle'),
+    settings: <HTMLElement>(
+      document.querySelector('[data-bs-target="#app-settings"]')
+    ),
     save: {
       settings: <HTMLButtonElement>document.querySelector('#app-settings-save'),
       markdown: <HTMLButtonElement>document.querySelector('#app-markdown-save'),
@@ -44,6 +51,7 @@ export const dom = {
         document.querySelector('#export-preview-styled')
       ),
     },
+    resetSplit: <HTMLButtonElement>document.querySelector('#split-reset'),
   },
   commands: {
     toolbar: <HTMLDivElement>document.querySelector('#editor-functions'),
@@ -165,7 +173,7 @@ export function showSplashScreen({ duration }: { duration: number }) {
 export function createDraggableSplitPanels(
   mkeditor: editor.IStandaloneCodeEditor,
 ) {
-  Split(['#editor-split', '#preview-split'], {
+  editorPreviewSplit = Split(['#editor-split', '#preview-split'], {
     minSize: 0,
     onDrag() {
       mkeditor.layout();
@@ -188,6 +196,13 @@ export function createDraggableSplitPanels(
   });
 }
 
+export function resetEditorPreviewSplit(
+  mkeditor: editor.IStandaloneCodeEditor,
+) {
+  editorPreviewSplit?.setSizes([50, 50]);
+  mkeditor.layout();
+}
+
 // Toggle sidebar visibility.
 export function createSidebarToggle(mkeditor: editor.IStandaloneCodeEditor) {
   const sidebarGutter = document.querySelector(
@@ -195,15 +210,41 @@ export function createSidebarToggle(mkeditor: editor.IStandaloneCodeEditor) {
   ) as HTMLDivElement | null;
 
   dom.buttons.sidebar?.addEventListener('click', () => {
-    const hidden = dom.sidebar.style.display === 'none';
-    if (hidden) {
-      dom.sidebar.style.display = '';
-      if (sidebarGutter) sidebarGutter.style.display = '';
-    } else {
-      dom.sidebar.style.display = 'none';
-      if (sidebarGutter) sidebarGutter.style.display = 'none';
-    }
+    const isHidden = dom.sidebar.classList.toggle('d-none');
+    dom.sidebar.classList.toggle('d-flex', !isHidden);
+    if (sidebarGutter) sidebarGutter.hidden = isHidden;
 
     mkeditor.layout();
+  });
+}
+
+export function showFilePropertiesWindow(info: FileProperties) {
+  const html = `
+    <dl class="mb-0 small text-start">
+      <dt class="col-auto fw-semibold me-2">Path:</dt>
+      <dd class="col-auto me-4">${info.path}</dd>
+
+      <dt class="col-auto fw-semibold me-2">Type:</dt>
+      <dd class="col-auto me-4">${info.isDirectory ? 'Directory' : 'File'}</dd>
+
+      <dt class="col-auto fw-semibold me-2">Size:</dt>
+      <dd class="col-auto me-4">${info.size}</dd>
+
+      <dt class="col-auto fw-semibold me-2">Created:</dt>
+      <dd class="col-auto me-4">${new Date(info.created).toLocaleString()}</dd>
+
+      <dt class="col-auto fw-semibold me-2">Modified:</dt>
+      <dd class="col-auto">${new Date(info.modified).toLocaleString()}</dd>
+    </dl>
+  `;
+
+  Swal.fire({
+    html,
+    draggable: true,
+    customClass: {
+      actions: 'mt-0',
+      popup: ['shadow', 'rounded'],
+    },
+    width: 325,
   });
 }

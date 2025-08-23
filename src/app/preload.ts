@@ -22,6 +22,11 @@ const senderWhitelist = [
   'to:file:save',
   'to:file:saveas',
   'to:file:openpath',
+  'to:file:create',
+  'to:folder:create',
+  'to:file:rename',
+  'to:file:delete',
+  'to:file:properties',
 ];
 
 // Can be sent from the main process and received
@@ -39,6 +44,8 @@ const receiverWhitelist = [
   'from:modal:open',
   'from:command:palette',
   'from:notification:display',
+  'from:path:properties',
+  'from:path:renamed',
 ];
 
 /**

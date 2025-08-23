@@ -17,7 +17,7 @@ import { AppMenu } from './lib/AppMenu';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
-import { Logger } from './interfaces/Providers';
+import type { Logger } from './interfaces/Providers';
 
 /** --------------------App Logging------------------------------- */
 

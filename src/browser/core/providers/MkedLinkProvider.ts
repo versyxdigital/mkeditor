@@ -1,4 +1,4 @@
-import { editor, languages } from 'monaco-editor/esm/vs/editor/editor.api';
+import { type editor, languages } from 'monaco-editor/esm/vs/editor/editor.api';
 import { dom } from '../../dom';
 
 export class MkedLinkProvider {
