@@ -1,12 +1,12 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
-  globals: {
-    'ts-jest': {
+  transform: {
+    '^.+\\.ts$': ['ts-jest', {
       tsconfig: {
         module: 'commonjs',
       },
-    },
+    }],
   },
   moduleNameMapper: {
     '^monaco-editor/esm/vs/editor/editor.api$':
