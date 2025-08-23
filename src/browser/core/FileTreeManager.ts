@@ -211,7 +211,8 @@ export class FileTreeManager {
   ) {
     this.hideContextMenu();
     const menu = document.createElement('div');
-    menu.classList.add('dropdown-menu', 'show', 'shadow', 'rounded-0');
+    menu.classList.add('dropdown-menu', 'show', 'shadow', 'rounded');
+    menu.style.opacity = '0.9';
     menu.style.position = 'fixed';
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
