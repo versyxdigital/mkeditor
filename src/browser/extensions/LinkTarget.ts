@@ -1,4 +1,4 @@
-import MarkdownIt from 'markdown-it';
+import type MarkdownIt from 'markdown-it';
 import { selfRender } from '../util';
 
 const LinkTarget = (md: MarkdownIt) => {

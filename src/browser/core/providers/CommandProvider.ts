@@ -1,10 +1,10 @@
 import {
-  editor,
+  type editor,
   KeyCode,
   KeyMod,
 } from 'monaco-editor/esm/vs/editor/editor.api';
 import { Modal, Dropdown } from 'bootstrap';
-import {
+import type {
   ModalProviders,
   ValidModal,
   ValidCommand,

@@ -1,5 +1,5 @@
-import { app, BrowserWindow, Menu } from 'electron';
-import { BridgeProviders } from '../interfaces/Providers';
+import { app, Menu, type BrowserWindow } from 'electron';
+import type { BridgeProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
 
 /**

@@ -1,7 +1,7 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import Swal from 'sweetalert2';
-import { ContextBridgeAPI } from '../interfaces/Bridge';
-import { EditorDispatcher } from '../events/EditorDispatcher';
+import type { ContextBridgeAPI } from '../interfaces/Bridge';
+import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { dom } from '../dom';
 
 /**

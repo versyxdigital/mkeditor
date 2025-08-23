@@ -1,6 +1,6 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import { EditorSettings, ValidSetting } from '../../interfaces/Editor';
-import { EditorDispatcher } from '../../events/EditorDispatcher';
+import type { EditorSettings, ValidSetting } from '../../interfaces/Editor';
+import type { EditorDispatcher } from '../../events/EditorDispatcher';
 import { settings } from '../../config';
 import { dom } from '../../dom';
 

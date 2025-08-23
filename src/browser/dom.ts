@@ -1,9 +1,9 @@
-import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
+import type { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { Tooltip } from 'bootstrap';
 import Split from 'split.js';
 import Swal from 'sweetalert2';
+import type { FileProperties } from './interfaces/Bridge';
 import { getOSPlatform } from './util';
-import { FileProperties } from './interfaces/Bridge';
 
 export const dom = {
   splash: <HTMLDivElement>document.querySelector('#splashscreen'),

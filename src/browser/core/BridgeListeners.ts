@@ -1,15 +1,15 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import {
+import type {
   ContextBridgeAPI,
   BridgedFile,
   FileProperties,
 } from '../interfaces/Bridge';
-import { BridgeProviders, ValidModal } from '../interfaces/Providers';
-import { EditorSettings } from '../interfaces/Editor';
-import { EditorDispatcher } from '../events/EditorDispatcher';
-import { FileManager } from './FileManager';
-import { FileTreeManager } from './FileTreeManager';
-import { BridgeSettings } from './BridgeSettings';
+import type { BridgeProviders, ValidModal } from '../interfaces/Providers';
+import type { EditorSettings } from '../interfaces/Editor';
+import type { EditorDispatcher } from '../events/EditorDispatcher';
+import type { FileManager } from './FileManager';
+import type { FileTreeManager } from './FileTreeManager';
+import type { BridgeSettings } from './BridgeSettings';
 import { showFilePropertiesWindow } from '../dom';
 import { notify } from '../util';
 

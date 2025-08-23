@@ -1,4 +1,4 @@
-import MarkdownIt from 'markdown-it';
+import type MarkdownIt from 'markdown-it';
 import MarkdownItContainer from 'markdown-it-container';
 import { selfRender } from '../util';
 

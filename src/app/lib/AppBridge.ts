@@ -1,6 +1,6 @@
-import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { dialog, ipcMain, type BrowserWindow } from 'electron';
 import { dirname, resolve } from 'path';
-import { SettingsProviders } from '../interfaces/Providers';
+import type { SettingsProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
 
 /**

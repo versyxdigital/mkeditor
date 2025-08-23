@@ -1,9 +1,9 @@
 import { homedir } from 'os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { normalize } from 'path';
-import { BrowserWindow } from 'electron';
-import { EditorSettings } from '../interfaces/Settings';
-import { Providers } from '../interfaces/Providers';
+import type { BrowserWindow } from 'electron';
+import type { EditorSettings } from '../interfaces/Settings';
+import type { Providers } from '../interfaces/Providers';
 
 /**
  * AppSettings

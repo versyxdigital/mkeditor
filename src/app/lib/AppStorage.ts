@@ -1,7 +1,7 @@
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, dialog, type BrowserWindow } from 'electron';
 import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
 import { join, dirname } from 'path';
-import { SaveFileOptions } from '../interfaces/Storage';
+import type { SaveFileOptions } from '../interfaces/Storage';
 
 /**
  * AppStorage

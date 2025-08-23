@@ -1,6 +1,6 @@
-import { MainLogger } from 'electron-log';
-import { AppBridge } from '../lib/AppBridge';
-import { AppSettings } from '../lib/AppSettings';
+import type { MainLogger } from 'electron-log';
+import type { AppBridge } from '../lib/AppBridge';
+import type { AppSettings } from '../lib/AppSettings';
 
 export interface Logger {
   log: MainLogger;

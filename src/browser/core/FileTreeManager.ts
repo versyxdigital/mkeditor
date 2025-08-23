@@ -1,4 +1,4 @@
-import { ContextBridgeAPI } from '../interfaces/Bridge';
+import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import { getContextMenuItems } from './mappings/explorerContextMenu';
 import { dom } from '../dom';
 
