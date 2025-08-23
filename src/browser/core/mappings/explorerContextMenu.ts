@@ -1,5 +1,5 @@
 import Swal from 'sweetalert2';
-import { ContextBridgeAPI } from 'src/browser/interfaces/Bridge';
+import { ContextBridgeAPI } from '../../interfaces/Bridge';
 import { dom } from '../../dom';
 
 interface ExplorerContextMenu {
