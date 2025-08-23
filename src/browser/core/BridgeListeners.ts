@@ -1,5 +1,6 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { ContextBridgeAPI, ContextBridgedFile } from '../interfaces/Bridge';
+import Swal from 'sweetalert2';
 import { BridgeProviders, ValidModal } from '../interfaces/Providers';
 import { EditorSettings } from '../interfaces/Editor';
 import { EditorDispatcher } from '../events/EditorDispatcher';
@@ -174,6 +175,45 @@ export function registerBridgeListeners(
     'from:notification:display',
     (event: { status: string; message: string }) => {
       notify.send(event.status, event.message);
+    },
+  );
+
+  bridge.receive(
+    'from:path:properties',
+    (info: {
+      path: string;
+      isDirectory: boolean;
+      size: number;
+      created: string;
+      modified: string;
+    }) => {
+      const html = `
+        <dl class="mb-0 small text-start">
+          <dt class="col-auto fw-semibold me-2">Path:</dt>
+          <dd class="col-auto me-4">${info.path}</dd>
+
+          <dt class="col-auto fw-semibold me-2">Type:</dt>
+          <dd class="col-auto me-4">${info.isDirectory ? 'Directory' : 'File'}</dd>
+
+          <dt class="col-auto fw-semibold me-2">Size:</dt>
+          <dd class="col-auto me-4">${info.size.toLocaleString()} bytes</dd>
+
+          <dt class="col-auto fw-semibold me-2">Created:</dt>
+          <dd class="col-auto me-4">${new Date(info.created).toLocaleString()}</dd>
+
+          <dt class="col-auto fw-semibold me-2">Modified:</dt>
+          <dd class="col-auto">${new Date(info.modified).toLocaleString()}</dd>
+        </dl>
+        `;
+      Swal.fire({
+        html,
+        draggable: true,
+        customClass: {
+          actions: 'mt-0',
+          popup: ['shadow', 'rounded'],
+        },
+        width: 325,
+      });
     },
   );
 }

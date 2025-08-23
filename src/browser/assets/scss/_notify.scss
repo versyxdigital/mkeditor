@@ -18,6 +18,39 @@
   font-size: 0.75rem !important;
 }
 
+.swal2-popup.swal2-modal {
+  background: #ffffff;
+  color: #212529;
+  font-size: 0.9rem;
+  padding-bottom: 10px;
+}
+
+.swal2-popup.swal2-modal .swal2-title {
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+.swal2-popup.swal2-modal .swal2-html-container {
+  font-size: 0.9rem;
+  padding: 10px;
+}
+
+.swal2-popup.swal2-modal .swal2-styled {
+  border-radius: 0;
+}
+
+.swal2-popup.swal2-modal .swal2-styled.swal2-confirm {
+  background: #519088;
+}
+
+.swal2-popup.swal2-modal .swal2-styled.swal2-cancel {
+  background: #696969;
+}
+
+.swal2-popup.swal2-modal .swal2-styled.swal2-deny {
+  background: #853333;
+}
+
 div:where(.swal2-container) div:where(.swal2-popup) {
   border-radius: 0 !important;
 }
@@ -34,17 +67,17 @@ div:where(.swal2-container) div:where(.swal2-popup) {
   font-size: 1.2rem;
 }
 
-.unsaved-changes-popup div div.swal2-actions button.swal2-confirm.swal2-styled {
+.swal2-actions button.swal2-confirm.swal2-styled {
   background: #519088;
   padding: 5px 20px 5px 20px;
 }
 
-.unsaved-changes-popup div div.swal2-actions button.swal2-deny.swal2-styled {
+.swal2-actions button.swal2-deny.swal2-styled {
   background: #853333;
   padding: 5px 20px 5px 20px;
 }
 
-.unsaved-changes-popup div div.swal2-actions button.swal2-cancel.swal2-styled {
+.swal2-actions button.swal2-cancel.swal2-styled {
   background: #696969;
   padding: 5px 20px 5px 20px;
 }

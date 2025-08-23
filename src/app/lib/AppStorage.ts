@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { SaveFileOptions } from '../interfaces/Storage';
 
 /**
@@ -288,6 +288,117 @@ export class AppStorage {
         });
       }
     }
+  }
+
+  /**
+   * Create a new empty file in the given directory.
+   *
+   * @param context - the browser window
+   * @param parent - parent directory path
+   * @param name - name of the new file
+   */
+  static async createFile(
+    context: BrowserWindow,
+    parent: string,
+    name: string,
+  ) {
+    try {
+      const file = join(parent, name);
+      await fs.writeFile(file, '', 'utf-8');
+      const tree = await AppStorage.readDirectory(parent);
+      context.webContents.send('from:folder:opened', { path: parent, tree });
+      context.webContents.send('from:notification:display', {
+        status: 'success',
+        message: 'File created.',
+      });
+    } catch {
+      context.webContents.send('from:notification:display', {
+        status: 'error',
+        message: 'Unable to create file.',
+      });
+    }
+  }
+
+  /**
+   * Create a new folder in the given directory.
+   */
+  static async createFolder(
+    context: BrowserWindow,
+    parent: string,
+    name: string,
+  ) {
+    try {
+      const dir = join(parent, name);
+      await fs.mkdir(dir);
+      const tree = await AppStorage.readDirectory(parent);
+      context.webContents.send('from:folder:opened', { path: parent, tree });
+      context.webContents.send('from:notification:display', {
+        status: 'success',
+        message: 'Folder created.',
+      });
+    } catch {
+      context.webContents.send('from:notification:display', {
+        status: 'error',
+        message: 'Unable to create folder.',
+      });
+    }
+  }
+
+  /**
+   * Rename a file or folder.
+   */
+  static async renamePath(context: BrowserWindow, path: string, name: string) {
+    const parent = dirname(path);
+    try {
+      const newPath = join(parent, name);
+      await fs.rename(path, newPath);
+      const tree = await AppStorage.readDirectory(parent);
+      context.webContents.send('from:folder:opened', { path: parent, tree });
+      context.webContents.send('from:notification:display', {
+        status: 'success',
+        message: 'Renamed.',
+      });
+    } catch {
+      context.webContents.send('from:notification:display', {
+        status: 'error',
+        message: 'Unable to rename.',
+      });
+    }
+  }
+
+  /**
+   * Delete a file or folder.
+   */
+  static async deletePath(context: BrowserWindow, path: string) {
+    const parent = dirname(path);
+    try {
+      await fs.rm(path, { recursive: true, force: true });
+      const tree = await AppStorage.readDirectory(parent);
+      context.webContents.send('from:folder:opened', { path: parent, tree });
+      context.webContents.send('from:notification:display', {
+        status: 'success',
+        message: 'Deleted.',
+      });
+    } catch {
+      context.webContents.send('from:notification:display', {
+        status: 'error',
+        message: 'Unable to delete.',
+      });
+    }
+  }
+
+  /**
+   * Get properties of a file or folder.
+   */
+  static async getPathProperties(path: string) {
+    const stats = await fs.stat(path);
+    return {
+      path,
+      isDirectory: stats.isDirectory(),
+      size: stats.size,
+      created: stats.birthtime.toISOString(),
+      modified: stats.mtime.toISOString(),
+    };
   }
 
   /**

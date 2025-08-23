@@ -1,5 +1,6 @@
 import { ContextBridgeAPI } from '../interfaces/Bridge';
 import { dom } from '../dom';
+import Swal from 'sweetalert2';
 
 /**
  * Handle the file explorer tree.
@@ -16,6 +17,9 @@ export class FileTreeManager {
 
   /** Flag to indicate a new root folder is being opened */
   public openingFolder = false;
+
+  /** reference to the active context menu */
+  private contextMenu: HTMLDivElement | null = null;
 
   /**
    * Create a new file tree manager instance.
@@ -42,6 +46,10 @@ export class FileTreeManager {
 
     if (!this.fileTreeListenerRegistered) {
       dom.filetree.addEventListener('click', this.handleFileTreeClick);
+      dom.filetree.addEventListener(
+        'contextmenu',
+        this.handleFileTreeContextMenu,
+      );
       this.fileTreeListenerRegistered = true;
     }
 
@@ -186,6 +194,254 @@ export class FileTreeManager {
     } else if (li.classList.contains('file') && li.dataset.path) {
       e.preventDefault();
       this.openFileFromPath(li.dataset.path);
+    }
+  };
+
+  /** hide any active context menu */
+  private hideContextMenu = () => {
+    this.contextMenu?.remove();
+    this.contextMenu = null;
+  };
+
+  /** show a context menu at a given position */
+  private showContextMenu(
+    items: { label: string; action: () => void; divider?: boolean }[],
+    x: number,
+    y: number,
+  ) {
+    this.hideContextMenu();
+    const menu = document.createElement('div');
+    menu.classList.add('dropdown-menu', 'show', 'shadow', 'rounded-0');
+    menu.style.position = 'fixed';
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+
+    items.forEach((item) => {
+      if (item.divider) {
+        const div = document.createElement('div');
+        div.classList.add('dropdown-divider');
+        menu.appendChild(div);
+      } else {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.classList.add('dropdown-item', 'extra-small');
+        btn.textContent = item.label;
+        btn.addEventListener('click', () => {
+          item.action();
+          this.hideContextMenu();
+        });
+        menu.appendChild(btn);
+      }
+    });
+
+    document.body.appendChild(menu);
+    this.contextMenu = menu;
+
+    setTimeout(() =>
+      document.addEventListener('click', this.hideContextMenu, { once: true }),
+    );
+  }
+
+  /** handle right click events */
+  private handleFileTreeContextMenu = async (e: MouseEvent) => {
+    e.preventDefault();
+    const target = e.target as HTMLElement;
+    const li = target.closest('li.ft-node') as HTMLElement | null;
+
+    const items: { label: string; action: () => void; divider?: boolean }[] =
+      [];
+
+    if (!li) {
+      if (this.treeRoot) {
+        items.push(
+          {
+            label: 'New File',
+            action: async () => {
+              const result = await Swal.fire({
+                title: 'New file name',
+                input: 'text',
+                inputPlaceholder: 'Untitled.md',
+                showCancelButton: true,
+              });
+              if (result.isConfirmed && result.value) {
+                this.bridge.send('to:file:create', {
+                  parent: this.treeRoot,
+                  name: result.value,
+                });
+              }
+            },
+          },
+          {
+            label: 'New Folder',
+            action: async () => {
+              const result = await Swal.fire({
+                title: 'New folder name',
+                input: 'text',
+                showCancelButton: true,
+              });
+              if (result.isConfirmed && result.value) {
+                this.bridge.send('to:folder:create', {
+                  parent: this.treeRoot,
+                  name: result.value,
+                });
+              }
+            },
+          },
+          { divider: true, label: '', action: () => {} },
+          {
+            label: 'Collapse Explorer',
+            action: () => {
+              document
+                .querySelector<HTMLButtonElement>('#sidebar-toggle')
+                ?.click();
+            },
+          },
+          {
+            label: 'Open Settings',
+            action: () => {
+              (
+                document.querySelector(
+                  '[data-bs-target="#app-settings"]',
+                ) as HTMLElement | null
+              )?.click();
+            },
+          },
+        );
+      }
+    } else if (li.classList.contains('file') && li.dataset.path) {
+      const path = li.dataset.path;
+      items.push(
+        {
+          label: 'Open File',
+          action: () => {
+            this.openFileFromPath(path);
+          },
+        },
+        {
+          label: 'Rename File...',
+          action: async () => {
+            const result = await Swal.fire({
+              title: 'Rename file',
+              input: 'text',
+              inputValue: path.split(/[/\\]/).pop(),
+              showCancelButton: true,
+            });
+            if (result.isConfirmed && result.value) {
+              this.bridge.send('to:file:rename', { path, name: result.value });
+            }
+          },
+        },
+        {
+          label: 'Delete File...',
+          action: async () => {
+            const confirm = await Swal.fire({
+              title: 'Delete file?',
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonText: 'Delete',
+            });
+            if (confirm.isConfirmed) {
+              this.bridge.send('to:file:delete', { path });
+            }
+          },
+        },
+        {
+          label: 'Show Properties...',
+          action: () => {
+            this.bridge.send('to:file:properties', { path });
+          },
+        },
+        { divider: true, label: '', action: () => {} },
+        {
+          label: 'Collapse Explorer',
+          action: () => {
+            document
+              .querySelector<HTMLButtonElement>('#sidebar-toggle')
+              ?.click();
+          },
+        },
+        {
+          label: 'Open Settings...',
+          action: () => {
+            (
+              document.querySelector(
+                '[data-bs-target="#app-settings"]',
+              ) as HTMLElement | null
+            )?.click();
+          },
+        },
+      );
+    } else if (li.classList.contains('directory') && li.dataset.path) {
+      const path = li.dataset.path;
+      items.push(
+        {
+          label: 'Open Folder',
+          action: () => {
+            const span = li.querySelector(':scope > span.file-name');
+            const ul = li.querySelector(':scope > ul') as HTMLElement | null;
+            if (span && ul && ul.style.display === 'none') {
+              span.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            }
+          },
+        },
+        {
+          label: 'Rename Folder...',
+          action: async () => {
+            const result = await Swal.fire({
+              title: 'Rename folder',
+              input: 'text',
+              inputValue: path.split(/[/\\]/).pop(),
+              showCancelButton: true,
+            });
+            if (result.isConfirmed && result.value) {
+              this.bridge.send('to:file:rename', { path, name: result.value });
+            }
+          },
+        },
+        {
+          label: 'Delete Folder...',
+          action: async () => {
+            const confirm = await Swal.fire({
+              title: 'Delete folder?',
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonText: 'Delete',
+            });
+            if (confirm.isConfirmed) {
+              this.bridge.send('to:file:delete', { path });
+            }
+          },
+        },
+        {
+          label: 'Show Properties...',
+          action: () => {
+            this.bridge.send('to:file:properties', { path });
+          },
+        },
+        { divider: true, label: '', action: () => {} },
+        {
+          label: 'Collapse Explorer',
+          action: () => {
+            document
+              .querySelector<HTMLButtonElement>('#sidebar-toggle')
+              ?.click();
+          },
+        },
+        {
+          label: 'Open Settings...',
+          action: () => {
+            (
+              document.querySelector(
+                '[data-bs-target="#app-settings"]',
+              ) as HTMLElement | null
+            )?.click();
+          },
+        },
+      );
+    }
+
+    if (items.length > 0) {
+      this.showContextMenu(items, e.clientX, e.clientY);
     }
   };
 

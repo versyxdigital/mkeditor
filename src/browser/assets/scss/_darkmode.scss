@@ -137,6 +137,27 @@
     color: #eeeeee !important;
   }
 
+  .swal2-popup.swal2-modal {
+    background: #222222 !important;
+    color: #eeeeee !important;
+  }
+
+  .swal2-popup.swal2-modal .swal2-title {
+    color: #eeeeee !important;
+  }
+
+  .swal2-popup.swal2-modal .swal2-styled.swal2-confirm {
+    background: #519088;
+  }
+
+  .swal2-popup.swal2-modal .swal2-styled.swal2-cancel {
+    background: #5f5f5f;
+  }
+
+  .swal2-popup.swal2-modal .swal2-styled.swal2-deny {
+    background: #853333;
+  }
+
   .swal2-popup.swal2-toast {
     background: #111111 !important;
     color: #eeeeee !important;
