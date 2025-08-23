@@ -200,14 +200,9 @@ export function createSidebarToggle(mkeditor: editor.IStandaloneCodeEditor) {
   ) as HTMLDivElement | null;
 
   dom.buttons.sidebar?.addEventListener('click', () => {
-    const hidden = dom.sidebar.style.display === 'none';
-    if (hidden) {
-      dom.sidebar.style.display = '';
-      if (sidebarGutter) sidebarGutter.style.display = '';
-    } else {
-      dom.sidebar.style.display = 'none';
-      if (sidebarGutter) sidebarGutter.style.display = 'none';
-    }
+    const isHidden = dom.sidebar.classList.toggle('d-none');
+    dom.sidebar.classList.toggle('d-flex', !isHidden);
+    sidebarGutter && (sidebarGutter.hidden = isHidden);
 
     mkeditor.layout();
   });

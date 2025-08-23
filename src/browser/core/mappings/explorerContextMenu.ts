@@ -27,6 +27,11 @@ export function getContextMenuItems(
               input: 'text',
               inputPlaceholder: 'Untitled.md',
               showCancelButton: true,
+              customClass: {
+                popup: ['rounded', 'shadow'],
+                actions: 'mt-2',
+                input: 'small',
+              },
             });
             if (result.isConfirmed && result.value) {
               bridge.send('to:file:create', {
@@ -43,6 +48,11 @@ export function getContextMenuItems(
               title: 'New folder name',
               input: 'text',
               showCancelButton: true,
+              customClass: {
+                popup: ['rounded', 'shadow'],
+                actions: 'mt-2',
+                input: 'small',
+              },
             });
             if (result.isConfirmed && result.value) {
               bridge.send('to:folder:create', {
@@ -84,6 +94,11 @@ export function getContextMenuItems(
             input: 'text',
             inputValue: path.split(/[/\\]/).pop(),
             showCancelButton: true,
+            customClass: {
+              popup: ['rounded', 'shadow'],
+              actions: 'mt-2',
+              input: 'small',
+            },
           });
           if (result.isConfirmed && result.value) {
             bridge.send('to:file:rename', { path, name: result.value });
