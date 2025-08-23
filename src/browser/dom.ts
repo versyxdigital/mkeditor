@@ -5,6 +5,8 @@ import Swal from 'sweetalert2';
 import type { FileProperties } from './interfaces/Bridge';
 import { getOSPlatform } from './util';
 
+let editorPreviewSplit: Split.Instance | null = null;
+
 export const dom = {
   splash: <HTMLDivElement>document.querySelector('#splashscreen'),
   app: <HTMLDivElement>document.querySelector('#app'),
@@ -49,6 +51,7 @@ export const dom = {
         document.querySelector('#export-preview-styled')
       ),
     },
+    resetSplit: <HTMLButtonElement>document.querySelector('#split-reset'),
   },
   commands: {
     toolbar: <HTMLDivElement>document.querySelector('#editor-functions'),
@@ -170,7 +173,7 @@ export function showSplashScreen({ duration }: { duration: number }) {
 export function createDraggableSplitPanels(
   mkeditor: editor.IStandaloneCodeEditor,
 ) {
-  Split(['#editor-split', '#preview-split'], {
+  editorPreviewSplit = Split(['#editor-split', '#preview-split'], {
     minSize: 0,
     onDrag() {
       mkeditor.layout();
@@ -191,6 +194,13 @@ export function createDraggableSplitPanels(
       mkeditor.layout();
     },
   });
+}
+
+export function resetEditorPreviewSplit(
+  mkeditor: editor.IStandaloneCodeEditor,
+) {
+  editorPreviewSplit?.setSizes([50, 50]);
+  mkeditor.layout();
 }
 
 // Toggle sidebar visibility.

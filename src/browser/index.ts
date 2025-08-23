@@ -12,6 +12,7 @@ import {
   setupTooltips,
   createDraggableSplitPanels,
   createSidebarToggle,
+  resetEditorPreviewSplit,
 } from './dom';
 import { getExecutionBridge } from './util';
 
@@ -25,7 +26,7 @@ const mode = api !== 'web' ? 'desktop' : 'web';
 // If the app is in web mode hide the filetree sidebar.
 if (mode === 'web') {
   document.addEventListener('DOMContentLoaded', () => {
-    dom.sidebar.style.display = 'none';
+    dom.sidebar.classList.add('d-none');
   });
 }
 
@@ -83,6 +84,9 @@ if (mkeditor) {
 
   // Implement draggable split.
   createDraggableSplitPanels(mkeditor);
+  dom.buttons.resetSplit?.addEventListener('click', () => {
+    resetEditorPreviewSplit(mkeditor);
+  });
 
   // Implement sidebar toggle.
   createSidebarToggle(mkeditor);
