@@ -59,7 +59,12 @@ const cdn = {
   },
 };
 
-const inlineCSS = `@media print {
+const inlineCSS = `
+.alert p {
+    margin-bottom: 0;
+}
+
+@media print {
 .hljs-meta .hljs-string, .hljs-regexp, .hljs-string {
     color: #f7a857;
 }
