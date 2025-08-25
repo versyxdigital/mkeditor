@@ -86,38 +86,11 @@ export class AppBridge {
         webPreferences: { offscreen: true },
       });
 
-      await offscreen.loadURL(
-        `data:text/html;charset=utf-8,${encodeURIComponent(content)}`,
-      );
-      await offscreen.webContents.executeJavaScript(`
-        (async () => {
-          await document.fonts?.ready;
-          const images = Array.from(document.images).map(img =>
-            img.complete ? Promise.resolve() :
-            new Promise(res => { img.onload = img.onerror = () => res(); })
-          );
-          await Promise.all(images);
-        })();
-      `);
-
-      const pdf = await offscreen.webContents.printToPDF({
-        pageSize: 'A4',
-        printBackground: true,
-        preferCSSPageSize: true,
+      AppStorage.saveFileToPDF(this.context, offscreen, {
+        id: event.sender.id,
+        data: content,
+        encoding: 'utf-8',
       });
-
-      const { filePath } = await dialog.showSaveDialog(this.context, {
-        filters: [
-          { name: `pdf-export-${event.sender.id}`, extensions: ['pdf'] },
-        ],
-        defaultPath: `pdf-export-${event.sender.id}.pdf`,
-      });
-
-      if (!filePath) return;
-
-      await import('node:fs/promises')
-        .then((fs) => fs.writeFile(filePath, pdf))
-        .finally(() => offscreen.destroy());
     });
 
     // Create a new file, linked to the application menu

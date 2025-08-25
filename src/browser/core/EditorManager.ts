@@ -269,12 +269,13 @@ export class EditorManager {
      * Get the rnedered HTML for export.
      * @returns - the rendered HTML
      */
-    const getRenderedHTML = () => {
+    const getRenderedHTML = ({ container = 'container-fluid' } = {}) => {
       const styled = <HTMLInputElement>dom.buttons.save.styled;
       const html = HTMLExporter.generateHTML(
         this.previewHTMLElement.innerHTML,
         {
           styled: styled.checked,
+          container,
         },
       );
 
@@ -285,7 +286,9 @@ export class EditorManager {
     if (dom.buttons.save.html) {
       dom.buttons.save.html.addEventListener('click', (event) => {
         event.preventDefault();
-        const html = getRenderedHTML();
+        const html = getRenderedHTML({
+          container: 'container',
+        });
 
         if (this.providers.bridge) {
           this.providers.bridge.exportToDifferentFormat({
@@ -302,7 +305,9 @@ export class EditorManager {
     if (dom.buttons.save.pdf) {
       dom.buttons.save.pdf.addEventListener('click', (event) => {
         event.preventDefault();
-        const html = getRenderedHTML();
+        const html = getRenderedHTML({
+          container: 'container-fluid',
+        });
 
         if (this.providers.bridge) {
           this.providers.bridge.exportToDifferentFormat({

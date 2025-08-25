@@ -1,5 +1,5 @@
 import { app, dialog, type BrowserWindow } from 'electron';
-import { statSync, readFileSync, writeFile, writeFileSync, promises as fs } from 'fs';
+import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
 import { join, dirname } from 'path';
 import type { SaveFileOptions } from '../interfaces/Storage';
 
@@ -121,7 +121,9 @@ export class AppStorage {
 
       if (check !== 'ENOENT') {
         try {
-          writeFileSync(options.filePath, options.data, options.encoding);
+          writeFileSync(options.filePath, options.data, {
+            encoding: options.encoding ?? 'utf-8',
+          });
 
           context.webContents.send('from:notification:display', {
             status: 'success',
@@ -148,7 +150,9 @@ export class AppStorage {
         .showSaveDialog(context, config)
         .then(({ filePath }) => {
           try {
-            writeFileSync(<string>filePath, options.data, options.encoding);
+            writeFileSync(<string>filePath, options.data, {
+              encoding: options.encoding ?? 'utf-8',
+            });
 
             context.webContents.send('from:notification:display', {
               status: 'success',
@@ -183,9 +187,13 @@ export class AppStorage {
    * @param context - the browser window
    * @param offscreen - the offscreen render window for the PDF
    * @param options - save file options
-   * @returns 
+   * @returns
    */
-  static async saveFileToPDF(context: BrowserWindow, offscreen: BrowserWindow, options: SaveFileOptions) {
+  static async saveFileToPDF(
+    context: BrowserWindow,
+    offscreen: BrowserWindow,
+    options: SaveFileOptions,
+  ) {
     await offscreen.loadURL(
       `data:text/html;charset=utf-8,${encodeURIComponent(options.data)}`,
     );
@@ -207,15 +215,15 @@ export class AppStorage {
     });
 
     const { filePath } = await dialog.showSaveDialog(context, {
-      filters: [
-        { name: `pdf-export-${options.id}`, extensions: ['pdf'] },
-      ],
+      filters: [{ name: `pdf-export-${options.id}`, extensions: ['pdf'] }],
       defaultPath: `pdf-export-${options.id}.pdf`,
     });
 
     if (!filePath) return;
 
-    writeFileSync(filePath, pdf);
+    writeFileSync(filePath, pdf, {
+      encoding: options.encoding ?? 'utf-8',
+    });
     offscreen.destroy();
   }
 

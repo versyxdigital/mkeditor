@@ -100,10 +100,13 @@ export class HTMLExporter {
    * @param styled - flag to determine whether to style the HTML
    * @returns - the generated HTML
    */
-  static generateHTML(content: string, { styled = true }) {
+  static generateHTML(
+    content: string,
+    { styled = true, container = 'container-fluid' },
+  ) {
     // If using bootstrap styles then wrap the content inside a container with padding
     if (styled) {
-      content = '<div class="container py-5">' + content.trim() + '</div>';
+      content = `<div class="${container} py-5">${content.trim()}</div>`;
     }
 
     // Create a full HTML document and remove unnecessary attributes and classes
