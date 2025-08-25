@@ -68,7 +68,7 @@ export class AppSettings {
         !loaded.exportSettings ||
         typeof loaded.exportSettings !== 'object' ||
         Object.keys(this.settings.exportSettings).some(
-          key => !(key in loaded.exportSettings)
+          (key) => !(key in loaded.exportSettings),
         )
       ) {
         this.saveSettingsToFile({
