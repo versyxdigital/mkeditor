@@ -55,8 +55,6 @@ export class ExportSettingsProvider {
     ex.background.value = settings.background;
     ex.fontColor.value = settings.fontColor;
 
-    console.log({ settings });
-
     if (reset) setPreviewStyle(defaults, dom.preview.dom);
     else setPreviewStyle(settings, dom.preview.dom);
   }

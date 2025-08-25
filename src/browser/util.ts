@@ -111,6 +111,12 @@ export function withMdExtension(name: string) {
   return filename;
 }
 
+/**
+ * Set the preview style based on export settings.
+ *
+ * @param settings - the export settings.
+ * @param elem - the preview element.
+ */
 export function setPreviewStyle(settings: ExportSettings, elem: HTMLElement) {
   elem.classList.remove('container', 'container-fluid');
 
