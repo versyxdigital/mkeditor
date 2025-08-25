@@ -44,12 +44,9 @@ export const dom = {
     save: {
       settings: <HTMLButtonElement>document.querySelector('#app-settings-save'),
       markdown: <HTMLButtonElement>document.querySelector('#app-markdown-save'),
-      preview: <HTMLButtonElement>(
-        document.querySelector('#export-preview-html')
-      ),
-      styled: <HTMLButtonElement>(
-        document.querySelector('#export-preview-styled')
-      ),
+      html: <HTMLButtonElement>document.querySelector('#export-to-html'),
+      pdf: <HTMLButtonElement>document.querySelector('#export-to-pdf'),
+      styled: <HTMLButtonElement>document.querySelector('#export-with-styles'),
     },
     resetSplit: <HTMLButtonElement>document.querySelector('#split-reset'),
   },

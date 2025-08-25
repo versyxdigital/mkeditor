@@ -265,24 +265,50 @@ export class EditorManager {
       });
     }
 
-    // Register the event listener for the editor UI export preview button; this
-    // button is also executed from within the web context and functions in pretty
-    // much the same way as above.
-    if (dom.buttons.save.preview) {
-      dom.buttons.save.preview.addEventListener('click', (event) => {
+    /**
+     * Get the rnedered HTML for export.
+     * @returns - the rendered HTML
+     */
+    const getRenderedHTML = () => {
+      const styled = <HTMLInputElement>dom.buttons.save.styled;
+      const html = HTMLExporter.generateHTML(
+        this.previewHTMLElement.innerHTML,
+        {
+          styled: styled.checked,
+        },
+      );
+
+      return html;
+    };
+
+    // Register the event listener for the editor UI export HTML button.
+    if (dom.buttons.save.html) {
+      dom.buttons.save.html.addEventListener('click', (event) => {
         event.preventDefault();
-        const styled = <HTMLInputElement>dom.buttons.save.styled;
-        const html = HTMLExporter.generateHTML(
-          this.previewHTMLElement.innerHTML,
-          {
-            styled: styled.checked,
-          },
-        );
+        const html = getRenderedHTML();
 
         if (this.providers.bridge) {
-          this.providers.bridge.exportPreviewToFile(html);
+          this.providers.bridge.exportToDifferentFormat({
+            content: html,
+            type: 'html',
+          });
         } else {
           HTMLExporter.exportHTML(html, 'text/html', '.html');
+        }
+      });
+    }
+
+    // Register the event listener for the editor UI export PDF button.
+    if (dom.buttons.save.pdf) {
+      dom.buttons.save.pdf.addEventListener('click', (event) => {
+        event.preventDefault();
+        const html = getRenderedHTML();
+
+        if (this.providers.bridge) {
+          this.providers.bridge.exportToDifferentFormat({
+            content: html,
+            type: 'pdf',
+          });
         }
       });
     }

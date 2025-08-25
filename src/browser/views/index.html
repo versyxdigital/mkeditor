@@ -421,38 +421,60 @@
           </div>
         </div>
         <div class="btn-group btn-group-sm me-2">
-          <button class="btn btn-outline-secondary" id="app-markdown-save">
+          <button
+            class="btn btn-outline-secondary"
+            id="app-markdown-save"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="Save markdown file"
+          >
             <i class="fas fa-save me-1"></i>
-            <span class="d-none d-md-inline">Save</span>
-            <span class="d-none d-lg-inline">Markdown</span>
+            <small class="d-none d-md-inline"> MD </small>
           </button>
         </div>
         <div class="btn-group btn-group-sm me-2">
-          <button class="btn btn-outline-secondary" id="export-preview-html">
+          <button
+            class="btn btn-outline-secondary"
+            id="export-to-html"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="Save to HTML file"
+          >
             <i class="fas fa-file-export me-1"></i>
-            <small class="d-none d-md-inline">
-              <span class="d-none d-md-inline">Export</span>
-              <span class="d-none d-lg-inline">to HTML</span>
-            </small>
+            <small> HTML </small>
+          </button>
+        </div>
+        <div class="btn-group btn-group-sm me-2">
+          <button
+            class="btn btn-outline-secondary"
+            id="export-to-pdf"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            title="Save to PDF file"
+          >
+            <i class="fas fa-file-export me-1"></i>
+            <small> PDF </small>
           </button>
         </div>
         <div class="form-check">
           <input
-            id="export-preview-styled"
+            id="export-with-styles"
             class="form-check-input me-2"
             type="checkbox"
             checked
           />
           <label
             class="form-check-label small text-muted"
-            for="export-preview-styled"
+            for="export-with-styles"
           >
             <span class="d-none d-sm-inline d-md-none">styles</span>
             <span class="d-none d-md-inline">with styles</span>
           </label>
         </div>
       </div>
-      <ul class="navbar-nav ms-auto d-flex flex-row align-items-center">
+      <ul
+        class="navbar-nav ms-auto d-none d-md-flex flex-row align-items-center"
+      >
         <li class="nav-item">
           <div
             class="form-check form-switch me-2"

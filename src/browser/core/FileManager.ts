@@ -311,7 +311,11 @@ export class FileManager {
    * @param content - the preview HTML content
    * @returns
    */
-  public exportPreviewToFile(content: string) {
+  public exportToHTML(content: string) {
     this.bridge.send('to:html:export', { content });
+  }
+
+  public exportToPDF(content: string) {
+    this.bridge.send('to:pdf:export', { content });
   }
 }

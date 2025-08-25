@@ -137,8 +137,18 @@ export class BridgeManager {
    * @param content - the preview HTML content
    * @returns
    */
-  public exportPreviewToFile(content: string) {
-    this.fileManager.exportPreviewToFile(content);
+  public exportToDifferentFormat({
+    content,
+    type,
+  }: {
+    content: string;
+    type: 'html' | 'pdf';
+  }) {
+    if (type === 'html') {
+      this.fileManager.exportToHTML(content);
+    } else {
+      this.fileManager.exportToPDF(content);
+    }
   }
 
   /**

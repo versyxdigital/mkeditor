@@ -1,5 +1,5 @@
 import { app, dialog, type BrowserWindow } from 'electron';
-import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
+import { statSync, readFileSync, writeFile, writeFileSync, promises as fs } from 'fs';
 import { join, dirname } from 'path';
 import type { SaveFileOptions } from '../interfaces/Storage';
 
@@ -175,6 +175,48 @@ export class AppStorage {
           });
         });
     }
+  }
+
+  /**
+   * Save a file to PDF.
+   *
+   * @param context - the browser window
+   * @param offscreen - the offscreen render window for the PDF
+   * @param options - save file options
+   * @returns 
+   */
+  static async saveFileToPDF(context: BrowserWindow, offscreen: BrowserWindow, options: SaveFileOptions) {
+    await offscreen.loadURL(
+      `data:text/html;charset=utf-8,${encodeURIComponent(options.data)}`,
+    );
+    await offscreen.webContents.executeJavaScript(`
+      (async () => {
+        await document.fonts?.ready;
+        const images = Array.from(document.images).map(img =>
+          img.complete ? Promise.resolve() :
+          new Promise(res => { img.onload = img.onerror = () => res(); })
+        );
+        await Promise.all(images);
+      })();
+    `);
+
+    const pdf = await offscreen.webContents.printToPDF({
+      pageSize: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
+
+    const { filePath } = await dialog.showSaveDialog(context, {
+      filters: [
+        { name: `pdf-export-${options.id}`, extensions: ['pdf'] },
+      ],
+      defaultPath: `pdf-export-${options.id}.pdf`,
+    });
+
+    if (!filePath) return;
+
+    writeFileSync(filePath, pdf);
+    offscreen.destroy();
   }
 
   /**
