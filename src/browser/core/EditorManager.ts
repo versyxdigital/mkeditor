@@ -268,7 +268,6 @@ export class EditorManager {
             ...settings.getSettings(),
             exportSettings: defaults,
           });
-          console.log({ defaults });
           exportSettings.setSettings(defaults);
         }
       });
