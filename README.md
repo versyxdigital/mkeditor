@@ -73,11 +73,20 @@ If you would like to build from source, please follow the steps below:
     npm install
     ```
 
-To build an installable package:
+To build just the editor:
 
 ```sh
-npm run build-all
+npm run build-editor
 ```
 
-This will invoke the `make.mjs` script which runs all the necessary commands for building both an installer and an unpacked executable. Outputs to the **releases/** directory.
+To build just the electron app:
 
+```sh
+npm run build-app
+```
+
+To make an installable package (rebuilds both editor and app):
+
+```sh
+npm run make-installer
+```
