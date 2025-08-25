@@ -263,11 +263,13 @@ export class EditorManager {
         event.preventDefault();
         const { bridge, settings, exportSettings } = this.providers;
         if (bridge && settings && exportSettings) {
+          const defaults = exportSettings.getDefaultSettings();
           bridge.saveSettingsToFile({
             ...settings.getSettings(),
-            exportSettings: exportSettings.getDefaultSettings(),
+            exportSettings: defaults,
           });
-          exportSettings.setUIState(true); // reset
+          console.log({ defaults });
+          exportSettings.setSettings(defaults);
         }
       });
     }

@@ -18,7 +18,14 @@ export class ExportSettingsProvider {
   }
 
   public getDefaultSettings() {
-    return defaults;
+    return {
+      withStyles: true,
+      container: 'container-fluid',
+      fontSize: 16,
+      lineSpacing: 1.5,
+      background: '#ffffff',
+      fontColor: '#212529',
+    } as ExportSettings;
   }
 
   public getSettings() {
@@ -42,11 +49,11 @@ export class ExportSettingsProvider {
     this.setUIState();
   }
 
-  public setUIState(reset = false) {
+  public setUIState() {
     const { exports: ex } = dom;
     if (!ex) return;
 
-    const settings = reset ? defaults : this.settings;
+    const settings = this.settings;
 
     ex.withStyles.checked = settings.withStyles;
     ex.container.value = settings.container;
