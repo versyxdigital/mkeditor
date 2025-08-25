@@ -1,5 +1,5 @@
 import { dom } from '../dom';
-import { ExportSettings } from '../interfaces/Editor';
+import type { ExportSettings } from '../interfaces/Editor';
 
 const cdn = {
   bootstrap: {
