@@ -2,7 +2,7 @@ import type { Options, Token } from 'markdown-it';
 import type Renderer from 'markdown-it/lib/renderer.mjs';
 import Swal, { type SweetAlertIcon } from 'sweetalert2';
 import type { ContextBridgeAPI } from './interfaces/Bridge';
-import { ExportSettings } from './interfaces/Editor';
+import type { ExportSettings } from './interfaces/Editor';
 
 /**
  * Generate a random number between two numbers.
