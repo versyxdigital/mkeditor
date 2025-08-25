@@ -1,4 +1,6 @@
 [data-theme='dark'] {
+  --form-range-track-bg: #cccccc;
+
   background-color: #222222 !important;
   color: #e1e1e1;
 
@@ -85,6 +87,12 @@
 
   input.form-control {
     background: #1a1a1a !important;
+    color: #eeeeee !important;
+    border-color: #5f5f5f !important;
+  }
+
+  .form-select {
+    background-color: #1a1a1a !important;
     color: #eeeeee !important;
     border-color: #5f5f5f !important;
   }

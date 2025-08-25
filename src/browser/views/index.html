@@ -647,13 +647,16 @@
             ></button>
           </div>
           <div class="modal-body small pt-0">
-            <p class="text-muted">Here you can configure options for HTML and PDF exports.</p>
+            <p class="text-muted">
+              Here you can configure options for HTML and PDF exports.
+            </p>
             <hr />
             <div class="form-check">
               <input
                 type="checkbox"
                 class="form-check-input"
                 id="export-setting-styles"
+                checked="true"
               />
               <label
                 class="form-check-label d-flex flex-column"
@@ -676,9 +679,9 @@
                 <option value="container">container</option>
                 <option value="container-fluid">container-fluid</option>
               </select>
-              <small class="text-muted"
-                >Set the container property on the export</small
-              >
+              <small class="text-muted">
+                Set the container property for the export
+              </small>
             </div>
             <div class="form-group mt-3">
               <label for="export-setting-fontsize" class="form-label"
@@ -692,6 +695,9 @@
                 value="16"
                 max="72"
               />
+              <small class="text-muted">
+                Set the font size in px for the export
+              </small>
             </div>
             <div class="form-group mt-3">
               <label for="export-setting-linespacing" class="form-label"
@@ -706,6 +712,9 @@
                 step="0.1"
                 value="1"
               />
+              <small class="text-muted">
+                Set the line spacing for the export
+              </small>
             </div>
             <div class="form-group mt-3">
               <label for="export-setting-background" class="form-label"
@@ -718,6 +727,9 @@
                 placeholder="#ffffff"
                 value="#ffffff"
               />
+              <small class="text-muted">
+                Set the background colour for the export
+              </small>
             </div>
             <div class="form-group d-flex align-items-center gap-3 mt-4 mb-3">
               <button
