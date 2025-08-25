@@ -1,4 +1,5 @@
 import { dom } from '../dom';
+import { exportSettings as defaults } from '../config';
 import type { ExportSettings } from '../interfaces/Editor';
 
 const cdn = {
@@ -101,17 +102,17 @@ export class HTMLExporter {
    * @param styled - flag to determine whether to style the HTML
    * @returns - the generated HTML
    */
-  static generateHTML(
-    content: string,
-    {
-      withStyles = true,
-      container = 'container-fluid',
-      fontSize = 16,
-      lineSpacing = 1.5,
-      background = '#ffffff',
-      fontColor = '#000000',
-    }: ExportSettings,
-  ) {
+  static generateHTML(content: string, settings: ExportSettings) {
+    const exportSettings = { ...defaults, ...settings };
+    const {
+      withStyles,
+      container,
+      background,
+      fontSize,
+      lineSpacing,
+      fontColor,
+    } = exportSettings;
+
     // If using bootstrap styles then wrap the content inside a container with padding
     if (withStyles) {
       content = `<div class="${container} py-5" style="background: ${background}">${content.trim()}</div>`;

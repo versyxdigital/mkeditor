@@ -13,6 +13,7 @@ import { faDatabase } from '@fortawesome/free-solid-svg-icons/faDatabase';
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons/faExclamationCircle';
 import { faFileExport } from '@fortawesome/free-solid-svg-icons/faFileExport';
 import { faFile } from '@fortawesome/free-solid-svg-icons/faFile';
+import { faFilePdf } from '@fortawesome/free-solid-svg-icons/faFilePdf';
 import { faFolder } from '@fortawesome/free-solid-svg-icons/faFolder';
 import { faFolderOpen } from '@fortawesome/free-solid-svg-icons/faFolderOpen';
 import { faItalic } from '@fortawesome/free-solid-svg-icons/faItalic';
@@ -23,6 +24,7 @@ import { faMoon } from '@fortawesome/free-solid-svg-icons/faMoon';
 import { faQuestionCircle } from '@fortawesome/free-solid-svg-icons/faQuestionCircle';
 import { faRefresh } from '@fortawesome/free-solid-svg-icons/faRefresh';
 import { faSave } from '@fortawesome/free-solid-svg-icons/faSave';
+import { faSliders } from '@fortawesome/free-solid-svg-icons/faSliders';
 import { faStrikethrough } from '@fortawesome/free-solid-svg-icons/faStrikethrough';
 import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
 import { faTableColumns } from '@fortawesome/free-solid-svg-icons/faTableColumns';
@@ -46,6 +48,7 @@ library.add(
   faFolder,
   faFolderOpen,
   faFileExport,
+  faFilePdf,
   faItalic,
   faLink,
   faListUl,
@@ -54,6 +57,7 @@ library.add(
   faQuestionCircle,
   faRefresh,
   faSave,
+  faSliders,
   faStrikethrough,
   faTable,
   faTableColumns,
