@@ -16,6 +16,10 @@ export class ExportSettingsProvider {
     this.registerDOMListeners();
   }
 
+  public getDefaultSettings() {
+    return defaults;
+  }
+
   public getSettings() {
     return this.settings;
   }
@@ -37,18 +41,17 @@ export class ExportSettingsProvider {
     this.setUIState();
   }
 
-  public setUIState() {
-    const { exports: ex, buttons } = dom;
+  public setUIState(reset = false) {
+    const { exports: ex } = dom;
     if (!ex) return;
-    ex.withStyles.checked = this.settings.withStyles ?? true;
-    ex.container.value = this.settings.container ?? 'container';
-    ex.fontSize.value = this.settings.fontSize?.toString() ?? 16;
-    ex.lineSpacing.value = this.settings.lineSpacing?.toString() ?? 1;
-    ex.background.value = this.settings.background ?? '#FFFFFF';
-    const toolbar = buttons.save.styled as HTMLInputElement;
-    if (toolbar) {
-      toolbar.checked = this.settings.withStyles;
-    }
+
+    const settings = reset ? defaults : this.settings;
+
+    ex.withStyles.checked = settings.withStyles;
+    ex.container.value = settings.container;
+    ex.fontSize.value = settings.fontSize?.toString();
+    ex.lineSpacing.value = settings.lineSpacing?.toString();
+    ex.background.value = settings.background;
   }
 
   public registerDOMListeners() {

@@ -68,6 +68,9 @@ export const dom = {
       styled: <HTMLButtonElement>document.querySelector('#export-with-styles'),
     },
     resetSplit: <HTMLButtonElement>document.querySelector('#split-reset'),
+    resetExportSettings: <HTMLButtonElement>(
+      document.querySelector('#export-settings-reset')
+    ),
   },
   commands: {
     toolbar: <HTMLDivElement>document.querySelector('#editor-functions'),

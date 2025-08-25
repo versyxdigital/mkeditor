@@ -232,10 +232,6 @@ export class EditorManager {
    * Register listeners for cross-context events.
    */
   private registerUIToolbarListeners() {
-    // Register the event listener for editor UI save settings button; this button
-    // is executed from within the web context, and uses the IPC handler to fire an
-    // event to the main process, which has access to the filesystem.
-    // The main process receives the current settings and saves them to file.
     if (dom.buttons.save.settings) {
       dom.buttons.save.settings.addEventListener('click', (event) => {
         event.preventDefault();
@@ -262,10 +258,20 @@ export class EditorManager {
       });
     }
 
-    // Register the event listener for editor UI save file button; this button is
-    // also executed from within the web context, and also uses the IPC handler to
-    // fire an event to the main process, which in turn handles the action of opening
-    // the save dialog, saving the content to file etc.
+    if (dom.buttons.resetExportSettings) {
+      dom.buttons.resetExportSettings.addEventListener('click', (event) => {
+        event.preventDefault();
+        const { bridge, settings, exportSettings } = this.providers;
+        if (bridge && settings && exportSettings) {
+          bridge.saveSettingsToFile({
+            ...settings.getSettings(),
+            exportSettings: exportSettings.getDefaultSettings(),
+          });
+          exportSettings.setUIState(true); // reset
+        }
+      });
+    }
+
     if (dom.buttons.save.markdown) {
       dom.buttons.save.markdown.addEventListener('click', (event) => {
         event.preventDefault();
@@ -284,7 +290,7 @@ export class EditorManager {
     }
 
     /**
-     * Get the rnedered HTML for export.
+     * Get the rendered HTML for export.
      * @returns - the rendered HTML
      */
     const generateHTMLForExport = () => {
