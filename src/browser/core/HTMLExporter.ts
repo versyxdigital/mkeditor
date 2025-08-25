@@ -1,4 +1,5 @@
 import { dom } from '../dom';
+import type { ExportSettings } from '../interfaces/Editor';
 
 const cdn = {
   bootstrap: {
@@ -102,7 +103,13 @@ export class HTMLExporter {
    */
   static generateHTML(
     content: string,
-    { styled = true, container = 'container-fluid' },
+    {
+      styled = true,
+      container = 'container-fluid',
+      fontSize = 16,
+      lineSpacing = 1.5,
+      background = '#ffffff',
+    }: ExportSettings,
   ) {
     // If using bootstrap styles then wrap the content inside a container with padding
     if (styled) {
@@ -150,6 +157,10 @@ export class HTMLExporter {
         elem.removeAttribute('class');
       }
     }
+
+    document.body.style.fontSize = `${fontSize}px`;
+    document.body.style.lineHeight = lineSpacing.toString();
+    document.body.style.backgroundColor = background;
 
     return `<!DOCTYPE html>${document.documentElement.outerHTML}`;
   }

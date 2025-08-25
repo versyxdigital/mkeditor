@@ -1,5 +1,13 @@
 import type { Selection, editor } from 'monaco-editor/esm/vs/editor/editor.api';
 
+export interface ExportSettings {
+  withStyles: boolean;
+  container: 'container' | 'container-fluid';
+  fontSize: number;
+  lineSpacing: number;
+  background: string;
+}
+
 export interface EditorSettings {
   autoindent: boolean;
   darkmode: boolean;
@@ -7,6 +15,10 @@ export interface EditorSettings {
   whitespace: boolean;
   minimap: boolean;
   systemtheme: boolean;
+}
+
+export interface SettingsFile extends EditorSettings {
+  exportSettings: ExportSettings;
 }
 export interface EditorCommand extends Omit<editor.IActionDescriptor, 'run'> {
   isInline: boolean;

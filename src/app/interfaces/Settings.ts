@@ -1,3 +1,11 @@
+export interface ExportSettings {
+  withStyles: boolean;
+  container: 'container' | 'container-fluid';
+  fontSize: number;
+  lineSpacing: number;
+  background: string;
+}
+
 export interface EditorSettings {
   autoindent: boolean;
   darkmode: boolean;
@@ -5,4 +13,8 @@ export interface EditorSettings {
   whitespace: boolean;
   minimap: boolean;
   systemtheme: boolean;
+}
+
+export interface SettingsFile extends EditorSettings {
+  exportSettings: ExportSettings;
 }

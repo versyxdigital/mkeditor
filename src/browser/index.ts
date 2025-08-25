@@ -5,6 +5,7 @@ import { CompletionProvider } from './core/providers/CompletionProvider';
 import { CommandProvider } from './core/providers/CommandProvider';
 import { MkedLinkProvider } from './core/providers/MkedLinkProvider';
 import { SettingsProvider } from './core/providers/SettingsProvider';
+import { ExportSettingsProvider } from './core/providers/ExportSettingsProvider';
 import { BridgeManager } from './core/BridgeManager';
 import {
   dom,
@@ -50,10 +51,14 @@ if (mkeditor) {
 
   // Register a new settings handler for the editor to provide editor settings
   // and to persist settings either to localStorage or file depending on context.
-  editorManager.provide(
-    'settings',
-    new SettingsProvider(mode, mkeditor, dispatcher),
+  const settingsProvider = new SettingsProvider(mode, mkeditor, dispatcher);
+  editorManager.provide('settings', settingsProvider);
+
+  const exportSettingsProvider = new ExportSettingsProvider(
+    mode,
+    dispatcher,
   );
+  editorManager.provide('exportSettings', exportSettingsProvider);
 
   // Register a new completion provider for the editor auto-completion
   editorManager.provide(
@@ -70,6 +75,10 @@ if (mkeditor) {
     // Attach providers.
     bridgeManager.provide('settings', editorManager.providers.settings);
     bridgeManager.provide('commands', editorManager.providers.commands);
+    bridgeManager.provide(
+      'exportSettings',
+      editorManager.providers.exportSettings,
+    );
     editorManager.provide('bridge', bridgeManager);
 
     // Register link provider for mked:// navigation for linked documents.

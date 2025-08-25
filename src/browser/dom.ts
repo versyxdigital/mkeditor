@@ -33,6 +33,24 @@ export const dom = {
       document.querySelector('#app-settings-file-info')
     ),
   },
+  exports: {
+    modal: <HTMLDivElement>document.querySelector('#export-settings'),
+    withStyles: <HTMLInputElement>document.querySelector(
+      '#export-setting-styles',
+    ),
+    container: <HTMLSelectElement>document.querySelector(
+      '#export-setting-container',
+    ),
+    fontSize: <HTMLInputElement>document.querySelector(
+      '#export-setting-fontsize',
+    ),
+    lineSpacing: <HTMLInputElement>document.querySelector(
+      '#export-setting-linespacing',
+    ),
+    background: <HTMLInputElement>document.querySelector(
+      '#export-setting-background',
+    ),
+  },
   icons: {
     darkmode: <HTMLLabelElement>document.querySelector('#darkmode-icon'),
   },
@@ -43,10 +61,13 @@ export const dom = {
     ),
     save: {
       settings: <HTMLButtonElement>document.querySelector('#app-settings-save'),
+      exportSettings: <HTMLButtonElement>(
+        document.querySelector('#export-settings-save')
+      ),
       markdown: <HTMLButtonElement>document.querySelector('#app-markdown-save'),
       html: <HTMLButtonElement>document.querySelector('#export-to-html'),
       pdf: <HTMLButtonElement>document.querySelector('#export-to-pdf'),
-      styled: <HTMLButtonElement>document.querySelector('#export-with-styles'),
+      styled: <HTMLInputElement>document.querySelector('#export-with-styles'),
     },
     resetSplit: <HTMLButtonElement>document.querySelector('#split-reset'),
   },

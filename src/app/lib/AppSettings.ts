@@ -2,7 +2,7 @@ import { homedir } from 'os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { normalize } from 'path';
 import type { BrowserWindow } from 'electron';
-import type { EditorSettings } from '../interfaces/Settings';
+import type { SettingsFile } from '../interfaces/Settings';
 import type { Providers } from '../interfaces/Providers';
 
 /**
@@ -24,17 +24,24 @@ export class AppSettings {
   };
 
   /** Default editor settings */
-  private settings: EditorSettings = {
+  private settings: SettingsFile = {
     autoindent: false,
     darkmode: false,
     wordwrap: true,
     whitespace: false,
     minimap: true,
     systemtheme: true,
+    exportSettings: {
+      withStyles: true,
+      container: 'container-fluid',
+      fontSize: 16,
+      lineSpacing: 1.5,
+      background: '#ffffff',
+    },
   };
 
   /** Applied editor settings */
-  public applied: EditorSettings | null = null;
+  public applied: SettingsFile | null = null;
 
   /**
    * Create a new app settings handler.
@@ -49,7 +56,7 @@ export class AppSettings {
 
     this.createFileIfNotExists(this.settings);
 
-    this.applied = this.loadFile() as EditorSettings;
+    this.applied = this.loadFile() as SettingsFile;
   }
 
   /**
@@ -81,14 +88,21 @@ export class AppSettings {
    * @param settings - the settings to save
    * @returns
    */
-  createFileIfNotExists(settings: EditorSettings) {
+  createFileIfNotExists(settings: Partial<SettingsFile>) {
     if (!existsSync(this.appPath)) {
       mkdirSync(this.appPath);
     }
 
     if (!existsSync(this.filePath)) {
-      settings = { ...this.settings, ...settings };
-      this.saveSettingsToFile(settings, true);
+      const s: SettingsFile = {
+        ...this.settings,
+        ...settings,
+        exportSettings: {
+          ...this.settings.exportSettings,
+          ...(settings.exportSettings || {}),
+        },
+      };
+      this.saveSettingsToFile(s, true);
     }
   }
 
@@ -99,11 +113,23 @@ export class AppSettings {
    * @param init - first-time init
    * @returns
    */
-  saveSettingsToFile(settings: EditorSettings, init = false) {
+  saveSettingsToFile(settings: Partial<SettingsFile>, init = false) {
     try {
-      writeFileSync(this.filePath, JSON.stringify(settings, null, 4), {
+      const current = this.loadFile() as SettingsFile;
+      const updated: SettingsFile = {
+        ...current,
+        ...settings,
+        exportSettings: {
+          ...current.exportSettings,
+          ...(settings.exportSettings || {}),
+        },
+      };
+
+      writeFileSync(this.filePath, JSON.stringify(updated, null, 4), {
         encoding: 'utf-8',
       });
+
+      this.applied = updated;
 
       if (!init) {
         this.context.webContents.send('from:notification:display', {

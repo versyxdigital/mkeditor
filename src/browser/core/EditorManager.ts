@@ -8,6 +8,7 @@ import { Markdown } from './Markdown';
 import { HTMLExporter } from './HTMLExporter';
 import { APP_VERSION } from '../version';
 import { dom } from '../dom';
+import { exportSettings as defaultExportSettings } from '../config';
 
 const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
   let timeout: number | null = null;
@@ -51,6 +52,7 @@ export class EditorManager {
     commands: null,
     completion: null,
     settings: null,
+    exportSettings: null,
   };
 
   /**
@@ -237,9 +239,25 @@ export class EditorManager {
     if (dom.buttons.save.settings) {
       dom.buttons.save.settings.addEventListener('click', (event) => {
         event.preventDefault();
-        const { bridge, settings } = this.providers;
-        if (bridge && settings) {
-          bridge.saveSettingsToFile(settings.getSettings());
+        const { bridge, settings, exportSettings } = this.providers;
+        if (bridge && settings && exportSettings) {
+          bridge.saveSettingsToFile({
+            ...settings.getSettings(),
+            exportSettings: exportSettings.getSettings(),
+          });
+        }
+      });
+    }
+
+    if (dom.buttons.save.exportSettings) {
+      dom.buttons.save.exportSettings.addEventListener('click', (event) => {
+        event.preventDefault();
+        const { bridge, settings, exportSettings } = this.providers;
+        if (bridge && settings && exportSettings) {
+          bridge.saveSettingsToFile({
+            ...settings.getSettings(),
+            exportSettings: exportSettings.getSettings(),
+          });
         }
       });
     }
@@ -269,26 +287,20 @@ export class EditorManager {
      * Get the rnedered HTML for export.
      * @returns - the rendered HTML
      */
-    const getRenderedHTML = ({ container = 'container-fluid' } = {}) => {
-      const styled = <HTMLInputElement>dom.buttons.save.styled;
-      const html = HTMLExporter.generateHTML(
+    const getRenderedHTML = () => {
+      const settings =
+        this.providers.exportSettings?.getSettings() ?? defaultExportSettings;
+      return HTMLExporter.generateHTML(
         this.previewHTMLElement.innerHTML,
-        {
-          styled: styled.checked,
-          container,
-        },
+        settings,
       );
-
-      return html;
     };
 
     // Register the event listener for the editor UI export HTML button.
     if (dom.buttons.save.html) {
       dom.buttons.save.html.addEventListener('click', (event) => {
         event.preventDefault();
-        const html = getRenderedHTML({
-          container: 'container',
-        });
+        const html = getRenderedHTML();
 
         if (this.providers.bridge) {
           this.providers.bridge.exportToDifferentFormat({
@@ -305,9 +317,7 @@ export class EditorManager {
     if (dom.buttons.save.pdf) {
       dom.buttons.save.pdf.addEventListener('click', (event) => {
         event.preventDefault();
-        const html = getRenderedHTML({
-          container: 'container-fluid',
-        });
+        const html = getRenderedHTML();
 
         if (this.providers.bridge) {
           this.providers.bridge.exportToDifferentFormat({

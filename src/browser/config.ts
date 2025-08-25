@@ -1,4 +1,4 @@
-import type { EditorSettings } from './interfaces/Editor';
+import type { EditorSettings, ExportSettings } from './interfaces/Editor';
 
 export const config = {};
 
@@ -9,4 +9,12 @@ export const settings: EditorSettings = {
   whitespace: false,
   minimap: true,
   systemtheme: true,
+};
+
+export const exportSettings: ExportSettings = {
+  withStyles: true,
+  container: 'container-fluid',
+  fontSize: 16,
+  lineSpacing: 1.5,
+  background: '#ffffff',
 };

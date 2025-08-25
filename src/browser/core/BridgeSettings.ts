@@ -1,6 +1,6 @@
 import type { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
-import type { EditorSettings } from '../interfaces/Editor';
+import type { EditorSettings, SettingsFile } from '../interfaces/Editor';
 
 /**
  * Handle bridge settings logic.
@@ -23,7 +23,7 @@ export class BridgeSettings {
    * @param settings - the editor settings
    * @returns
    */
-  public saveSettingsToFile(settings: EditorSettings) {
+  public saveSettingsToFile(settings: Partial<SettingsFile>) {
     this.bridge.send('to:settings:save', { settings });
   }
 
@@ -33,7 +33,7 @@ export class BridgeSettings {
    * @param settings - the settings to load
    * @returns
    */
-  public loadSettingsFromBridgeListener(settings: EditorSettings) {
+  public loadSettingsFromBridgeListener(settings: SettingsFile) {
     this.mkeditor.updateOptions({
       autoIndent: settings.autoindent ? 'advanced' : 'none',
     });
