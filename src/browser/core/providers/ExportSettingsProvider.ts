@@ -53,6 +53,12 @@ export class ExportSettingsProvider {
     ex.lineSpacing.value = settings.lineSpacing?.toString();
     ex.background.value = settings.background;
     ex.fontColor.value = settings.fontColor;
+
+    if (reset) {
+      this.dispatcher.updatePreviewFromExportConfig({
+        settings: defaults,
+      });
+    }
   }
 
   public registerDOMListeners() {
@@ -118,5 +124,9 @@ export class ExportSettingsProvider {
         settings: { exportSettings: this.settings },
       });
     }
+
+    this.dispatcher.updatePreviewFromExportConfig({
+      settings: this.settings,
+    });
   }
 }

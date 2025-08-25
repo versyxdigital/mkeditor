@@ -1,6 +1,7 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
+import type { ExportSettings } from '../interfaces/Editor';
 import { CharacterCount, WordCount } from '../extensions/WordCount';
 import { ScrollSync, invalidateLineElements } from '../extensions/ScrollSync';
 import { Markdown } from './Markdown';
@@ -72,6 +73,25 @@ export class EditorManager {
       CharacterCount(value);
       this.render(value);
     });
+
+    this.dispatcher.addEventListener(
+      'editor:preview:update-config',
+      (event) => {
+        const esx = event.message as ExportSettings;
+        this.previewHTMLElement.classList.remove(
+          'container',
+          'container-fluid',
+        );
+        if (esx.withStyles) {
+          this.previewHTMLElement.classList.add(esx.container);
+        }
+
+        this.previewHTMLElement.style.fontSize = `${esx.fontSize}px`;
+        this.previewHTMLElement.style.lineHeight = esx.lineSpacing.toString();
+        this.previewHTMLElement.style.backgroundColor = esx.background;
+        this.previewHTMLElement.style.color = esx.fontColor;
+      },
+    );
 
     if (opts.init) {
       this.create({ watch: opts.watch });
