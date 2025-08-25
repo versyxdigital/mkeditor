@@ -1,7 +1,7 @@
 [data-theme='dark'] {
   --form-range-track-bg: #cccccc;
 
-  background-color: #222222 !important;
+  background-color: #222222;
   color: #e1e1e1;
 
   ::-webkit-scrollbar {
@@ -22,11 +22,11 @@
   }
 
   #editor-container {
-    border-right-color: #2b2b2b !important;
+    border-right-color: #2b2b2b;
   }
 
   #preview {
-    background-color: #1e1e1e !important;
+    background-color: #1e1e1e;
     color: #eee;
   }
 

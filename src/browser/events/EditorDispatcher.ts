@@ -1,4 +1,4 @@
-import type { SettingsFile } from '../interfaces/Editor';
+import type { ExportSettings, SettingsFile } from '../interfaces/Editor';
 import { BaseDispatcher } from './Dispatcher';
 
 export class EditorDispatcher extends BaseDispatcher {

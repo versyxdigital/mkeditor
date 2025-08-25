@@ -11,7 +11,7 @@ jest.mock('../src/browser/assets/intro', () => ({
 beforeEach(async () => {
   document.body.innerHTML = `
     <div id="editor"></div>
-    <div id="preview"></div>
+    <div id="preview"><div id="preview-content" class="container-fluid"></div></div>
     <div id="app-about"><span id="app-version"></span></div>
     <div id="app-settings"></div>
     <input id="autoindent-setting" />
