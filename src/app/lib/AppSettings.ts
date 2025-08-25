@@ -18,6 +18,9 @@ export class AppSettings {
   /** Application settings file path */
   private filePath: string;
 
+  /** Has been newly created with defaults */
+  private isNewFile: boolean = false;
+
   /** Providers to provide functions to the settings */
   private providers: Providers = {
     logger: null,
@@ -55,9 +58,30 @@ export class AppSettings {
     this.appPath = normalize(homedir() + '/.mkeditor/');
     this.filePath = this.appPath + 'settings.json';
 
+    // Create the file if it doesn't exist, then load it.
     this.createFileIfNotExists(this.settings);
+    const loaded = this.loadFile() as SettingsFile;
 
-    this.applied = this.loadFile() as SettingsFile;
+    // If the file has just been created then we can skip this check.
+    if (!this.isNewFile) {
+      if (
+        !loaded.exportSettings ||
+        typeof loaded.exportSettings !== 'object' ||
+        Object.keys(this.settings.exportSettings).some(
+          key => !(key in loaded.exportSettings)
+        )
+      ) {
+        this.saveSettingsToFile({
+          exportSettings: {
+            ...this.settings.exportSettings,
+            ...(loaded.exportSettings || {}),
+          },
+        });
+      }
+    }
+
+    // Set the applied settings for this session.
+    this.applied = loaded;
   }
 
   /**
@@ -105,6 +129,7 @@ export class AppSettings {
       };
 
       this.saveSettingsToFile(config, true);
+      this.isNewFile = true;
     }
   }
 
