@@ -1,7 +1,6 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
-import type { ExportSettings } from '../interfaces/Editor';
 import { CharacterCount, WordCount } from '../extensions/WordCount';
 import { ScrollSync, invalidateLineElements } from '../extensions/ScrollSync';
 import { Markdown } from './Markdown';
@@ -10,7 +9,6 @@ import { APP_VERSION } from '../version';
 import { exportSettings as defaultExportSettings } from '../config';
 import { welcomeMarkdown } from '../assets/intro';
 import { dom } from '../dom';
-import { setPreviewStyle } from '../util';
 
 const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
   let timeout: number | null = null;
