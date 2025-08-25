@@ -8,6 +8,20 @@ export interface EditorSettings {
   minimap: boolean;
   systemtheme: boolean;
 }
+
+export interface ExportSettings {
+  withStyles: boolean;
+  container: 'container' | 'container-fluid';
+  fontSize: number;
+  lineSpacing: number;
+  background: string;
+  fontColor: string;
+}
+
+export interface SettingsFile extends EditorSettings {
+  exportSettings: ExportSettings;
+}
+
 export interface EditorCommand extends Omit<editor.IActionDescriptor, 'run'> {
   isInline: boolean;
   syntax?: string;

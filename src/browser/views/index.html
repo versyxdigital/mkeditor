@@ -456,7 +456,7 @@
             <small> PDF </small>
           </button>
         </div>
-        <div class="form-check">
+        <!-- <div class="form-check">
           <input
             id="export-with-styles"
             class="form-check-input me-2"
@@ -470,6 +470,17 @@
             <span class="d-none d-sm-inline d-md-none">styles</span>
             <span class="d-none d-md-inline">with styles</span>
           </label>
+        </div> -->
+        <div class="btn-group btn-group-sm">
+          <a
+            class="btn btn-outline-secondary"
+            href="#"
+            data-bs-toggle="modal"
+            data-bs-target="#export-settings"
+          >
+            <i class="fas fa-cog"></i>
+            <small> Export Settings </small>
+          </a>
         </div>
       </div>
       <ul
@@ -507,7 +518,7 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header border-bottom-0">
-            <h5 class="modal-title">MKEditor settings</h5>
+            <h5 class="modal-title">Editor settings</h5>
             <button
               type="button"
               class="btn-close"
@@ -616,6 +627,152 @@
               >
                 <i class="fas fa-save"></i>
                 <span class="ms-1">Save Settings</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- export settings modal -->
+    <div class="modal" tabindex="-1" id="export-settings">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header border-bottom-0">
+            <h5 class="modal-title">Export settings</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body small pt-0">
+            <p class="text-muted">
+              Here you can configure settings for HTML and PDF exports, settings
+              are automatically saved as they are updated.
+            </p>
+            <p class="text-muted">
+              Your settings file is located at ~/.mkeditor/settings.json.
+            </p>
+            <hr />
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                id="export-with-styles"
+                checked="true"
+              />
+              <label
+                class="form-check-label d-flex flex-column"
+                for="export-with-styles"
+              >
+                <span>Export with styles</span>
+                <small class="text-muted">
+                  Enable this to export with Bootstrap, FontAwesome and KaTeX
+                  styles, provided from official CDNs with secure integrity and
+                  crossorigin checks.
+                </small>
+              </label>
+            </div>
+            <hr />
+            <div class="form-group mt-3">
+              <label for="export-setting-container" class="form-label"
+                >Set container</label
+              >
+              <select
+                id="export-setting-container"
+                class="form-select form-select-sm"
+              >
+                <option value="container">container</option>
+                <option value="container-fluid">container-fluid</option>
+              </select>
+              <small class="text-muted">
+                Set the container width class, fluid is larger width.
+              </small>
+            </div>
+            <div class="form-group mt-3">
+              <label for="export-setting-fontsize" class="form-label"
+                >Set font-size</label
+              >
+              <input
+                type="number"
+                id="export-setting-fontsize"
+                class="form-control form-control-sm"
+                min="8"
+                value="16"
+                max="72"
+              />
+              <small class="text-muted"> Set the font size in px. </small>
+            </div>
+            <div class="form-group mt-3">
+              <label for="export-setting-linespacing" class="form-label"
+                >Set line-spacing</label
+              >
+              <input
+                type="range"
+                id="export-setting-linespacing"
+                class="form-range mb-0"
+                min="1"
+                max="3"
+                step="0.1"
+                value="1"
+              />
+              <small class="text-muted"> Set the vertical line spacing. </small>
+            </div>
+            <hr />
+            <div class="d-flex flex-wrap align-items-center gap-5 mt-3">
+              <div class="form-group">
+                <label for="export-setting-background" class="form-label"
+                  >Set background colour</label
+                >
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <input
+                    type="color"
+                    id="export-setting-background"
+                    class="form-control form-control-sm form-control-color"
+                    value="#ffffff"
+                  />
+                  <span class="small text-muted" id="export-settings-color-hex"
+                    >#FFFFFF</span
+                  >
+                </div>
+                <small class="text-muted"> Set the background colour. </small>
+              </div>
+              <div class="form-group">
+                <label for="export-setting-font-color" class="form-label"
+                  >Set font colour</label
+                >
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <input
+                    type="color"
+                    id="export-setting-font-color"
+                    class="form-control form-control-sm form-control-color"
+                    value="#000000"
+                  />
+                  <span
+                    class="small text-muted"
+                    id="export-settings-font-color-hex"
+                    >#000000</span
+                  >
+                </div>
+                <small class="text-muted"> Set the font colour. </small>
+              </div>
+            </div>
+            <div class="form-group d-flex align-items-center gap-3 mt-4 mb-3">
+              <button
+                id="export-settings-save"
+                class="btn btn-sm btn-primary rounded-1"
+              >
+                <i class="fas fa-save"></i>
+                <span class="ms-1">Save Settings</span>
+              </button>
+              <button
+                id="export-settings-reset"
+                class="btn btn-sm btn-secondary rounded-1"
+              >
+                <i class="fas fa-refresh"></i>
+                <span class="ms-1">Reset to Default</span>
               </button>
             </div>
           </div>
@@ -910,5 +1067,21 @@
       </div>
     </div>
     <script type="text/javascript" src="./mkeditor.bundle.js"></script>
+    <script>
+      const colorInput = document.getElementById('export-setting-background');
+      const colorHex = document.getElementById('export-settings-color-hex');
+
+      colorInput.addEventListener('input', () => {
+        colorHex.textContent = colorInput.value.toUpperCase();
+      });
+      const fColorInput = document.getElementById('export-setting-font-color');
+      const fColorHex = document.getElementById(
+        'export-settings-font-color-hex',
+      );
+
+      fColorInput.addEventListener('input', () => {
+        fColorHex.textContent = fColorInput.value.toUpperCase();
+      });
+    </script>
   </body>
 </html>

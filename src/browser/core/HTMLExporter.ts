@@ -1,4 +1,5 @@
 import { dom } from '../dom';
+import type { ExportSettings } from '../interfaces/Editor';
 
 const cdn = {
   bootstrap: {
@@ -102,11 +103,18 @@ export class HTMLExporter {
    */
   static generateHTML(
     content: string,
-    { styled = true, container = 'container-fluid' },
+    {
+      withStyles = true,
+      container = 'container-fluid',
+      fontSize = 16,
+      lineSpacing = 1.5,
+      background = '#ffffff',
+      fontColor = '#000000',
+    }: ExportSettings,
   ) {
     // If using bootstrap styles then wrap the content inside a container with padding
-    if (styled) {
-      content = `<div class="${container} py-5">${content.trim()}</div>`;
+    if (withStyles) {
+      content = `<div class="${container} py-5" style="background: ${background}">${content.trim()}</div>`;
     }
 
     // Create a full HTML document and remove unnecessary attributes and classes
@@ -114,7 +122,7 @@ export class HTMLExporter {
       new DOMParser().parseFromString(content.trim(), 'text/html'),
     );
 
-    if (styled) {
+    if (withStyles) {
       // Apply styles/scripts based on selected provider(s)
       for (const provides of providers) {
         if (cdn[provides]) {
@@ -143,6 +151,12 @@ export class HTMLExporter {
       const style = document.createElement('style');
       style.appendChild(document.createTextNode(inlineCSS));
       document.head.appendChild(style);
+
+      // User settings
+      document.body.style.fontSize = `${fontSize}px`;
+      document.body.style.lineHeight = lineSpacing.toString();
+      document.body.style.backgroundColor = background;
+      document.body.style.color = fontColor;
     } else {
       // If not using styles then strip all classes
       const elems = document.querySelectorAll('*');
