@@ -117,7 +117,10 @@ export function withMdExtension(name: string) {
  * @param settings - the export settings.
  * @param elem - the preview element.
  */
-export function setPreviewStyle(settings: ExportSettings, elem: HTMLElement) {
+export function syncPreviewToExportSettings(
+  settings: ExportSettings,
+  elem: HTMLElement,
+) {
   elem.classList.remove('container', 'container-fluid');
 
   if (settings.withStyles) {
