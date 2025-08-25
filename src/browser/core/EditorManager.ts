@@ -7,6 +7,7 @@ import { welcomeMarkdown } from '../assets/intro';
 import { Markdown } from './Markdown';
 import { HTMLExporter } from './HTMLExporter';
 import { APP_VERSION } from '../version';
+import { exportSettings as defaultExportSettings } from '../config';
 import { dom } from '../dom';
 
 const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
@@ -51,6 +52,7 @@ export class EditorManager {
     commands: null,
     completion: null,
     settings: null,
+    exportSettings: null,
   };
 
   /**
@@ -237,9 +239,25 @@ export class EditorManager {
     if (dom.buttons.save.settings) {
       dom.buttons.save.settings.addEventListener('click', (event) => {
         event.preventDefault();
-        const { bridge, settings } = this.providers;
-        if (bridge && settings) {
-          bridge.saveSettingsToFile(settings.getSettings());
+        const { bridge, settings, exportSettings } = this.providers;
+        if (bridge && settings && exportSettings) {
+          bridge.saveSettingsToFile({
+            ...settings.getSettings(),
+            exportSettings: exportSettings.getSettings(),
+          });
+        }
+      });
+    }
+
+    if (dom.buttons.save.exportSettings) {
+      dom.buttons.save.exportSettings.addEventListener('click', (event) => {
+        event.preventDefault();
+        const { bridge, settings, exportSettings } = this.providers;
+        if (bridge && settings && exportSettings) {
+          bridge.saveSettingsToFile({
+            ...settings.getSettings(),
+            exportSettings: exportSettings.getSettings(),
+          });
         }
       });
     }
@@ -270,6 +288,10 @@ export class EditorManager {
      * @returns - the rendered HTML
      */
     const getRenderedHTML = ({ container = 'container-fluid' } = {}) => {
+      const settings =
+        this.providers.exportSettings?.getSettings() ?? defaultExportSettings;
+      console.log({ settings });
+
       const styled = <HTMLInputElement>dom.buttons.save.styled;
       const html = HTMLExporter.generateHTML(
         this.previewHTMLElement.innerHTML,
