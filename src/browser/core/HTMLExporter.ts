@@ -104,19 +104,8 @@ export class HTMLExporter {
    */
   static generateHTML(content: string, settings: ExportSettings) {
     const exportSettings = { ...defaults, ...settings };
-    const {
-      withStyles,
-      container,
-      background,
-      fontSize,
-      lineSpacing,
-      fontColor,
-    } = exportSettings;
-
-    // If using bootstrap styles then wrap the content inside a container with padding
-    if (withStyles) {
-      content = `<div class="${container} py-5" style="background: ${background}">${content.trim()}</div>`;
-    }
+    const { withStyles, background, fontSize, lineSpacing, fontColor } =
+      exportSettings;
 
     // Create a full HTML document and remove unnecessary attributes and classes
     const document = HTMLExporter.sanitizeHTML(
@@ -166,7 +155,7 @@ export class HTMLExporter {
       }
     }
 
-    return `<!DOCTYPE html>${document.documentElement.outerHTML}`;
+    return `<!DOCTYPE html>${document.documentElement.innerHTML}`;
   }
 
   /**

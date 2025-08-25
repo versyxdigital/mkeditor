@@ -82,14 +82,16 @@ export class EditorManager {
           'container',
           'container-fluid',
         );
+
         if (esx.withStyles) {
           this.previewHTMLElement.classList.add(esx.container);
         }
 
         this.previewHTMLElement.style.fontSize = `${esx.fontSize}px`;
         this.previewHTMLElement.style.lineHeight = esx.lineSpacing.toString();
-        this.previewHTMLElement.style.backgroundColor = esx.background;
-        this.previewHTMLElement.style.color = esx.fontColor;
+        // TODO... Consider theme when changing this
+        // this.previewHTMLElement.style.backgroundColor = esx.background;
+        // this.previewHTMLElement.style.color = esx.fontColor;
       },
     );
 
@@ -318,7 +320,7 @@ export class EditorManager {
         this.providers.exportSettings?.getSettings() ?? defaultExportSettings;
 
       return HTMLExporter.generateHTML(
-        this.previewHTMLElement.innerHTML,
+        this.previewHTMLElement.outerHTML,
         settings,
       );
     };
