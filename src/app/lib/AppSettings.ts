@@ -116,12 +116,15 @@ export class AppSettings {
    */
   saveSettingsToFile(settings: Partial<SettingsFile>, init = false) {
     try {
-      const current = this.loadFile() as SettingsFile;
+      const base = existsSync(this.filePath)
+        ? (this.loadFile() as SettingsFile)
+        : this.settings;
+
       const updated: SettingsFile = {
-        ...current,
+        ...base,
         ...settings,
         exportSettings: {
-          ...current.exportSettings,
+          ...base.exportSettings,
           ...(settings.exportSettings || {}),
         },
       };
