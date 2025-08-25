@@ -194,9 +194,13 @@ export class AppStorage {
     offscreen: BrowserWindow,
     options: SaveFileOptions,
   ) {
+    const defaultPath = `pdf-export-${options.id}`;
+    offscreen.setTitle(defaultPath);
+
     await offscreen.loadURL(
       `data:text/html;charset=utf-8,${encodeURIComponent(options.data)}`,
     );
+
     await offscreen.webContents.executeJavaScript(`
       (async () => {
         await document.fonts?.ready;
@@ -215,8 +219,8 @@ export class AppStorage {
     });
 
     const { filePath } = await dialog.showSaveDialog(context, {
-      filters: [{ name: `pdf-export-${options.id}`, extensions: ['pdf'] }],
-      defaultPath: `pdf-export-${options.id}.pdf`,
+      filters: [{ name: defaultPath, extensions: ['pdf'] }],
+      defaultPath: `${defaultPath}.pdf`,
     });
 
     if (!filePath) return;
@@ -224,6 +228,7 @@ export class AppStorage {
     writeFileSync(filePath, pdf, {
       encoding: options.encoding ?? 'utf-8',
     });
+
     offscreen.destroy();
   }
 

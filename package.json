@@ -12,7 +12,6 @@
     "test": "jest",
     "prebuild": "node -p \"'export const APP_VERSION = ' + JSON.stringify(require('./package.json').version) + ';'\" > src/browser/version.ts",
     "build-editor": "npm run prebuild && npm run prettier && webpack --config webpack.config.js",
-    "build-app": "tsc -p tsconfig.app.json",
     "build-installer": "electron-builder",
     "build-all": "node ./make.mjs",
     "serve-web": "http-server dist",
