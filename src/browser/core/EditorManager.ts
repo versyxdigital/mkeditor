@@ -279,7 +279,7 @@ export class EditorManager {
           if (this.providers.bridge) {
             this.providers.bridge.saveContentToFile();
           } else {
-            HTMLExporter.exportHTML(
+            HTMLExporter.webExport(
               this.mkeditor.getValue(),
               'text/plain',
               '.md',
@@ -317,7 +317,7 @@ export class EditorManager {
             type: 'html',
           });
         } else {
-          HTMLExporter.exportHTML(html, 'text/html', '.html');
+          HTMLExporter.webExport(html, 'text/html', '.html');
         }
       });
     }
@@ -333,6 +333,8 @@ export class EditorManager {
             content: html,
             type: 'pdf',
           });
+        } else {
+          HTMLExporter.pdfWebExport(html);
         }
       });
     }

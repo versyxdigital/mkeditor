@@ -216,7 +216,7 @@ export class HTMLExporter {
    * @param mimeType- the mime type
    * @param extension - the file extension
    */
-  static exportHTML(
+  static webExport(
     content: string,
     mimeType: MIMEType = 'text/plain',
     extension: FileExtension = '.md',
@@ -239,6 +239,51 @@ export class HTMLExporter {
         await writable.write(blob);
         await writable.close();
       });
+    });
+  }
+
+  /**
+   * Export content as a PDF using the browser's print dialog.
+   *
+   * @param content - the editor content
+   */
+  static pdfWebExport(content: string) {
+    const awaitStyles = (win: Window, cb: () => void) => {
+      const links = Array.from(
+        win.document.querySelectorAll('link[rel="stylesheet"]'),
+      ) as HTMLLinkElement[];
+
+      let loaded = 0;
+      if (links.length === 0) return cb();
+
+      links.forEach((link) => {
+        link.addEventListener('load', () => {
+          loaded++;
+          if (loaded === links.length) cb();
+        });
+        link.addEventListener('error', () => {
+          loaded++;
+          if (loaded === links.length) cb();
+        });
+      });
+    };
+
+    // Open a new window with the generated HTML
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      console.error('Unable to open print window.');
+      return;
+    }
+
+    console.log(printWindow.document);
+
+    // Write the content and trigger print once loaded
+    printWindow.document.documentElement.innerHTML = content;
+
+    // Wait for stylesheets and resources to load before printing
+    awaitStyles(printWindow, () => {
+      printWindow.focus();
+      printWindow.print();
     });
   }
 }
