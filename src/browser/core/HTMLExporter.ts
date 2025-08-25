@@ -275,8 +275,6 @@ export class HTMLExporter {
       return;
     }
 
-    console.log(printWindow.document);
-
     // Write the content and trigger print once loaded
     printWindow.document.documentElement.innerHTML = content;
 

@@ -297,8 +297,6 @@ export class EditorManager {
       const settings =
         this.providers.exportSettings?.getSettings() ?? defaultExportSettings;
 
-      console.log({ settings });
-
       return HTMLExporter.generateHTML(
         this.previewHTMLElement.innerHTML,
         settings,
