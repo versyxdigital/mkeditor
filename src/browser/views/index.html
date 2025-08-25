@@ -456,7 +456,7 @@
             <small> PDF </small>
           </button>
         </div>
-        <div class="form-check">
+        <!-- <div class="form-check">
           <input
             id="export-with-styles"
             class="form-check-input me-2"
@@ -470,15 +470,16 @@
             <span class="d-none d-sm-inline d-md-none">styles</span>
             <span class="d-none d-md-inline">with styles</span>
           </label>
-        </div>
-        <div class="btn-group btn-group-sm me-2">
+        </div> -->
+        <div class="btn-group btn-group-sm">
           <a
-            class="text-muted hover-fade ms-3"
+            class="btn btn-outline-secondary"
             href="#"
             data-bs-toggle="modal"
             data-bs-target="#export-settings"
           >
-            <i class="fas fa-cog me-1"></i>
+            <i class="fas fa-cog"></i>
+            <small> Export Settings </small>
           </a>
         </div>
       </div>
@@ -517,7 +518,7 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header border-bottom-0">
-            <h5 class="modal-title">MKEditor settings</h5>
+            <h5 class="modal-title">Editor settings</h5>
             <button
               type="button"
               class="btn-close"
@@ -648,24 +649,30 @@
           </div>
           <div class="modal-body small pt-0">
             <p class="text-muted">
-              Here you can configure options for HTML and PDF exports.
+              Here you can configure settings for HTML and PDF exports, settings
+              are automatically saved as they are updated.
+            </p>
+            <p class="text-muted">
+              Your settings file is located at ~/.mkeditor/settings.json.
             </p>
             <hr />
             <div class="form-check">
               <input
                 type="checkbox"
                 class="form-check-input"
-                id="export-setting-styles"
+                id="export-with-styles"
                 checked="true"
               />
               <label
                 class="form-check-label d-flex flex-column"
-                for="export-setting-styles"
+                for="export-with-styles"
               >
-                <span>With styles</span>
-                <small class="text-muted"
-                  >Enable this to export with styles</small
-                >
+                <span>Export with styles</span>
+                <small class="text-muted">
+                  Enable this to export with Bootstrap, FontAwesome and KaTeX
+                  styles, provided from official CDNs with secure integrity and
+                  crossorigin checks.
+                </small>
               </label>
             </div>
             <div class="form-group mt-3">
@@ -720,13 +727,17 @@
               <label for="export-setting-background" class="form-label"
                 >Set background colour</label
               >
-              <input
-                type="text"
-                id="export-setting-background"
-                class="form-control form-control-sm"
-                placeholder="#ffffff"
-                value="#ffffff"
-              />
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <input
+                  type="color"
+                  id="export-setting-background"
+                  class="form-control form-control-sm form-control-color border-0"
+                  value="#ffffff"
+                />
+                <span class="small text-muted" id="export-settings-color-hex"
+                  >#FFFFFF</span
+                >
+              </div>
               <small class="text-muted">
                 Set the background colour for the export
               </small>
@@ -1032,5 +1043,13 @@
       </div>
     </div>
     <script type="text/javascript" src="./mkeditor.bundle.js"></script>
+    <script>
+      const colorInput = document.getElementById('export-setting-background');
+      const colorHex = document.getElementById('export-settings-color-hex');
+
+      colorInput.addEventListener('input', () => {
+        colorHex.textContent = colorInput.value.toUpperCase();
+      });
+    </script>
   </body>
 </html>
