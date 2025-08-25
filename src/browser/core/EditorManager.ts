@@ -7,6 +7,7 @@ import { welcomeMarkdown } from '../assets/intro';
 import { Markdown } from './Markdown';
 import { HTMLExporter } from './HTMLExporter';
 import { APP_VERSION } from '../version';
+import { exportSettings as defaultExportSettings } from '../config';
 import { dom } from '../dom';
 
 const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
@@ -51,6 +52,7 @@ export class EditorManager {
     commands: null,
     completion: null,
     settings: null,
+    exportSettings: null,
   };
 
   /**
@@ -230,24 +232,46 @@ export class EditorManager {
    * Register listeners for cross-context events.
    */
   private registerUIToolbarListeners() {
-    // Register the event listener for editor UI save settings button; this button
-    // is executed from within the web context, and uses the IPC handler to fire an
-    // event to the main process, which has access to the filesystem.
-    // The main process receives the current settings and saves them to file.
     if (dom.buttons.save.settings) {
       dom.buttons.save.settings.addEventListener('click', (event) => {
         event.preventDefault();
-        const { bridge, settings } = this.providers;
-        if (bridge && settings) {
-          bridge.saveSettingsToFile(settings.getSettings());
+        const { bridge, settings, exportSettings } = this.providers;
+        if (bridge && settings && exportSettings) {
+          bridge.saveSettingsToFile({
+            ...settings.getSettings(),
+            exportSettings: exportSettings.getSettings(),
+          });
         }
       });
     }
 
-    // Register the event listener for editor UI save file button; this button is
-    // also executed from within the web context, and also uses the IPC handler to
-    // fire an event to the main process, which in turn handles the action of opening
-    // the save dialog, saving the content to file etc.
+    if (dom.buttons.save.exportSettings) {
+      dom.buttons.save.exportSettings.addEventListener('click', (event) => {
+        event.preventDefault();
+        const { bridge, settings, exportSettings } = this.providers;
+        if (bridge && settings && exportSettings) {
+          bridge.saveSettingsToFile({
+            ...settings.getSettings(),
+            exportSettings: exportSettings.getSettings(),
+          });
+        }
+      });
+    }
+
+    if (dom.buttons.resetExportSettings) {
+      dom.buttons.resetExportSettings.addEventListener('click', (event) => {
+        event.preventDefault();
+        const { bridge, settings, exportSettings } = this.providers;
+        if (bridge && settings && exportSettings) {
+          bridge.saveSettingsToFile({
+            ...settings.getSettings(),
+            exportSettings: exportSettings.getDefaultSettings(),
+          });
+          exportSettings.setUIState(true); // reset
+        }
+      });
+    }
+
     if (dom.buttons.save.markdown) {
       dom.buttons.save.markdown.addEventListener('click', (event) => {
         event.preventDefault();
@@ -255,7 +279,7 @@ export class EditorManager {
           if (this.providers.bridge) {
             this.providers.bridge.saveContentToFile();
           } else {
-            HTMLExporter.exportHTML(
+            HTMLExporter.webExport(
               this.mkeditor.getValue(),
               'text/plain',
               '.md',
@@ -265,24 +289,50 @@ export class EditorManager {
       });
     }
 
-    // Register the event listener for the editor UI export preview button; this
-    // button is also executed from within the web context and functions in pretty
-    // much the same way as above.
-    if (dom.buttons.save.preview) {
-      dom.buttons.save.preview.addEventListener('click', (event) => {
+    /**
+     * Get the rendered HTML for export.
+     * @returns - the rendered HTML
+     */
+    const generateHTMLForExport = () => {
+      const settings =
+        this.providers.exportSettings?.getSettings() ?? defaultExportSettings;
+
+      return HTMLExporter.generateHTML(
+        this.previewHTMLElement.innerHTML,
+        settings,
+      );
+    };
+
+    // Register the event listener for the editor UI export HTML button.
+    if (dom.buttons.save.html) {
+      dom.buttons.save.html.addEventListener('click', (event) => {
         event.preventDefault();
-        const styled = <HTMLInputElement>dom.buttons.save.styled;
-        const html = HTMLExporter.generateHTML(
-          this.previewHTMLElement.innerHTML,
-          {
-            styled: styled.checked,
-          },
-        );
+        const html = generateHTMLForExport();
 
         if (this.providers.bridge) {
-          this.providers.bridge.exportPreviewToFile(html);
+          this.providers.bridge.exportToDifferentFormat({
+            content: html,
+            type: 'html',
+          });
         } else {
-          HTMLExporter.exportHTML(html, 'text/html', '.html');
+          HTMLExporter.webExport(html, 'text/html', '.html');
+        }
+      });
+    }
+
+    // Register the event listener for the editor UI export PDF button.
+    if (dom.buttons.save.pdf) {
+      dom.buttons.save.pdf.addEventListener('click', (event) => {
+        event.preventDefault();
+        const html = generateHTMLForExport();
+
+        if (this.providers.bridge) {
+          this.providers.bridge.exportToDifferentFormat({
+            content: html,
+            type: 'pdf',
+          });
+        } else {
+          HTMLExporter.pdfWebExport(html);
         }
       });
     }

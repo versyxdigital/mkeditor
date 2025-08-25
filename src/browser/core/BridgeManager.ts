@@ -1,7 +1,7 @@
 import type { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { BridgeProviders } from '../interfaces/Providers';
-import type { EditorSettings } from '../interfaces/Editor';
+import type { SettingsFile } from '../interfaces/Editor';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
@@ -30,6 +30,7 @@ export class BridgeManager {
     settings: null,
     commands: null,
     completion: null,
+    exportSettings: null,
   };
 
   /** File manager helper */
@@ -119,7 +120,7 @@ export class BridgeManager {
    * @param settings - the settings to save.
    * @returns
    */
-  public saveSettingsToFile(settings: EditorSettings) {
+  public saveSettingsToFile(settings: Partial<SettingsFile>) {
     this.settings.saveSettingsToFile(settings);
   }
 
@@ -137,8 +138,18 @@ export class BridgeManager {
    * @param content - the preview HTML content
    * @returns
    */
-  public exportPreviewToFile(content: string) {
-    this.fileManager.exportPreviewToFile(content);
+  public exportToDifferentFormat({
+    content,
+    type,
+  }: {
+    content: string;
+    type: 'html' | 'pdf';
+  }) {
+    if (type === 'html') {
+      this.fileManager.exportToHTML(content);
+    } else {
+      this.fileManager.exportToPDF(content);
+    }
   }
 
   /**

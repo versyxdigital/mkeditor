@@ -6,9 +6,9 @@ The simple markdown editor.
 
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
-| Windows     | v3.4.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v3.4.0/mkeditor-setup-3.4.0.exe) |
-| MacOS       | v3.4.0  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v3.4.0/mkeditor-setup-3.4.0.pkg) |
-| Linux       | v3.4.0  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v3.4.0/mkeditor-setup-3.4.0.deb)  |
+| Windows     | v3.5.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v3.5.0/mkeditor-setup-3.5.0.exe) |
+| MacOS       | v3.5.0  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v3.5.0/mkeditor-setup-3.5.0.pkg) |
+| Linux       | v3.5.0  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v3.5.0/mkeditor-setup-3.5.0.deb)  |
 
 Use it through your [browser](https://versyxdigital.github.io/mkeditor/web/) or download for desktop. More documentation is available at the [website](https://versyxdigital.github.io/mkeditor).
 
@@ -72,24 +72,6 @@ If you would like to build from source, please follow the steps below:
     ```sh
     npm install
     ```
-
-3. Build the editor:
-    ```sh
-    npm run build-editor
-    ```
-      - This will output the editor to the **dist/** directory. You can serve the editor web app by running:
-        ```
-        npm run serve-web
-        ```
-        (requires [http-server](https://www.npmjs.com/package/http-server)).
-4. Build the electron app:
-    ```sh
-    npm run build-app
-    ```
-      - This will output the app to the **dist/app/** directory. You can serve the electron app by running:
-        ```
-        npm run serve-app
-        ```
 
 To build an installable package:
 
