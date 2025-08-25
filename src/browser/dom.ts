@@ -48,6 +48,9 @@ export const dom = {
     background: <HTMLInputElement>(
       document.querySelector('#export-setting-background')
     ),
+    fontColor: <HTMLInputElement>(
+      document.querySelector('#export-setting-font-color')
+    ),
   },
   icons: {
     darkmode: <HTMLLabelElement>document.querySelector('#darkmode-icon'),

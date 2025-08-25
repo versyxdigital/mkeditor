@@ -13,6 +13,7 @@ export interface ExportSettings {
   fontSize: number;
   lineSpacing: number;
   background: string;
+  fontColor: string;
 }
 
 export interface SettingsFile extends EditorSettings {

@@ -37,6 +37,7 @@ export class AppSettings {
       fontSize: 16,
       lineSpacing: 1.5,
       background: '#ffffff',
+      fontColor: '#000000',
     },
   };
 

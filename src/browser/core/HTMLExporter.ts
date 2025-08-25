@@ -109,6 +109,7 @@ export class HTMLExporter {
       fontSize = 16,
       lineSpacing = 1.5,
       background = '#ffffff',
+      fontColor = '#000000',
     }: ExportSettings,
   ) {
     // If using bootstrap styles then wrap the content inside a container with padding
@@ -155,6 +156,7 @@ export class HTMLExporter {
       document.body.style.fontSize = `${fontSize}px`;
       document.body.style.lineHeight = lineSpacing.toString();
       document.body.style.backgroundColor = background;
+      document.body.style.color = fontColor;
     } else {
       // If not using styles then strip all classes
       const elems = document.querySelectorAll('*');

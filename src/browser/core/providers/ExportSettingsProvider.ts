@@ -52,6 +52,7 @@ export class ExportSettingsProvider {
     ex.fontSize.value = settings.fontSize?.toString();
     ex.lineSpacing.value = settings.lineSpacing?.toString();
     ex.background.value = settings.background;
+    ex.fontColor.value = settings.fontColor;
   }
 
   public registerDOMListeners() {
@@ -83,6 +84,11 @@ export class ExportSettingsProvider {
     ex.background.addEventListener('change', (e) => {
       const target = e.target as HTMLInputElement;
       this.settings.background = target.value;
+      this.persist();
+    });
+    ex.fontColor.addEventListener('change', (e) => {
+      const target = e.target as HTMLInputElement;
+      this.settings.fontColor = target.value;
       this.persist();
     });
     const toolbar = buttons.save.styled as HTMLInputElement;
