@@ -1,4 +1,5 @@
 @use 'sass:meta';
+@import '_variables.scss';
 @import '~bootstrap/scss/bootstrap';
 
 @import '_base.scss';
@@ -10,6 +11,12 @@
 @import '_tabs.scss';
 
 @include meta.load-css('katex/dist/katex.min.css');
+
+:root {
+  --form-range-track-bg: #eeeeee;
+  --form-range-thumb-bg: #519088;
+  --form-range-thumb-active-bg: #519088;
+}
 
 html {
   overflow-y: hidden !important;
@@ -69,8 +76,8 @@ body[data-theme='dark'] {
 }
 
 .form-check-input:checked {
-  background-color: #8694a9;
-  border-color: #8694a9;
+  background-color: #519088;
+  border-color: #519088;
 }
 
 .dropdown-item.active,

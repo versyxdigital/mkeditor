@@ -1,4 +1,4 @@
-import { dialog, ipcMain, type BrowserWindow } from 'electron';
+import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { dirname, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
@@ -73,6 +73,20 @@ export class AppBridge {
     // Export rendered HTML, triggered from the renderer process
     ipcMain.on('to:html:export', (event, { content }) => {
       AppStorage.saveFile(this.context, {
+        id: event.sender.id,
+        data: content,
+        encoding: 'utf-8',
+      });
+    });
+
+    // Export rendered HTML to PDF
+    ipcMain.on('to:pdf:export', async (event, { content }) => {
+      const offscreen = new BrowserWindow({
+        show: false,
+        webPreferences: { offscreen: true },
+      });
+
+      AppStorage.saveFileToPDF(this.context, offscreen, {
         id: event.sender.id,
         data: content,
         encoding: 'utf-8',

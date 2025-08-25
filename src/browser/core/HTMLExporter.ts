@@ -1,4 +1,6 @@
 import { dom } from '../dom';
+import { exportSettings as defaults } from '../config';
+import type { ExportSettings } from '../interfaces/Editor';
 
 const cdn = {
   bootstrap: {
@@ -100,10 +102,20 @@ export class HTMLExporter {
    * @param styled - flag to determine whether to style the HTML
    * @returns - the generated HTML
    */
-  static generateHTML(content: string, { styled = true }) {
+  static generateHTML(content: string, settings: ExportSettings) {
+    const exportSettings = { ...defaults, ...settings };
+    const {
+      withStyles,
+      container,
+      background,
+      fontSize,
+      lineSpacing,
+      fontColor,
+    } = exportSettings;
+
     // If using bootstrap styles then wrap the content inside a container with padding
-    if (styled) {
-      content = '<div class="container py-5">' + content.trim() + '</div>';
+    if (withStyles) {
+      content = `<div class="${container} py-5" style="background: ${background}">${content.trim()}</div>`;
     }
 
     // Create a full HTML document and remove unnecessary attributes and classes
@@ -111,7 +123,7 @@ export class HTMLExporter {
       new DOMParser().parseFromString(content.trim(), 'text/html'),
     );
 
-    if (styled) {
+    if (withStyles) {
       // Apply styles/scripts based on selected provider(s)
       for (const provides of providers) {
         if (cdn[provides]) {
@@ -140,6 +152,12 @@ export class HTMLExporter {
       const style = document.createElement('style');
       style.appendChild(document.createTextNode(inlineCSS));
       document.head.appendChild(style);
+
+      // User settings
+      document.body.style.fontSize = `${fontSize}px`;
+      document.body.style.lineHeight = lineSpacing.toString();
+      document.body.style.backgroundColor = background;
+      document.body.style.color = fontColor;
     } else {
       // If not using styles then strip all classes
       const elems = document.querySelectorAll('*');
@@ -198,7 +216,7 @@ export class HTMLExporter {
    * @param mimeType- the mime type
    * @param extension - the file extension
    */
-  static exportHTML(
+  static webExport(
     content: string,
     mimeType: MIMEType = 'text/plain',
     extension: FileExtension = '.md',
@@ -221,6 +239,49 @@ export class HTMLExporter {
         await writable.write(blob);
         await writable.close();
       });
+    });
+  }
+
+  /**
+   * Export content as a PDF using the browser's print dialog.
+   *
+   * @param content - the editor content
+   */
+  static pdfWebExport(content: string) {
+    const awaitStyles = (win: Window, cb: () => void) => {
+      const links = Array.from(
+        win.document.querySelectorAll('link[rel="stylesheet"]'),
+      ) as HTMLLinkElement[];
+
+      let loaded = 0;
+      if (links.length === 0) return cb();
+
+      links.forEach((link) => {
+        link.addEventListener('load', () => {
+          loaded++;
+          if (loaded === links.length) cb();
+        });
+        link.addEventListener('error', () => {
+          loaded++;
+          if (loaded === links.length) cb();
+        });
+      });
+    };
+
+    // Open a new window with the generated HTML
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      console.error('Unable to open print window.');
+      return;
+    }
+
+    // Write the content and trigger print once loaded
+    printWindow.document.documentElement.innerHTML = content;
+
+    // Wait for stylesheets and resources to load before printing
+    awaitStyles(printWindow, () => {
+      printWindow.focus();
+      printWindow.print();
     });
   }
 }

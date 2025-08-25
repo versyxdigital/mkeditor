@@ -16,6 +16,7 @@ const senderWhitelist = [
   'to:editor:state',
   'to:settings:save',
   'to:html:export',
+  'to:pdf:export',
   'to:file:new',
   'to:file:open',
   'to:folder:open',

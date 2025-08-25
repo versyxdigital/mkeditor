@@ -1,4 +1,4 @@
-import type { EditorSettings } from '../interfaces/Editor';
+import type { SettingsFile } from '../interfaces/Editor';
 import { BaseDispatcher } from './Dispatcher';
 
 export class EditorDispatcher extends BaseDispatcher {
@@ -23,7 +23,7 @@ export class EditorDispatcher extends BaseDispatcher {
     });
   }
 
-  bridgeSettings({ settings }: { settings: EditorSettings }) {
+  bridgeSettings({ settings }: { settings: Partial<SettingsFile> }) {
     this.dispatchEvent({
       type: 'editor:bridge:settings',
       message: settings,

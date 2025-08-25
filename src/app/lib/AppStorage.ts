@@ -121,7 +121,9 @@ export class AppStorage {
 
       if (check !== 'ENOENT') {
         try {
-          writeFileSync(options.filePath, options.data, options.encoding);
+          writeFileSync(options.filePath, options.data, {
+            encoding: options.encoding ?? 'utf-8',
+          });
 
           context.webContents.send('from:notification:display', {
             status: 'success',
@@ -148,7 +150,9 @@ export class AppStorage {
         .showSaveDialog(context, config)
         .then(({ filePath }) => {
           try {
-            writeFileSync(<string>filePath, options.data, options.encoding);
+            writeFileSync(<string>filePath, options.data, {
+              encoding: options.encoding ?? 'utf-8',
+            });
 
             context.webContents.send('from:notification:display', {
               status: 'success',
@@ -175,6 +179,57 @@ export class AppStorage {
           });
         });
     }
+  }
+
+  /**
+   * Save a file to PDF.
+   *
+   * @param context - the browser window
+   * @param offscreen - the offscreen render window for the PDF
+   * @param options - save file options
+   * @returns
+   */
+  static async saveFileToPDF(
+    context: BrowserWindow,
+    offscreen: BrowserWindow,
+    options: SaveFileOptions,
+  ) {
+    const defaultPath = `pdf-export-${options.id}`;
+    offscreen.setTitle(defaultPath);
+
+    await offscreen.loadURL(
+      `data:text/html;charset=utf-8,${encodeURIComponent(options.data)}`,
+    );
+
+    await offscreen.webContents.executeJavaScript(`
+      (async () => {
+        await document.fonts?.ready;
+        const images = Array.from(document.images).map(img =>
+          img.complete ? Promise.resolve() :
+          new Promise(res => { img.onload = img.onerror = () => res(); })
+        );
+        await Promise.all(images);
+      })();
+    `);
+
+    const pdf = await offscreen.webContents.printToPDF({
+      pageSize: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
+
+    const { filePath } = await dialog.showSaveDialog(context, {
+      filters: [{ name: defaultPath, extensions: ['pdf'] }],
+      defaultPath: `${defaultPath}.pdf`,
+    });
+
+    if (!filePath) return;
+
+    writeFileSync(filePath, pdf, {
+      encoding: options.encoding ?? 'utf-8',
+    });
+
+    offscreen.destroy();
   }
 
   /**

@@ -1,4 +1,6 @@
 [data-theme='dark'] {
+  --form-range-track-bg: #cccccc;
+
   background-color: #222222 !important;
   color: #e1e1e1;
 
@@ -89,6 +91,12 @@
     border-color: #5f5f5f !important;
   }
 
+  .form-select {
+    background-color: #1a1a1a !important;
+    color: #eeeeee !important;
+    border-color: #5f5f5f !important;
+  }
+
   .table {
     --bs-table-bg: #222222;
     --bs-table-color: #eeeeee;
@@ -132,11 +140,6 @@
   .gutter.sidebar-gutter-horizontal {
     border-right: 1px solid rgb(28, 28, 28);
     background: #2d2d2d !important;
-  }
-
-  .form-check-input:checked {
-    background-color: #5f5f5f !important;
-    border-color: #5f5f5f !important;
   }
 
   .unsaved-changes-popup div {

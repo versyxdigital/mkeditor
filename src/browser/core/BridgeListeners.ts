@@ -6,7 +6,7 @@ import type {
   RenamedPath,
 } from '../interfaces/Bridge';
 import type { BridgeProviders, ValidModal } from '../interfaces/Providers';
-import type { EditorSettings } from '../interfaces/Editor';
+import type { SettingsFile } from '../interfaces/Editor';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import type { FileManager } from './FileManager';
 import type { FileTreeManager } from './FileTreeManager';
@@ -36,10 +36,12 @@ export function registerBridgeListeners(
   });
 
   // Set settings from stored settings file (%HOME%/.mkeditor/settings.json)
-  bridge.receive('from:settings:set', (s: EditorSettings) => {
+  bridge.receive('from:settings:set', (s: SettingsFile) => {
     settings.loadSettingsFromBridgeListener(s);
     providers.settings?.setSettings(s);
     providers.settings?.registerDOMListeners();
+    providers.exportSettings?.setSettings(s.exportSettings);
+    providers.exportSettings?.registerDOMListeners();
   });
 
   // Enable new files from outside of the renderer execution context.
