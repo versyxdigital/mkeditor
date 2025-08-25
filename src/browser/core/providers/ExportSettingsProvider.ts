@@ -112,7 +112,7 @@ export class ExportSettingsProvider {
     }
   }
 
-  private updateSettingsInLocalStorage() {
+  public updateSettingsInLocalStorage() {
     localStorage.setItem(
       'mkeditor-export-settings',
       JSON.stringify(this.settings),

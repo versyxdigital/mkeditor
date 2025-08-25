@@ -262,13 +262,17 @@ export class EditorManager {
       dom.buttons.resetExportSettings.addEventListener('click', (event) => {
         event.preventDefault();
         const { bridge, settings, exportSettings } = this.providers;
-        if (bridge && settings && exportSettings) {
+        if (exportSettings) {
           const defaults = exportSettings.getDefaultSettings();
-          bridge.saveSettingsToFile({
-            ...settings.getSettings(),
-            exportSettings: defaults,
-          });
           exportSettings.setSettings(defaults);
+          if (bridge && settings) {
+            bridge.saveSettingsToFile({
+              ...settings.getSettings(),
+              exportSettings: defaults,
+            });
+          } else {
+            exportSettings.updateSettingsInLocalStorage();
+          }
         }
       });
     }
