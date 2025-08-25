@@ -471,6 +471,16 @@
             <span class="d-none d-md-inline">with styles</span>
           </label>
         </div>
+        <div class="btn-group btn-group-sm me-2">
+          <a
+            class="text-muted hover-fade ms-3"
+            href="#"
+            data-bs-toggle="modal"
+            data-bs-target="#export-settings"
+          >
+            <i class="fas fa-cog me-1"></i>
+          </a>
+        </div>
       </div>
       <ul
         class="navbar-nav ms-auto d-none d-md-flex flex-row align-items-center"
@@ -612,6 +622,106 @@
             <div class="form-group d-flex align-items-center gap-3 mt-4 mb-3">
               <button
                 id="app-settings-save"
+                class="btn btn-sm btn-primary rounded-1"
+              >
+                <i class="fas fa-save"></i>
+                <span class="ms-1">Save Settings</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- export settings modal -->
+    <div class="modal" tabindex="-1" id="export-settings">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header border-bottom-0">
+            <h5 class="modal-title">Export settings</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body small pt-0">
+            <p class="text-muted">Here you can configure options for HTML and PDF exports.</p>
+            <hr />
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                id="export-setting-styles"
+              />
+              <label
+                class="form-check-label d-flex flex-column"
+                for="export-setting-styles"
+              >
+                <span>With styles</span>
+                <small class="text-muted"
+                  >Enable this to export with styles</small
+                >
+              </label>
+            </div>
+            <div class="form-group mt-3">
+              <label for="export-setting-container" class="form-label"
+                >Set container</label
+              >
+              <select
+                id="export-setting-container"
+                class="form-select form-select-sm"
+              >
+                <option value="container">container</option>
+                <option value="container-fluid">container-fluid</option>
+              </select>
+              <small class="text-muted"
+                >Set the container property on the export</small
+              >
+            </div>
+            <div class="form-group mt-3">
+              <label for="export-setting-fontsize" class="form-label"
+                >Set font-size</label
+              >
+              <input
+                type="number"
+                id="export-setting-fontsize"
+                class="form-control form-control-sm"
+                min="8"
+                value="16"
+                max="72"
+              />
+            </div>
+            <div class="form-group mt-3">
+              <label for="export-setting-linespacing" class="form-label"
+                >Set line-spacing</label
+              >
+              <input
+                type="range"
+                id="export-setting-linespacing"
+                class="form-range"
+                min="1"
+                max="3"
+                step="0.1"
+                value="1"
+              />
+            </div>
+            <div class="form-group mt-3">
+              <label for="export-setting-background" class="form-label"
+                >Set background colour</label
+              >
+              <input
+                type="text"
+                id="export-setting-background"
+                class="form-control form-control-sm"
+                placeholder="#ffffff"
+                value="#ffffff"
+              />
+            </div>
+            <div class="form-group d-flex align-items-center gap-3 mt-4 mb-3">
+              <button
+                id="export-settings-save"
                 class="btn btn-sm btn-primary rounded-1"
               >
                 <i class="fas fa-save"></i>
