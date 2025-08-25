@@ -3,11 +3,11 @@ import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { CharacterCount, WordCount } from '../extensions/WordCount';
 import { ScrollSync, invalidateLineElements } from '../extensions/ScrollSync';
-import { welcomeMarkdown } from '../assets/intro';
 import { Markdown } from './Markdown';
 import { HTMLExporter } from './HTMLExporter';
 import { APP_VERSION } from '../version';
 import { exportSettings as defaultExportSettings } from '../config';
+import { welcomeMarkdown } from '../assets/intro';
 import { dom } from '../dom';
 
 const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
@@ -332,7 +332,7 @@ export class EditorManager {
             type: 'pdf',
           });
         } else {
-          HTMLExporter.pdfWebExport(html);
+          HTMLExporter.webExport(html, 'text/html', '.pdf');
         }
       });
     }

@@ -221,6 +221,10 @@ export class HTMLExporter {
     mimeType: MIMEType = 'text/plain',
     extension: FileExtension = '.md',
   ) {
+    if (extension === '.pdf') {
+      return HTMLExporter.pdfWebExport(content);
+    }
+
     const blob = new Blob([content], { type: mimeType });
 
     async function createHandle() {
