@@ -687,7 +687,7 @@
                 <option value="container-fluid">container-fluid</option>
               </select>
               <small class="text-muted">
-                Set the container property for the export
+                Set the container width class, fluid is larger width.
               </small>
             </div>
             <div class="form-group mt-3">
@@ -702,9 +702,7 @@
                 value="16"
                 max="72"
               />
-              <small class="text-muted">
-                Set the font size in px for the export
-              </small>
+              <small class="text-muted"> Set the font size in px. </small>
             </div>
             <div class="form-group mt-3">
               <label for="export-setting-linespacing" class="form-label"
@@ -713,34 +711,51 @@
               <input
                 type="range"
                 id="export-setting-linespacing"
-                class="form-range"
+                class="form-range mb-0"
                 min="1"
                 max="3"
                 step="0.1"
                 value="1"
               />
-              <small class="text-muted">
-                Set the line spacing for the export
-              </small>
+              <small class="text-muted"> Set the vertical line spacing. </small>
             </div>
-            <div class="form-group mt-3">
-              <label for="export-setting-background" class="form-label"
-                >Set background colour</label
-              >
-              <div class="d-flex align-items-center gap-2 mb-2">
-                <input
-                  type="color"
-                  id="export-setting-background"
-                  class="form-control form-control-sm form-control-color border-0"
-                  value="#ffffff"
-                />
-                <span class="small text-muted" id="export-settings-color-hex"
-                  >#FFFFFF</span
+            <div class="d-flex flex-wrap align-items-center gap-5 mt-3">
+              <div class="form-group">
+                <label for="export-setting-background" class="form-label"
+                  >Set background colour</label
                 >
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <input
+                    type="color"
+                    id="export-setting-background"
+                    class="form-control form-control-sm form-control-color border-0"
+                    value="#ffffff"
+                  />
+                  <span class="small text-muted" id="export-settings-color-hex"
+                    >#FFFFFF</span
+                  >
+                </div>
+                <small class="text-muted"> Set the background colour. </small>
               </div>
-              <small class="text-muted">
-                Set the background colour for the export
-              </small>
+              <div class="form-group">
+                <label for="export-setting-font-color" class="form-label"
+                  >Set font colour</label
+                >
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <input
+                    type="color"
+                    id="export-setting-font-color"
+                    class="form-control form-control-sm form-control-color border-0"
+                    value="#000000"
+                  />
+                  <span
+                    class="small text-muted"
+                    id="export-settings-font-color-hex"
+                    >#000000</span
+                  >
+                </div>
+                <small class="text-muted"> Set the font colour. </small>
+              </div>
             </div>
             <div class="form-group d-flex align-items-center gap-3 mt-4 mb-3">
               <button
@@ -749,6 +764,13 @@
               >
                 <i class="fas fa-save"></i>
                 <span class="ms-1">Save Settings</span>
+              </button>
+              <button
+                id="export-settings-save"
+                class="btn btn-sm btn-secondary rounded-1"
+              >
+                <i class="fas fa-refresh"></i>
+                <span class="ms-1">Reset to Default</span>
               </button>
             </div>
           </div>
@@ -1049,6 +1071,14 @@
 
       colorInput.addEventListener('input', () => {
         colorHex.textContent = colorInput.value.toUpperCase();
+      });
+      const fColorInput = document.getElementById('export-setting-font-color');
+      const fColorHex = document.getElementById(
+        'export-settings-font-color-hex',
+      );
+
+      fColorInput.addEventListener('input', () => {
+        fColorHex.textContent = fColorInput.value.toUpperCase();
       });
     </script>
   </body>

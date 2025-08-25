@@ -287,7 +287,7 @@ export class EditorManager {
      * Get the rnedered HTML for export.
      * @returns - the rendered HTML
      */
-    const getRenderedHTML = () => {
+    const generateHTMLForExport = () => {
       const settings =
         this.providers.exportSettings?.getSettings() ?? defaultExportSettings;
 
@@ -303,7 +303,7 @@ export class EditorManager {
     if (dom.buttons.save.html) {
       dom.buttons.save.html.addEventListener('click', (event) => {
         event.preventDefault();
-        const html = getRenderedHTML();
+        const html = generateHTMLForExport();
 
         if (this.providers.bridge) {
           this.providers.bridge.exportToDifferentFormat({
@@ -320,7 +320,7 @@ export class EditorManager {
     if (dom.buttons.save.pdf) {
       dom.buttons.save.pdf.addEventListener('click', (event) => {
         event.preventDefault();
-        const html = getRenderedHTML();
+        const html = generateHTMLForExport();
 
         if (this.providers.bridge) {
           this.providers.bridge.exportToDifferentFormat({
