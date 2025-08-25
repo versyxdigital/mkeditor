@@ -10,6 +10,7 @@ import { APP_VERSION } from '../version';
 import { exportSettings as defaultExportSettings } from '../config';
 import { welcomeMarkdown } from '../assets/intro';
 import { dom } from '../dom';
+import { setPreviewStyle } from '../util';
 
 const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
   let timeout: number | null = null;
@@ -73,27 +74,6 @@ export class EditorManager {
       CharacterCount(value);
       this.render(value);
     });
-
-    this.dispatcher.addEventListener(
-      'editor:preview:update-config',
-      (event) => {
-        const esx = event.message as ExportSettings;
-        this.previewHTMLElement.classList.remove(
-          'container',
-          'container-fluid',
-        );
-
-        if (esx.withStyles) {
-          this.previewHTMLElement.classList.add(esx.container);
-        }
-
-        this.previewHTMLElement.style.fontSize = `${esx.fontSize}px`;
-        this.previewHTMLElement.style.lineHeight = esx.lineSpacing.toString();
-        // TODO... Consider theme when changing this
-        // this.previewHTMLElement.style.backgroundColor = esx.background;
-        // this.previewHTMLElement.style.color = esx.fontColor;
-      },
-    );
 
     if (opts.init) {
       this.create({ watch: opts.watch });

@@ -1,6 +1,7 @@
 import type { EditorDispatcher } from '../../events/EditorDispatcher';
 import type { ExportSettings } from '../../interfaces/Editor';
 import { exportSettings as defaults } from '../../config';
+import { setPreviewStyle } from '../../util';
 import { dom } from '../../dom';
 
 export class ExportSettingsProvider {
@@ -54,11 +55,10 @@ export class ExportSettingsProvider {
     ex.background.value = settings.background;
     ex.fontColor.value = settings.fontColor;
 
-    if (reset) {
-      this.dispatcher.updatePreviewFromExportConfig({
-        settings: defaults,
-      });
-    }
+    console.log({ settings });
+
+    if (reset) setPreviewStyle(defaults, dom.preview.dom);
+    else setPreviewStyle(settings, dom.preview.dom);
   }
 
   public registerDOMListeners() {
@@ -125,8 +125,6 @@ export class ExportSettingsProvider {
       });
     }
 
-    this.dispatcher.updatePreviewFromExportConfig({
-      settings: this.settings,
-    });
+    setPreviewStyle(this.settings, dom.preview.dom);
   }
 }

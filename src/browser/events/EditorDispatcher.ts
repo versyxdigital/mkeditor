@@ -30,13 +30,6 @@ export class EditorDispatcher extends BaseDispatcher {
     });
   }
 
-  updatePreviewFromExportConfig({ settings }: { settings: ExportSettings }) {
-    this.dispatchEvent({
-      type: 'editor:preview:update-config',
-      message: settings,
-    });
-  }
-
   render() {
     this.dispatchEvent({
       type: 'editor:render',
