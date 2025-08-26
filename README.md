@@ -12,8 +12,8 @@ The simple markdown editor.
 
 Use it through your [browser](https://versyxdigital.github.io/mkeditor/web/) or download for desktop. More documentation is available at the [website](https://versyxdigital.github.io/mkeditor).
 
-![MKEditor](https://versyxdigital.github.io/mkeditor/assets/demo-dark.png)
-![MKEditor](https://versyxdigital.github.io/mkeditor/assets/demo.png)
+![MKEditor](https://versyxdigital.github.io/mkeditor/assets/img/demo-dark.png)
+![MKEditor](https://versyxdigital.github.io/mkeditor/assets/img/demo.png)
 
 # Welcome
 
