@@ -55,7 +55,7 @@
     "monaco-editor": "^0.52.2",
     "monaco-editor-webpack-plugin": "^7.1.0",
     "prettier": "^3.6.2",
-    "sass": "^1.90.0",
+    "sass": "^1.91.0",
     "sass-loader": "^16.0.5",
     "split.js": "^1.6.5",
     "style-loader": "^4.0.0",
