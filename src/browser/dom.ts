@@ -96,6 +96,7 @@ export const dom = {
     dom: <HTMLDivElement>document.querySelector('#editor'),
   },
   preview: {
+    wrapper: <HTMLDivElement>document.querySelector('#preview'),
     dom: <HTMLDivElement>document.querySelector('#preview-content'),
   },
   tabs: <HTMLUListElement>document.querySelector('#editor-tabs'),

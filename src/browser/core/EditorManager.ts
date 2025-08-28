@@ -215,7 +215,7 @@ export class EditorManager {
       const visibleRange = this.mkeditor?.getVisibleRanges()[0];
       if (visibleRange) {
         // Note: requires markdown line-numbers extension to be active
-        ScrollSync(visibleRange.startLineNumber, this.previewHTMLElement);
+        ScrollSync(visibleRange.startLineNumber, dom.preview.wrapper);
       }
     });
   }
