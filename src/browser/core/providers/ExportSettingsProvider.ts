@@ -85,6 +85,7 @@ export class ExportSettingsProvider {
     };
 
     ex.withStyles.addEventListener('change', (e) => {
+      if (this.isApplying) return;
       const target = e.target as HTMLInputElement;
       this.settings.withStyles = target.checked;
       const toolbar = buttons.save.styled as HTMLInputElement;
@@ -93,18 +94,21 @@ export class ExportSettingsProvider {
     });
 
     ex.container.addEventListener('change', (e) => {
+      if (this.isApplying) return;
       const target = e.target as HTMLSelectElement;
       this.settings.container = target.value as 'container' | 'container-fluid';
       persist();
     });
 
     ex.fontSize.addEventListener('change', (e) => {
+      if (this.isApplying) return;
       const target = e.target as HTMLInputElement;
       this.settings.fontSize = parseInt(target.value, 10);
       persist();
     });
 
     ex.lineSpacing.addEventListener('input', (e) => {
+      if (this.isApplying) return;
       const target = e.target as HTMLInputElement;
       this.settings.lineSpacing = parseFloat(target.value);
       this.setUIState();
@@ -112,12 +116,14 @@ export class ExportSettingsProvider {
     });
 
     ex.background.addEventListener('change', (e) => {
+      if (this.isApplying) return;
       const target = e.target as HTMLInputElement;
       this.settings.background = target.value;
       persist();
     });
 
     ex.fontColor.addEventListener('change', (e) => {
+      if (this.isApplying) return;
       const target = e.target as HTMLInputElement;
       this.settings.fontColor = target.value;
       persist();
@@ -126,6 +132,7 @@ export class ExportSettingsProvider {
     const toolbar = buttons.save.styled as HTMLInputElement;
     if (toolbar) {
       toolbar.addEventListener('change', (e) => {
+        if (this.isApplying) return;
         const target = e.target as HTMLInputElement;
         this.settings.withStyles = target.checked;
         ex.withStyles.checked = target.checked;
