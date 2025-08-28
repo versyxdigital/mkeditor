@@ -11,21 +11,8 @@ import { HTMLExporter } from './HTMLExporter';
 import { APP_VERSION } from '../version';
 import { exportSettings as defaultExportSettings } from '../config';
 import { welcomeMarkdown } from '../assets/intro';
+import { debounce } from '../util';
 import { dom } from '../dom';
-
-const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
-  let timeout: number | null = null;
-  return (...args: Parameters<F>) => {
-    if (timeout) {
-      window.clearTimeout(timeout);
-    }
-
-    timeout = window.setTimeout(() => {
-      timeout = null;
-      fn(...args);
-    }, wait);
-  };
-};
 
 interface EditorConstructOptions {
   dispatcher: EditorDispatcher;
@@ -43,12 +30,6 @@ export class EditorManager {
   /** The loaded original editor value for tracking */
   private loadedInitialEditorValue: string | null = null;
 
-  /** The editor HTML element (mount point) */
-  private editorHTMLElement: HTMLElement;
-
-  /** The preview HTML element (mount point) */
-  private previewHTMLElement: HTMLElement;
-
   /** Editor functional providers */
   public providers: EditorProviders = {
     bridge: null,
@@ -63,8 +44,6 @@ export class EditorManager {
    */
   public constructor(opts: EditorConstructOptions) {
     this.dispatcher = opts.dispatcher;
-    this.editorHTMLElement = dom.editor.dom;
-    this.previewHTMLElement = dom.preview.dom;
 
     dom.about.version.innerHTML = APP_VERSION;
     dom.build.innerHTML = `v${APP_VERSION}`;
@@ -101,7 +80,7 @@ export class EditorManager {
     try {
       // Create the underlying monaco editor.
       // See https://microsoft.github.io/monaco-editor/
-      this.mkeditor = editor.create(this.editorHTMLElement, {
+      this.mkeditor = editor.create(dom.editor.dom, {
         value: welcomeMarkdown,
         language: 'markdown',
         wordBasedSuggestions: 'off',
@@ -130,7 +109,7 @@ export class EditorManager {
       // Resize listeners to resize the editor.
       window.onload = () => this.mkeditor?.layout();
       window.onresize = () => this.mkeditor?.layout();
-      this.previewHTMLElement.onresize = () => this.mkeditor?.layout();
+      dom.preview.dom.onresize = () => this.mkeditor?.layout();
 
       // Initialize word count and character count values
       const value = this.mkeditor.getValue();
@@ -175,7 +154,7 @@ export class EditorManager {
   public render(value?: string) {
     if (this.mkeditor) {
       const content = value ?? this.mkeditor.getValue();
-      this.previewHTMLElement.innerHTML = Markdown.render(content);
+      dom.preview.dom.innerHTML = Markdown.render(content);
       invalidateLineElements();
     }
   }
@@ -305,10 +284,7 @@ export class EditorManager {
       const settings =
         this.providers.exportSettings?.getSettings() ?? defaultExportSettings;
 
-      return HTMLExporter.generateHTML(
-        this.previewHTMLElement.outerHTML,
-        settings,
-      );
+      return HTMLExporter.generateHTML(dom.preview.dom.outerHTML, settings);
     };
 
     // Register the event listener for the editor UI export HTML button.
