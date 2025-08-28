@@ -1,4 +1,4 @@
-import { dom } from '../dom';
+import { dom } from '../../dom';
 
 let lineElements: { element: HTMLElement; line: number }[] = [];
 let needsRefresh = true;

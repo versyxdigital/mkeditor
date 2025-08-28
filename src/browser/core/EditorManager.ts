@@ -1,8 +1,11 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
-import { CharacterCount, WordCount } from '../extensions/WordCount';
-import { ScrollSync, invalidateLineElements } from '../extensions/ScrollSync';
+import { CharacterCount, WordCount } from '../extensions/editor/WordCount';
+import {
+  ScrollSync,
+  invalidateLineElements,
+} from '../extensions/editor/ScrollSync';
 import { Markdown } from './Markdown';
 import { HTMLExporter } from './HTMLExporter';
 import { APP_VERSION } from '../version';

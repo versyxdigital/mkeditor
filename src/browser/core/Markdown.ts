@@ -16,11 +16,11 @@ import xml from 'highlight.js/lib/languages/xml';
 import yaml from 'highlight.js/lib/languages/yaml';
 
 import MarkdownIt from 'markdown-it';
-import AlertBlock from '../extensions/AlertBlock';
-import LineNumber from '../extensions/LineNumber';
-import LinkTarget from '../extensions/LinkTarget';
-import ImageStyle from '../extensions/ImageStyle';
-import TableStyle from '../extensions/TableStyle';
+import AlertBlock from '../extensions/renderer/AlertBlock';
+import LineNumber from '../extensions/renderer/LineNumber';
+import LinkTarget from '../extensions/renderer/LinkTarget';
+import ImageStyle from '../extensions/renderer/ImageStyle';
+import TableStyle from '../extensions/renderer/TableStyle';
 import MarkdownItKatex from '@vscode/markdown-it-katex';
 
 hljs.registerLanguage('javascript', javascript);

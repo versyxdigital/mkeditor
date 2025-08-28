@@ -1,6 +1,6 @@
 import type MarkdownIt from 'markdown-it';
 import MarkdownItContainer from 'markdown-it-container';
-import { selfRender } from '../util';
+import { selfRender } from '../../util';
 
 let handler: MarkdownIt;
 let containerOpenCount: number;

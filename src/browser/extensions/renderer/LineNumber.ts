@@ -1,6 +1,6 @@
 import type MarkdownIt from 'markdown-it';
-import { selfRender } from '../util';
-import { dom } from '../dom';
+import { selfRender } from '../../util';
+import { dom } from '../../dom';
 
 const LineNumber = (md: MarkdownIt) => {
   const rules = [

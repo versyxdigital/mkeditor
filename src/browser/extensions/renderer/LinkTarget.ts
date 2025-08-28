@@ -1,5 +1,5 @@
 import type MarkdownIt from 'markdown-it';
-import { selfRender } from '../util';
+import { selfRender } from '../../util';
 
 const LinkTarget = (md: MarkdownIt) => {
   const render = md.renderer.rules.link_open || selfRender;
