@@ -1,6 +1,7 @@
 import type { EditorDispatcher } from '../../events/EditorDispatcher';
 import type { ExportSettings } from '../../interfaces/Editor';
 import { exportSettings as defaults } from '../../config';
+import { syncPreviewToExportSettings } from '../../util';
 import { dom } from '../../dom';
 
 export class ExportSettingsProvider {
@@ -17,7 +18,14 @@ export class ExportSettingsProvider {
   }
 
   public getDefaultSettings() {
-    return defaults;
+    return {
+      withStyles: true,
+      container: 'container-fluid',
+      fontSize: 16,
+      lineSpacing: 1.5,
+      background: '#ffffff',
+      fontColor: '#212529',
+    } as ExportSettings;
   }
 
   public getSettings() {
@@ -41,11 +49,11 @@ export class ExportSettingsProvider {
     this.setUIState();
   }
 
-  public setUIState(reset = false) {
+  public setUIState() {
     const { exports: ex } = dom;
     if (!ex) return;
 
-    const settings = reset ? defaults : this.settings;
+    const settings = this.settings;
 
     ex.withStyles.checked = settings.withStyles;
     ex.container.value = settings.container;
@@ -53,6 +61,8 @@ export class ExportSettingsProvider {
     ex.lineSpacing.value = settings.lineSpacing?.toString();
     ex.background.value = settings.background;
     ex.fontColor.value = settings.fontColor;
+
+    syncPreviewToExportSettings(settings, dom.preview.dom);
   }
 
   public registerDOMListeners() {
@@ -102,7 +112,7 @@ export class ExportSettingsProvider {
     }
   }
 
-  private updateSettingsInLocalStorage() {
+  public updateSettingsInLocalStorage() {
     localStorage.setItem(
       'mkeditor-export-settings',
       JSON.stringify(this.settings),
@@ -118,5 +128,7 @@ export class ExportSettingsProvider {
         settings: { exportSettings: this.settings },
       });
     }
+
+    syncPreviewToExportSettings(this.settings, dom.preview.dom);
   }
 }

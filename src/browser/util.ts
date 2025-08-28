@@ -2,6 +2,7 @@ import type { Options, Token } from 'markdown-it';
 import type Renderer from 'markdown-it/lib/renderer.mjs';
 import Swal, { type SweetAlertIcon } from 'sweetalert2';
 import type { ContextBridgeAPI } from './interfaces/Bridge';
+import type { ExportSettings } from './interfaces/Editor';
 
 /**
  * Generate a random number between two numbers.
@@ -108,6 +109,26 @@ export function withMdExtension(name: string) {
   }
 
   return filename;
+}
+
+/**
+ * Set the preview style based on export settings.
+ *
+ * @param settings - the export settings.
+ * @param elem - the preview element.
+ */
+export function syncPreviewToExportSettings(
+  settings: ExportSettings,
+  elem: HTMLElement,
+) {
+  elem.classList.remove('container', 'container-fluid');
+
+  if (settings.withStyles) {
+    elem.classList.add(settings.container);
+  }
+
+  elem.style.fontSize = `${settings.fontSize}px`;
+  elem.style.lineHeight = settings.lineSpacing.toString();
 }
 
 /**
