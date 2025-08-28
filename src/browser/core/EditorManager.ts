@@ -1,6 +1,7 @@
 import { editor, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
+import { autoContinueListMarkers } from './completion/lists';
 import { CharacterCount, WordCount } from '../extensions/editor/WordCount';
 import {
   ScrollSync,
@@ -196,38 +197,13 @@ export class EditorManager {
       ) {
         this.isAutoListInProgress = true;
         try {
-          const model = this.mkeditor?.getModel();
-          const position = this.mkeditor?.getPosition();
-          if (model && position) {
-            const prevLineNumber = Math.max(1, position.lineNumber - 1);
-            const prevLineText = model.getLineContent(prevLineNumber);
-
-            // Derive next list prefix from previous line
-            const nextPrefix = this.getNextListPrefix(prevLineText);
-            if (nextPrefix) {
-              const selection = this.mkeditor?.getSelection();
-              if (selection) {
-                const insertRange = {
-                  startLineNumber: selection.positionLineNumber,
-                  startColumn: selection.positionColumn,
-                  endLineNumber: selection.positionLineNumber,
-                  endColumn: selection.positionColumn,
-                };
-                this.mkeditor?.executeEdits('mkeditor:auto-list', [
-                  {
-                    range: insertRange,
-                    text: nextPrefix,
-                    forceMoveMarkers: true,
-                  },
-                ]);
-              }
-            }
-          }
+          autoContinueListMarkers(this.mkeditor);
         } finally {
           this.shouldHandleEnterList = false;
           this.isAutoListInProgress = false;
         }
       }
+
       // Update the tracked content over the execution bridge.
       debouncedUpdateBridgedContent();
 
@@ -258,36 +234,6 @@ export class EditorManager {
         }
       }
     });
-  }
-
-  /**
-   * Determine the next list prefix (e.g. "2. ", "- ") based on previous line.
-   * Preserves ordered list delimiter ("." or ")") and unordered marker ("-", "+", or "*").
-   */
-  private getNextListPrefix(line: string): string | null {
-    // Checkbox list (e.g. "- [ ] item" or "- [x] item") -> continue with unchecked box
-    const checkbox = line.match(/^(\s*)([-+*])\s+\[[ xX]\](?:\s+|$)/);
-    if (checkbox) {
-      const marker = checkbox[2];
-      return `${marker} [ ] `;
-    }
-
-    // Unordered lists: preserve the same marker the user used
-    const unordered = line.match(/^(\s*)([-+*])(?:\s+|$)/);
-    if (unordered) {
-      const marker = unordered[2];
-      return `${marker} `;
-    }
-
-    // Ordered lists: increment the number and preserve delimiter
-    const ordered = line.match(/^(\s*)(\d+)([.)])(?:\s+|$)/);
-    if (ordered) {
-      const n = parseInt(ordered[2], 10) + 1;
-      const delim = ordered[3];
-      return `${n}${delim} `;
-    }
-
-    return null;
   }
 
   /**
