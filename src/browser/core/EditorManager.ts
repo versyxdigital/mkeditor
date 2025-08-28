@@ -3,11 +3,11 @@ import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { CharacterCount, WordCount } from '../extensions/WordCount';
 import { ScrollSync, invalidateLineElements } from '../extensions/ScrollSync';
-import { welcomeMarkdown } from '../assets/intro';
 import { Markdown } from './Markdown';
 import { HTMLExporter } from './HTMLExporter';
 import { APP_VERSION } from '../version';
 import { exportSettings as defaultExportSettings } from '../config';
+import { welcomeMarkdown } from '../assets/intro';
 import { dom } from '../dom';
 
 const debounce = <F extends (...args: any[]) => void>(fn: F, wait: number) => {
@@ -215,7 +215,7 @@ export class EditorManager {
       const visibleRange = this.mkeditor?.getVisibleRanges()[0];
       if (visibleRange) {
         // Note: requires markdown line-numbers extension to be active
-        ScrollSync(visibleRange.startLineNumber, this.previewHTMLElement);
+        ScrollSync(visibleRange.startLineNumber, dom.preview.wrapper);
       }
     });
   }
@@ -262,12 +262,17 @@ export class EditorManager {
       dom.buttons.resetExportSettings.addEventListener('click', (event) => {
         event.preventDefault();
         const { bridge, settings, exportSettings } = this.providers;
-        if (bridge && settings && exportSettings) {
-          bridge.saveSettingsToFile({
-            ...settings.getSettings(),
-            exportSettings: exportSettings.getDefaultSettings(),
-          });
-          exportSettings.setUIState(true); // reset
+        if (exportSettings) {
+          const defaults = exportSettings.getDefaultSettings();
+          exportSettings.setSettings(defaults);
+          if (bridge && settings) {
+            bridge.saveSettingsToFile({
+              ...settings.getSettings(),
+              exportSettings: defaults,
+            });
+          } else {
+            exportSettings.updateSettingsInLocalStorage();
+          }
         }
       });
     }
@@ -298,7 +303,7 @@ export class EditorManager {
         this.providers.exportSettings?.getSettings() ?? defaultExportSettings;
 
       return HTMLExporter.generateHTML(
-        this.previewHTMLElement.innerHTML,
+        this.previewHTMLElement.outerHTML,
         settings,
       );
     };
@@ -332,7 +337,7 @@ export class EditorManager {
             type: 'pdf',
           });
         } else {
-          HTMLExporter.pdfWebExport(html);
+          HTMLExporter.webExport(html, 'text/html', '.pdf');
         }
       });
     }

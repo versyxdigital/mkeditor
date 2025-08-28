@@ -72,6 +72,16 @@ const ScrollSync = async (line: number, preview: HTMLElement) => {
       Math.max(1, preview.scrollTop + scrollTo),
     );
 
+    // If we're at the top of the editor then force scroll top
+    if (line === 1) preview.scroll({ top: 0 });
+
+    // console.log({
+    //   scrollTop: preview.scrollTop,
+    //   scrollTo: scrollTo,
+    //   currLine: line,
+    //   nextLine: next?.line ?? null,
+    // });
+
     return resolve(preview);
   });
 };

@@ -96,7 +96,8 @@ export const dom = {
     dom: <HTMLDivElement>document.querySelector('#editor'),
   },
   preview: {
-    dom: <HTMLDivElement>document.querySelector('#preview'),
+    wrapper: <HTMLDivElement>document.querySelector('#preview'),
+    dom: <HTMLDivElement>document.querySelector('#preview-content'),
   },
   tabs: <HTMLUListElement>document.querySelector('#editor-tabs'),
   filetree: <HTMLUListElement>document.querySelector('#file-tree'),

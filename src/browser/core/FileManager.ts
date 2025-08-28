@@ -306,15 +306,21 @@ export class FileManager {
   }
 
   /**
-   * Export an active file preview to HTML
+   * Export an active file to HTML
    *
-   * @param content - the preview HTML content
+   * @param content - the HTML content
    * @returns
    */
   public exportToHTML(content: string) {
     this.bridge.send('to:html:export', { content });
   }
 
+  /**
+   * Export an active file to PDF
+   *
+   * @param content - the HTML content
+   * @returns
+   */
   public exportToPDF(content: string) {
     this.bridge.send('to:pdf:export', { content });
   }
