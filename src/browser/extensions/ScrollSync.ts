@@ -72,6 +72,9 @@ const ScrollSync = async (line: number, preview: HTMLElement) => {
       Math.max(1, preview.scrollTop + scrollTo),
     );
 
+    // TODO fix scroll top margin properly
+    if (preview.scrollTop <= 125) preview.scrollTop = 0;
+
     return resolve(preview);
   });
 };
