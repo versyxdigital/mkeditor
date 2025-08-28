@@ -89,12 +89,12 @@ export class CompletionProvider {
    *
    * @param event - the model content change event
    */
-  public autoContinueListMarkers(event: editor.IModelContentChangedEvent) {
+  public autoContinueListMarkers(changes: editor.IModelContentChange[]) {
     // Auto-continue list markers when Enter was pressed
     if (
       this.shouldHandleEnterList &&
       !this.isAutoListInProgress &&
-      event.changes.some((c) => c.text.includes('\n'))
+      changes.some((c) => c.text.includes('\n'))
     ) {
       this.isAutoListInProgress = true;
       try {
@@ -111,7 +111,7 @@ export class CompletionProvider {
    *
    * @param value - tracking value to detect
    */
-  public async changeOnValidProposal(value: string) {
+  public async suggestOnValidInput(value: string) {
     // Fetch potential auto-completions proposal.
     const proposal = this.trackBufferContents(value);
     // Update the provider to provide matching auto-completions.

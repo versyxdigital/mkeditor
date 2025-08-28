@@ -183,15 +183,14 @@ export class EditorManager {
     // so that it can do things such as set the title notifying the user of unsaved changes,
     // prompt the user to save if they try to close the app or open a new file, etc.
     this.mkeditor?.onDidChangeModelContent((event) => {
-      // Auto-continue list markers when Enter was pressed
-      this.providers?.completion?.autoContinueListMarkers(event);
-
       // Update the tracked content over the execution bridge.
       debouncedUpdateBridgedContent();
 
-      // Register dynamic completions provider to provide completion suggestions based on
-      // user input.
-      this.providers.completion?.changeOnValidProposal(event.changes[0].text);
+      // Auto-continue list markers when Enter was pressed.
+      this.providers.completion?.autoContinueListMarkers(event.changes);
+
+      // Register dynamic completions provider to suggest items based on input.
+      this.providers.completion?.suggestOnValidInput(event.changes[0].text);
 
       // Add a small timeout for the render.
       setTimeout(() => {
