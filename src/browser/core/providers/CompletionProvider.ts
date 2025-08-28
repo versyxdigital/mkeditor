@@ -8,7 +8,8 @@ import {
 import { CircularBuffer } from 'circle-buffer';
 import type { CompletionItem, Matcher } from '../../interfaces/Completion';
 import type { EditorDispatcher } from '../../events/EditorDispatcher';
-import { completion } from '../mappings/completionItems';
+import { autoCompleteFencedConfig } from '../completion/fencedBlocks';
+import { autoContinueListMarkers } from '../completion/listMarkers';
 
 export class CompletionProvider {
   /** Editor instance */
@@ -25,6 +26,12 @@ export class CompletionProvider {
 
   /** Completion provider matching criteria */
   private matchers: Record<string, Matcher>;
+
+  /** Flag to gate auto list continuation logic */
+  public shouldHandleEnterList = false;
+
+  /** Guard to prevent recursive content-change handling */
+  public isAutoListInProgress = false;
 
   /**
    * Create a new mkeditor completion provider.
@@ -46,7 +53,7 @@ export class CompletionProvider {
     // Use alertblocks to initalise the first completion provider. New providers will be
     // registered afterwards depending on what the user types.
     this.provider = this.registerCompletionProvider(
-      completion.alertblocks.regex,
+      autoCompleteFencedConfig.alertblocks.regex,
       this.alertBlockProposals,
     );
 
@@ -54,11 +61,11 @@ export class CompletionProvider {
     // proposed auto-completions.
     this.matchers = {
       alertblocks: {
-        regex: completion.alertblocks.regex,
+        regex: autoCompleteFencedConfig.alertblocks.regex,
         proposals: this.alertBlockProposals,
       },
       codeblocks: {
-        regex: completion.codeblocks.regex,
+        regex: autoCompleteFencedConfig.codeblocks.regex,
         proposals: this.codeBlockProposals,
       },
     };
@@ -78,6 +85,28 @@ export class CompletionProvider {
   }
 
   /**
+   * Auto-continue list-markers.
+   *
+   * @param event - the model content change event
+   */
+  public autoContinueListMarkers(event: editor.IModelContentChangedEvent) {
+    // Auto-continue list markers when Enter was pressed
+    if (
+      this.shouldHandleEnterList &&
+      !this.isAutoListInProgress &&
+      event.changes.some((c) => c.text.includes('\n'))
+    ) {
+      this.isAutoListInProgress = true;
+      try {
+        autoContinueListMarkers(this.mkeditor);
+      } finally {
+        this.shouldHandleEnterList = false;
+        this.isAutoListInProgress = false;
+      }
+    }
+  }
+
+  /**
    * Change the providre when a valid completion proposal is detected.
    *
    * @param value - tracking value to detect
@@ -86,9 +115,9 @@ export class CompletionProvider {
     // Fetch potential auto-completions proposal.
     const proposal = this.trackBufferContents(value);
     // Update the provider to provide matching auto-completions.
-    if (proposal === completion.alertblocks.literal) {
+    if (proposal === autoCompleteFencedConfig.alertblocks.literal) {
       await this.updateCompletionProvider('alertblocks');
-    } else if (proposal === completion.codeblocks.literal) {
+    } else if (proposal === autoCompleteFencedConfig.codeblocks.literal) {
       await this.updateCompletionProvider('codeblocks');
     }
   }
@@ -99,34 +128,30 @@ export class CompletionProvider {
    * @param type - the type of provider for the matching criteria
    */
   public async updateCompletionProvider(type: keyof typeof this.matchers) {
-    if (!this.mkeditor) {
-      return;
+    try {
+      // Remove the existing provider (otherwise you get duplicates).
+      await this.disposeCompletionProvider();
+
+      // Register the new provider, passing the pattern to match and proposals
+      // to suggest.
+      this.provider = this.registerCompletionProvider(
+        this.matchers[type].regex,
+        this.matchers[type].proposals,
+      );
+
+      this.mkeditor.trigger('completion', 'editor.action.triggerSuggest', {});
+    } catch {
+      console.error(`Failed to update completion provider for type: ${type}`);
     }
-
-    // Remove the existing provider (otherwise you get duplicates).
-    await this.disposeCompletionProvider();
-
-    // Register the new provider, passing the pattern to match and proposals
-    // to suggest.
-    this.provider = this.registerCompletionProvider(
-      this.matchers[type].regex,
-      this.matchers[type].proposals,
-    );
-
-    this.mkeditor.trigger('completion', 'editor.action.triggerSuggest', {});
-
-    console.log(`Registered new completion provider for ${type}`);
   }
 
   /**
    * Dispose the current completion provider.
    */
   private async disposeCompletionProvider() {
-    if (this.provider) {
-      this.provider.dispose();
-      this.provider = null;
-      console.log('Disposed completion provider...');
-    }
+    this.provider?.dispose();
+    this.provider = null;
+    console.log('Disposed completion provider...');
   }
 
   /**
@@ -232,12 +257,12 @@ export class CompletionProvider {
    */
   private alertBlockProposals(range: IRange) {
     const proposals: CompletionItem[] = [];
-    for (const alert of completion.alertblocks.types) {
+    for (const alert of autoCompleteFencedConfig.alertblocks.types) {
       proposals.push({
-        label: `${completion.alertblocks.literal} ${alert}`,
+        label: `${autoCompleteFencedConfig.alertblocks.literal} ${alert}`,
         kind: languages.CompletionItemKind.Function,
         documentation: `${alert} alert block`,
-        insertText: `${alert}\n<your text here>\n${completion.alertblocks.literal}`,
+        insertText: `${alert}\n<your text here>\n${autoCompleteFencedConfig.alertblocks.literal}`,
         range,
       });
     }
@@ -253,12 +278,12 @@ export class CompletionProvider {
    */
   private codeBlockProposals(range: IRange) {
     const proposals: CompletionItem[] = [];
-    for (const lang of completion.codeblocks.types) {
+    for (const lang of autoCompleteFencedConfig.codeblocks.types) {
       proposals.push({
-        label: completion.codeblocks.literal + lang,
+        label: autoCompleteFencedConfig.codeblocks.literal + lang,
         kind: languages.CompletionItemKind.Function,
         documentation: `${lang} code block`,
-        insertText: `${lang}\n<your code here>\n${completion.codeblocks.literal}`,
+        insertText: `${lang}\n<your code here>\n${autoCompleteFencedConfig.codeblocks.literal}`,
         range,
       });
     }

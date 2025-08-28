@@ -1,7 +1,6 @@
 import { editor, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
-import { autoContinueListMarkers } from './completion/lists';
 import { CharacterCount, WordCount } from '../extensions/editor/WordCount';
 import {
   ScrollSync,
@@ -30,12 +29,6 @@ export class EditorManager {
 
   /** The loaded original editor value for tracking */
   private loadedInitialEditorValue: string | null = null;
-
-  /** Flag to gate auto list continuation logic */
-  private shouldHandleEnterList = false;
-
-  /** Guard to prevent recursive content-change handling */
-  private isAutoListInProgress = false;
 
   /** Editor functional providers */
   public providers: EditorProviders = {
@@ -177,11 +170,12 @@ export class EditorManager {
 
     // Track Enter key presses to determine if we should attempt list continuation
     this.mkeditor?.onKeyDown((e) => {
+      if (!this.providers.completion) return;
       if (e.keyCode === KeyCode.Enter) {
         // Only auto-continue lists on plain Enter (not Shift+Enter)
-        this.shouldHandleEnterList = !e.shiftKey;
+        this.providers.completion.shouldHandleEnterList = !e.shiftKey;
       } else {
-        this.shouldHandleEnterList = false;
+        this.providers.completion.shouldHandleEnterList = false;
       }
     });
 
@@ -190,19 +184,7 @@ export class EditorManager {
     // prompt the user to save if they try to close the app or open a new file, etc.
     this.mkeditor?.onDidChangeModelContent((event) => {
       // Auto-continue list markers when Enter was pressed
-      if (
-        this.shouldHandleEnterList &&
-        !this.isAutoListInProgress &&
-        event.changes.some((c) => c.text.includes('\n'))
-      ) {
-        this.isAutoListInProgress = true;
-        try {
-          autoContinueListMarkers(this.mkeditor);
-        } finally {
-          this.shouldHandleEnterList = false;
-          this.isAutoListInProgress = false;
-        }
-      }
+      this.providers?.completion?.autoContinueListMarkers(event);
 
       // Update the tracked content over the execution bridge.
       debouncedUpdateBridgedContent();
