@@ -194,10 +194,12 @@ export class EditorManager {
     // Note: this method isn't perfect, for example, in cases of large images there is
     // a slight discrepancy of about 20-30px, but for the most part it works.
     this.mkeditor?.onDidScrollChange(() => {
-      const visibleRange = this.mkeditor?.getVisibleRanges()[0];
-      if (visibleRange) {
-        // Note: requires markdown line-numbers extension to be active
-        ScrollSync(visibleRange.startLineNumber, dom.preview.wrapper);
+      if (this.providers.settings?.getSetting('scrollsync')) {
+        const visibleRange = this.mkeditor?.getVisibleRanges()[0];
+        if (visibleRange) {
+          // Note: requires markdown line-numbers extension to be active
+          ScrollSync(visibleRange.startLineNumber, dom.preview.wrapper);
+        }
       }
     });
   }

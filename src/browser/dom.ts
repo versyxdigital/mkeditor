@@ -29,6 +29,7 @@ export const dom = {
     systemtheme: <HTMLInputElement>(
       document.querySelector('#systemtheme-setting')
     ),
+    scrollsync: <HTMLInputElement>document.querySelector('#scrollsync-setting'),
     fileinfo: <HTMLParagraphElement>(
       document.querySelector('#app-settings-file-info')
     ),

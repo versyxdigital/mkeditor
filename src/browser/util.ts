@@ -7,11 +7,14 @@ import type { ExportSettings } from './interfaces/Editor';
 /**
  * Debounce to delay execution.
  *
- * @param fn 
- * @param wait 
- * @returns 
+ * @param fn
+ * @param wait
+ * @returns
  */
-export function debounce<F extends (...args: any[]) => void>(fn: F, wait: number) {
+export function debounce<F extends (...args: any[]) => void>(
+  fn: F,
+  wait: number,
+) {
   let timeout: number | null = null;
   return (...args: Parameters<F>) => {
     if (timeout) {
@@ -23,7 +26,7 @@ export function debounce<F extends (...args: any[]) => void>(fn: F, wait: number
       fn(...args);
     }, wait);
   };
-};
+}
 
 /**
  * Generate a random number between two numbers.

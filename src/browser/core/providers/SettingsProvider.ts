@@ -56,12 +56,32 @@ export class SettingsProvider {
   }
 
   /**
+   * Get an editor setting.
+   *
+   * @param key - the setting key
+   * @returns - the setting
+   */
+  public getSetting<K extends keyof EditorSettings>(key: K) {
+    return this.settings[key];
+  }
+
+  /**
    * Set the editor settings.
    *
    * @param settings - the settings to set
    */
   public setSettings(settings: EditorSettings) {
     this.settings = settings;
+  }
+
+  /**
+   * Set a specific editor setting.
+   *
+   * @param key - the settings key
+   * @param value - the value to set
+   */
+  public setSetting(key: string, value: boolean) {
+    this.settings[key as ValidSetting] = value;
   }
 
   /**
@@ -81,16 +101,6 @@ export class SettingsProvider {
   }
 
   /**
-   * Set a specific editor setting.
-   *
-   * @param key - the settings key
-   * @param value - the value to set
-   */
-  public setSetting(key: string, value: boolean) {
-    this.settings[key as ValidSetting] = value;
-  }
-
-  /**
    * Register DOM event listeners for changes to editor settings.
    */
   public registerDOMListeners() {
@@ -101,6 +111,7 @@ export class SettingsProvider {
     this.registerWordWrapChangeListener(toggler.wordwrap);
     this.registerWhitespaceChangeListener(toggler.whitespace);
     this.registerSystemThemeOverrideChangeListener(toggler.systemtheme);
+    this.registerScrollSyncChangeListener(toggler.scrollsync);
 
     this.setUIState();
   }
@@ -355,6 +366,23 @@ export class SettingsProvider {
    */
   public setSystemThemeOverride() {
     dom.settings.darkmode.checked = this.theme === 'dark';
+
+    return this;
+  }
+
+  /**
+   * Register the handler for the mini-map settings.
+   *
+   * @param handler - the handler
+   * @returns this
+   */
+  private registerScrollSyncChangeListener(handler: Element) {
+    handler.addEventListener('click', (event) => {
+      const target = <HTMLInputElement>event.target;
+      this.setSetting('scrollsync', target.checked);
+      // no-op: setting checked on editor model onDidScrollChange listener
+      this.persist();
+    });
 
     return this;
   }

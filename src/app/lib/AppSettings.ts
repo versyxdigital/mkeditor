@@ -34,6 +34,7 @@ export class AppSettings {
     whitespace: false,
     minimap: true,
     systemtheme: true,
+    scrollsync: true,
     exportSettings: {
       withStyles: true,
       container: 'container-fluid',
