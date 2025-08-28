@@ -1,4 +1,4 @@
-import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
+import { editor, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { CharacterCount, WordCount } from '../extensions/editor/WordCount';
@@ -29,6 +29,12 @@ export class EditorManager {
 
   /** The loaded original editor value for tracking */
   private loadedInitialEditorValue: string | null = null;
+
+  /** Flag to gate auto list continuation logic */
+  private shouldHandleEnterList = false;
+
+  /** Guard to prevent recursive content-change handling */
+  private isAutoListInProgress = false;
 
   /** Editor functional providers */
   public providers: EditorProviders = {
@@ -168,10 +174,60 @@ export class EditorManager {
       250,
     );
 
+    // Track Enter key presses to determine if we should attempt list continuation
+    this.mkeditor?.onKeyDown((e) => {
+      if (e.keyCode === KeyCode.Enter) {
+        // Only auto-continue lists on plain Enter (not Shift+Enter)
+        this.shouldHandleEnterList = !e.shiftKey;
+      } else {
+        this.shouldHandleEnterList = false;
+      }
+    });
+
     // When the editor content changes, update the main process through the IPC handler
     // so that it can do things such as set the title notifying the user of unsaved changes,
     // prompt the user to save if they try to close the app or open a new file, etc.
     this.mkeditor?.onDidChangeModelContent((event) => {
+      // Auto-continue list markers when Enter was pressed
+      if (
+        this.shouldHandleEnterList &&
+        !this.isAutoListInProgress &&
+        event.changes.some((c) => c.text.includes('\n'))
+      ) {
+        this.isAutoListInProgress = true;
+        try {
+          const model = this.mkeditor?.getModel();
+          const position = this.mkeditor?.getPosition();
+          if (model && position) {
+            const prevLineNumber = Math.max(1, position.lineNumber - 1);
+            const prevLineText = model.getLineContent(prevLineNumber);
+
+            // Derive next list prefix from previous line
+            const nextPrefix = this.getNextListPrefix(prevLineText);
+            if (nextPrefix) {
+              const selection = this.mkeditor?.getSelection();
+              if (selection) {
+                const insertRange = {
+                  startLineNumber: selection.positionLineNumber,
+                  startColumn: selection.positionColumn,
+                  endLineNumber: selection.positionLineNumber,
+                  endColumn: selection.positionColumn,
+                };
+                this.mkeditor?.executeEdits('mkeditor:auto-list', [
+                  {
+                    range: insertRange,
+                    text: nextPrefix,
+                    forceMoveMarkers: true,
+                  },
+                ]);
+              }
+            }
+          }
+        } finally {
+          this.shouldHandleEnterList = false;
+          this.isAutoListInProgress = false;
+        }
+      }
       // Update the tracked content over the execution bridge.
       debouncedUpdateBridgedContent();
 
@@ -202,6 +258,36 @@ export class EditorManager {
         }
       }
     });
+  }
+
+  /**
+   * Determine the next list prefix (e.g. "2. ", "- ") based on previous line.
+   * Preserves ordered list delimiter ("." or ")") and unordered marker ("-", "+", or "*").
+   */
+  private getNextListPrefix(line: string): string | null {
+    // Checkbox list (e.g. "- [ ] item" or "- [x] item") -> continue with unchecked box
+    const checkbox = line.match(/^(\s*)([-+*])\s+\[[ xX]\](?:\s+|$)/);
+    if (checkbox) {
+      const marker = checkbox[2];
+      return `${marker} [ ] `;
+    }
+
+    // Unordered lists: preserve the same marker the user used
+    const unordered = line.match(/^(\s*)([-+*])(?:\s+|$)/);
+    if (unordered) {
+      const marker = unordered[2];
+      return `${marker} `;
+    }
+
+    // Ordered lists: increment the number and preserve delimiter
+    const ordered = line.match(/^(\s*)(\d+)([.)])(?:\s+|$)/);
+    if (ordered) {
+      const n = parseInt(ordered[2], 10) + 1;
+      const delim = ordered[3];
+      return `${n}${delim} `;
+    }
+
+    return null;
   }
 
   /**
