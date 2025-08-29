@@ -2,6 +2,7 @@ import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { EditorSettings, ValidSetting } from '../../interfaces/Editor';
 import type { EditorDispatcher } from '../../events/EditorDispatcher';
 import { settings } from '../../config';
+import { changeLanguage, getAvailableLocales } from '../../i18n';
 import { dom } from '../../dom';
 
 export class SettingsProvider {
@@ -108,6 +109,8 @@ export class SettingsProvider {
    */
   public registerDOMListeners() {
     const toggler = dom.settings;
+    this.populateLocaleOptions(toggler.locale);
+    this.registerLocaleChangeListener(toggler.locale);
     this.registerAutoIndentChangeListener(toggler.autoindent);
     this.registerDarkModeChangeListener(toggler.darkmode);
     this.registerMinimapChangeListener(toggler.minimap);
@@ -115,7 +118,6 @@ export class SettingsProvider {
     this.registerWhitespaceChangeListener(toggler.whitespace);
     this.registerSystemThemeOverrideChangeListener(toggler.systemtheme);
     this.registerScrollSyncChangeListener(toggler.scrollsync);
-
     this.setUIState();
   }
 
@@ -141,6 +143,12 @@ export class SettingsProvider {
     }
 
     settings.darkmode.checked = this.theme === 'dark';
+
+    if (settings.locale) {
+      const current = this.settings.locale || 'en';
+      settings.locale.value = current;
+    }
+
     if (this.mode !== 'web') {
       settings.darkmode.disabled = this.settings.systemtheme;
     }
@@ -189,6 +197,49 @@ export class SettingsProvider {
    */
   private updateSettingsInLocalStorage() {
     localStorage.setItem('mkeditor-settings', JSON.stringify(this.settings));
+  }
+
+  /**
+   * Populate available locales in the select element.
+   */
+  private async populateLocaleOptions(select: HTMLSelectElement | null) {
+    if (!select) return;
+    // Only populate once
+    if (select.options.length > 0) return;
+    try {
+      const list = await getAvailableLocales();
+      // Sort by native name then code
+      list.sort(
+        (a, b) =>
+          a.native.localeCompare(b.native) || a.code.localeCompare(b.code),
+      );
+      for (const l of list) {
+        const opt = document.createElement('option');
+        opt.value = l.code;
+        opt.textContent = `${l.native} (${l.name})`;
+        select.appendChild(opt);
+      }
+
+      const current = this.settings.locale || 'en';
+      select.value = current;
+    } catch {
+      // no-op
+    }
+  }
+
+  /**
+   * Register the handler for locale changes.
+   */
+  private registerLocaleChangeListener(handler: Element) {
+    handler.addEventListener('change', (event) => {
+      const target = <HTMLSelectElement>event.target;
+      const locale = target.value;
+      this.setSetting('locale', locale);
+      window.setLanguage(locale);
+      this.persist();
+    });
+
+    return this;
   }
 
   /**

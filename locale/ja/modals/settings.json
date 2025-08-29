@@ -18,5 +18,7 @@
   "appearance": "外観",
   "systemtheme_label": "システムテーマを使用",
   "systemtheme_help": "システムテーマが保存済み設定を上書きできるようにします。",
+  "language_label": "言語",
+  "language_help": "インターフェースの言語を選択します。",
   "save_settings": "設定を保存"
 }

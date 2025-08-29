@@ -18,5 +18,7 @@
   "appearance": "Appearance",
   "systemtheme_label": "Use system theme",
   "systemtheme_help": "Let your system theme override your stored settings.",
+  "language_label": "Language",
+  "language_help": "Select the interface language.",
   "save_settings": "Save Settings"
 }

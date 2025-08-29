@@ -18,5 +18,7 @@
   "appearance": "Apariencia",
   "systemtheme_label": "Usar tema del sistema",
   "systemtheme_help": "Permitir que el tema del sistema sobrescriba tus ajustes guardados.",
+  "language_label": "Idioma",
+  "language_help": "Selecciona el idioma de la interfaz.",
   "save_settings": "Guardar ajustes"
 }

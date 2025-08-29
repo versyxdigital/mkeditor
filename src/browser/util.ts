@@ -114,12 +114,26 @@ export function getExecutionBridge() {
  *
  * @returns - the app locale
  */
-export function getAppLocale() {
-  if (Object.prototype.hasOwnProperty.call(window, 'mked') && window.mked) {
-    return window.mked.getAppLocale();
+export function getAppLocale(mode: 'desktop' | 'web') {
+  let userLocale = 'en';
+
+  if (mode === 'desktop') {
+    if (Object.prototype.hasOwnProperty.call(window, 'mked') && window.mked) {
+      userLocale = window.mked.getAppLocale();
+    }
+  } else {
+    const settings = JSON.parse(
+      <string>localStorage.getItem('mkeditor-settings'),
+    );
+
+    if (settings && settings.locale) {
+      userLocale = settings.locale;
+    } else {
+      userLocale = navigator.language;
+    }
   }
 
-  return 'en'; // default;
+  return userLocale;
 }
 
 /**

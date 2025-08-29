@@ -26,11 +26,20 @@ const api = getExecutionBridge();
 const mode = api !== 'web' ? 'desktop' : 'web';
 
 // Initialize i18n based on app or browser locale
-const locale = mode === 'desktop' ? getAppLocale() : navigator.language;
-initI18n(locale).then(() => changeLanguage(locale));
+const locale = getAppLocale(mode);
+(async () => {
+  await initI18n(locale);
+  changeLanguage(locale);
+})();
 
 // If the app is in web mode hide the filetree sidebar.
-if (mode === 'web') dom.sidebar.classList.add('d-none');
+if (api === 'web') {
+  dom.sidebar.classList.add('d-none');
+  // Expose a language setter for web
+  window.setLanguage = (lng: string) => {
+    changeLanguage(lng);
+  };
+}
 
 // Create new editor event dispatcher.
 const dispatcher = new EditorDispatcher();
@@ -69,7 +78,6 @@ if (mkeditor) {
   if (api !== 'web') {
     // Register localization handler immediately.
     api.receive('from:i18n:set', (lng: string) => {
-      console.log(lng);
       changeLanguage(lng);
     });
 
@@ -94,13 +102,6 @@ if (mkeditor) {
     // Expose a language setter for desktop via the bridge
     window.setLanguage = (lng: string) => {
       bridgeManager.setLanguage(lng);
-    };
-  }
-
-  // Expose a language setter for web
-  if (api === 'web') {
-    window.setLanguage = (lng: string) => {
-      changeLanguage(lng);
     };
   }
 

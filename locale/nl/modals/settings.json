@@ -18,5 +18,7 @@
   "appearance": "Uiterlijk",
   "systemtheme_label": "Systeemthema gebruiken",
   "systemtheme_help": "Het systeemthema mag je opgeslagen instellingen overschrijven.",
+  "language_label": "Taal",
+  "language_help": "Selecteer de taal van de interface.",
   "save_settings": "Instellingen opslaan"
 }

@@ -61,9 +61,7 @@ export async function initI18n(initialLng: string) {
 
 export async function changeLanguage(lng: string) {
   const base = normalizeLanguage(lng);
-  if (!i18next.hasResourceBundle(base, 'app')) {
-    await loadBundles(base);
-  }
+  await loadBundles(base);
   await i18next.changeLanguage(base);
   applyTranslations();
 }
@@ -109,3 +107,31 @@ export function applyTranslations(root: ParentNode = document) {
 }
 
 export const I18n = { initI18n, changeLanguage, applyTranslations, t };
+
+export type LocaleInfo = { code: string; name: string; native: string };
+
+export async function getAvailableLocales(): Promise<LocaleInfo[]> {
+  try {
+    const res = await fetch('locale/manifest.json');
+    if (!res.ok) throw new Error('manifest fetch failed');
+    const data = (await res.json()) as LocaleInfo[];
+    return data;
+  } catch {
+    // Fallback if manifest missing
+    return [
+      { code: 'en', name: 'English', native: 'English' },
+      { code: 'de', name: 'German', native: 'Deutsch' },
+      { code: 'es', name: 'Spanish', native: 'Español' },
+      { code: 'fr', name: 'French', native: 'Français' },
+      { code: 'it', name: 'Italian', native: 'Italiano' },
+      { code: 'nl', name: 'Dutch', native: 'Nederlands' },
+      { code: 'pt', name: 'Portuguese', native: 'Português' },
+      { code: 'ru', name: 'Russian', native: 'Русский' },
+      { code: 'uk', name: 'Ukrainian', native: 'Українська' },
+      { code: 'tr', name: 'Turkish', native: 'Türkçe' },
+      { code: 'zh', name: 'Chinese (Simplified)', native: '简体中文' },
+      { code: 'ja', name: 'Japanese', native: '日本語' },
+      { code: 'ko', name: 'Korean', native: '한국어' },
+    ];
+  }
+}

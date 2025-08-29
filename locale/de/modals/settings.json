@@ -18,5 +18,7 @@
   "appearance": "Darstellung",
   "systemtheme_label": "Systemdesign verwenden",
   "systemtheme_help": "Das Systemdesign kann gespeicherte Einstellungen überschreiben.",
+  "language_label": "Sprache",
+  "language_help": "Wähle die Anzeigesprache.",
   "save_settings": "Einstellungen speichern"
 }

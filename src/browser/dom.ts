@@ -30,7 +30,7 @@ export const dom = {
       document.querySelector('#systemtheme-setting')
     ),
     scrollsync: <HTMLInputElement>document.querySelector('#scrollsync-setting'),
-    locale: <HTMLInputElement>document.querySelector('#locale-setting'),
+    locale: <HTMLSelectElement>document.querySelector('#locale-setting'),
     fileinfo: <HTMLParagraphElement>(
       document.querySelector('#app-settings-file-info')
     ),

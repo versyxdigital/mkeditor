@@ -18,5 +18,7 @@
   "appearance": "外观",
   "systemtheme_label": "使用系统主题",
   "systemtheme_help": "允许系统主题覆盖已保存的设置。",
+  "language_label": "语言",
+  "language_help": "选择界面语言。",
   "save_settings": "保存设置"
 }

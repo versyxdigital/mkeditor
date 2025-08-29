@@ -18,5 +18,7 @@
   "appearance": "Görünüm",
   "systemtheme_label": "Sistem temasını kullan",
   "systemtheme_help": "Sistem temasının kaydedilmiş ayarları değiştirmesine izin ver.",
+  "language_label": "Dil",
+  "language_help": "Arayüz dilini seçin.",
   "save_settings": "Ayarları kaydet"
 }

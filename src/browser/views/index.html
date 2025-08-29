@@ -735,6 +735,23 @@
                 >
               </label>
             </div>
+            <div class="form-group mt-3">
+              <label
+                for="locale-setting"
+                class="form-label"
+                data-i18n-text="modals-settings:language_label"
+                >Language</label
+              >
+              <select
+                id="locale-setting"
+                class="form-select form-select-sm setting"
+              ></select>
+              <small
+                class="text-muted"
+                data-i18n-text="modals-settings:language_help"
+                >Select the interface language.</small
+              >
+            </div>
             <hr />
             <div class="form-group d-flex align-items-center gap-3 mt-4 mb-3">
               <button
@@ -848,7 +865,7 @@
                 type="number"
                 id="export-setting-fontsize"
                 class="form-control form-control-sm"
-                min="8"
+                min="6"
                 value="16"
                 max="72"
               />

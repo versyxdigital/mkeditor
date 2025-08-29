@@ -18,5 +18,7 @@
   "appearance": "Apparence",
   "systemtheme_label": "Utiliser le thème du système",
   "systemtheme_help": "Laisser le thème du système remplacer vos paramètres enregistrés.",
+  "language_label": "Langue",
+  "language_help": "Sélectionnez la langue de l’interface.",
   "save_settings": "Enregistrer les paramètres"
 }

@@ -18,5 +18,7 @@
   "appearance": "Aspetto",
   "systemtheme_label": "Usa tema di sistema",
   "systemtheme_help": "Consenti al tema di sistema di sostituire le impostazioni salvate.",
+  "language_label": "Lingua",
+  "language_help": "Seleziona la lingua dell’interfaccia.",
   "save_settings": "Salva impostazioni"
 }
