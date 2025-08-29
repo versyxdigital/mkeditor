@@ -1,0 +1,9 @@
+{
+  "toggle_sidebar": "사이드바 표시/숨기기",
+  "character_count": "문자 수:",
+  "word_count": "단어 수:",
+  "settings_tooltip": "에디터 설정 구성",
+  "shortcuts_tooltip": "에디터 단축키 보기",
+  "theme_switch_notice": "시스템 테마를 사용하는 경우 데스크톱에서는 이 스위치가 비활성화됩니다.",
+  "active_file_default": "MKEditor"
+}

@@ -1,0 +1,10 @@
+{
+  "primary": "기본",
+  "secondary": "보조",
+  "success": "성공",
+  "danger": "위험",
+  "warning": "경고",
+  "info": "정보",
+  "light": "밝은",
+  "dark": "어두운"
+}
