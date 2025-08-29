@@ -1,0 +1,21 @@
+{
+  "title": "Exporteinstellungen",
+  "intro": "Hier kannst du Einstellungen für HTML- und PDF-Export vornehmen; Änderungen werden automatisch gespeichert.",
+  "settings_file_info": "Deine Einstellungsdatei befindet sich unter ~/.mkeditor/settings.json.",
+  "export_with_styles_label": "Mit Stilen exportieren",
+  "export_with_styles_help": "Aktiviere dies, um mit Bootstrap, FontAwesome und KaTeX von offiziellen CDNs mit Integritäts- und Crossorigin-Prüfung zu exportieren.",
+  "set_container_label": "Container festlegen",
+  "set_container_option_container": "container",
+  "set_container_option_container_fluid": "container-fluid",
+  "set_container_help": "Legt die Container-Breitenklasse fest; 'fluid' ist breiter.",
+  "set_font_size_label": "Schriftgröße festlegen",
+  "set_font_size_help": "Schriftgröße in px festlegen.",
+  "set_line_spacing_label": "Zeilenabstand festlegen",
+  "set_line_spacing_help": "Vertikalen Zeilenabstand festlegen.",
+  "set_background_colour_label": "Hintergrundfarbe festlegen",
+  "set_background_colour_help": "Hintergrundfarbe festlegen.",
+  "set_font_colour_label": "Schriftfarbe festlegen",
+  "set_font_colour_help": "Schriftfarbe festlegen.",
+  "save_settings": "Einstellungen speichern",
+  "reset_to_default": "Auf Standard zurücksetzen"
+}
