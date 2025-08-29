@@ -5,7 +5,6 @@ import type { SettingsFile } from '../interfaces/Editor';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
-import { BridgeSettings } from './BridgeSettings';
 import { registerBridgeListeners } from './BridgeListeners';
 
 /**
@@ -38,9 +37,6 @@ export class BridgeManager {
   /** File tree helper */
   private fileTreeManager: FileTreeManager;
 
-  /** Settings helper */
-  private settings: BridgeSettings;
-
   /**
    * Create a new bridge handler.
    */
@@ -62,8 +58,6 @@ export class BridgeManager {
       this.fileManager.openFileFromPath(path),
     );
 
-    this.settings = new BridgeSettings(this.bridge, this.mkeditor);
-
     // Register event listeners for events sent through IPC channels.
     registerBridgeListeners(
       this.bridge,
@@ -72,7 +66,6 @@ export class BridgeManager {
       this.providers,
       this.fileManager,
       this.fileTreeManager,
-      this.settings,
     );
 
     // Configure event listener for a settings update event.
@@ -93,13 +86,13 @@ export class BridgeManager {
   }
 
   /**
-   * BridgeSettings wrapper method to save settings to file.
+   * Save settings to file.
    *
    * @param settings - the settings to save.
    * @returns
    */
   public saveSettingsToFile(settings: Partial<SettingsFile>) {
-    this.settings.saveSettingsToFile(settings);
+    this.bridge.send('to:settings:save', { settings });
   }
 
   /**

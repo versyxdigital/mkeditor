@@ -6,7 +6,6 @@ import type { SettingsFile } from '../interfaces/Editor';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import type { FileManager } from './FileManager';
 import type { FileTreeManager } from './FileTreeManager';
-import type { BridgeSettings } from './BridgeSettings';
 import { showFilePropertiesWindow } from '../dom';
 import { notify } from '../util';
 
@@ -20,8 +19,25 @@ export function registerBridgeListeners(
   providers: BridgeProviders,
   files: FileManager,
   tree: FileTreeManager,
-  settings: BridgeSettings,
 ) {
+  const loadSettingsFromBridgeListener = (settings: SettingsFile) => {
+    mkeditor.updateOptions({
+      autoIndent: settings.autoindent ? 'advanced' : 'none',
+    });
+
+    mkeditor.updateOptions({
+      wordWrap: settings.wordwrap ? 'on' : 'off',
+    });
+
+    mkeditor.updateOptions({
+      renderWhitespace: settings.whitespace ? 'all' : 'none',
+    });
+
+    mkeditor.updateOptions({
+      minimap: { enabled: settings.minimap },
+    });
+  };
+
   // Set the theme according to the user's system theme
   bridge.receive('from:theme:set', (shouldUseDarkMode: boolean) => {
     if (shouldUseDarkMode) {
@@ -33,7 +49,7 @@ export function registerBridgeListeners(
 
   // Set settings from stored settings file (%HOME%/.mkeditor/settings.json)
   bridge.receive('from:settings:set', (s: SettingsFile) => {
-    settings.loadSettingsFromBridgeListener(s);
+    loadSettingsFromBridgeListener(s);
     providers.settings?.setSettings(s);
     providers.settings?.registerDOMListeners();
     providers.exportSettings?.setSettings(s.exportSettings);

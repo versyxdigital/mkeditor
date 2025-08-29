@@ -16,7 +16,7 @@ This folder contains the source for the browser-based web app (not the Electron 
 - `core/`: Editor and runtime orchestration
   - `EditorManager.ts`: Creates Monaco instance, renders markdown, wires events and providers
   - `BridgeManager.ts`: Desktop-only orchestrator for IPC via the execution bridge
-  - `BridgeListeners.ts`, `BridgeSettings.ts`: Helpers for bridge events and settings
+  - `BridgeListeners.ts`: Helper for bridge events and synchronization
   - `FileManager.ts`, `FileTreeManager.ts`: Tabbed file handling and explorer tree
   - `HTMLExporter.ts`, `Markdown.ts`: Export/rendering helpers
   - `ToolbarListeners.ts`: Helper for registering and managing toolbar event listeners
