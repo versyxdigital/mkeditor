@@ -123,7 +123,9 @@ export function refreshTooltips() {
   for (const t of activeTooltips) {
     try {
       t.dispose();
-    } catch {}
+    } catch {
+      // no-op
+    }
   }
   activeTooltips = [];
 

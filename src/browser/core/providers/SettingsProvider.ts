@@ -2,7 +2,7 @@ import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { EditorSettings, ValidSetting } from '../../interfaces/Editor';
 import type { EditorDispatcher } from '../../events/EditorDispatcher';
 import { settings } from '../../config';
-import { changeLanguage, getAvailableLocales } from '../../i18n';
+import { getAvailableLocales, normalizeLanguage } from '../../i18n';
 import { dom } from '../../dom';
 
 export class SettingsProvider {
@@ -146,7 +146,7 @@ export class SettingsProvider {
 
     if (settings.locale) {
       const current = this.settings.locale || 'en';
-      settings.locale.value = current;
+      settings.locale.value = normalizeLanguage(current);
     }
 
     if (this.mode !== 'web') {
