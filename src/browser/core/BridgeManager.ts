@@ -7,7 +7,6 @@ import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
 import { BridgeSettings } from './BridgeSettings';
 import { registerBridgeListeners } from './BridgeListeners';
-import { dom } from '../dom';
 
 /**
  * Bridge handler.

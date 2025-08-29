@@ -19,6 +19,7 @@ This folder contains the source for the browser-based web app (not the Electron 
   - `BridgeListeners.ts`, `BridgeSettings.ts`: Helpers for bridge events and settings
   - `FileManager.ts`, `FileTreeManager.ts`: Tabbed file handling and explorer tree
   - `HTMLExporter.ts`, `Markdown.ts`: Export/rendering helpers
+  - `ToolbarListeners.ts`: Helper for registering and managing toolbar event listeners
   - `mappings/`: Command and context‑menu mappings for providers and the explorer
   - `completion/`: Data and logic (e.g. fenced blocks, list markers) for the completion provider
 - `events/`: Custom editor event/dispatcher system, lighter than IPC, restrained to renderer context

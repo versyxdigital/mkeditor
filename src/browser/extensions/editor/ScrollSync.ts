@@ -33,7 +33,7 @@ const cacheLineElements = () => {
   needsRefresh = false;
 };
 
-const invalidateLineElements = () => {
+const refreshLines = () => {
   needsRefresh = true;
 };
 
@@ -130,4 +130,4 @@ const getElementBounds = ({ element }: { element: HTMLElement }) => {
   return bounds;
 };
 
-export { ScrollSync, invalidateLineElements };
+export { ScrollSync, refreshLines };
