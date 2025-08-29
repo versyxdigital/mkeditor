@@ -41,11 +41,11 @@ export class BaseDispatcher implements Dispatcher {
     const listeners = this.listeners;
     const listenerSet = listeners[event.type];
 
-    console.log({
-      listeners,
-      listenerSet,
-      event,
-    });
+    // console.log({
+    //   listeners,
+    //   listenerSet,
+    //   event,
+    // });
 
     if (listenerSet !== undefined) {
       event.target = this;
