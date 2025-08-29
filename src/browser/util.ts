@@ -110,6 +110,19 @@ export function getExecutionBridge() {
 }
 
 /**
+ * Get the app locale.
+ *
+ * @returns - the app locale
+ */
+export function getAppLocale() {
+  if (Object.prototype.hasOwnProperty.call(window, 'mked') && window.mked) {
+    return window.mked.getAppLocale();
+  }
+
+  return 'en'; // default;
+}
+
+/**
  * Self render callback shared by all markdown extensions.
  */
 export function selfRender(

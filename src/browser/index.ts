@@ -15,8 +15,8 @@ import {
   createSidebarToggle,
   resetEditorPreviewSplit,
 } from './dom';
-import { getExecutionBridge } from './util';
-import { I18n, initI18n, changeLanguage, normalizeLanguage } from './i18n';
+import { getAppLocale, getExecutionBridge } from './util';
+import { initI18n, changeLanguage } from './i18n';
 
 // The bi-directional synchronous bridge to the main execution context.
 // Exposed on the window object through the preloader.
@@ -26,27 +26,11 @@ const api = getExecutionBridge();
 const mode = api !== 'web' ? 'desktop' : 'web';
 
 // Initialize i18n based on app or browser locale
-(() => {
-  const initial =
-    mode === 'desktop'
-      ? (window as any).mked?.getAppLocale?.()
-      : navigator.language;
-  console.log({ initial });
-  initI18n('en');
-
-  if (api !== 'web') {
-    api.receive('from:i18n:set', (lng: string) => {
-      changeLanguage(lng);
-    });
-  }
-})();
+const locale = mode === 'desktop' ? getAppLocale() : navigator.language;
+initI18n(locale).then(() => changeLanguage(locale));
 
 // If the app is in web mode hide the filetree sidebar.
-if (mode === 'web') {
-  document.addEventListener('DOMContentLoaded', () => {
-    dom.sidebar.classList.add('d-none');
-  });
-}
+if (mode === 'web') dom.sidebar.classList.add('d-none');
 
 // Create new editor event dispatcher.
 const dispatcher = new EditorDispatcher();
@@ -83,6 +67,11 @@ if (mkeditor) {
   // If running within electron app, register IPC handler for communication
   // between main and renderer execution contexts.
   if (api !== 'web') {
+    // Register localization handler immediately.
+    api.receive('from:i18n:set', (lng: string) => {
+      changeLanguage(lng);
+    });
+
     // Create a new bridge communication handler.
     const bridgeManager = new BridgeManager(api, mkeditor, dispatcher);
 
@@ -102,14 +91,14 @@ if (mkeditor) {
     editorManager.updateBridgedContent({ init: true });
 
     // Expose a language setter for desktop via the bridge
-    (window as any).setLanguage = (lng: string) => {
+    window.setLanguage = (lng: string) => {
       bridgeManager.setLanguage(lng);
     };
   }
 
   // Expose a language setter for web
   if (api === 'web') {
-    (window as any).setLanguage = (lng: string) => {
+    window.setLanguage = (lng: string) => {
       changeLanguage(lng);
     };
   }

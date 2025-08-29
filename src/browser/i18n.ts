@@ -47,6 +47,7 @@ export function normalizeLanguage(lng: string | null | undefined) {
 
 export async function initI18n(initialLng: string) {
   const lng = normalizeLanguage(initialLng);
+  console.log('lng: ' + lng);
   await loadBundles(lng);
 
   await i18next.init({
@@ -57,8 +58,6 @@ export async function initI18n(initialLng: string) {
     interpolation: { escapeValue: false },
     resources: {},
   });
-
-  applyTranslations();
 }
 
 export async function changeLanguage(lng: string) {
