@@ -80,8 +80,11 @@ export class SettingsProvider {
    * @param key - the settings key
    * @param value - the value to set
    */
-  public setSetting(key: string, value: boolean) {
-    this.settings[key as ValidSetting] = value;
+  public setSetting<K extends keyof EditorSettings>(
+    key: K,
+    value: EditorSettings[K],
+  ) {
+    this.settings[key] = value;
   }
 
   /**
@@ -132,7 +135,7 @@ export class SettingsProvider {
 
     for (const k of Object.keys(settings)) {
       const key = k as ValidSetting;
-      if (key !== 'darkmode') {
+      if (key !== 'darkmode' && key !== 'locale') {
         settings[key].checked = this.settings[key];
       }
     }

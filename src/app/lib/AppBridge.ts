@@ -216,7 +216,11 @@ export class AppBridge {
 
     // Provide app locale to renderer
     ipcMain.on('mked:get-locale', (event) => {
-      event.returnValue = app.getLocale();
+      console.log(this.providers);
+      const locale =
+        this.providers.settings?.getSetting('locale') ?? app.getLocale();
+      console.log({ locale });
+      event.returnValue = locale;
     });
 
     // Provide path resolution through IPC to avoid having to set

@@ -10,6 +10,7 @@ export const settings: EditorSettings = {
   minimap: true,
   systemtheme: true,
   scrollsync: true,
+  locale: 'en',
 };
 
 export const exportSettings: ExportSettings = {

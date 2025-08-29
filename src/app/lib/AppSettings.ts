@@ -1,7 +1,7 @@
 import { homedir } from 'os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { normalize } from 'path';
-import type { BrowserWindow } from 'electron';
+import { app, type BrowserWindow } from 'electron';
 import type { SettingsFile } from '../interfaces/Settings';
 import type { Providers } from '../interfaces/Providers';
 import { deepMerge, hasAllKeys } from '../util';
@@ -36,6 +36,7 @@ export class AppSettings {
     minimap: true,
     systemtheme: true,
     scrollsync: true,
+    locale: app.getLocale(),
     exportSettings: {
       withStyles: true,
       container: 'container-fluid',
@@ -71,6 +72,25 @@ export class AppSettings {
 
     // Set the applied settings for this session.
     this.applied = loaded;
+  }
+
+  /**
+   * Get the editor settings.
+   *
+   * @returns - the editor settings
+   */
+  public getSettings() {
+    return this.applied;
+  }
+
+  /**
+   * Get an editor setting.
+   *
+   * @param key - the setting key
+   * @returns - the setting
+   */
+  public getSetting<K extends keyof SettingsFile>(key: K) {
+    return this.applied?.[key];
   }
 
   /**

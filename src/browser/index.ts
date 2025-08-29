@@ -69,6 +69,7 @@ if (mkeditor) {
   if (api !== 'web') {
     // Register localization handler immediately.
     api.receive('from:i18n:set', (lng: string) => {
+      console.log(lng);
       changeLanguage(lng);
     });
 
