@@ -1,10 +1,6 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import type {
-  ContextBridgeAPI,
-  BridgedFile,
-  FileProperties,
-  RenamedPath,
-} from '../interfaces/Bridge';
+import type { ContextBridgeAPI } from '../interfaces/Bridge';
+import type { File, FileProperties, RenamedPath } from '../interfaces/File';
 import type { BridgeProviders, ValidModal } from '../interfaces/Providers';
 import type { SettingsFile } from '../interfaces/Editor';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
@@ -103,7 +99,7 @@ export function registerBridgeListeners(
   // Handle post-file open events
   bridge.receive(
     'from:file:opened',
-    ({ content, filename, file }: BridgedFile) => {
+    ({ content, filename, file }: File) => {
       const path = file || `untitled-${files.untitledCounter++}`;
       const name = filename || `Untitled ${files.untitledCounter - 1}`;
       let mdl = files.models.get(path);

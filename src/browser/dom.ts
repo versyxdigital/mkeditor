@@ -2,7 +2,7 @@ import type { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { Tooltip } from 'bootstrap';
 import Split from 'split.js';
 import Swal from 'sweetalert2';
-import type { FileProperties } from './interfaces/Bridge';
+import type { FileProperties } from './interfaces/File';
 import { getOSPlatform } from './util';
 
 let editorPreviewSplit: Split.Instance | null = null;
