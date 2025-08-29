@@ -76,27 +76,6 @@ export class BridgeManager {
       this.settings,
     );
 
-    // Configure the event listener for file tab reordering.
-    // TODO: find a more appropriate place for this.
-    dom.tabs?.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      if (!dom.tabs) {
-        return;
-      }
-      const after = this.fileManager.getDragAfterElement(dom.tabs, e.clientX);
-      const dragging = dom.tabs.querySelector(
-        'li.dragging',
-      ) as HTMLLIElement | null;
-      if (!dragging) {
-        return;
-      }
-      if (after == null) {
-        dom.tabs.appendChild(dragging);
-      } else {
-        dom.tabs.insertBefore(dragging, after);
-      }
-    });
-
     // Configure event listener for a settings update event.
     this.dispatcher.addEventListener('editor:bridge:settings', (event) => {
       this.saveSettingsToFile(event.detail);
