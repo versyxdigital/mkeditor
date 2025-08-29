@@ -36,7 +36,6 @@ export class CompletionProvider {
    * auto-suggestions.
    *
    * @param mkeditor - the editor instance
-   * @param dispatcher - the editor event dispatcher
    */
   public constructor(mkeditor: editor.IStandaloneCodeEditor) {
     this.mkeditor = mkeditor;
