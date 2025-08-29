@@ -3,9 +3,9 @@ import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { BridgeProviders } from '../interfaces/Providers';
 import type { SettingsFile } from '../interfaces/Editor';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
+import { registerBridgeListeners } from './BridgeListeners';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
-import { registerBridgeListeners } from './BridgeListeners';
 
 /**
  * Bridge handler.

@@ -8,7 +8,7 @@
  * bridge across the isolated contexts.
  */
 import { contextBridge, ipcRenderer } from 'electron';
-import { LogLevel } from './interfaces/Logging';
+import type { LogLevel } from './interfaces/Logging';
 
 // Can be sent from the renderer process and
 // received by the main process

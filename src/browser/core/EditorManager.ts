@@ -89,11 +89,7 @@ export class EditorManager {
         accessibilityPageSize: 1000,
       });
 
-      // Set loadedInitialEditorValue for tracking; this value is used
-      // to compare to the current editor content to see if changes have
-      // occurred, the result of this comparison is used for various things
-      // such as modifying the title to notify the user of unsaved changes,
-      // prompting the user to save before opening new files, etc.
+      // Set loadedInitialEditorValue for tracking file changes.
       this.loadedInitialEditorValue = this.mkeditor.getValue();
       this.dispatcher.addEventListener('editor:track:content', (event) => {
         this.loadedInitialEditorValue = event.detail;
@@ -112,13 +108,11 @@ export class EditorManager {
       WordCount(value);
       CharacterCount(value);
 
-      // Render the editor content to preview; also initialises editor
-      // extensions.
+      // Render the editor content to preview.
       this.render(value);
 
       if (watch) {
-        // Watch the editor for changes, updates the preview and and copntains
-        // various event listeners.
+        // Watch the editor for changes and re-render if needed.
         this.watch();
       }
     } catch (err) {
@@ -127,6 +121,14 @@ export class EditorManager {
     }
 
     return this;
+  }
+
+  /**
+   * Get the current editor instance.
+   * @returns
+   */
+  public getMkEditor() {
+    return this.mkeditor;
   }
 
   /**
@@ -214,13 +216,5 @@ export class EditorManager {
         }
       }
     });
-  }
-
-  /**
-   * Get the current editor instance.
-   * @returns
-   */
-  public getMkEditor() {
-    return this.mkeditor;
   }
 }
