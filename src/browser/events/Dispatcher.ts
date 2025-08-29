@@ -42,21 +42,6 @@ export class BaseDispatcher implements Dispatcher {
     const listeners = this.listeners;
     const listenerSet = listeners[event.type];
 
-    console.log({
-      listeners,
-      listenerSet,
-      event,
-    });
-
-    logger?.info(
-      'Renderer event dispatched',
-      JSON.stringify({
-        listeners,
-        listenerSet,
-        event,
-      }),
-    );
-
     if (listenerSet !== undefined) {
       event.target = this;
 
@@ -70,5 +55,10 @@ export class BaseDispatcher implements Dispatcher {
         cb.call(this, event);
       }
     }
+
+    logger?.debug(
+      'Renderer event dispatch',
+      JSON.stringify({ listenerSet, event }),
+    );
   }
 }

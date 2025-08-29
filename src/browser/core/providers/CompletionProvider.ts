@@ -9,6 +9,7 @@ import { CircularBuffer } from 'circle-buffer';
 import type { CompletionItem, Matcher } from '../../interfaces/Completion';
 import { autoCompleteFencedConfig } from '../completion/fencedBlocks';
 import { autoContinueListMarkers } from '../completion/listMarkers';
+import { logger } from '../../util';
 
 export class CompletionProvider {
   /** Editor instance */
@@ -82,6 +83,11 @@ export class CompletionProvider {
       this.isAutoListInProgress = true;
       try {
         autoContinueListMarkers(this.mkeditor);
+      } catch (err) {
+        logger?.error(
+          'CompletionProvider.autoContinueListMarkers',
+          JSON.stringify(err),
+        );
       } finally {
         this.shouldHandleEnterList = false;
         this.isAutoListInProgress = false;
@@ -124,7 +130,10 @@ export class CompletionProvider {
 
       this.mkeditor.trigger('completion', 'editor.action.triggerSuggest', {});
     } catch {
-      console.error(`Failed to update completion provider for type: ${type}`);
+      logger?.error(
+        'CompletionProvider.updateCompletionProvider',
+        `Failed to update completion provider for type: ${type}`,
+      );
     }
   }
 
@@ -134,7 +143,6 @@ export class CompletionProvider {
   private async disposeCompletionProvider() {
     this.provider?.dispose();
     this.provider = null;
-    console.log('Disposed completion provider...');
   }
 
   /**

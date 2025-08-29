@@ -11,7 +11,7 @@ import { HTMLExporter } from './HTMLExporter';
 import { APP_VERSION } from '../version';
 import { exportSettings as defaultExportSettings } from '../config';
 import { welcomeMarkdown } from '../assets/intro';
-import { debounce } from '../util';
+import { debounce, logger } from '../util';
 import { dom } from '../dom';
 
 interface EditorConstructOptions {
@@ -127,7 +127,7 @@ export class EditorManager {
       }
     } catch (err) {
       this.mkeditor = null;
-      console.log(err);
+      logger?.error('EditorManager.create', JSON.stringify(err));
     }
 
     return this;
@@ -152,11 +152,14 @@ export class EditorManager {
    * Render the editor.
    */
   public render(value?: string) {
-    if (this.mkeditor) {
-      const content = value ?? this.mkeditor.getValue();
-      dom.preview.dom.innerHTML = Markdown.render(content);
-      invalidateLineElements();
+    if (!this.mkeditor) {
+      logger?.error('EditorManager.render', 'No editor instance.');
+      return;
     }
+
+    const content = value ?? this.mkeditor.getValue();
+    dom.preview.dom.innerHTML = Markdown.render(content);
+    invalidateLineElements();
   }
 
   /**
@@ -229,6 +232,13 @@ export class EditorManager {
    * Register listeners for cross-context events.
    */
   private registerUIToolbarListeners() {
+    const logError = (id: string) => {
+      logger?.error(
+        'EditorManager.registerUIToolbarListeners',
+        `${id} DOM handle not found, event listener not registered.`,
+      );
+    };
+
     if (dom.buttons.save.settings) {
       dom.buttons.save.settings.addEventListener('click', (event) => {
         event.preventDefault();
@@ -240,6 +250,8 @@ export class EditorManager {
           });
         }
       });
+    } else {
+      logError('Save settings');
     }
 
     if (dom.buttons.save.exportSettings) {
@@ -253,6 +265,8 @@ export class EditorManager {
           });
         }
       });
+    } else {
+      logError('Save export settings');
     }
 
     if (dom.buttons.resetExportSettings) {
@@ -272,6 +286,8 @@ export class EditorManager {
           }
         }
       });
+    } else {
+      logError('Reset export settings');
     }
 
     if (dom.buttons.save.markdown) {
@@ -289,6 +305,8 @@ export class EditorManager {
           }
         }
       });
+    } else {
+      logError('Save markdown');
     }
 
     /**
@@ -317,6 +335,8 @@ export class EditorManager {
           HTMLExporter.webExport(html, 'text/html', '.html');
         }
       });
+    } else {
+      logError('Export to HTML');
     }
 
     // Register the event listener for the editor UI export PDF button.
@@ -334,6 +354,8 @@ export class EditorManager {
           HTMLExporter.webExport(html, 'text/html', '.pdf');
         }
       });
+    } else {
+      logError('Export to PDF');
     }
   }
 }

@@ -16,12 +16,14 @@ import xml from 'highlight.js/lib/languages/xml';
 import yaml from 'highlight.js/lib/languages/yaml';
 
 import MarkdownIt from 'markdown-it';
+import MarkdownItKatex from '@vscode/markdown-it-katex';
 import AlertBlock from '../extensions/renderer/AlertBlock';
 import LineNumber from '../extensions/renderer/LineNumber';
 import LinkTarget from '../extensions/renderer/LinkTarget';
 import ImageStyle from '../extensions/renderer/ImageStyle';
 import TableStyle from '../extensions/renderer/TableStyle';
-import MarkdownItKatex from '@vscode/markdown-it-katex';
+
+import { logger } from '../util';
 
 hljs.registerLanguage('javascript', javascript);
 hljs.registerAliases('js', { languageName: 'javascript' });
@@ -72,7 +74,7 @@ const Markdown = new MarkdownIt({
           '</code></pre>'
         );
       } catch (err) {
-        console.log(err);
+        logger?.error('Markdown.highlight', JSON.stringify(err));
       }
     }
 
