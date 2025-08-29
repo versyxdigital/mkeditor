@@ -1,0 +1,8 @@
+{
+  "version_label": "Версія",
+  "built_with_love_by": "Створено з любов’ю від",
+  "libraries_intro": "MKEditor використовує такі бібліотеки з відкритим кодом:",
+  "libraries_list": "monaco, bootstrap, fontawesome, markdown-it, highlight.js, split.js, sweetalert2, webpack та electron.",
+  "view_source_prefix": "Переглянути вихідний код",
+  "view_source_here": "тут"
+}

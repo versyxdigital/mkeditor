@@ -1,0 +1,9 @@
+{
+  "toggle_sidebar": "Mostra/nascondi barra laterale",
+  "character_count": "Conteggio caratteri:",
+  "word_count": "Conteggio parole:",
+  "settings_tooltip": "Configura le impostazioni dell'editor",
+  "shortcuts_tooltip": "Visualizza le scorciatoie dell'editor",
+  "theme_switch_notice": "Questo interruttore è disabilitato su desktop se usi il tema di sistema.",
+  "active_file_default": "MKEditor"
+}
