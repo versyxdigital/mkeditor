@@ -4,6 +4,8 @@ import Swal, { type SweetAlertIcon } from 'sweetalert2';
 import type { ContextBridgeAPI } from './interfaces/Bridge';
 import type { ExportSettings } from './interfaces/Editor';
 
+export const logger = window.logger;
+
 /**
  * Debounce to delay execution.
  *

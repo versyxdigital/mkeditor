@@ -3,6 +3,7 @@ import type {
   ListenerEvent,
   ListenerEventCallback,
 } from '../interfaces/Dispatcher';
+import { logger } from '../util';
 
 export class BaseDispatcher implements Dispatcher {
   public listeners?: {
@@ -41,11 +42,20 @@ export class BaseDispatcher implements Dispatcher {
     const listeners = this.listeners;
     const listenerSet = listeners[event.type];
 
-    // console.log({
-    //   listeners,
-    //   listenerSet,
-    //   event,
-    // });
+    console.log({
+      listeners,
+      listenerSet,
+      event,
+    });
+
+    logger?.info(
+      'Renderer event dispatched',
+      JSON.stringify({
+        listeners,
+        listenerSet,
+        event,
+      }),
+    );
 
     if (listenerSet !== undefined) {
       event.target = this;

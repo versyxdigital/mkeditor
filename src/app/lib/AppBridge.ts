@@ -1,8 +1,8 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { dirname, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
+import type { Logger, LogMessage } from '../interfaces/Logging';
 import { AppStorage } from './AppStorage';
-
 /**
  * AppBridge
  */
@@ -53,6 +53,23 @@ export class AppBridge {
    * @returns
    */
   register() {
+    // Enable logging from the renderer context
+    ipcMain.on('log', (_e, { level, msg, meta }: LogMessage) => {
+      const logger = this.providers.logger?.log;
+      if (!logger) return;
+
+      if (
+        level !== 'error' &&
+        level !== 'warn' &&
+        level !== 'info' &&
+        level !== 'debug'
+      ) {
+        return;
+      }
+
+      (logger as Logger)[level](msg, meta);
+    });
+
     // Set the app window title
     ipcMain.on('to:title:set', (event, title = null) => {
       this.contextWindowTitle = title ? `MKEditor - ${title}` : 'MKEditor';

@@ -17,7 +17,7 @@ import { AppMenu } from './lib/AppMenu';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
-import type { Logger } from './interfaces/Providers';
+import type { LogConfig } from './interfaces/Logging';
 
 /** --------------------App Logging------------------------------- */
 
@@ -35,7 +35,7 @@ log.transports.file.level = 'info'; // TODO make this a setting
 log.initialize();
 
 // Define log config to pass to app handlers
-const logconfig: Logger = { log, logpath };
+const logconfig: LogConfig = { log, logpath };
 
 /** --------------------Auto Updates------------------------------ */
 
