@@ -6,6 +6,7 @@ import type { FileProperties } from './interfaces/File';
 import { getOSPlatform } from './util';
 
 let editorPreviewSplit: Split.Instance | null = null;
+let activeTooltips: Tooltip[] = [];
 
 export const dom = {
   splash: <HTMLDivElement>document.querySelector('#splashscreen'),
@@ -117,19 +118,29 @@ export const dom = {
   },
 };
 
-export async function setupTooltips() {
-  [].slice
-    .call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    .map((tooltip: HTMLElement) => {
-      if (tooltip.dataset.key) {
-        if (getOSPlatform() !== 'MacOS') {
-          tooltip.title = 'Ctrl + ' + tooltip.dataset.key;
-        } else {
-          tooltip.title = '⌘ + ' + tooltip.dataset.key;
-        }
+export function refreshTooltips() {
+  // Dispose existing tooltip instances
+  for (const t of activeTooltips) {
+    try {
+      t.dispose();
+    } catch {}
+  }
+  activeTooltips = [];
+
+  const elements: HTMLElement[] = Array.prototype.slice.call(
+    document.querySelectorAll('[data-bs-toggle="tooltip"]'),
+  );
+
+  for (const el of elements) {
+    if (el.dataset.key) {
+      if (getOSPlatform() !== 'MacOS') {
+        el.title = 'Ctrl + ' + el.dataset.key;
+      } else {
+        el.title = '⌘ + ' + el.dataset.key;
       }
-      return new Tooltip(tooltip);
-    });
+    }
+    activeTooltips.push(new Tooltip(el));
+  }
 }
 
 export function fade(

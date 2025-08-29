@@ -1,8 +1,7 @@
 import i18next from 'i18next';
+import { refreshTooltips } from './dom';
 
-type Mode = 'web' | 'desktop';
-
-const NAMESPACES: { ns: string; path: string }[] = [
+const namespaces: { ns: string; path: string }[] = [
   { ns: 'app', path: 'locale/{{lng}}/app.json' },
   { ns: 'navbar', path: 'locale/{{lng}}/navbar.json' },
   { ns: 'sidebar', path: 'locale/{{lng}}/sidebar.json' },
@@ -27,7 +26,7 @@ async function fetchJson(url: string) {
 }
 
 async function loadBundles(lng: string) {
-  for (const { ns, path } of NAMESPACES) {
+  for (const { ns, path } of namespaces) {
     try {
       const data = await fetchJson(resolvePath(path, lng));
       i18next.addResourceBundle(lng, ns, data, true, true);
@@ -52,7 +51,7 @@ export async function initI18n(initialLng: string) {
   await i18next.init({
     lng,
     fallbackLng: 'en',
-    ns: NAMESPACES.map((n) => n.ns),
+    ns: namespaces.map((n) => n.ns),
     defaultNS: 'app',
     interpolation: { escapeValue: false },
     resources: {},
@@ -64,6 +63,7 @@ export async function changeLanguage(lng: string) {
   await loadBundles(base);
   await i18next.changeLanguage(base);
   applyTranslations();
+  refreshTooltips();
 }
 
 export function t(key: string) {
@@ -96,7 +96,10 @@ export function applyTranslations(root: ParentNode = document) {
   // title attribute
   root.querySelectorAll('[data-i18n-title]')?.forEach((el) => {
     const key = (el as HTMLElement).dataset.i18nTitle;
-    if (key) setAttr(el, 'title', key);
+    if (key) {
+      setAttr(el, 'title', key);
+      setAttr(el, 'data-bs-original-title', key);
+    }
   });
 
   // placeholder attribute

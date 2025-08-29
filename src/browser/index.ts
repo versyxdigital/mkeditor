@@ -10,7 +10,6 @@ import { BridgeManager } from './core/BridgeManager';
 import {
   dom,
   showSplashScreen,
-  setupTooltips,
   createDraggableSplitPanels,
   createSidebarToggle,
   resetEditorPreviewSplit,
@@ -27,10 +26,7 @@ const mode = api !== 'web' ? 'desktop' : 'web';
 
 // Initialize i18n based on app or browser locale
 const locale = getAppLocale(mode);
-(async () => {
-  await initI18n(locale);
-  changeLanguage(locale);
-})();
+initI18n(locale).then(() => changeLanguage(locale));
 
 // If the app is in web mode hide the filetree sidebar.
 if (api === 'web') {
@@ -104,9 +100,6 @@ if (mkeditor) {
       bridgeManager.setLanguage(lng);
     };
   }
-
-  // Setup application tooltips.
-  setupTooltips();
 
   // Implement draggable split.
   createDraggableSplitPanels(mkeditor);
