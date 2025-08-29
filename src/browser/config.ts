@@ -9,6 +9,7 @@ export const settings: EditorSettings = {
   whitespace: false,
   minimap: true,
   systemtheme: true,
+  scrollsync: true,
 };
 
 export const exportSettings: ExportSettings = {

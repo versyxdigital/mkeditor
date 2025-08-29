@@ -45,12 +45,8 @@ const editorManager = new EditorManager({
 const mkeditor = editorManager.getMkEditor();
 
 if (mkeditor) {
-  // Register new command handler for the editor to provide and handle editor
-  // commands and actions (e.g. bold, alertblock etc.)
-  editorManager.provide('commands', new CommandProvider(mkeditor));
-
-  // Register new settings handlers for the editor to provide settings and to persist
-  // settings either to localStorage or file depending on context.
+  // Register new settings handlers for the editor to provide settings and to
+  // persist settings either to localStorage or file depending on context.
   editorManager.provide(
     'settings',
     new SettingsProvider(mode, mkeditor, dispatcher),
@@ -60,25 +56,26 @@ if (mkeditor) {
     new ExportSettingsProvider(mode, dispatcher),
   );
 
-  // Register a new completion provider for the editor auto-completion
-  editorManager.provide(
-    'completion',
-    new CompletionProvider(mkeditor, dispatcher),
-  );
+  // Register new command handler for the editor to provide and handle editor
+  // commands and actions (e.g. bold, alertblock etc.)
+  editorManager.provide('commands', new CommandProvider(mkeditor));
 
-  // If running within electron app, register IPC handler for communication between
-  // main and renderer execution contexts.
+  // Register a new completion provider for the editor auto-completion
+  editorManager.provide('completion', new CompletionProvider(mkeditor));
+
+  // If running within electron app, register IPC handler for communication
+  // between main and renderer execution contexts.
   if (api !== 'web') {
     // Create a new bridge communication handler.
     const bridgeManager = new BridgeManager(api, mkeditor, dispatcher);
 
     // Attach providers.
     bridgeManager.provide('settings', editorManager.providers.settings);
-    bridgeManager.provide('commands', editorManager.providers.commands);
     bridgeManager.provide(
       'exportSettings',
       editorManager.providers.exportSettings,
     );
+    bridgeManager.provide('commands', editorManager.providers.commands);
     editorManager.provide('bridge', bridgeManager);
 
     // Register link provider for mked:// navigation for linked documents.

@@ -5,6 +5,7 @@ export interface EditorSettings {
   whitespace: boolean;
   minimap: boolean;
   systemtheme: boolean;
+  scrollsync: boolean;
 }
 
 export interface ExportSettings {

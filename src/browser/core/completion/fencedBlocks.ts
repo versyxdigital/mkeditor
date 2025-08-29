@@ -1,4 +1,4 @@
-export const completion = {
+export const autoCompleteFencedConfig = {
   alertblocks: {
     literal: ':::',
     regex: /^:::/,

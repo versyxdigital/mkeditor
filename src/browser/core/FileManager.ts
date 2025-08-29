@@ -43,7 +43,9 @@ export class FileManager {
     private bridge: ContextBridgeAPI,
     private mkeditor: editor.IStandaloneCodeEditor,
     private dispatcher: EditorDispatcher,
-  ) {}
+  ) {
+    this.registerFileTabOrderListener();
+  }
 
   /**
    * Add a new tab for an activated file.
@@ -157,6 +159,30 @@ export class FileManager {
   }
 
   /**
+   * Register tab reorder event listener.
+   *
+   * @returns
+   */
+  private registerFileTabOrderListener() {
+    dom.tabs?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!dom.tabs) return;
+
+      const after = this.getDragAfterElement(dom.tabs, e.clientX);
+      const dragging = dom.tabs.querySelector(
+        'li.dragging',
+      ) as HTMLLIElement | null;
+      if (!dragging) return;
+
+      if (after == null) {
+        dom.tabs.appendChild(dragging);
+      } else {
+        dom.tabs.insertBefore(dragging, after);
+      }
+    });
+  }
+
+  /**
    * Synchronize the order of the tabs after reordering.
    *
    * @returns
@@ -180,7 +206,7 @@ export class FileManager {
    * @param x - the tab index offset
    * @returns
    */
-  public getDragAfterElement(container: HTMLElement, x: number) {
+  private getDragAfterElement(container: HTMLElement, x: number) {
     const elements = Array.from(
       container.querySelectorAll('li:not(.dragging)'),
     ) as HTMLElement[];

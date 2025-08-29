@@ -4,6 +4,32 @@ import Swal, { type SweetAlertIcon } from 'sweetalert2';
 import type { ContextBridgeAPI } from './interfaces/Bridge';
 import type { ExportSettings } from './interfaces/Editor';
 
+export const logger = window.logger;
+
+/**
+ * Debounce to delay execution.
+ *
+ * @param fn
+ * @param wait
+ * @returns
+ */
+export function debounce<F extends (...args: any[]) => void>(
+  fn: F,
+  wait: number,
+) {
+  let timeout: number | null = null;
+  return (...args: Parameters<F>) => {
+    if (timeout) {
+      window.clearTimeout(timeout);
+    }
+
+    timeout = window.setTimeout(() => {
+      timeout = null;
+      fn(...args);
+    }, wait);
+  };
+}
+
 /**
  * Generate a random number between two numbers.
  *

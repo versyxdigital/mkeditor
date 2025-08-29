@@ -4,6 +4,7 @@ import { normalize } from 'path';
 import type { BrowserWindow } from 'electron';
 import type { SettingsFile } from '../interfaces/Settings';
 import type { Providers } from '../interfaces/Providers';
+import { deepMerge, hasAllKeys } from '../util';
 
 /**
  * AppSettings
@@ -34,6 +35,7 @@ export class AppSettings {
     whitespace: false,
     minimap: true,
     systemtheme: true,
+    scrollsync: true,
     exportSettings: {
       withStyles: true,
       container: 'container-fluid',
@@ -62,22 +64,9 @@ export class AppSettings {
     this.createFileIfNotExists(this.settings);
     const loaded = this.loadFile() as SettingsFile;
 
-    // If the file has just been created then we can skip this check.
-    if (!this.isNewFile) {
-      if (
-        !loaded.exportSettings ||
-        typeof loaded.exportSettings !== 'object' ||
-        Object.keys(this.settings.exportSettings).some(
-          (key) => !(key in loaded.exportSettings),
-        )
-      ) {
-        this.saveSettingsToFile({
-          exportSettings: {
-            ...this.settings.exportSettings,
-            ...(loaded.exportSettings || {}),
-          },
-        });
-      }
+    // Check for settings file integrity
+    if (!this.isNewFile && !hasAllKeys(this.settings, loaded)) {
+      this.saveSettingsToFile(deepMerge(this.settings, loaded));
     }
 
     // Set the applied settings for this session.

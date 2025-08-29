@@ -1,15 +1,10 @@
-import type { MainLogger } from 'electron-log';
 import type { AppBridge } from '../lib/AppBridge';
 import type { AppSettings } from '../lib/AppSettings';
-
-export interface Logger {
-  log: MainLogger;
-  logpath: string;
-}
+import type { LogConfig } from './Logging';
 
 export interface Providers {
   [key: string]: unknown | null;
-  logger: Logger | null;
+  logger: LogConfig | null;
 }
 
 export interface BridgeProviders extends Providers {

@@ -8,6 +8,7 @@
  * bridge across the isolated contexts.
  */
 import { contextBridge, ipcRenderer } from 'electron';
+import type { LogLevel } from './interfaces/Logging';
 
 // Can be sent from the renderer process and
 // received by the main process
@@ -90,8 +91,27 @@ contextBridge.exposeInMainWorld('executionBridge', contextBridgeChannel());
 
 contextBridge.exposeInMainWorld('mked', {
   getActiveFilePath: () => ipcRenderer.sendSync('mked:get-active-file'),
-  pathDirname: (p: string) => ipcRenderer.invoke('mked:path:dirname', p),
-  resolvePath: (base: string, rel: string) =>
-    ipcRenderer.invoke('mked:path:resolve', base, rel),
   openMkedUrl: (url: string) => ipcRenderer.send('mked:open-url', url),
+  pathDirname: (p: string) => ipcRenderer.invoke('mked:path:dirname', p),
+  resolvePath: (base: string, rel: string) => {
+    ipcRenderer.invoke('mked:path:resolve', base, rel);
+  },
+});
+
+contextBridge.exposeInMainWorld('logger', {
+  log(level: LogLevel, msg: string, meta?: unknown) {
+    ipcRenderer.send('log', { level, msg, meta });
+  },
+  debug(msg: string, meta?: unknown) {
+    ipcRenderer.send('log', { level: 'debug', msg, meta });
+  },
+  info(msg: string, meta?: unknown) {
+    ipcRenderer.send('log', { level: 'info', msg, meta });
+  },
+  warn(msg: string, meta?: unknown) {
+    ipcRenderer.send('log', { level: 'warn', msg, meta });
+  },
+  error(msg: string, meta?: unknown) {
+    ipcRenderer.send('log', { level: 'error', msg, meta });
+  },
 });

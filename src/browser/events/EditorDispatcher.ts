@@ -1,39 +1,32 @@
-import type { ExportSettings, SettingsFile } from '../interfaces/Editor';
+import type { SettingsFile } from '../interfaces/Editor';
 import { BaseDispatcher } from './Dispatcher';
 
 export class EditorDispatcher extends BaseDispatcher {
-  message({ message }: { message: string }) {
+  message({ detail }: { detail: string }) {
     this.dispatchEvent({
       type: 'message',
-      message: message,
+      detail,
     });
   }
 
   setTrackedContent({ content }: { content: string }) {
     this.dispatchEvent({
       type: 'editor:track:content',
-      message: content,
-    });
-  }
-
-  updateCompletionProvider({ matcher }: { matcher: string }) {
-    this.dispatchEvent({
-      type: 'editor:completion:load',
-      message: matcher,
+      detail: content,
     });
   }
 
   bridgeSettings({ settings }: { settings: Partial<SettingsFile> }) {
     this.dispatchEvent({
       type: 'editor:bridge:settings',
-      message: settings,
+      detail: settings,
     });
   }
 
   render() {
     this.dispatchEvent({
       type: 'editor:render',
-      message: undefined,
+      detail: undefined,
     });
   }
 }
