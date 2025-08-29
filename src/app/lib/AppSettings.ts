@@ -109,11 +109,20 @@ export class AppSettings {
    * @returns - the settings
    */
   loadFile() {
-    const file = readFileSync(this.filePath, {
-      encoding: 'utf-8',
-    });
+    try {
+      const file = readFileSync(this.filePath, {
+        encoding: 'utf-8',
+      });
 
-    return JSON.parse(file);
+      return JSON.parse(file);
+    } catch (err) {
+      this.context.webContents.send('from:notification:display', {
+        status: 'error',
+        message: 'Settings file corrupted. Returning to default settings.',
+      });
+
+      return this.settings;
+    }
   }
 
   /**
