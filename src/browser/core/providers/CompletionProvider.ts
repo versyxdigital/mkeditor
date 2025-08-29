@@ -7,16 +7,12 @@ import {
 } from 'monaco-editor/esm/vs/editor/editor.api';
 import { CircularBuffer } from 'circle-buffer';
 import type { CompletionItem, Matcher } from '../../interfaces/Completion';
-import type { EditorDispatcher } from '../../events/EditorDispatcher';
 import { autoCompleteFencedConfig } from '../completion/fencedBlocks';
 import { autoContinueListMarkers } from '../completion/listMarkers';
 
 export class CompletionProvider {
   /** Editor instance */
   private mkeditor: editor.IStandaloneCodeEditor;
-
-  /** Editor event dispatcher */
-  private dispatcher: EditorDispatcher;
 
   /** Disposable completion provider */
   private provider: IDisposable | null;
@@ -42,13 +38,8 @@ export class CompletionProvider {
    * @param mkeditor - the editor instance
    * @param dispatcher - the editor event dispatcher
    */
-  public constructor(
-    mkeditor: editor.IStandaloneCodeEditor,
-    dispatcher: EditorDispatcher,
-  ) {
+  public constructor(mkeditor: editor.IStandaloneCodeEditor) {
     this.mkeditor = mkeditor;
-
-    this.dispatcher = dispatcher;
 
     // Use alertblocks to initalise the first completion provider. New providers will be
     // registered afterwards depending on what the user types.
@@ -74,13 +65,6 @@ export class CompletionProvider {
     // against a "matchers" regex.
     this.buffer = new CircularBuffer({
       limit: 3,
-    });
-
-    // Event listener to load auto-completions from elsewhere in the application
-    // i.e. storage, or the bridge.
-    this.dispatcher.addEventListener('editor:completion:load', (event) => {
-      const key = event.detail as keyof typeof this.matchers;
-      this.updateCompletionProvider(key);
     });
   }
 
