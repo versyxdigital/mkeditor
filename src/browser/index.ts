@@ -16,6 +16,7 @@ import {
   resetEditorPreviewSplit,
 } from './dom';
 import { getExecutionBridge } from './util';
+import { I18n, initI18n, changeLanguage, normalizeLanguage } from './i18n';
 
 // The bi-directional synchronous bridge to the main execution context.
 // Exposed on the window object through the preloader.
@@ -23,6 +24,22 @@ const api = getExecutionBridge();
 
 // App mode (desktop or web).
 const mode = api !== 'web' ? 'desktop' : 'web';
+
+// Initialize i18n based on app or browser locale
+(() => {
+  const initial =
+    mode === 'desktop'
+      ? (window as any).mked?.getAppLocale?.()
+      : navigator.language;
+  console.log({ initial });
+  initI18n('en');
+
+  if (api !== 'web') {
+    api.receive('from:i18n:set', (lng: string) => {
+      changeLanguage(lng);
+    });
+  }
+})();
 
 // If the app is in web mode hide the filetree sidebar.
 if (mode === 'web') {
@@ -83,6 +100,18 @@ if (mkeditor) {
 
     // Initialize content tracker for the execution bridge.
     editorManager.updateBridgedContent({ init: true });
+
+    // Expose a language setter for desktop via the bridge
+    (window as any).setLanguage = (lng: string) => {
+      bridgeManager.setLanguage(lng);
+    };
+  }
+
+  // Expose a language setter for web
+  if (api === 'web') {
+    (window as any).setLanguage = (lng: string) => {
+      changeLanguage(lng);
+    };
   }
 
   // Setup application tooltips.

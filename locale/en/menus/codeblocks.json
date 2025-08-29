@@ -1,0 +1,13 @@
+{
+  "shell": "Shell",
+  "c": "C",
+  "javascript": "Javascript",
+  "typescript": "Typescript",
+  "php": "PHP",
+  "python": "Python",
+  "rust": "Rust",
+  "json": "JSON",
+  "yaml": "YAML",
+  "sql": "SQL",
+  "xml": "XML"
+}
