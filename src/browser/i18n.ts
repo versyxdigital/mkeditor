@@ -47,8 +47,6 @@ export function normalizeLanguage(lng: string | null | undefined) {
 
 export async function initI18n(initialLng: string) {
   const lng = normalizeLanguage(initialLng);
-  (window as any)?.setLanguage('en'); // TODO replace with util that checks execution bridge
-
   await loadBundles(lng);
 
   await i18next.init({
