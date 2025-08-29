@@ -1,0 +1,9 @@
+{
+  "toggle_sidebar": "Alternar barra lateral",
+  "character_count": "Recuento de caracteres:",
+  "word_count": "Recuento de palabras:",
+  "settings_tooltip": "Configurar el editor",
+  "shortcuts_tooltip": "Ver atajos del editor",
+  "theme_switch_notice": "Este interruptor está deshabilitado en el escritorio si usas el tema del sistema.",
+  "active_file_default": "MKEditor"
+}
