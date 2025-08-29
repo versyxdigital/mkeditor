@@ -100,7 +100,7 @@ export class EditorManager {
       // prompting the user to save before opening new files, etc.
       this.loadedInitialEditorValue = this.mkeditor.getValue();
       this.dispatcher.addEventListener('editor:track:content', (event) => {
-        this.loadedInitialEditorValue = event.message;
+        this.loadedInitialEditorValue = event.detail;
       });
 
       // Event listeners for the renderer context's UI toolbar.

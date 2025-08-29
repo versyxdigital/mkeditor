@@ -99,7 +99,7 @@ export class BridgeManager {
 
     // Configure event listener for a settings update event.
     this.dispatcher.addEventListener('editor:bridge:settings', (event) => {
-      this.saveSettingsToFile(event.message);
+      this.saveSettingsToFile(event.detail);
     });
   }
 

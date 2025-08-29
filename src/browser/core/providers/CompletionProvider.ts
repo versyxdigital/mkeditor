@@ -79,7 +79,7 @@ export class CompletionProvider {
     // Event listener to load auto-completions from elsewhere in the application
     // i.e. storage, or the bridge.
     this.dispatcher.addEventListener('editor:completion:load', (event) => {
-      const key = event.message as keyof typeof this.matchers;
+      const key = event.detail as keyof typeof this.matchers;
       this.updateCompletionProvider(key);
     });
   }
