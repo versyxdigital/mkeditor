@@ -1,5 +1,5 @@
 export interface Dispatcher {
-  _listeners?: {
+  listeners?: {
     [index: string]: Set<ListenerEventCallback>;
   };
 

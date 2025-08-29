@@ -5,13 +5,13 @@ import type {
 } from '../interfaces/Dispatcher';
 
 export class BaseDispatcher implements Dispatcher {
-  public _listeners?: {
+  public listeners?: {
     [index: string]: Set<ListenerEventCallback>;
   };
 
   addEventListener(type: string, listener: ListenerEventCallback): void {
-    if (this._listeners === undefined) this._listeners = {};
-    const listeners = this._listeners;
+    if (this.listeners === undefined) this.listeners = {};
+    const listeners = this.listeners;
 
     if (listeners[type] === undefined) {
       listeners[type] = new Set<ListenerEventCallback>();
@@ -21,14 +21,14 @@ export class BaseDispatcher implements Dispatcher {
   }
 
   hasEventListener(type: string, listener: ListenerEventCallback): boolean {
-    if (this._listeners === undefined) return false;
-    const listeners = this._listeners;
+    if (this.listeners === undefined) return false;
+    const listeners = this.listeners;
     return listeners[type] !== undefined && listeners[type].has(listener);
   }
 
   removeEventListener(type: string, listener: ListenerEventCallback): void {
-    if (this._listeners === undefined) return;
-    const listeners = this._listeners;
+    if (this.listeners === undefined) return;
+    const listeners = this.listeners;
     const listenerSet = listeners[type];
 
     if (listenerSet !== undefined) {
@@ -37,8 +37,8 @@ export class BaseDispatcher implements Dispatcher {
   }
 
   dispatchEvent(event: ListenerEvent): void {
-    if (this._listeners === undefined) return;
-    const listeners = this._listeners;
+    if (this.listeners === undefined) return;
+    const listeners = this.listeners;
     const listenerSet = listeners[event.type];
 
     console.log({
