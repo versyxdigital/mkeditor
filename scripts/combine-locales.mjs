@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -32,14 +33,15 @@ async function walkJsonFiles(dir) {
 }
 
 function toNamespace(langDir, filePath) {
-  const rel = path.relative(langDir, filePath); // e.g., 'modals/settings.json' or 'app.json'
+  const rel = path.relative(langDir, filePath);
   const noExt = rel.replace(/\\/g, '/').replace(/\.json$/i, '');
-  // replace slashes with dashes -> 'modals-settings'
   return noExt.split('/').join('-');
 }
 
 async function combineLanguage(langDir) {
-  const files = (await walkJsonFiles(langDir)).filter((f) => !f.endsWith(`${path.sep}all.json`));
+  const files = (await walkJsonFiles(langDir)).filter(
+    (f) => !f.endsWith(`${path.sep}all.json`),
+  );
   const combined = {};
   for (const file of files) {
     const ns = toNamespace(langDir, file);
@@ -64,7 +66,9 @@ async function main() {
     process.exit(1);
   }
   const entries = await fs.readdir(root, { withFileTypes: true });
-  const langs = entries.filter((e) => e.isDirectory()).map((e) => path.join(root, e.name));
+  const langs = entries
+    .filter((e) => e.isDirectory())
+    .map((e) => path.join(root, e.name));
   if (langs.length === 0) {
     console.warn('No language folders found under locale/. Nothing to do.');
     return;
@@ -73,7 +77,9 @@ async function main() {
   for (const langDir of langs) {
     const { count, outFile } = await combineLanguage(langDir);
     total += count;
-    console.log(`Wrote ${count} namespaces to ${path.relative(process.cwd(), outFile)}`);
+    console.log(
+      `Wrote ${count} namespaces to ${path.relative(process.cwd(), outFile)}`,
+    );
   }
   console.log(`Done. Combined namespaces across ${langs.length} languages.`);
 }
@@ -82,4 +88,3 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-

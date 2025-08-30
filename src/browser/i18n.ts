@@ -1,5 +1,6 @@
 import i18next from 'i18next';
 import { refreshTooltips } from './dom';
+import { logger } from './util';
 
 const namespaces: { ns: string; path: string }[] = [
   { ns: 'app', path: 'locale/{{lng}}/app.json' },
@@ -25,14 +26,31 @@ async function fetchJson(url: string) {
   return (await res.json()) as Record<string, any>;
 }
 
-async function loadBundles(lng: string) {
+async function loadBundle(lng: string) {
+  const bundle = resolvePath('locale/{{lng}}/all.json', lng);
+  try {
+    const data = await fetchJson(bundle);
+    // { [namespace]: { ...translations } }
+    for (const ns of Object.keys(data)) {
+      const nsData = data[ns];
+      if (nsData && typeof nsData === 'object') {
+        i18next.addResourceBundle(lng, ns, nsData, true, true);
+      }
+    }
+    return true;
+  } catch (e) {
+    // all.json not found, will fallback to individual bundles
+    return false;
+  }
+}
+
+async function fallbackLoadBundles(lng: string) {
   for (const { ns, path } of namespaces) {
     try {
       const data = await fetchJson(resolvePath(path, lng));
       i18next.addResourceBundle(lng, ns, data, true, true);
     } catch (e) {
-      // ignore missing namespaces for a language; fallback will handle
-      // console.warn('i18n: missing namespace', ns, 'for', lng, e);
+      logger?.error(`i18n', 'Failed to load language bundles for ${lng}`);
     }
   }
 }
@@ -46,7 +64,11 @@ export function normalizeLanguage(lng: string | null | undefined) {
 
 export async function initI18n(initialLng: string) {
   const lng = normalizeLanguage(initialLng);
-  await loadBundles(lng);
+  const ok = await loadBundle(lng);
+
+  if (!ok) {
+    await fallbackLoadBundles(lng);
+  }
 
   await i18next.init({
     lng,
@@ -60,7 +82,12 @@ export async function initI18n(initialLng: string) {
 
 export async function changeLanguage(lng: string) {
   const base = normalizeLanguage(lng);
-  await loadBundles(base);
+  const ok = await loadBundle(base);
+
+  if (!ok) {
+    await fallbackLoadBundles(base);
+  }
+
   await i18next.changeLanguage(base);
   applyTranslations();
   refreshTooltips();
