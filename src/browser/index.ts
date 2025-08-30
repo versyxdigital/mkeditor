@@ -26,7 +26,7 @@ const mode = api !== 'web' ? 'desktop' : 'web';
 
 // Initialize i18n based on app or browser locale
 const locale = getAppLocale(mode);
-initI18n(locale).then(() => changeLanguage(locale));
+initI18n(locale, false).then((lng) => changeLanguage(lng));
 
 // If the app is in web mode hide the filetree sidebar.
 if (api === 'web') {
