@@ -1,4 +1,5 @@
 import type { EditorSettings, ExportSettings } from './interfaces/Editor';
+import { normalizeLanguage } from './i18n';
 
 export const config = {};
 
@@ -10,6 +11,7 @@ export const settings: EditorSettings = {
   minimap: true,
   systemtheme: true,
   scrollsync: true,
+  locale: normalizeLanguage(navigator.language),
 };
 
 export const exportSettings: ExportSettings = {

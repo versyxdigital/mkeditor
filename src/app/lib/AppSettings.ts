@@ -1,7 +1,7 @@
 import { homedir } from 'os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { normalize } from 'path';
-import type { BrowserWindow } from 'electron';
+import { app, type BrowserWindow } from 'electron';
 import type { SettingsFile } from '../interfaces/Settings';
 import type { Providers } from '../interfaces/Providers';
 import { deepMerge, hasAllKeys } from '../util';
@@ -36,6 +36,7 @@ export class AppSettings {
     minimap: true,
     systemtheme: true,
     scrollsync: true,
+    locale: app.getLocale(),
     exportSettings: {
       withStyles: true,
       container: 'container-fluid',
@@ -74,6 +75,25 @@ export class AppSettings {
   }
 
   /**
+   * Get the editor settings.
+   *
+   * @returns - the editor settings
+   */
+  public getSettings() {
+    return this.applied;
+  }
+
+  /**
+   * Get an editor setting.
+   *
+   * @param key - the setting key
+   * @returns - the setting
+   */
+  public getSetting<K extends keyof SettingsFile>(key: K) {
+    return this.applied?.[key];
+  }
+
+  /**
    * Provide access to a provider.
    *
    * @param provider - the provider to access
@@ -89,11 +109,20 @@ export class AppSettings {
    * @returns - the settings
    */
   loadFile() {
-    const file = readFileSync(this.filePath, {
-      encoding: 'utf-8',
-    });
+    try {
+      const file = readFileSync(this.filePath, {
+        encoding: 'utf-8',
+      });
 
-    return JSON.parse(file);
+      return JSON.parse(file);
+    } catch (err) {
+      this.context.webContents.send('from:notification:display', {
+        status: 'error',
+        message: 'Settings file corrupted. Returning to default settings.',
+      });
+
+      return this.settings;
+    }
   }
 
   /**

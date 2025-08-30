@@ -1,0 +1,21 @@
+{
+  "title": "导出设置",
+  "intro": "在此可以配置 HTML 与 PDF 导出；设置更新时将自动保存。",
+  "settings_file_info": "你的设置文件位于 ~/.mkeditor/settings.json。",
+  "export_with_styles_label": "带样式导出",
+  "export_with_styles_help": "启用后将使用来自官方 CDN 且带完整性与跨域校验的 Bootstrap、FontAwesome 和 KaTeX 样式。",
+  "set_container_label": "设置容器",
+  "set_container_option_container": "container",
+  "set_container_option_container_fluid": "container-fluid",
+  "set_container_help": "设置容器宽度类名；fluid 更宽。",
+  "set_font_size_label": "设置字体大小",
+  "set_font_size_help": "以像素为单位设置字体大小。",
+  "set_line_spacing_label": "设置行距",
+  "set_line_spacing_help": "设置垂直行间距。",
+  "set_background_colour_label": "设置背景颜色",
+  "set_background_colour_help": "设置背景颜色。",
+  "set_font_colour_label": "设置字体颜色",
+  "set_font_colour_help": "设置字体颜色。",
+  "save_settings": "保存设置",
+  "reset_to_default": "恢复默认值"
+}

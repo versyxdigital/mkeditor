@@ -1,0 +1,8 @@
+{
+  "version_label": "Sürüm",
+  "built_with_love_by": "Sevgiyle geliştiren:",
+  "libraries_intro": "MKEditor aşağıdaki açık kaynak kütüphaneleri kullanır:",
+  "libraries_list": "monaco, bootstrap, fontawesome, markdown-it, highlight.js, split.js, sweetalert2, webpack ve electron.",
+  "view_source_prefix": "Kaynak kodu görüntüle",
+  "view_source_here": "burada"
+}

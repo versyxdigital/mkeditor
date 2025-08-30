@@ -1,0 +1,9 @@
+{
+  "toggle_sidebar": "Toggle sidebar",
+  "character_count": "Character Count:",
+  "word_count": "Word Count:",
+  "settings_tooltip": "Configure editor settings",
+  "shortcuts_tooltip": "View editor shortcuts",
+  "theme_switch_notice": "This switch is disabled on desktop if you are using your system theme.",
+  "active_file_default": "MKEditor"
+}

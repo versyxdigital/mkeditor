@@ -1,0 +1,10 @@
+{
+  "primary": "Primario",
+  "secondary": "Secondario",
+  "success": "Successo",
+  "danger": "Pericolo",
+  "warning": "Avviso",
+  "info": "Informazioni",
+  "light": "Chiaro",
+  "dark": "Scuro"
+}

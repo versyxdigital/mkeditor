@@ -21,6 +21,7 @@ beforeEach(async () => {
     <input id="minimap-setting" />
     <input id="systemtheme-setting" />
     <input id="scrollsync-setting" />
+    <select id="locale-setting" /></select>
     <p id="app-settings-file-info"></p>
     <label id="darkmode-icon"></label>
     <span id="app-build-id"></span>

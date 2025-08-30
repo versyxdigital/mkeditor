@@ -1,0 +1,8 @@
+{
+  "version_label": "バージョン",
+  "built_with_love_by": "愛を込めて制作:",
+  "libraries_intro": "MKEditor は以下のオープンソースライブラリを使用しています:",
+  "libraries_list": "monaco、bootstrap、fontawesome、markdown-it、highlight.js、split.js、sweetalert2、webpack、electron。",
+  "view_source_prefix": "ソースコードを見る",
+  "view_source_here": "こちら"
+}

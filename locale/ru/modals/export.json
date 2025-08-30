@@ -1,0 +1,21 @@
+{
+  "title": "Настройки экспорта",
+  "intro": "Здесь вы можете настроить параметры экспорта HTML и PDF; настройки сохраняются автоматически по мере их изменения.",
+  "settings_file_info": "Файл настроек расположен по адресу ~/.mkeditor/settings.json.",
+  "export_with_styles_label": "Экспортировать со стилями",
+  "export_with_styles_help": "Включите, чтобы экспортировать с Bootstrap, FontAwesome и KaTeX из официальных CDN с проверкой целостности и crossorigin.",
+  "set_container_label": "Контейнер",
+  "set_container_option_container": "container",
+  "set_container_option_container_fluid": "container-fluid",
+  "set_container_help": "Выбрать ширину контейнера; вариант fluid имеет большую ширину.",
+  "set_font_size_label": "Размер шрифта",
+  "set_font_size_help": "Установить размер шрифта в пикселях.",
+  "set_line_spacing_label": "Межстрочный интервал",
+  "set_line_spacing_help": "Установить вертикальный интервал между строками.",
+  "set_background_colour_label": "Цвет фона",
+  "set_background_colour_help": "Установить цвет фона.",
+  "set_font_colour_label": "Цвет шрифта",
+  "set_font_colour_help": "Установить цвет шрифта.",
+  "save_settings": "Сохранить настройки",
+  "reset_to_default": "Сбросить по умолчанию"
+}

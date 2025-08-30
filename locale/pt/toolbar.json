@@ -1,0 +1,20 @@
+{
+  "reset_split": "Redefinir divisão editor/visualização",
+  "bold_tooltip": "Ctrl + B",
+  "italic_tooltip": "Ctrl + I",
+  "strikethrough_tooltip": "Ctrl + G",
+  "unordered_list_tooltip": "Ctrl + 2",
+  "ordered_list_tooltip": "Ctrl + 3",
+  "insert_link_tooltip": "Ctrl + H",
+  "table_menu_tooltip": "Ctrl + T",
+  "codeblock_menu_tooltip": "Ctrl + K, <_>",
+  "alert_menu_tooltip": "Ctrl + L, <_>",
+  "save_markdown_file": "Salvar arquivo Markdown",
+  "save_button": "Salvar",
+  "configure_export_settings": "Configurar configurações de exportação",
+  "export_html_tooltip": "Exportar para arquivo HTML",
+  "export_pdf_tooltip": "Exportar para arquivo PDF",
+  "export_to_prefix": "Exportar para ",
+  "export_html_label": "HTML",
+  "export_pdf_label": "PDF"
+}

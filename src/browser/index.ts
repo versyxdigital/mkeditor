@@ -10,12 +10,12 @@ import { BridgeManager } from './core/BridgeManager';
 import {
   dom,
   showSplashScreen,
-  setupTooltips,
   createDraggableSplitPanels,
   createSidebarToggle,
   resetEditorPreviewSplit,
 } from './dom';
-import { getExecutionBridge } from './util';
+import { getAppLocale, getExecutionBridge } from './util';
+import { initI18n, changeLanguage } from './i18n';
 
 // The bi-directional synchronous bridge to the main execution context.
 // Exposed on the window object through the preloader.
@@ -24,11 +24,17 @@ const api = getExecutionBridge();
 // App mode (desktop or web).
 const mode = api !== 'web' ? 'desktop' : 'web';
 
+// Initialize i18n based on app or browser locale
+const locale = getAppLocale(mode);
+initI18n(locale).then(() => changeLanguage(locale));
+
 // If the app is in web mode hide the filetree sidebar.
-if (mode === 'web') {
-  document.addEventListener('DOMContentLoaded', () => {
-    dom.sidebar.classList.add('d-none');
-  });
+if (api === 'web') {
+  dom.sidebar.classList.add('d-none');
+  // Expose a language setter for web
+  window.setLanguage = (lng: string) => {
+    changeLanguage(lng);
+  };
 }
 
 // Create new editor event dispatcher.
@@ -66,6 +72,11 @@ if (mkeditor) {
   // If running within electron app, register IPC handler for communication
   // between main and renderer execution contexts.
   if (api !== 'web') {
+    // Register localization handler immediately.
+    api.receive('from:i18n:set', (lng: string) => {
+      changeLanguage(lng);
+    });
+
     // Create a new bridge communication handler.
     const bridgeManager = new BridgeManager(api, mkeditor, dispatcher);
 
@@ -83,10 +94,12 @@ if (mkeditor) {
 
     // Initialize content tracker for the execution bridge.
     editorManager.updateBridgedContent({ init: true });
-  }
 
-  // Setup application tooltips.
-  setupTooltips();
+    // Expose a language setter for desktop via the bridge
+    window.setLanguage = (lng: string) => {
+      bridgeManager.setLanguage(lng);
+    };
+  }
 
   // Implement draggable split.
   createDraggableSplitPanels(mkeditor);

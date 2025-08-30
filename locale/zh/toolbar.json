@@ -1,0 +1,20 @@
+{
+  "reset_split": "重置编辑器/预览分屏",
+  "bold_tooltip": "Ctrl + B",
+  "italic_tooltip": "Ctrl + I",
+  "strikethrough_tooltip": "Ctrl + G",
+  "unordered_list_tooltip": "Ctrl + 2",
+  "ordered_list_tooltip": "Ctrl + 3",
+  "insert_link_tooltip": "Ctrl + H",
+  "table_menu_tooltip": "Ctrl + T",
+  "codeblock_menu_tooltip": "Ctrl + K, <_>",
+  "alert_menu_tooltip": "Ctrl + L, <_>",
+  "save_markdown_file": "保存 Markdown 文件",
+  "save_button": "保存",
+  "configure_export_settings": "配置导出设置",
+  "export_html_tooltip": "导出为 HTML 文件",
+  "export_pdf_tooltip": "导出为 PDF 文件",
+  "export_to_prefix": "导出为 ",
+  "export_html_label": "HTML",
+  "export_pdf_label": "PDF"
+}

@@ -1,0 +1,20 @@
+{
+  "reset_split": "Editör/önizleme bölmesini sıfırla",
+  "bold_tooltip": "Ctrl + B",
+  "italic_tooltip": "Ctrl + I",
+  "strikethrough_tooltip": "Ctrl + G",
+  "unordered_list_tooltip": "Ctrl + 2",
+  "ordered_list_tooltip": "Ctrl + 3",
+  "insert_link_tooltip": "Ctrl + H",
+  "table_menu_tooltip": "Ctrl + T",
+  "codeblock_menu_tooltip": "Ctrl + K, <_>",
+  "alert_menu_tooltip": "Ctrl + L, <_>",
+  "save_markdown_file": "Markdown dosyasını kaydet",
+  "save_button": "Kaydet",
+  "configure_export_settings": "Dışa aktarma ayarlarını yapılandır",
+  "export_html_tooltip": "HTML dosyasına dışa aktar",
+  "export_pdf_tooltip": "PDF dosyasına dışa aktar",
+  "export_to_prefix": "Dışa aktar ",
+  "export_html_label": "HTML",
+  "export_pdf_label": "PDF"
+}

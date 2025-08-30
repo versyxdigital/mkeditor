@@ -1,0 +1,21 @@
+{
+  "title": "書き出し設定",
+  "intro": "ここでは HTML と PDF の書き出し設定を構成できます。設定は更新時に自動的に保存されます。",
+  "settings_file_info": "設定ファイルは ~/.mkeditor/settings.json にあります。",
+  "export_with_styles_label": "スタイル付きで書き出す",
+  "export_with_styles_help": "公式 CDN から提供される Bootstrap、FontAwesome、KaTeX のスタイルを整合性および crossorigin チェック付きで含めて書き出します。",
+  "set_container_label": "コンテナーを設定",
+  "set_container_option_container": "container",
+  "set_container_option_container_fluid": "container-fluid",
+  "set_container_help": "コンテナーの幅クラスを設定します。fluid は幅が広くなります。",
+  "set_font_size_label": "フォントサイズを設定",
+  "set_font_size_help": "フォントサイズを px で設定します。",
+  "set_line_spacing_label": "行間を設定",
+  "set_line_spacing_help": "垂直方向の行間を設定します。",
+  "set_background_colour_label": "背景色を設定",
+  "set_background_colour_help": "背景色を設定します。",
+  "set_font_colour_label": "文字色を設定",
+  "set_font_colour_help": "文字色を設定します。",
+  "save_settings": "設定を保存",
+  "reset_to_default": "デフォルトにリセット"
+}

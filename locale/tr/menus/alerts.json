@@ -1,0 +1,10 @@
+{
+  "primary": "Birincil",
+  "secondary": "İkincil",
+  "success": "Başarı",
+  "danger": "Tehlike",
+  "warning": "Uyarı",
+  "info": "Bilgi",
+  "light": "Açık",
+  "dark": "Koyu"
+}

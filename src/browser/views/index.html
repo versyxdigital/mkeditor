@@ -12,8 +12,8 @@
     >
       <div class="w-100">
         <img src="./icon.png" class="img-fluid app-logo mb-3" />
-        <h1>mkeditor</h1>
-        <small>markdown made simple</small>
+        <h1 data-i18n-text="app:app_name">mkeditor</h1>
+        <small data-i18n-text="app:tagline">markdown made simple</small>
       </div>
     </div>
 
@@ -26,24 +26,39 @@
             class="btn btn-sm btn-outline-secondary border-0 ms-2"
             type="button"
             title="Toggle sidebar"
+            data-i18n-title="navbar:toggle_sidebar"
           >
             <i class="fas fa-bars"></i>
           </button>
           <img src="./icon.png" class="img-fluid app-logo-tiny ms-2" />
-          <span id="active-file" class="text-muted">MKEditor</span>
+          <span
+            id="active-file"
+            class="text-muted"
+            data-i18n-text="app:brand_name"
+            >MKEditor</span
+          >
         </li>
       </ul>
       <ul class="navbar-nav ms-auto">
         <li class="nav-item text-muted">
-          <small>Character Count: <span id="character-count">0</span></small>
+          <small>
+            <span data-i18n-text="navbar:character_count"
+              >Character Count:</span
+            >
+            <span id="character-count">0</span>
+          </small>
           <span class="mx-1 font-weight-lighter">|</span>
-          <small>Word Count: <span id="word-count">0</span></small>
+          <small>
+            <span data-i18n-text="navbar:word_count">Word Count:</span>
+            <span id="word-count">0</span>
+          </small>
         </li>
         <li
           class="nav-item"
           data-bs-toggle="tooltip"
           data-bs-placement="top"
           title="Configure editor settings"
+          data-i18n-title="navbar:settings_tooltip"
         >
           <a
             class="text-muted hover-fade ms-3"
@@ -59,6 +74,7 @@
           data-bs-toggle="tooltip"
           data-bs-placement="top"
           title="View editor shortcuts"
+          data-i18n-title="navbar:shortcuts_tooltip"
         >
           <a
             class="text-muted hover-fade mx-3"
@@ -78,7 +94,9 @@
       <div id="app" class="d-flex flex-row h-100">
         <!-- sidebar -->
         <div id="sidebar" class="p-3 d-flex flex-column">
-          <div class="explorer-title">Explorer</div>
+          <div class="explorer-title" data-i18n-text="sidebar:explorer">
+            Explorer
+          </div>
           <ul id="file-tree" class="list-unstyled mb-0 flex-fill"></ul>
         </div>
 
@@ -111,6 +129,7 @@
             data-bs-toggle="tooltip"
             data-bs-placement="top"
             title="Reset editor/preview split"
+            data-i18n-title="toolbar:reset_split"
           >
             <i class="fas fa-table-columns"></i>
           </button>
@@ -124,6 +143,7 @@
             data-bs-toggle="tooltip"
             data-bs-placement="top"
             title="Ctrl + B"
+            data-i18n-title="toolbar:bold_tooltip"
           >
             <i class="fa fa-bold"></i>
           </button>
@@ -135,6 +155,7 @@
             data-bs-toggle="tooltip"
             data-bs-placement="top"
             title="Ctrl + I"
+            data-i18n-title="toolbar:italic_tooltip"
           >
             <i class="fa fa-italic"></i>
           </button>
@@ -146,6 +167,7 @@
             data-bs-toggle="tooltip"
             data-bs-placement="top"
             title="Ctrl + G"
+            data-i18n-title="toolbar:strikethrough_tooltip"
           >
             <i class="fa fa-strikethrough"></i>
           </button>
@@ -158,6 +180,7 @@
             data-bs-toggle="tooltip"
             data-bs-placement="top"
             title="Ctrl + 2"
+            data-i18n-title="toolbar:unordered_list_tooltip"
           >
             <i class="fa fa-list-ul"></i>
           </button>
@@ -168,6 +191,7 @@
             data-bs-toggle="tooltip"
             data-bs-placement="top"
             title="Ctrl + 3"
+            data-i18n-title="toolbar:ordered_list_tooltip"
           >
             <i class="fa fa-list-ol"></i>
           </button>
@@ -181,6 +205,7 @@
             data-bs-toggle="tooltip"
             data-bs-placement="top"
             title="Ctrl + H"
+            data-i18n-title="toolbar:insert_link_tooltip"
           >
             <i class="fa fa-link"></i>
           </button>
@@ -190,6 +215,7 @@
           data-bs-toggle="tooltip"
           data-bs-placement="top"
           title="Ctrl + T"
+          data-i18n-title="toolbar:table_menu_tooltip"
           data-key="T"
         >
           <button
@@ -209,7 +235,11 @@
             <div class="p-3">
               <div id="insert-markdown-table-form" class="dropup-content">
                 <div class="mb-3">
-                  <label class="mb-2 small">Rows:</label>
+                  <label
+                    class="mb-2 small"
+                    data-i18n-text="menus-tables:rows_label"
+                    >Rows:</label
+                  >
                   <input
                     class="form-control form-control-sm"
                     type="number"
@@ -220,7 +250,11 @@
                 </div>
 
                 <div class="mb-3">
-                  <label class="mb-2 small">Columns:</label>
+                  <label
+                    class="mb-2 small"
+                    data-i18n-text="menus-tables:columns_label"
+                    >Columns:</label
+                  >
                   <input
                     class="form-control form-control-sm"
                     type="number"
@@ -234,7 +268,9 @@
                   id="insert-markdown-table-btn"
                   class="btn btn-sm btn-outline-secondary"
                 >
-                  Insert Table
+                  <span data-i18n-text="menus-tables:insert_table"
+                    >Insert Table</span
+                  >
                 </button>
               </div>
             </div>
@@ -245,6 +281,7 @@
           data-bs-toggle="tooltip"
           data-bs-placement="top"
           title="Ctrl + K, &lt;_&gt;"
+          data-i18n-title="toolbar:codeblock_menu_tooltip"
           data-key="K, &lt;_&gt;"
         >
           <button
@@ -348,6 +385,7 @@
           data-bs-toggle="tooltip"
           data-bs-placement="top"
           title="Ctrl + L, &lt;_&gt;"
+          data-i18n-title="toolbar:alert_menu_tooltip"
           data-key="L, &lt;_&gt;"
         >
           <button
@@ -429,10 +467,15 @@
             data-bs-toggle="tooltip"
             data-bs-placement="top"
             title="Save markdown file"
+            data-i18n-title="toolbar:save_markdown_file"
           >
             <i class="fas fa-save me-1"></i>
             <small class="d-none d-md-inline"
-              ><span class="d-none d-md-inline">Save</span></small
+              ><span
+                class="d-none d-md-inline"
+                data-i18n-text="toolbar:save_button"
+                >Save</span
+              ></small
             >
           </button>
         </div>
@@ -441,6 +484,7 @@
           data-bs-toggle="tooltip"
           data-bs-placement="top"
           title="Configure export settings"
+          data-i18n-title="toolbar:configure_export_settings"
         >
           <a
             class="btn btn-outline-secondary"
@@ -458,10 +502,15 @@
             data-bs-toggle="tooltip"
             data-bs-placement="top"
             title="Export to HTML file"
+            data-i18n-title="toolbar:export_html_tooltip"
           >
             <i class="fas fa-file-export me-1"></i>
             <small>
-              <span class="d-none d-md-inline">Export to </span>HTML
+              <span
+                class="d-none d-md-inline"
+                data-i18n-text="toolbar:export_to_prefix"
+                >Export to </span
+              ><span data-i18n-text="toolbar:export_html_label">HTML</span>
             </small>
           </button>
         </div>
@@ -472,10 +521,15 @@
             data-bs-toggle="tooltip"
             data-bs-placement="top"
             title="Export to PDF file"
+            data-i18n-title="toolbar:export_pdf_tooltip"
           >
             <i class="fas fa-file-pdf me-1"></i>
             <small>
-              <span class="d-none d-md-inline">Export to </span>PDF
+              <span
+                class="d-none d-md-inline"
+                data-i18n-text="toolbar:export_to_prefix"
+                >Export to </span
+              ><span data-i18n-text="toolbar:export_pdf_label">PDF</span>
             </small>
           </button>
         </div>
@@ -489,6 +543,7 @@
             data-bs-toggle="tooltip"
             data-bs-placement="top"
             title="This switch is disabled on desktop if you are using your system theme."
+            data-i18n-title="navbar:theme_switch_notice"
           >
             <input
               type="checkbox"
@@ -515,7 +570,9 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header border-bottom-0">
-            <h5 class="modal-title">Editor settings</h5>
+            <h5 class="modal-title" data-i18n-text="modals-settings:title">
+              Editor settings
+            </h5>
             <button
               type="button"
               class="btn-close"
@@ -524,17 +581,23 @@
             ></button>
           </div>
           <div class="modal-body small pt-0">
-            <p class="text-muted">
+            <p class="text-muted" data-i18n-text="modals-settings:intro">
               Here you can customize various editor settings according to your
               preferences, settings are automatically saved as they are updated.
             </p>
             <p class="text-muted" id="app-settings-file-info">
-              Your settings file is located at
+              <span data-i18n-text="modals-settings:settings_file_info"
+                >Your settings file is located at</span
+              >
               <span class="font-monospace small">~/.mkeditor/settings.json</span
               >.
             </p>
             <hr />
-            <p class="text-muted"><strong>Formatting</strong></p>
+            <p class="text-muted">
+              <strong data-i18n-text="modals-settings:formatting"
+                >Formatting</strong
+              >
+            </p>
             <div class="form-check">
               <input
                 type="checkbox"
@@ -545,8 +608,12 @@
                 class="form-check-label d-flex flex-column"
                 for="autoindent-setting"
               >
-                <span>Toggle automatic indentation</span>
-                <small class="text-muted"
+                <span data-i18n-text="modals-settings:autoindent_label"
+                  >Toggle automatic indentation</span
+                >
+                <small
+                  class="text-muted"
+                  data-i18n-text="modals-settings:autoindent_help"
                   >Automatically indent text on new lines.</small
                 >
               </label>
@@ -561,15 +628,21 @@
                 class="form-check-label d-flex flex-column"
                 for="wordwrap-setting"
               >
-                <span>Toggle word-wrapping</span>
-                <small class="text-muted"
+                <span data-i18n-text="modals-settings:wordwrap_label"
+                  >Toggle word-wrapping</span
+                >
+                <small
+                  class="text-muted"
+                  data-i18n-text="modals-settings:wordwrap_help"
                   >Automatically break lines to fit the width of the
                   editor.</small
                 >
               </label>
             </div>
             <hr />
-            <p class="text-muted"><strong>Editing</strong></p>
+            <p class="text-muted">
+              <strong data-i18n-text="modals-settings:editing">Editing</strong>
+            </p>
             <div class="form-check mt-3">
               <input
                 type="checkbox"
@@ -580,12 +653,22 @@
                 class="form-check-label d-flex flex-column"
                 for="whitespace-setting"
               >
-                <span>Render whitespace</span>
-                <small class="text-muted">Display whitespace characters.</small>
+                <span data-i18n-text="modals-settings:whitespace_label"
+                  >Render whitespace</span
+                >
+                <small
+                  class="text-muted"
+                  data-i18n-text="modals-settings:whitespace_help"
+                  >Display whitespace characters.</small
+                >
               </label>
             </div>
             <hr />
-            <p class="text-muted"><strong>Miscellaneous</strong></p>
+            <p class="text-muted">
+              <strong data-i18n-text="modals-settings:miscellaneous"
+                >Miscellaneous</strong
+              >
+            </p>
             <div class="form-check mt-3">
               <input
                 type="checkbox"
@@ -596,8 +679,14 @@
                 class="form-check-label d-flex flex-column"
                 for="minimap-setting"
               >
-                <span>Display minimap</span>
-                <small class="text-muted">Display the editor minimap.</small>
+                <span data-i18n-text="modals-settings:minimap_label"
+                  >Display minimap</span
+                >
+                <small
+                  class="text-muted"
+                  data-i18n-text="modals-settings:minimap_help"
+                  >Display the editor minimap.</small
+                >
               </label>
             </div>
             <div class="form-check mt-3">
@@ -610,14 +699,22 @@
                 class="form-check-label d-flex flex-column"
                 for="scrollsync-setting"
               >
-                <span>Use scroll sync</span>
-                <small class="text-muted"
+                <span data-i18n-text="modals-settings:scrollsync_label"
+                  >Use scroll sync</span
+                >
+                <small
+                  class="text-muted"
+                  data-i18n-text="modals-settings:scrollsync_help"
                   >Enable scroll sync between the editor and the preview.</small
                 >
               </label>
             </div>
             <hr />
-            <p class="text-muted"><strong>Appearance</strong></p>
+            <p class="text-muted">
+              <strong data-i18n-text="modals-settings:appearance"
+                >Appearance</strong
+              >
+            </p>
             <div class="form-check mt-3">
               <input
                 type="checkbox"
@@ -628,11 +725,32 @@
                 class="form-check-label d-flex flex-column"
                 for="systemtheme-setting"
               >
-                <span>Use system theme</span>
-                <small class="text-muted"
+                <span data-i18n-text="modals-settings:systemtheme_label"
+                  >Use system theme</span
+                >
+                <small
+                  class="text-muted"
+                  data-i18n-text="modals-settings:systemtheme_help"
                   >Let your system theme override your stored settings.</small
                 >
               </label>
+            </div>
+            <div class="form-group mt-3">
+              <label
+                for="locale-setting"
+                class="form-label"
+                data-i18n-text="modals-settings:language_label"
+                >Language</label
+              >
+              <select
+                id="locale-setting"
+                class="form-select form-select-sm setting"
+              ></select>
+              <small
+                class="text-muted"
+                data-i18n-text="modals-settings:language_help"
+                >Select the interface language.</small
+              >
             </div>
             <hr />
             <div class="form-group d-flex align-items-center gap-3 mt-4 mb-3">
@@ -641,7 +759,11 @@
                 class="btn btn-sm btn-primary rounded-1"
               >
                 <i class="fas fa-save"></i>
-                <span class="ms-1">Save Settings</span>
+                <span
+                  class="ms-1"
+                  data-i18n-text="modals-settings:save_settings"
+                  >Save Settings</span
+                >
               </button>
             </div>
           </div>
@@ -654,7 +776,9 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header border-bottom-0">
-            <h5 class="modal-title">Export settings</h5>
+            <h5 class="modal-title" data-i18n-text="modals-export:title">
+              Export settings
+            </h5>
             <button
               type="button"
               class="btn-close"
@@ -663,11 +787,14 @@
             ></button>
           </div>
           <div class="modal-body small pt-0">
-            <p class="text-muted">
+            <p class="text-muted" data-i18n-text="modals-export:intro">
               Here you can configure settings for HTML and PDF exports, settings
               are automatically saved as they are updated.
             </p>
-            <p class="text-muted">
+            <p
+              class="text-muted"
+              data-i18n-text="modals-export:settings_file_info"
+            >
               Your settings file is located at ~/.mkeditor/settings.json.
             </p>
             <hr />
@@ -682,8 +809,13 @@
                 class="form-check-label d-flex flex-column"
                 for="export-with-styles"
               >
-                <span>Export with styles</span>
-                <small class="text-muted">
+                <span data-i18n-text="modals-export:export_with_styles_label"
+                  >Export with styles</span
+                >
+                <small
+                  class="text-muted"
+                  data-i18n-text="modals-export:export_with_styles_help"
+                >
                   Enable this to export with Bootstrap, FontAwesome and KaTeX
                   styles, provided from official CDNs with secure integrity and
                   crossorigin checks.
@@ -692,36 +824,63 @@
             </div>
             <hr />
             <div class="form-group mt-3">
-              <label for="export-setting-container" class="form-label"
+              <label
+                for="export-setting-container"
+                class="form-label"
+                data-i18n-text="modals-export:set_container_label"
                 >Set container</label
               >
               <select
                 id="export-setting-container"
                 class="form-select form-select-sm"
               >
-                <option value="container">container</option>
-                <option value="container-fluid">container-fluid</option>
+                <option
+                  value="container"
+                  data-i18n-text="modals-export:set_container_option_container"
+                >
+                  container
+                </option>
+                <option
+                  value="container-fluid"
+                  data-i18n-text="modals-export:set_container_option_container_fluid"
+                >
+                  container-fluid
+                </option>
               </select>
-              <small class="text-muted">
+              <small
+                class="text-muted"
+                data-i18n-text="modals-export:set_container_help"
+              >
                 Set the container width class, fluid is larger width.
               </small>
             </div>
             <div class="form-group mt-3">
-              <label for="export-setting-fontsize" class="form-label"
+              <label
+                for="export-setting-fontsize"
+                class="form-label"
+                data-i18n-text="modals-export:set_font_size_label"
                 >Set font-size</label
               >
               <input
                 type="number"
                 id="export-setting-fontsize"
                 class="form-control form-control-sm"
-                min="8"
+                min="6"
                 value="16"
                 max="72"
               />
-              <small class="text-muted"> Set the font size in px. </small>
+              <small
+                class="text-muted"
+                data-i18n-text="modals-export:set_font_size_help"
+              >
+                Set the font size in px.
+              </small>
             </div>
             <div class="form-group mt-3">
-              <label for="export-setting-linespacing" class="form-label"
+              <label
+                for="export-setting-linespacing"
+                class="form-label"
+                data-i18n-text="modals-export:set_line_spacing_label"
                 >Set line-spacing</label
               >
               <input
@@ -733,12 +892,20 @@
                 step="0.1"
                 value="1"
               />
-              <small class="text-muted"> Set the vertical line spacing. </small>
+              <small
+                class="text-muted"
+                data-i18n-text="modals-export:set_line_spacing_help"
+              >
+                Set the vertical line spacing.
+              </small>
             </div>
             <hr />
             <div class="d-flex flex-wrap align-items-center gap-5 mt-3">
               <div class="form-group">
-                <label for="export-setting-background" class="form-label"
+                <label
+                  for="export-setting-background"
+                  class="form-label"
+                  data-i18n-text="modals-export:set_background_colour_label"
                   >Set background colour</label
                 >
                 <div class="d-flex align-items-center gap-2 mb-2">
@@ -752,10 +919,18 @@
                     >#FFFFFF</span
                   >
                 </div>
-                <small class="text-muted"> Set the background colour. </small>
+                <small
+                  class="text-muted"
+                  data-i18n-text="modals-export:set_background_colour_help"
+                >
+                  Set the background colour.
+                </small>
               </div>
               <div class="form-group">
-                <label for="export-setting-font-color" class="form-label"
+                <label
+                  for="export-setting-font-color"
+                  class="form-label"
+                  data-i18n-text="modals-export:set_font_colour_label"
                   >Set font colour</label
                 >
                 <div class="d-flex align-items-center gap-2 mb-2">
@@ -771,7 +946,12 @@
                     >#212529</span
                   >
                 </div>
-                <small class="text-muted"> Set the font colour. </small>
+                <small
+                  class="text-muted"
+                  data-i18n-text="modals-export:set_font_colour_help"
+                >
+                  Set the font colour.
+                </small>
               </div>
             </div>
             <div class="form-group d-flex align-items-center gap-3 mt-4 mb-3">
@@ -780,14 +960,20 @@
                 class="btn btn-sm btn-primary rounded-1"
               >
                 <i class="fas fa-save"></i>
-                <span class="ms-1">Save Settings</span>
+                <span class="ms-1" data-i18n-text="modals-export:save_settings"
+                  >Save Settings</span
+                >
               </button>
               <button
                 id="export-settings-reset"
                 class="btn btn-sm btn-secondary rounded-1"
               >
                 <i class="fas fa-refresh"></i>
-                <span class="ms-1">Reset to Default</span>
+                <span
+                  class="ms-1"
+                  data-i18n-text="modals-export:reset_to_default"
+                  >Reset to Default</span
+                >
               </button>
             </div>
           </div>
@@ -801,9 +987,14 @@
         <div class="modal-content text-center p-3">
           <div class="text-muted modal-body small">
             <img src="./icon.png" class="img-fluid app-logo mb-3" />
-            <p>Version <span id="app-version"></span></p>
             <p>
-              Built with love by
+              <span data-i18n-text="modals-about:version_label">Version</span>
+              <span id="app-version"></span>
+            </p>
+            <p>
+              <span data-i18n-text="modals-about:built_with_love_by"
+                >Built with love by</span
+              >
               <a
                 class="fw-bold text-primary text-decoration-none"
                 href="https://versyxdigital.github.io/"
@@ -812,19 +1003,27 @@
               >.
             </p>
             <p class="mb-1">
-              MKEditor uses the following open-source libraries:
+              <span data-i18n-text="modals-about:libraries_intro"
+                >MKEditor uses the following open-source libraries:</span
+              >
             </p>
             <p>
-              monaco, bootstrap, fontawesome, markdown-it, highlight.js,
-              split.js, sweetalert2, webpack and electron.
+              <span data-i18n-text="modals-about:libraries_list"
+                >monaco, bootstrap, fontawesome, markdown-it, highlight.js,
+                split.js, sweetalert2, webpack and electron.</span
+              >
             </p>
             <p class="mb-0">
-              View the source code
+              <span data-i18n-text="modals-about:view_source_prefix"
+                >View the source code</span
+              >
               <a
                 class="fw-bold text-primary text-decoration-none"
                 href="https://github.com/versyxdigital/mkeditor"
                 target="_blank"
-                >here</a
+                ><span data-i18n-text="modals-about:view_source_here"
+                  >here</span
+                ></a
               >.
             </p>
           </div>
@@ -837,7 +1036,9 @@
       <div class="modal-dialog mw-100 w-75" role="document">
         <div class="modal-content small text-muted">
           <div class="modal-header border-bottom-0">
-            <h5 class="modal-title">MKEditor Shortcuts</h5>
+            <h5 class="modal-title" data-i18n-text="modals-shortcuts:title">
+              MKEditor Shortcuts
+            </h5>
             <button
               type="button"
               class="btn-close"
@@ -848,82 +1049,160 @@
           <div class="modal-body px-4 py-0">
             <div class="row">
               <div class="col-6">
-                <h6>Basic Editing</h6>
+                <h6 data-i18n-text="modals-shortcuts:basic_editing">
+                  Basic Editing
+                </h6>
                 <table class="table table-sm table-striped small">
                   <thead>
                     <tr>
-                      <th scope="col">Shortcut</th>
-                      <th scope="col">Description</th>
+                      <th
+                        scope="col"
+                        data-i18n-text="modals-shortcuts:table_header_shortcut"
+                      >
+                        Shortcut
+                      </th>
+                      <th
+                        scope="col"
+                        data-i18n-text="modals-shortcuts:table_header_description"
+                      >
+                        Description
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
                       <td><strong>F1</strong></td>
-                      <td>Open command palette</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.open_command_palette"
+                      >
+                        Open command palette
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + Z</strong></td>
-                      <td>Undo last edit</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.undo_last_edit"
+                      >
+                        Undo last edit
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + Y</strong></td>
-                      <td>Redo last edit</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.redo_last_edit"
+                      >
+                        Redo last edit
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + X</strong></td>
-                      <td>Cut line (empty selection)</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.cut_line_empty"
+                      >
+                        Cut line (empty selection)
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + C</strong></td>
-                      <td>Copy line (empty selection)</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.copy_line_empty"
+                      >
+                        Copy line (empty selection)
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + K, Ctrl + X</strong></td>
-                      <td>Trim trailing whitespace from selection</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.trim_trailing_whitespace"
+                      >
+                        Trim trailing whitespace from selection
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Alt + ↑ / ↓</strong></td>
-                      <td>Move line up/down</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.move_line_up_down"
+                      >
+                        Move line up/down
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Shift + Alt + ↑ / ↓</strong></td>
-                      <td>Copy line up/down</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.copy_line_up_down"
+                      >
+                        Copy line up/down
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + Shift + K</strong></td>
-                      <td>Delete line</td>
+                      <td data-i18n-text="modals-shortcuts:items.delete_line">
+                        Delete line
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + Enter</strong></td>
-                      <td>Insert line below</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.insert_line_below"
+                      >
+                        Insert line below
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + Shift + Enter</strong></td>
-                      <td>Insert line above</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.insert_line_above"
+                      >
+                        Insert line above
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + ] / [</strong></td>
-                      <td>Indent/outdent line</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.indent_outdent_line"
+                      >
+                        Indent/outdent line
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Home / End</strong></td>
-                      <td>Go to beginning/end of line</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.go_to_beginning_end_line"
+                      >
+                        Go to beginning/end of line
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + Home</strong></td>
-                      <td>Go to beginning of file</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.go_to_beginning_file"
+                      >
+                        Go to beginning of file
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + End</strong></td>
-                      <td>Go to end of file</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.go_to_end_file"
+                      >
+                        Go to end of file
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + ↑ / ↓</strong></td>
-                      <td>Scroll line up/down</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.scroll_line_up_down"
+                      >
+                        Scroll line up/down
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Alt + PgUp / PgDn</strong></td>
-                      <td>Scroll page up/down</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.scroll_page_up_down"
+                      >
+                        Scroll page up/down
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -931,56 +1210,98 @@
               <div class="col-6">
                 <div class="row">
                   <div class="col-12">
-                    <h6>Text Formatting</h6>
+                    <h6 data-i18n-text="modals-shortcuts:text_formatting">
+                      Text Formatting
+                    </h6>
                     <table class="table table-sm table-striped small">
                       <thead>
                         <tr>
-                          <th scope="col">Shortcut</th>
-                          <th scope="col">Description</th>
+                          <th
+                            scope="col"
+                            data-i18n-text="modals-shortcuts:table_header_shortcut"
+                          >
+                            Shortcut
+                          </th>
+                          <th
+                            scope="col"
+                            data-i18n-text="modals-shortcuts:table_header_description"
+                          >
+                            Description
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
                           <td><strong>Ctrl + B</strong></td>
-                          <td>Make text bold</td>
+                          <td
+                            data-i18n-text="modals-shortcuts:items.make_text_bold"
+                          >
+                            Make text bold
+                          </td>
                         </tr>
                         <tr>
                           <td><strong>Ctrl + I</strong></td>
-                          <td>Make text italic</td>
+                          <td
+                            data-i18n-text="modals-shortcuts:items.make_text_italic"
+                          >
+                            Make text italic
+                          </td>
                         </tr>
                         <tr>
                           <td><strong>Ctrl + G</strong></td>
-                          <td>Strikethrough text</td>
+                          <td
+                            data-i18n-text="modals-shortcuts:items.strikethrough_text"
+                          >
+                            Strikethrough text
+                          </td>
                         </tr>
                         <tr>
                           <td><strong>Ctrl + 2</strong></td>
-                          <td>Create unordered list</td>
+                          <td
+                            data-i18n-text="modals-shortcuts:items.create_unordered_list"
+                          >
+                            Create unordered list
+                          </td>
                         </tr>
                         <tr>
                           <td><strong>Ctrl + 3</strong></td>
-                          <td>Create ordered list</td>
+                          <td
+                            data-i18n-text="modals-shortcuts:items.create_ordered_list"
+                          >
+                            Create ordered list
+                          </td>
                         </tr>
                         <tr>
                           <td><strong>Ctrl + H</strong></td>
-                          <td>Insert a link (selection or empty selection)</td>
+                          <td
+                            data-i18n-text="modals-shortcuts:items.insert_link"
+                          >
+                            Insert a link (selection or empty selection)
+                          </td>
                         </tr>
                         <tr>
                           <td><strong>Ctrl + T</strong></td>
-                          <td>
+                          <td
+                            data-i18n-text="modals-shortcuts:items.insert_markdown_table"
+                          >
                             Insert a markdown table (opens the configuration
                             menu)
                           </td>
                         </tr>
                         <tr>
                           <td><strong>Ctrl + K, _</strong></td>
-                          <td>
+                          <td
+                            data-i18n-text="modals-shortcuts:items.insert_codeblock"
+                          >
                             Insert a codeblock (_ = the underlined letter from
                             the menu)
                           </td>
                         </tr>
                         <tr>
                           <td><strong>Ctrl + L, _</strong></td>
-                          <td>
+                          <td
+                            data-i18n-text="modals-shortcuts:items.insert_alert_block"
+                          >
                             Insert an alert block (_ = the underlined letter
                             from the menu)
                           </td>
@@ -989,34 +1310,62 @@
                     </table>
                   </div>
                   <div class="col-12 mt-3">
-                    <h6>Search and Replace</h6>
+                    <h6 data-i18n-text="modals-shortcuts:search_and_replace">
+                      Search and Replace
+                    </h6>
                     <table class="table table-sm table-striped small">
                       <thead>
                         <tr>
-                          <th scope="col">Shortcut</th>
-                          <th scope="col">Description</th>
+                          <th
+                            scope="col"
+                            data-i18n-text="modals-shortcuts:table_header_shortcut"
+                          >
+                            Shortcut
+                          </th>
+                          <th
+                            scope="col"
+                            data-i18n-text="modals-shortcuts:table_header_description"
+                          >
+                            Description
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
                           <td><strong>Ctrl + F</strong></td>
-                          <td>Find</td>
+                          <td data-i18n-text="modals-shortcuts:items.find">
+                            Find
+                          </td>
                         </tr>
                         <tr>
                           <td><strong>Ctrl + H</strong></td>
-                          <td>Replace</td>
+                          <td data-i18n-text="modals-shortcuts:items.replace">
+                            Replace
+                          </td>
                         </tr>
                         <tr>
                           <td><strong>F3 / Shift + F3</strong></td>
-                          <td>Find next/previous</td>
+                          <td
+                            data-i18n-text="modals-shortcuts:items.find_next_previous"
+                          >
+                            Find next/previous
+                          </td>
                         </tr>
                         <tr>
                           <td><strong>Alt + Enter</strong></td>
-                          <td>Select all occurrences of find match</td>
+                          <td
+                            data-i18n-text="modals-shortcuts:items.select_all_occurrences"
+                          >
+                            Select all occurrences of find match
+                          </td>
                         </tr>
                         <tr>
                           <td><strong>Alt + C / R / W</strong></td>
-                          <td>Toggle case-sensitive / regex / whole word</td>
+                          <td
+                            data-i18n-text="modals-shortcuts:items.toggle_case_regex_whole"
+                          >
+                            Toggle case-sensitive / regex / whole word
+                          </td>
                         </tr>
                       </tbody>
                     </table>
@@ -1026,52 +1375,100 @@
             </div>
             <div class="row">
               <div class="col-12">
-                <h6>Multi-cursor and selection</h6>
+                <h6
+                  data-i18n-text="modals-shortcuts:multi_cursor_and_selection"
+                >
+                  Multi-cursor and selection
+                </h6>
                 <table class="table table-sm table-striped small">
                   <thead>
                     <tr>
-                      <th scope="col">Shortcut</th>
-                      <th scope="col">Description</th>
+                      <th
+                        scope="col"
+                        data-i18n-text="modals-shortcuts:table_header_shortcut"
+                      >
+                        Shortcut
+                      </th>
+                      <th
+                        scope="col"
+                        data-i18n-text="modals-shortcuts:table_header_description"
+                      >
+                        Description
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
                       <td><strong>Alt + Click</strong></td>
-                      <td>Insert cursor</td>
+                      <td data-i18n-text="modals-shortcuts:items.insert_cursor">
+                        Insert cursor
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + Alt + ↑ / ↓</strong></td>
-                      <td>Insert cursor above/below</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.insert_cursor_above_below"
+                      >
+                        Insert cursor above/below
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Shift + Alt + I</strong></td>
-                      <td>Insert cursor at end of each line selected</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.insert_cursor_end_each_line"
+                      >
+                        Insert cursor at end of each line selected
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + L</strong></td>
-                      <td>Select current line</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.select_current_line"
+                      >
+                        Select current line
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + F2</strong></td>
-                      <td>Select all occurrences of current word</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.select_all_occurrences_current_word"
+                      >
+                        Select all occurrences of current word
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Shift + Alt + (Drag mouse)</strong></td>
-                      <td>Column (box) selection</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.column_selection"
+                      >
+                        Column (box) selection
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + Shift + Alt + ↑ / ↓</strong></td>
-                      <td>Column (box) selection</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.column_selection"
+                      >
+                        Column (box) selection
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Ctrl + Shift + Alt + PgUp / PgDn</strong></td>
-                      <td>Column (box) selection</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.column_selection"
+                      >
+                        Column (box) selection
+                      </td>
                     </tr>
                     <tr>
                       <td>
                         <strong>(Mousewheel pressed + drag cursor)</strong>
                       </td>
-                      <td>Column (box) selection</td>
+                      <td
+                        data-i18n-text="modals-shortcuts:items.column_selection_mousewheel"
+                      >
+                        Column (box) selection
+                      </td>
                     </tr>
                   </tbody>
                 </table>

@@ -1,0 +1,21 @@
+{
+  "title": "Impostazioni di esportazione",
+  "intro": "Qui puoi configurare le impostazioni per le esportazioni HTML e PDF; le impostazioni vengono salvate automaticamente quando le modifichi.",
+  "settings_file_info": "Il tuo file delle impostazioni si trova in ~/.mkeditor/settings.json.",
+  "export_with_styles_label": "Esporta con stili",
+  "export_with_styles_help": "Abilita per esportare con gli stili di Bootstrap, FontAwesome e KaTeX forniti da CDN ufficiali con controlli di integrità e crossorigin.",
+  "set_container_label": "Imposta contenitore",
+  "set_container_option_container": "container",
+  "set_container_option_container_fluid": "container-fluid",
+  "set_container_help": "Imposta la classe di larghezza del contenitore; 'fluid' è più ampio.",
+  "set_font_size_label": "Imposta dimensione font",
+  "set_font_size_help": "Imposta la dimensione del font in px.",
+  "set_line_spacing_label": "Imposta interlinea",
+  "set_line_spacing_help": "Imposta la spaziatura verticale tra le righe.",
+  "set_background_colour_label": "Imposta colore di sfondo",
+  "set_background_colour_help": "Imposta il colore di sfondo.",
+  "set_font_colour_label": "Imposta colore del font",
+  "set_font_colour_help": "Imposta il colore del font.",
+  "save_settings": "Salva impostazioni",
+  "reset_to_default": "Ripristina valori predefiniti"
+}

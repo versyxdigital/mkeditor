@@ -1,0 +1,21 @@
+{
+  "title": "Dışa aktarma ayarları",
+  "intro": "Burada HTML ve PDF dışa aktarma ayarlarını yapılandırabilirsiniz; ayarlar güncellendikçe otomatik olarak kaydedilir.",
+  "settings_file_info": "Ayar dosyanız ~/.mkeditor/settings.json konumundadır.",
+  "export_with_styles_label": "Stillerle dışa aktar",
+  "export_with_styles_help": "Bootstrap, FontAwesome ve KaTeX stilleriyle dışa aktarmayı etkinleştirir; bu stiller resmi CDN’lerden bütünlük ve çapraz kaynak kontrolleriyle sağlanır.",
+  "set_container_label": "Kapsayıcıyı ayarla",
+  "set_container_option_container": "container",
+  "set_container_option_container_fluid": "container-fluid",
+  "set_container_help": "Kapsayıcı genişlik sınıfını ayarlayın; 'fluid' daha geniştir.",
+  "set_font_size_label": "Yazı tipi boyutunu ayarla",
+  "set_font_size_help": "Yazı tipi boyutunu px cinsinden ayarlayın.",
+  "set_line_spacing_label": "Satır aralığını ayarla",
+  "set_line_spacing_help": "Dikey satır aralığını ayarlayın.",
+  "set_background_colour_label": "Arka plan rengini ayarla",
+  "set_background_colour_help": "Arka plan rengini ayarlayın.",
+  "set_font_colour_label": "Yazı tipi rengini ayarla",
+  "set_font_colour_help": "Yazı tipi rengini ayarlayın.",
+  "save_settings": "Ayarları kaydet",
+  "reset_to_default": "Varsayılanlara sıfırla"
+}

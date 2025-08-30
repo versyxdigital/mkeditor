@@ -1,0 +1,8 @@
+{
+  "version_label": "버전",
+  "built_with_love_by": "사랑을 담아 제작:",
+  "libraries_intro": "MKEditor는 다음 오픈 소스 라이브러리를 사용합니다:",
+  "libraries_list": "monaco, bootstrap, fontawesome, markdown-it, highlight.js, split.js, sweetalert2, webpack 및 electron.",
+  "view_source_prefix": "소스 코드 보기",
+  "view_source_here": "여기"
+}

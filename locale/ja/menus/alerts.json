@@ -1,0 +1,10 @@
+{
+  "primary": "プライマリ",
+  "secondary": "セカンダリ",
+  "success": "成功",
+  "danger": "危険",
+  "warning": "警告",
+  "info": "情報",
+  "light": "ライト",
+  "dark": "ダーク"
+}

@@ -1,0 +1,10 @@
+{
+  "primary": "主要",
+  "secondary": "次要",
+  "success": "成功",
+  "danger": "危险",
+  "warning": "警告",
+  "info": "信息",
+  "light": "浅色",
+  "dark": "深色"
+}

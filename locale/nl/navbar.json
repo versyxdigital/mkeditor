@@ -1,0 +1,9 @@
+{
+  "toggle_sidebar": "Zijbalk in-/uitschakelen",
+  "character_count": "Aantal tekens:",
+  "word_count": "Aantal woorden:",
+  "settings_tooltip": "Editorinstellingen configureren",
+  "shortcuts_tooltip": "Sneltoetsen van de editor bekijken",
+  "theme_switch_notice": "Deze schakelaar is op desktop uitgeschakeld als je het systeemthema gebruikt.",
+  "active_file_default": "MKEditor"
+}

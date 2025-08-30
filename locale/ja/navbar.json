@@ -1,0 +1,9 @@
+{
+  "toggle_sidebar": "サイドバーの切り替え",
+  "character_count": "文字数：",
+  "word_count": "単語数：",
+  "settings_tooltip": "エディター設定を構成",
+  "shortcuts_tooltip": "エディターのショートカットを表示",
+  "theme_switch_notice": "システムテーマを使用している場合、デスクトップではこのスイッチは無効です。",
+  "active_file_default": "MKEditor"
+}

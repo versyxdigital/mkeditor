@@ -1,0 +1,10 @@
+{
+  "primary": "Primair",
+  "secondary": "Secundair",
+  "success": "Succes",
+  "danger": "Gevaar",
+  "warning": "Waarschuwing",
+  "info": "Informatie",
+  "light": "Licht",
+  "dark": "Donker"
+}

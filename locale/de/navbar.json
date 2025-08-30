@@ -1,0 +1,9 @@
+{
+  "toggle_sidebar": "Seitenleiste ein-/ausblenden",
+  "character_count": "Zeichenanzahl:",
+  "word_count": "Wortanzahl:",
+  "settings_tooltip": "Editor-Einstellungen konfigurieren",
+  "shortcuts_tooltip": "Editor-Kurzbefehle anzeigen",
+  "theme_switch_notice": "Dieser Schalter ist auf dem Desktop deaktiviert, wenn das Systemdesign verwendet wird.",
+  "active_file_default": "MKEditor"
+}

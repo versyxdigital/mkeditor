@@ -124,6 +124,15 @@ export class BridgeManager {
   }
 
   /**
+   * Request a language change via the main process.
+   *
+   * @param lng - the language code (e.g., 'en', 'fr')
+   */
+  public setLanguage(lng: string) {
+    this.bridge.send('to:i18n:set', lng);
+  }
+
+  /**
    * FileManager wrapper method to send hasChanged over the bridge.
    *
    * @param hasChanged - whether the content has changed
