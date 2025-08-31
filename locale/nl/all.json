@@ -28,6 +28,28 @@
     "sql": "SQL",
     "xml": "XML"
   },
+  "menus-explorer": {
+    "new_file": "Nieuw bestand...",
+    "new_folder": "Nieuwe map...",
+    "open_folder": "Map openen...",
+    "collapse_explorer": "Verkenner samenvouwen",
+    "open_settings": "Instellingen openen...",
+    "open_file": "Bestand openen",
+    "rename_file": "Bestand hernoemen...",
+    "delete_file": "Bestand verwijderen...",
+    "show_properties": "Eigenschappen weergeven...",
+    "expand_folder": "Map uitvouwen",
+    "rename_folder": "Map hernoemen...",
+    "delete_folder": "Map verwijderen...",
+    "prompt_new_file_title": "Naam van nieuw bestand",
+    "prompt_new_file_placeholder": "Naamloos.md",
+    "prompt_new_folder_title": "Naam van nieuwe map",
+    "prompt_rename_file_title": "Bestand hernoemen",
+    "prompt_rename_folder_title": "Map hernoemen",
+    "confirm_delete_file_title": "Bestand verwijderen?",
+    "confirm_delete_folder_title": "Map verwijderen?",
+    "confirm_delete_button": "Verwijderen"
+  },
   "menus-tables": {
     "rows_label": "Rijen:",
     "columns_label": "Kolommen:",
@@ -61,6 +83,17 @@
     "set_font_colour_help": "Stel de tekstkleur in.",
     "save_settings": "Instellingen opslaan",
     "reset_to_default": "Standaardwaarden herstellen"
+  },
+  "modals-properties": {
+    "title": "Eigenschappen",
+    "label_path": "Pad:",
+    "label_type": "Type:",
+    "label_size": "Grootte:",
+    "label_created": "Gemaakt:",
+    "label_modified": "Gewijzigd:",
+    "type_directory": "Map",
+    "type_file": "Bestand",
+    "close_button": "Sluiten"
   },
   "modals-settings": {
     "title": "Editorinstellingen",
@@ -135,6 +168,13 @@
       "column_selection_mousewheel": "Kolom- (blok)selectie"
     }
   },
+  "modals-unsaved": {
+    "title": "Niet-opgeslagen wijzigingen",
+    "text": "Wijzigingen opslaan voordat je sluit?",
+    "confirm": "Opslaan en sluiten",
+    "deny": "Sluiten zonder op te slaan",
+    "cancel": "Annuleren"
+  },
   "navbar": {
     "toggle_sidebar": "Zijbalk in-/uitschakelen",
     "character_count": "Aantal tekens:",
@@ -143,6 +183,32 @@
     "shortcuts_tooltip": "Sneltoetsen van de editor bekijken",
     "theme_switch_notice": "Deze schakelaar is op desktop uitgeschakeld als je het systeemthema gebruikt.",
     "active_file_default": "MKEditor"
+  },
+  "notifications": {
+    "unable_export_preview": "Voorbeeld kan niet worden geëxporteerd",
+    "unable_save_markdown": "Markdown kan niet worden opgeslagen",
+    "exported_html_success": "Voorbeeld geëxporteerd naar HTML",
+    "saved_markdown_success": "Markdown-bestand opgeslagen",
+    "generic_error_try_again": "Er is een fout opgetreden. Probeer het opnieuw.",
+    "unable_open_file": "Kan bestand niet openen.",
+    "path_not_exist": "Het pad bestaat niet.",
+    "permission_denied_open_path": "Toegang geweigerd, kan het pad niet openen.",
+    "unable_open_path": "Kan pad niet openen.",
+    "unable_open_folder": "Kan map niet openen.",
+    "file_created": "Bestand gemaakt.",
+    "unable_create_file": "Kan bestand niet maken.",
+    "folder_created": "Map gemaakt.",
+    "unable_create_folder": "Kan map niet maken.",
+    "renamed_success": "Hernoemd.",
+    "unable_rename": "Kan niet hernoemen.",
+    "deleted_success": "Verwijderd.",
+    "unable_delete": "Kan niet verwijderen.",
+    "settings_file_corrupted_reset": "Instellingsbestand beschadigd. Standaardinstellingen worden hersteld.",
+    "settings_update_success": "Instellingen succesvol bijgewerkt.",
+    "unable_save_settings_permission_denied": "Kan instellingen niet opslaan: toegang geweigerd.",
+    "unable_save_settings_unknown_error": "Kan instellingen niet opslaan: onbekende fout.",
+    "update_available": "Update {{version}} is beschikbaar, wordt op de achtergrond gedownload...",
+    "update_downloaded": "Update {{version}} is gedownload, herstart om bij te werken."
   },
   "sidebar": {
     "explorer": "Verkenner"

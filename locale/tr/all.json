@@ -28,6 +28,28 @@
     "sql": "SQL",
     "xml": "XML"
   },
+  "menus-explorer": {
+    "new_file": "Yeni dosya...",
+    "new_folder": "Yeni klasör...",
+    "open_folder": "Klasör aç...",
+    "collapse_explorer": "Gezgini daralt",
+    "open_settings": "Ayarları aç...",
+    "open_file": "Dosya aç",
+    "rename_file": "Dosyayı yeniden adlandır...",
+    "delete_file": "Dosyayı sil...",
+    "show_properties": "Özellikleri göster...",
+    "expand_folder": "Klasörü genişlet",
+    "rename_folder": "Klasörü yeniden adlandır...",
+    "delete_folder": "Klasörü sil...",
+    "prompt_new_file_title": "Yeni dosya adı",
+    "prompt_new_file_placeholder": "Adsız.md",
+    "prompt_new_folder_title": "Yeni klasör adı",
+    "prompt_rename_file_title": "Dosyayı yeniden adlandır",
+    "prompt_rename_folder_title": "Klasörü yeniden adlandır",
+    "confirm_delete_file_title": "Dosya silinsin mi?",
+    "confirm_delete_folder_title": "Klasör silinsin mi?",
+    "confirm_delete_button": "Sil"
+  },
   "menus-tables": {
     "rows_label": "Satırlar:",
     "columns_label": "Sütunlar:",
@@ -61,6 +83,17 @@
     "set_font_colour_help": "Yazı tipi rengini ayarlayın.",
     "save_settings": "Ayarları kaydet",
     "reset_to_default": "Varsayılanlara sıfırla"
+  },
+  "modals-properties": {
+    "title": "Özellikler",
+    "label_path": "Yol:",
+    "label_type": "Tür:",
+    "label_size": "Boyut:",
+    "label_created": "Oluşturma:",
+    "label_modified": "Değiştirilme:",
+    "type_directory": "Dizin",
+    "type_file": "Dosya",
+    "close_button": "Kapat"
   },
   "modals-settings": {
     "title": "Editör ayarları",
@@ -135,6 +168,13 @@
       "column_selection_mousewheel": "Sütun (kutu) seçimi"
     }
   },
+  "modals-unsaved": {
+    "title": "Kaydedilmemiş değişiklikler",
+    "text": "Kapatmadan önce değişiklikler kaydedilsin mi?",
+    "confirm": "Kaydet ve kapat",
+    "deny": "Kaydetmeden kapat",
+    "cancel": "İptal"
+  },
   "navbar": {
     "toggle_sidebar": "Kenar çubuğunu aç/kapat",
     "character_count": "Karakter sayısı:",
@@ -143,6 +183,32 @@
     "shortcuts_tooltip": "Editör kısayollarını görüntüle",
     "theme_switch_notice": "Sistem temasını kullanıyorsanız bu anahtar masaüstünde devre dışıdır.",
     "active_file_default": "MKEditor"
+  },
+  "notifications": {
+    "unable_export_preview": "Önizleme dışa aktarılamıyor",
+    "unable_save_markdown": "Markdown kaydedilemiyor",
+    "exported_html_success": "Önizleme HTML olarak dışa aktarıldı",
+    "saved_markdown_success": "Markdown dosyası kaydedildi",
+    "generic_error_try_again": "Bir hata oluştu. Lütfen tekrar deneyin.",
+    "unable_open_file": "Dosya açılamıyor.",
+    "path_not_exist": "Yol mevcut değil.",
+    "permission_denied_open_path": "İzin reddedildi, yol açılamıyor.",
+    "unable_open_path": "Yol açılamıyor.",
+    "unable_open_folder": "Klasör açılamıyor.",
+    "file_created": "Dosya oluşturuldu.",
+    "unable_create_file": "Dosya oluşturulamıyor.",
+    "folder_created": "Klasör oluşturuldu.",
+    "unable_create_folder": "Klasör oluşturulamıyor.",
+    "renamed_success": "Yeniden adlandırıldı.",
+    "unable_rename": "Yeniden adlandırılamıyor.",
+    "deleted_success": "Silindi.",
+    "unable_delete": "Silinemiyor.",
+    "settings_file_corrupted_reset": "Ayar dosyası bozuldu. Varsayılan ayarlara dönülüyor.",
+    "settings_update_success": "Ayarlar başarıyla güncellendi.",
+    "unable_save_settings_permission_denied": "Ayarlar kaydedilemiyor: izin reddedildi.",
+    "unable_save_settings_unknown_error": "Ayarlar kaydedilemiyor: bilinmeyen hata.",
+    "update_available": "Güncelleme {{version}} mevcut, arka planda indiriliyor...",
+    "update_downloaded": "Güncelleme {{version}} indirildi, güncellemek için yeniden başlatın."
   },
   "sidebar": {
     "explorer": "Gezgin"

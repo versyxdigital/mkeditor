@@ -1,0 +1,11 @@
+{
+  "title": "Властивості",
+  "label_path": "Шлях:",
+  "label_type": "Тип:",
+  "label_size": "Розмір:",
+  "label_created": "Створено:",
+  "label_modified": "Змінено:",
+  "type_directory": "Каталог",
+  "type_file": "Файл",
+  "close_button": "Закрити"
+}

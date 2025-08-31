@@ -118,7 +118,7 @@ export class AppSettings {
     } catch (err) {
       this.context.webContents.send('from:notification:display', {
         status: 'error',
-        message: 'Settings file corrupted. Returning to default settings.',
+        key: 'notifications:settings_file_corrupted_reset',
       });
 
       return this.settings;
@@ -182,21 +182,21 @@ export class AppSettings {
       if (!init) {
         this.context.webContents.send('from:notification:display', {
           status: 'success',
-          message: 'Settings successfully updated.',
+          key: 'notifications:settings_update_success',
         });
       }
     } catch (err) {
       const detail = err as { code: string };
-      const message =
+      const key =
         detail.code === 'EPERM'
-          ? 'Unable to save settings: permission denied.'
-          : 'Unable to save settings: unknown error.';
+          ? 'notifications:unable_save_settings_permission_denied'
+          : 'notifications:unable_save_settings_unknown_error';
 
-      this.providers.logger?.log.error(message, err);
+      this.providers.logger?.log.error(key, err);
 
       this.context.webContents.send('from:notification:display', {
         status: 'error',
-        message,
+        key,
       });
     }
   }

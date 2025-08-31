@@ -28,6 +28,28 @@
     "sql": "SQL",
     "xml": "XML"
   },
+  "menus-explorer": {
+    "new_file": "Новый файл...",
+    "new_folder": "Новая папка...",
+    "open_folder": "Открыть папку...",
+    "collapse_explorer": "Свернуть проводник",
+    "open_settings": "Открыть настройки...",
+    "open_file": "Открыть файл",
+    "rename_file": "Переименовать файл...",
+    "delete_file": "Удалить файл...",
+    "show_properties": "Показать свойства...",
+    "expand_folder": "Развернуть папку",
+    "rename_folder": "Переименовать папку...",
+    "delete_folder": "Удалить папку...",
+    "prompt_new_file_title": "Имя нового файла",
+    "prompt_new_file_placeholder": "Без названия.md",
+    "prompt_new_folder_title": "Имя новой папки",
+    "prompt_rename_file_title": "Переименовать файл",
+    "prompt_rename_folder_title": "Переименовать папку",
+    "confirm_delete_file_title": "Удалить файл?",
+    "confirm_delete_folder_title": "Удалить папку?",
+    "confirm_delete_button": "Удалить"
+  },
   "menus-tables": {
     "rows_label": "Строки:",
     "columns_label": "Столбцы:",
@@ -61,6 +83,17 @@
     "set_font_colour_help": "Установить цвет шрифта.",
     "save_settings": "Сохранить настройки",
     "reset_to_default": "Сбросить по умолчанию"
+  },
+  "modals-properties": {
+    "title": "Свойства",
+    "label_path": "Путь:",
+    "label_type": "Тип:",
+    "label_size": "Размер:",
+    "label_created": "Создан:",
+    "label_modified": "Изменён:",
+    "type_directory": "Каталог",
+    "type_file": "Файл",
+    "close_button": "Закрыть"
   },
   "modals-settings": {
     "title": "Настройки редактора",
@@ -135,6 +168,13 @@
       "column_selection_mousewheel": "Выделение колонкой (блоком)"
     }
   },
+  "modals-unsaved": {
+    "title": "Несохранённые изменения",
+    "text": "Сохранить изменения перед закрытием?",
+    "confirm": "Сохранить и закрыть",
+    "deny": "Закрыть без сохранения",
+    "cancel": "Отмена"
+  },
   "navbar": {
     "toggle_sidebar": "Показать/скрыть боковую панель",
     "character_count": "Количество символов:",
@@ -143,6 +183,32 @@
     "shortcuts_tooltip": "Показать горячие клавиши редактора",
     "theme_switch_notice": "Этот переключатель недоступен на рабочем столе, если используется системная тема.",
     "active_file_default": "MKEditor"
+  },
+  "notifications": {
+    "unable_export_preview": "Не удалось экспортировать предварительный просмотр",
+    "unable_save_markdown": "Не удалось сохранить Markdown",
+    "exported_html_success": "Предпросмотр экспортирован в HTML",
+    "saved_markdown_success": "Файл Markdown сохранён",
+    "generic_error_try_again": "Произошла ошибка. Пожалуйста, попробуйте ещё раз.",
+    "unable_open_file": "Не удалось открыть файл.",
+    "path_not_exist": "Путь не существует.",
+    "permission_denied_open_path": "Доступ запрещён, невозможно открыть путь.",
+    "unable_open_path": "Не удалось открыть путь.",
+    "unable_open_folder": "Не удалось открыть папку.",
+    "file_created": "Файл создан.",
+    "unable_create_file": "Не удалось создать файл.",
+    "folder_created": "Папка создана.",
+    "unable_create_folder": "Не удалось создать папку.",
+    "renamed_success": "Переименовано.",
+    "unable_rename": "Не удалось переименовать.",
+    "deleted_success": "Удалено.",
+    "unable_delete": "Не удалось удалить.",
+    "settings_file_corrupted_reset": "Файл настроек повреждён. Возврат к настройкам по умолчанию.",
+    "settings_update_success": "Настройки успешно обновлены.",
+    "unable_save_settings_permission_denied": "Не удалось сохранить настройки: доступ запрещён.",
+    "unable_save_settings_unknown_error": "Не удалось сохранить настройки: неизвестная ошибка.",
+    "update_available": "Доступно обновление {{version}}, скачивание в фоновом режиме…",
+    "update_downloaded": "Обновление {{version}} загружено, перезапустите для установки."
   },
   "sidebar": {
     "explorer": "Проводник"

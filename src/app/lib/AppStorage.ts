@@ -95,11 +95,11 @@ export class AppStorage {
     const isHTMLExport =
       options.data && options.data.startsWith('<!DOCTYPE html>');
     const errorAction = isHTMLExport
-      ? 'Unable to export preview'
-      : 'Unable to save markdown';
+      ? 'notifications:unable_export_preview'
+      : 'notifications:unable_save_markdown';
     const successAction = isHTMLExport
-      ? 'Preview exported to HTML'
-      : 'Markdown file saved';
+      ? 'notifications:exported_html_success'
+      : 'notifications:saved_markdown_success';
 
     if (isHTMLExport) {
       config.filters.unshift({
@@ -127,7 +127,7 @@ export class AppStorage {
 
           context.webContents.send('from:notification:display', {
             status: 'success',
-            message: successAction,
+            key: successAction,
           });
 
           if (!isHTMLExport && options.openFile !== false) {
@@ -136,13 +136,13 @@ export class AppStorage {
         } catch (err) {
           context.webContents.send('from:notification:display', {
             status: 'error',
-            message: errorAction,
+            key: errorAction,
           });
         }
       } else {
         context.webContents.send('from:notification:display', {
           status: 'error',
-          message: errorAction,
+          key: errorAction,
         });
       }
     } else {
@@ -156,7 +156,7 @@ export class AppStorage {
 
             context.webContents.send('from:notification:display', {
               status: 'success',
-              message: successAction,
+              key: successAction,
             });
 
             if (!isHTMLExport && options.openFile !== false) {
@@ -167,7 +167,7 @@ export class AppStorage {
             if (details.code !== 'ENOENT') {
               context.webContents.send('from:notification:display', {
                 status: 'error',
-                message: 'An error has occurred, please try again.',
+                key: 'notifications:generic_error_try_again',
               });
             }
           }
@@ -175,7 +175,7 @@ export class AppStorage {
         .catch(() => {
           context.webContents.send('from:notification:display', {
             status: 'error',
-            message: 'An error has occurred, please try again.',
+            key: 'notifications:generic_error_try_again',
           });
         });
     }
@@ -265,7 +265,7 @@ export class AppStorage {
           if (err.message !== 'noselection') {
             context.webContents.send('from:notification:display', {
               status: 'error',
-              message: 'Unable to open file.',
+              key: 'notifications:unable_open_file',
             });
           }
         });
@@ -299,16 +299,16 @@ export class AppStorage {
       }
     } catch (err) {
       const code = (err as any)?.code || (err as Error).message;
-      const message =
+      const key =
         code == 'EOENT' || code == 'invalidpath'
-          ? 'The path does not exist.'
+          ? 'notifications:path_not_exist'
           : code == 'EACCESS'
-            ? 'Permission denied, cannot open path.'
-            : 'Unable to open path.';
+            ? 'notifications:permission_denied_open_path'
+            : 'notifications:unable_open_path';
 
       context.webContents.send('from:notification:display', {
         status: 'error',
-        message,
+        key,
       });
     }
   }
@@ -339,7 +339,7 @@ export class AppStorage {
       if ((err as Error).message !== 'noselection') {
         context.webContents.send('from:notification:display', {
           status: 'error',
-          message: 'Unable to open folder.',
+          key: 'notifications:unable_open_folder',
         });
       }
     }
@@ -364,12 +364,12 @@ export class AppStorage {
       context.webContents.send('from:folder:opened', { path: parent, tree });
       context.webContents.send('from:notification:display', {
         status: 'success',
-        message: 'File created.',
+        key: 'notifications:file_created',
       });
     } catch {
       context.webContents.send('from:notification:display', {
         status: 'error',
-        message: 'Unable to create file.',
+        key: 'notifications:unable_create_file',
       });
     }
   }
@@ -389,12 +389,12 @@ export class AppStorage {
       context.webContents.send('from:folder:opened', { path: parent, tree });
       context.webContents.send('from:notification:display', {
         status: 'success',
-        message: 'Folder created.',
+        key: 'notifications:folder_created',
       });
     } catch {
       context.webContents.send('from:notification:display', {
         status: 'error',
-        message: 'Unable to create folder.',
+        key: 'notifications:unable_create_folder',
       });
     }
   }
@@ -416,12 +416,12 @@ export class AppStorage {
       });
       context.webContents.send('from:notification:display', {
         status: 'success',
-        message: 'Renamed.',
+        key: 'notifications:renamed_success',
       });
     } catch {
       context.webContents.send('from:notification:display', {
         status: 'error',
-        message: 'Unable to rename.',
+        key: 'notifications:unable_rename',
       });
     }
   }
@@ -437,12 +437,12 @@ export class AppStorage {
       context.webContents.send('from:folder:opened', { path: parent, tree });
       context.webContents.send('from:notification:display', {
         status: 'success',
-        message: 'Deleted.',
+        key: 'notifications:deleted_success',
       });
     } catch {
       context.webContents.send('from:notification:display', {
         status: 'error',
-        message: 'Unable to delete.',
+        key: 'notifications:unable_delete',
       });
     }
   }

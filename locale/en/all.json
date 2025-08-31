@@ -28,6 +28,28 @@
     "sql": "SQL",
     "xml": "XML"
   },
+  "menus-explorer": {
+    "new_file": "New File...",
+    "new_folder": "New Folder...",
+    "open_folder": "Open Folder...",
+    "collapse_explorer": "Collapse Explorer",
+    "open_settings": "Open Settings...",
+    "open_file": "Open File",
+    "rename_file": "Rename File...",
+    "delete_file": "Delete File...",
+    "show_properties": "Show Properties...",
+    "expand_folder": "Expand Folder",
+    "rename_folder": "Rename Folder...",
+    "delete_folder": "Delete Folder...",
+    "prompt_new_file_title": "New file name",
+    "prompt_new_file_placeholder": "Untitled.md",
+    "prompt_new_folder_title": "New folder name",
+    "prompt_rename_file_title": "Rename file",
+    "prompt_rename_folder_title": "Rename folder",
+    "confirm_delete_file_title": "Delete file?",
+    "confirm_delete_folder_title": "Delete folder?",
+    "confirm_delete_button": "Delete"
+  },
   "menus-tables": {
     "rows_label": "Rows:",
     "columns_label": "Columns:",
@@ -61,6 +83,17 @@
     "set_font_colour_help": "Set the font colour.",
     "save_settings": "Save Settings",
     "reset_to_default": "Reset to Default"
+  },
+  "modals-properties": {
+    "title": "Properties",
+    "label_path": "Path:",
+    "label_type": "Type:",
+    "label_size": "Size:",
+    "label_created": "Created:",
+    "label_modified": "Modified:",
+    "type_directory": "Directory",
+    "type_file": "File",
+    "close_button": "Close"
   },
   "modals-settings": {
     "title": "Editor settings",
@@ -135,6 +168,13 @@
       "column_selection_mousewheel": "Column (box) selection"
     }
   },
+  "modals-unsaved": {
+    "title": "Unsaved changes",
+    "text": "Save changes to your file before closing?",
+    "confirm": "Save & close",
+    "deny": "Close without saving",
+    "cancel": "Cancel"
+  },
   "navbar": {
     "toggle_sidebar": "Toggle sidebar",
     "character_count": "Character Count:",
@@ -143,6 +183,32 @@
     "shortcuts_tooltip": "View editor shortcuts",
     "theme_switch_notice": "This switch is disabled on desktop if you are using your system theme.",
     "active_file_default": "MKEditor"
+  },
+  "notifications": {
+    "unable_export_preview": "Unable to export preview",
+    "unable_save_markdown": "Unable to save markdown",
+    "exported_html_success": "Preview exported to HTML",
+    "saved_markdown_success": "Markdown file saved",
+    "generic_error_try_again": "An error has occurred, please try again.",
+    "unable_open_file": "Unable to open file.",
+    "path_not_exist": "The path does not exist.",
+    "permission_denied_open_path": "Permission denied, cannot open path.",
+    "unable_open_path": "Unable to open path.",
+    "unable_open_folder": "Unable to open folder.",
+    "file_created": "File created.",
+    "unable_create_file": "Unable to create file.",
+    "folder_created": "Folder created.",
+    "unable_create_folder": "Unable to create folder.",
+    "renamed_success": "Renamed.",
+    "unable_rename": "Unable to rename.",
+    "deleted_success": "Deleted.",
+    "unable_delete": "Unable to delete.",
+    "settings_file_corrupted_reset": "Settings file corrupted. Returning to default settings.",
+    "settings_update_success": "Settings successfully updated.",
+    "unable_save_settings_permission_denied": "Unable to save settings: permission denied.",
+    "unable_save_settings_unknown_error": "Unable to save settings: unknown error.",
+    "update_available": "Update {{version}} is available, downloading in the background...",
+    "update_downloaded": "Update {{version}} has been downloaded, restart to update."
   },
   "sidebar": {
     "explorer": "Explorer"

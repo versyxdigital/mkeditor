@@ -1,0 +1,23 @@
+{
+  "new_file": "New File...",
+  "new_folder": "New Folder...",
+  "open_folder": "Open Folder...",
+  "collapse_explorer": "Collapse Explorer",
+  "open_settings": "Open Settings...",
+  "open_file": "Open File",
+  "rename_file": "Rename File...",
+  "delete_file": "Delete File...",
+  "show_properties": "Show Properties...",
+  "expand_folder": "Expand Folder",
+  "rename_folder": "Rename Folder...",
+  "delete_folder": "Delete Folder...",
+
+  "prompt_new_file_title": "New file name",
+  "prompt_new_file_placeholder": "Untitled.md",
+  "prompt_new_folder_title": "New folder name",
+  "prompt_rename_file_title": "Rename file",
+  "prompt_rename_folder_title": "Rename folder",
+  "confirm_delete_file_title": "Delete file?",
+  "confirm_delete_folder_title": "Delete folder?",
+  "confirm_delete_button": "Delete"
+}

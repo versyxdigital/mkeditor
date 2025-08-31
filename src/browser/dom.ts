@@ -4,6 +4,7 @@ import Split from 'split.js';
 import Swal from 'sweetalert2';
 import type { FileProperties } from './interfaces/File';
 import { getOSPlatform } from './util';
+import { t } from './i18n';
 
 let editorPreviewSplit: Split.Instance | null = null;
 let activeTooltips: Tooltip[] = [];
@@ -257,21 +258,25 @@ export function createSidebarToggle(mkeditor: editor.IStandaloneCodeEditor) {
 }
 
 export function showFilePropertiesWindow(info: FileProperties) {
+  const pathType = info.isDirectory
+    ? t('modals-properties:type_directory')
+    : t('modals-properties:type_file');
+
   const html = `
     <dl class="mb-0 small text-start">
-      <dt class="col-auto fw-semibold me-2">Path:</dt>
+      <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_path')}</dt>
       <dd class="col-auto me-4">${info.path}</dd>
 
-      <dt class="col-auto fw-semibold me-2">Type:</dt>
-      <dd class="col-auto me-4">${info.isDirectory ? 'Directory' : 'File'}</dd>
+      <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_type')}</dt>
+      <dd class="col-auto me-4">${pathType}</dd>
 
-      <dt class="col-auto fw-semibold me-2">Size:</dt>
+      <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_size')}</dt>
       <dd class="col-auto me-4">${info.size}</dd>
 
-      <dt class="col-auto fw-semibold me-2">Created:</dt>
+      <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_created')}</dt>
       <dd class="col-auto me-4">${new Date(info.created).toLocaleString()}</dd>
 
-      <dt class="col-auto fw-semibold me-2">Modified:</dt>
+      <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_modified')}</dt>
       <dd class="col-auto">${new Date(info.modified).toLocaleString()}</dd>
     </dl>
   `;
@@ -284,5 +289,6 @@ export function showFilePropertiesWindow(info: FileProperties) {
       popup: ['shadow', 'rounded'],
     },
     width: 325,
+    confirmButtonText: t('modals-properties:close_button'),
   });
 }

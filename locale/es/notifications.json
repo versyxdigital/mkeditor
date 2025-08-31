@@ -1,0 +1,32 @@
+{
+  "unable_export_preview": "No se puede exportar la vista previa",
+  "unable_save_markdown": "No se puede guardar el markdown",
+  "exported_html_success": "Vista previa exportada a HTML",
+  "saved_markdown_success": "Archivo Markdown guardado",
+
+  "generic_error_try_again": "Ha ocurrido un error. Por favor, inténtalo de nuevo.",
+
+  "unable_open_file": "No se puede abrir el archivo.",
+  "path_not_exist": "La ruta no existe.",
+  "permission_denied_open_path": "Permiso denegado, no se puede abrir la ruta.",
+  "unable_open_path": "No se puede abrir la ruta.",
+  "unable_open_folder": "No se puede abrir la carpeta.",
+
+  "file_created": "Archivo creado.",
+  "unable_create_file": "No se puede crear el archivo.",
+  "folder_created": "Carpeta creada.",
+  "unable_create_folder": "No se puede crear la carpeta.",
+
+  "renamed_success": "Renombrado.",
+  "unable_rename": "No se puede renombrar.",
+  "deleted_success": "Eliminado.",
+  "unable_delete": "No se puede eliminar.",
+
+  "settings_file_corrupted_reset": "El archivo de configuración está dañado. Volviendo a los ajustes predeterminados.",
+  "settings_update_success": "Ajustes actualizados correctamente.",
+  "unable_save_settings_permission_denied": "No se pueden guardar los ajustes: permiso denegado.",
+  "unable_save_settings_unknown_error": "No se pueden guardar los ajustes: error desconocido.",
+
+  "update_available": "La actualización {{version}} está disponible, descargando en segundo plano...",
+  "update_downloaded": "La actualización {{version}} se ha descargado, reinicia para actualizar."
+}

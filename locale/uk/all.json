@@ -28,6 +28,28 @@
     "sql": "SQL",
     "xml": "XML"
   },
+  "menus-explorer": {
+    "new_file": "Новий файл...",
+    "new_folder": "Нова папка...",
+    "open_folder": "Відкрити папку...",
+    "collapse_explorer": "Згорнути провідник",
+    "open_settings": "Відкрити налаштування...",
+    "open_file": "Відкрити файл",
+    "rename_file": "Перейменувати файл...",
+    "delete_file": "Видалити файл...",
+    "show_properties": "Показати властивості...",
+    "expand_folder": "Розгорнути папку",
+    "rename_folder": "Перейменувати папку...",
+    "delete_folder": "Видалити папку...",
+    "prompt_new_file_title": "Назва нового файлу",
+    "prompt_new_file_placeholder": "Без назви.md",
+    "prompt_new_folder_title": "Назва нової папки",
+    "prompt_rename_file_title": "Перейменувати файл",
+    "prompt_rename_folder_title": "Перейменувати папку",
+    "confirm_delete_file_title": "Видалити файл?",
+    "confirm_delete_folder_title": "Видалити папку?",
+    "confirm_delete_button": "Видалити"
+  },
   "menus-tables": {
     "rows_label": "Рядки:",
     "columns_label": "Стовпці:",
@@ -61,6 +83,17 @@
     "set_font_colour_help": "Встановити колір шрифту.",
     "save_settings": "Зберегти налаштування",
     "reset_to_default": "Скинути до типових"
+  },
+  "modals-properties": {
+    "title": "Властивості",
+    "label_path": "Шлях:",
+    "label_type": "Тип:",
+    "label_size": "Розмір:",
+    "label_created": "Створено:",
+    "label_modified": "Змінено:",
+    "type_directory": "Каталог",
+    "type_file": "Файл",
+    "close_button": "Закрити"
   },
   "modals-settings": {
     "title": "Налаштування редактора",
@@ -135,6 +168,13 @@
       "column_selection_mousewheel": "Виділення стовпцем (блоком)"
     }
   },
+  "modals-unsaved": {
+    "title": "Незбережені зміни",
+    "text": "Зберегти зміни перед закриттям?",
+    "confirm": "Зберегти та закрити",
+    "deny": "Закрити без збереження",
+    "cancel": "Скасувати"
+  },
   "navbar": {
     "toggle_sidebar": "Показати/сховати бічну панель",
     "character_count": "Кількість символів:",
@@ -143,6 +183,32 @@
     "shortcuts_tooltip": "Переглянути комбінації клавіш редактора",
     "theme_switch_notice": "Цей перемикач вимкнено на настільній версії, якщо ви використовуєте системну тему.",
     "active_file_default": "MKEditor"
+  },
+  "notifications": {
+    "unable_export_preview": "Не вдалося експортувати попередній перегляд",
+    "unable_save_markdown": "Не вдалося зберегти Markdown",
+    "exported_html_success": "Попередній перегляд експортовано в HTML",
+    "saved_markdown_success": "Файл Markdown збережено",
+    "generic_error_try_again": "Сталася помилка. Будь ласка, спробуйте ще раз.",
+    "unable_open_file": "Не вдалося відкрити файл.",
+    "path_not_exist": "Шлях не існує.",
+    "permission_denied_open_path": "Доступ заборонено, неможливо відкрити шлях.",
+    "unable_open_path": "Не вдалося відкрити шлях.",
+    "unable_open_folder": "Не вдалося відкрити папку.",
+    "file_created": "Файл створено.",
+    "unable_create_file": "Не вдалося створити файл.",
+    "folder_created": "Папку створено.",
+    "unable_create_folder": "Не вдалося створити папку.",
+    "renamed_success": "Перейменовано.",
+    "unable_rename": "Не вдалося перейменувати.",
+    "deleted_success": "Вилучено.",
+    "unable_delete": "Не вдалося вилучити.",
+    "settings_file_corrupted_reset": "Файл налаштувань пошкоджено. Повернення до типових налаштувань.",
+    "settings_update_success": "Налаштування успішно оновлено.",
+    "unable_save_settings_permission_denied": "Не вдалося зберегти налаштування: доступ заборонено.",
+    "unable_save_settings_unknown_error": "Не вдалося зберегти налаштування: невідома помилка.",
+    "update_available": "Оновлення {{version}} доступне, завантаження у фоновому режимі…",
+    "update_downloaded": "Оновлення {{version}} завантажено, перезапустіть для оновлення."
   },
   "sidebar": {
     "explorer": "Провідник"

@@ -1,0 +1,32 @@
+{
+  "unable_export_preview": "Önizleme dışa aktarılamıyor",
+  "unable_save_markdown": "Markdown kaydedilemiyor",
+  "exported_html_success": "Önizleme HTML olarak dışa aktarıldı",
+  "saved_markdown_success": "Markdown dosyası kaydedildi",
+
+  "generic_error_try_again": "Bir hata oluştu. Lütfen tekrar deneyin.",
+
+  "unable_open_file": "Dosya açılamıyor.",
+  "path_not_exist": "Yol mevcut değil.",
+  "permission_denied_open_path": "İzin reddedildi, yol açılamıyor.",
+  "unable_open_path": "Yol açılamıyor.",
+  "unable_open_folder": "Klasör açılamıyor.",
+
+  "file_created": "Dosya oluşturuldu.",
+  "unable_create_file": "Dosya oluşturulamıyor.",
+  "folder_created": "Klasör oluşturuldu.",
+  "unable_create_folder": "Klasör oluşturulamıyor.",
+
+  "renamed_success": "Yeniden adlandırıldı.",
+  "unable_rename": "Yeniden adlandırılamıyor.",
+  "deleted_success": "Silindi.",
+  "unable_delete": "Silinemiyor.",
+
+  "settings_file_corrupted_reset": "Ayar dosyası bozuldu. Varsayılan ayarlara dönülüyor.",
+  "settings_update_success": "Ayarlar başarıyla güncellendi.",
+  "unable_save_settings_permission_denied": "Ayarlar kaydedilemiyor: izin reddedildi.",
+  "unable_save_settings_unknown_error": "Ayarlar kaydedilemiyor: bilinmeyen hata.",
+
+  "update_available": "Güncelleme {{version}} mevcut, arka planda indiriliyor...",
+  "update_downloaded": "Güncelleme {{version}} indirildi, güncellemek için yeniden başlatın."
+}

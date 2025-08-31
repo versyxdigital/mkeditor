@@ -1,0 +1,23 @@
+{
+  "new_file": "새 파일...",
+  "new_folder": "새 폴더...",
+  "open_folder": "폴더 열기...",
+  "collapse_explorer": "탐색기 접기",
+  "open_settings": "설정 열기...",
+  "open_file": "파일 열기",
+  "rename_file": "파일 이름 바꾸기...",
+  "delete_file": "파일 삭제...",
+  "show_properties": "속성 표시...",
+  "expand_folder": "폴더 확장",
+  "rename_folder": "폴더 이름 바꾸기...",
+  "delete_folder": "폴더 삭제...",
+
+  "prompt_new_file_title": "새 파일 이름",
+  "prompt_new_file_placeholder": "제목 없음.md",
+  "prompt_new_folder_title": "새 폴더 이름",
+  "prompt_rename_file_title": "파일 이름 바꾸기",
+  "prompt_rename_folder_title": "폴더 이름 바꾸기",
+  "confirm_delete_file_title": "파일을 삭제하시겠습니까?",
+  "confirm_delete_folder_title": "폴더를 삭제하시겠습니까?",
+  "confirm_delete_button": "삭제"
+}

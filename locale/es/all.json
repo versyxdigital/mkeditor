@@ -28,6 +28,28 @@
     "sql": "SQL",
     "xml": "XML"
   },
+  "menus-explorer": {
+    "new_file": "Nuevo archivo...",
+    "new_folder": "Nueva carpeta...",
+    "open_folder": "Abrir carpeta...",
+    "collapse_explorer": "Colapsar explorador",
+    "open_settings": "Abrir configuración...",
+    "open_file": "Abrir archivo",
+    "rename_file": "Renombrar archivo...",
+    "delete_file": "Eliminar archivo...",
+    "show_properties": "Mostrar propiedades...",
+    "expand_folder": "Expandir carpeta",
+    "rename_folder": "Renombrar carpeta...",
+    "delete_folder": "Eliminar carpeta...",
+    "prompt_new_file_title": "Nombre del nuevo archivo",
+    "prompt_new_file_placeholder": "Sin título.md",
+    "prompt_new_folder_title": "Nombre de la nueva carpeta",
+    "prompt_rename_file_title": "Renombrar archivo",
+    "prompt_rename_folder_title": "Renombrar carpeta",
+    "confirm_delete_file_title": "¿Eliminar archivo?",
+    "confirm_delete_folder_title": "¿Eliminar carpeta?",
+    "confirm_delete_button": "Eliminar"
+  },
   "menus-tables": {
     "rows_label": "Filas:",
     "columns_label": "Columnas:",
@@ -61,6 +83,17 @@
     "set_font_colour_help": "Establece el color de la fuente.",
     "save_settings": "Guardar ajustes",
     "reset_to_default": "Restablecer valores predeterminados"
+  },
+  "modals-properties": {
+    "title": "Propiedades",
+    "label_path": "Ruta:",
+    "label_type": "Tipo:",
+    "label_size": "Tamaño:",
+    "label_created": "Creado:",
+    "label_modified": "Modificado:",
+    "type_directory": "Directorio",
+    "type_file": "Archivo",
+    "close_button": "Cerrar"
   },
   "modals-settings": {
     "title": "Configuración del editor",
@@ -135,6 +168,13 @@
       "column_selection_mousewheel": "Selección de columna (bloque)"
     }
   },
+  "modals-unsaved": {
+    "title": "Cambios no guardados",
+    "text": "¿Guardar los cambios antes de cerrar?",
+    "confirm": "Guardar y cerrar",
+    "deny": "Cerrar sin guardar",
+    "cancel": "Cancelar"
+  },
   "navbar": {
     "toggle_sidebar": "Alternar barra lateral",
     "character_count": "Recuento de caracteres:",
@@ -143,6 +183,32 @@
     "shortcuts_tooltip": "Ver atajos del editor",
     "theme_switch_notice": "Este interruptor está deshabilitado en el escritorio si usas el tema del sistema.",
     "active_file_default": "MKEditor"
+  },
+  "notifications": {
+    "unable_export_preview": "No se puede exportar la vista previa",
+    "unable_save_markdown": "No se puede guardar el markdown",
+    "exported_html_success": "Vista previa exportada a HTML",
+    "saved_markdown_success": "Archivo Markdown guardado",
+    "generic_error_try_again": "Ha ocurrido un error. Por favor, inténtalo de nuevo.",
+    "unable_open_file": "No se puede abrir el archivo.",
+    "path_not_exist": "La ruta no existe.",
+    "permission_denied_open_path": "Permiso denegado, no se puede abrir la ruta.",
+    "unable_open_path": "No se puede abrir la ruta.",
+    "unable_open_folder": "No se puede abrir la carpeta.",
+    "file_created": "Archivo creado.",
+    "unable_create_file": "No se puede crear el archivo.",
+    "folder_created": "Carpeta creada.",
+    "unable_create_folder": "No se puede crear la carpeta.",
+    "renamed_success": "Renombrado.",
+    "unable_rename": "No se puede renombrar.",
+    "deleted_success": "Eliminado.",
+    "unable_delete": "No se puede eliminar.",
+    "settings_file_corrupted_reset": "El archivo de configuración está dañado. Volviendo a los ajustes predeterminados.",
+    "settings_update_success": "Ajustes actualizados correctamente.",
+    "unable_save_settings_permission_denied": "No se pueden guardar los ajustes: permiso denegado.",
+    "unable_save_settings_unknown_error": "No se pueden guardar los ajustes: error desconocido.",
+    "update_available": "La actualización {{version}} está disponible, descargando en segundo plano...",
+    "update_downloaded": "La actualización {{version}} se ha descargado, reinicia para actualizar."
   },
   "sidebar": {
     "explorer": "Explorador"

@@ -1,0 +1,23 @@
+{
+  "new_file": "Neue Datei...",
+  "new_folder": "Neuer Ordner...",
+  "open_folder": "Ordner öffnen...",
+  "collapse_explorer": "Explorer einklappen",
+  "open_settings": "Einstellungen öffnen...",
+  "open_file": "Datei öffnen",
+  "rename_file": "Datei umbenennen...",
+  "delete_file": "Datei löschen...",
+  "show_properties": "Eigenschaften anzeigen...",
+  "expand_folder": "Ordner ausklappen",
+  "rename_folder": "Ordner umbenennen...",
+  "delete_folder": "Ordner löschen...",
+
+  "prompt_new_file_title": "Neuer Dateiname",
+  "prompt_new_file_placeholder": "Unbenannt.md",
+  "prompt_new_folder_title": "Neuer Ordnername",
+  "prompt_rename_file_title": "Datei umbenennen",
+  "prompt_rename_folder_title": "Ordner umbenennen",
+  "confirm_delete_file_title": "Datei löschen?",
+  "confirm_delete_folder_title": "Ordner löschen?",
+  "confirm_delete_button": "Löschen"
+}

@@ -28,6 +28,28 @@
     "sql": "SQL",
     "xml": "XML"
   },
+  "menus-explorer": {
+    "new_file": "新建文件...",
+    "new_folder": "新建文件夹...",
+    "open_folder": "打开文件夹...",
+    "collapse_explorer": "折叠资源管理器",
+    "open_settings": "打开设置...",
+    "open_file": "打开文件",
+    "rename_file": "重命名文件...",
+    "delete_file": "删除文件...",
+    "show_properties": "显示属性...",
+    "expand_folder": "展开文件夹",
+    "rename_folder": "重命名文件夹...",
+    "delete_folder": "删除文件夹...",
+    "prompt_new_file_title": "新文件名称",
+    "prompt_new_file_placeholder": "未命名.md",
+    "prompt_new_folder_title": "新文件夹名称",
+    "prompt_rename_file_title": "重命名文件",
+    "prompt_rename_folder_title": "重命名文件夹",
+    "confirm_delete_file_title": "删除文件？",
+    "confirm_delete_folder_title": "删除文件夹？",
+    "confirm_delete_button": "删除"
+  },
   "menus-tables": {
     "rows_label": "行数：",
     "columns_label": "列数：",
@@ -61,6 +83,17 @@
     "set_font_colour_help": "设置字体颜色。",
     "save_settings": "保存设置",
     "reset_to_default": "恢复默认值"
+  },
+  "modals-properties": {
+    "title": "属性",
+    "label_path": "路径：",
+    "label_type": "类型：",
+    "label_size": "大小：",
+    "label_created": "创建时间：",
+    "label_modified": "修改时间：",
+    "type_directory": "目录",
+    "type_file": "文件",
+    "close_button": "关闭"
   },
   "modals-settings": {
     "title": "编辑器设置",
@@ -135,6 +168,13 @@
       "column_selection_mousewheel": "列（框）选择"
     }
   },
+  "modals-unsaved": {
+    "title": "未保存的更改",
+    "text": "在关闭前保存更改吗？",
+    "confirm": "保存并关闭",
+    "deny": "不保存并关闭",
+    "cancel": "取消"
+  },
   "navbar": {
     "toggle_sidebar": "切换侧边栏",
     "character_count": "字符数：",
@@ -143,6 +183,32 @@
     "shortcuts_tooltip": "查看编辑器快捷键",
     "theme_switch_notice": "如果使用系统主题，在桌面端此开关将被禁用。",
     "active_file_default": "MKEditor"
+  },
+  "notifications": {
+    "unable_export_preview": "无法导出预览",
+    "unable_save_markdown": "无法保存 Markdown",
+    "exported_html_success": "预览已导出为 HTML",
+    "saved_markdown_success": "Markdown 文件已保存",
+    "generic_error_try_again": "发生错误。请重试。",
+    "unable_open_file": "无法打开文件。",
+    "path_not_exist": "路径不存在。",
+    "permission_denied_open_path": "权限被拒绝，无法打开路径。",
+    "unable_open_path": "无法打开路径。",
+    "unable_open_folder": "无法打开文件夹。",
+    "file_created": "文件已创建。",
+    "unable_create_file": "无法创建文件。",
+    "folder_created": "文件夹已创建。",
+    "unable_create_folder": "无法创建文件夹。",
+    "renamed_success": "已重命名。",
+    "unable_rename": "无法重命名。",
+    "deleted_success": "已删除。",
+    "unable_delete": "无法删除。",
+    "settings_file_corrupted_reset": "设置文件已损坏。正在恢复为默认设置。",
+    "settings_update_success": "设置已成功更新。",
+    "unable_save_settings_permission_denied": "无法保存设置：权限被拒绝。",
+    "unable_save_settings_unknown_error": "无法保存设置：未知错误。",
+    "update_available": "更新 {{version}} 可用，正在后台下载……",
+    "update_downloaded": "更新 {{version}} 已下载，重启以更新。"
   },
   "sidebar": {
     "explorer": "资源管理器"

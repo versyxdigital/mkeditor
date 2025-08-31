@@ -28,6 +28,28 @@
     "sql": "SQL",
     "xml": "XML"
   },
+  "menus-explorer": {
+    "new_file": "新しいファイル...",
+    "new_folder": "新しいフォルダー...",
+    "open_folder": "フォルダーを開く...",
+    "collapse_explorer": "エクスプローラーを折りたたむ",
+    "open_settings": "設定を開く...",
+    "open_file": "ファイルを開く",
+    "rename_file": "ファイル名を変更...",
+    "delete_file": "ファイルを削除...",
+    "show_properties": "プロパティを表示...",
+    "expand_folder": "フォルダーを展開",
+    "rename_folder": "フォルダー名を変更...",
+    "delete_folder": "フォルダーを削除...",
+    "prompt_new_file_title": "新しいファイル名",
+    "prompt_new_file_placeholder": "無題.md",
+    "prompt_new_folder_title": "新しいフォルダー名",
+    "prompt_rename_file_title": "ファイル名を変更",
+    "prompt_rename_folder_title": "フォルダー名を変更",
+    "confirm_delete_file_title": "ファイルを削除しますか？",
+    "confirm_delete_folder_title": "フォルダーを削除しますか？",
+    "confirm_delete_button": "削除"
+  },
   "menus-tables": {
     "rows_label": "行数：",
     "columns_label": "列数：",
@@ -61,6 +83,17 @@
     "set_font_colour_help": "文字色を設定します。",
     "save_settings": "設定を保存",
     "reset_to_default": "デフォルトにリセット"
+  },
+  "modals-properties": {
+    "title": "プロパティ",
+    "label_path": "パス:",
+    "label_type": "種類:",
+    "label_size": "サイズ:",
+    "label_created": "作成日時:",
+    "label_modified": "更新日時:",
+    "type_directory": "ディレクトリ",
+    "type_file": "ファイル",
+    "close_button": "閉じる"
   },
   "modals-settings": {
     "title": "エディター設定",
@@ -135,6 +168,13 @@
       "column_selection_mousewheel": "列（ボックス）選択"
     }
   },
+  "modals-unsaved": {
+    "title": "未保存の変更",
+    "text": "閉じる前に変更を保存しますか？",
+    "confirm": "保存して閉じる",
+    "deny": "保存せずに閉じる",
+    "cancel": "キャンセル"
+  },
   "navbar": {
     "toggle_sidebar": "サイドバーの切り替え",
     "character_count": "文字数：",
@@ -143,6 +183,32 @@
     "shortcuts_tooltip": "エディターのショートカットを表示",
     "theme_switch_notice": "システムテーマを使用している場合、デスクトップではこのスイッチは無効です。",
     "active_file_default": "MKEditor"
+  },
+  "notifications": {
+    "unable_export_preview": "プレビューをエクスポートできません",
+    "unable_save_markdown": "Markdown を保存できません",
+    "exported_html_success": "プレビューを HTML にエクスポートしました",
+    "saved_markdown_success": "Markdown ファイルを保存しました",
+    "generic_error_try_again": "エラーが発生しました。もう一度お試しください。",
+    "unable_open_file": "ファイルを開けません。",
+    "path_not_exist": "パスが存在しません。",
+    "permission_denied_open_path": "許可が拒否されました。パスを開けません。",
+    "unable_open_path": "パスを開けません。",
+    "unable_open_folder": "フォルダーを開けません。",
+    "file_created": "ファイルを作成しました。",
+    "unable_create_file": "ファイルを作成できません。",
+    "folder_created": "フォルダーを作成しました。",
+    "unable_create_folder": "フォルダーを作成できません。",
+    "renamed_success": "名前を変更しました。",
+    "unable_rename": "名前を変更できません。",
+    "deleted_success": "削除しました。",
+    "unable_delete": "削除できません。",
+    "settings_file_corrupted_reset": "設定ファイルが破損しています。デフォルト設定に戻します。",
+    "settings_update_success": "設定を更新しました。",
+    "unable_save_settings_permission_denied": "設定を保存できません: 許可が拒否されました。",
+    "unable_save_settings_unknown_error": "設定を保存できません: 不明なエラー。",
+    "update_available": "更新 {{version}} が利用可能です。バックグラウンドでダウンロード中…",
+    "update_downloaded": "更新 {{version}} がダウンロードされました。再起動して更新してください。"
   },
   "sidebar": {
     "explorer": "エクスプローラー"
