@@ -27,7 +27,7 @@ If you have any issues or questions, please feel free to submit an [issue](https
 
 MKEditor fully supports the [CommonMark](https://commonmark.org/) spec and comes with additional goodies.
 
-## **Great** support for _custom_ styling
+## Great support for _custom_ styling
 
 MKEditor comes with full support for styling your documents with:
 
@@ -51,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 ```
 
+MKEditor supports syntax highlighting for lots of languages!
+
 ### Write math:
 
 ```sh
@@ -59,27 +61,24 @@ $\sqrt{3x-1}+(1+x)^2$
 
 $\sqrt{3x-1}+(1+x)^2$
 
-MKEditor comes with full support for LaTeX!
+MKEditor comes with full support for writing expressions with LaTeX!
 
 ## Preview documents as you type
 
 MKEditor includes a built-in, fully configurable, resizable preview renderer. View your styled or unstyled output in real time.
 
+## Customize to your preference
+Customize your settings, enable word-wrapping, toggle automatic indentation, switch between light mode or dark mode and more.
+
 ## Export to HTML & PDF
 
-MKEditor comes with full support for exporting your markdown to HTML and PDF, with or without styles 🚀.
-
-## Customize to your preference
-Customize your settings, switch between light mode and dark mode, write some documents and have fun!
-
----
+MKEditor comes with full support for exporting your markdown to HTML and PDF 🚀.
 
 Built with ❤️ by [Versyx Digital](https://github.com/versyxdigital)
 
----
+# Developer Documentation
 
-
-# Building from Source
+## Building from source
 
 If you would like to build from source, please follow the steps below:
 
@@ -111,7 +110,7 @@ To make an installable package (rebuilds both editor and app):
 npm run make-installer
 ```
 
-## Developer Documentation 
+## Further Documentation 
 
 MKEditor is split into two components: the browser-based renderer and the Electron desktop application. The browser renderer is a standalone web app, designed for markdown editing directly in the browser. The Electron app wraps the browser renderer, adding desktop-specific features such as file system access, native dialogs, and offline support.
 
