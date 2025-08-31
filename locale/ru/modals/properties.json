@@ -1,0 +1,11 @@
+{
+  "title": "Свойства",
+  "label_path": "Путь:",
+  "label_type": "Тип:",
+  "label_size": "Размер:",
+  "label_created": "Создан:",
+  "label_modified": "Изменён:",
+  "type_directory": "Каталог",
+  "type_file": "Файл",
+  "close_button": "Закрыть"
+}

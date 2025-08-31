@@ -1,0 +1,32 @@
+{
+  "unable_export_preview": "Не вдалося експортувати попередній перегляд",
+  "unable_save_markdown": "Не вдалося зберегти Markdown",
+  "exported_html_success": "Попередній перегляд експортовано в HTML",
+  "saved_markdown_success": "Файл Markdown збережено",
+
+  "generic_error_try_again": "Сталася помилка. Будь ласка, спробуйте ще раз.",
+
+  "unable_open_file": "Не вдалося відкрити файл.",
+  "path_not_exist": "Шлях не існує.",
+  "permission_denied_open_path": "Доступ заборонено, неможливо відкрити шлях.",
+  "unable_open_path": "Не вдалося відкрити шлях.",
+  "unable_open_folder": "Не вдалося відкрити папку.",
+
+  "file_created": "Файл створено.",
+  "unable_create_file": "Не вдалося створити файл.",
+  "folder_created": "Папку створено.",
+  "unable_create_folder": "Не вдалося створити папку.",
+
+  "renamed_success": "Перейменовано.",
+  "unable_rename": "Не вдалося перейменувати.",
+  "deleted_success": "Вилучено.",
+  "unable_delete": "Не вдалося вилучити.",
+
+  "settings_file_corrupted_reset": "Файл налаштувань пошкоджено. Повернення до типових налаштувань.",
+  "settings_update_success": "Налаштування успішно оновлено.",
+  "unable_save_settings_permission_denied": "Не вдалося зберегти налаштування: доступ заборонено.",
+  "unable_save_settings_unknown_error": "Не вдалося зберегти налаштування: невідома помилка.",
+
+  "update_available": "Оновлення {{version}} доступне, завантаження у фоновому режимі…",
+  "update_downloaded": "Оновлення {{version}} завантажено, перезапустіть для оновлення."
+}

@@ -1,7 +1,7 @@
 {
   "name": "mkeditor",
   "productName": "MKEditor",
-  "version": "3.5.1",
+  "version": "3.6.0",
   "license": "MIT",
   "author": "Chris Rowles <christopher.rowles@outlook.com>",
   "description": "Markdown Editor",
@@ -11,7 +11,7 @@
     "lint": "eslint src",
     "test": "jest",
     "prebuild": "node -p \"'export const APP_VERSION = ' + JSON.stringify(require('./package.json').version) + ';'\" > src/browser/version.ts",
-    "build-editor": "npm run prebuild && npm run prettier && webpack --config webpack.config.js",
+    "build-editor": "npm run prebuild && node ./scripts/combine-locales.mjs && npm run prettier && webpack --config webpack.config.js",
     "build-app": "node ./scripts/compile-app.mjs",
     "make-installer": "node ./scripts/make-installer.mjs",
     "serve-web": "http-server dist",
@@ -69,7 +69,9 @@
   },
   "dependencies": {
     "electron-log": "^5.4.3",
-    "electron-updater": "^6.6.2"
+    "electron-updater": "^6.6.2",
+    "i18next": "^25.4.2",
+    "i18next-fs-backend": "^2.6.0"
   },
   "build": {
     "appId": "com.mkeditor.app",

@@ -1,0 +1,9 @@
+{
+  "toggle_sidebar": "Kenar çubuğunu aç/kapat",
+  "character_count": "Karakter sayısı:",
+  "word_count": "Kelime sayısı:",
+  "settings_tooltip": "Editör ayarlarını yapılandır",
+  "shortcuts_tooltip": "Editör kısayollarını görüntüle",
+  "theme_switch_notice": "Sistem temasını kullanıyorsanız bu anahtar masaüstünde devre dışıdır.",
+  "active_file_default": "MKEditor"
+}

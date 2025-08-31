@@ -1,0 +1,8 @@
+{
+  "version_label": "Versie",
+  "built_with_love_by": "Gemaakt met liefde door",
+  "libraries_intro": "MKEditor gebruikt de volgende open-sourcelibraries:",
+  "libraries_list": "monaco, bootstrap, fontawesome, markdown-it, highlight.js, split.js, sweetalert2, webpack en electron.",
+  "view_source_prefix": "Bekijk de broncode",
+  "view_source_here": "hier"
+}

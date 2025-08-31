@@ -1,0 +1,21 @@
+{
+  "title": "Export settings",
+  "intro": "Here you can configure settings for HTML and PDF exports, settings are automatically saved as they are updated.",
+  "settings_file_info": "Your settings file is located at ~/.mkeditor/settings.json.",
+  "export_with_styles_label": "Export with styles",
+  "export_with_styles_help": "Enable this to export with Bootstrap, FontAwesome and KaTeX styles, provided from official CDNs with secure integrity and crossorigin checks.",
+  "set_container_label": "Set container",
+  "set_container_option_container": "container",
+  "set_container_option_container_fluid": "container-fluid",
+  "set_container_help": "Set the container width class, fluid is larger width.",
+  "set_font_size_label": "Set font-size",
+  "set_font_size_help": "Set the font size in px.",
+  "set_line_spacing_label": "Set line-spacing",
+  "set_line_spacing_help": "Set the vertical line spacing.",
+  "set_background_colour_label": "Set background colour",
+  "set_background_colour_help": "Set the background colour.",
+  "set_font_colour_label": "Set font colour",
+  "set_font_colour_help": "Set the font colour.",
+  "save_settings": "Save Settings",
+  "reset_to_default": "Reset to Default"
+}

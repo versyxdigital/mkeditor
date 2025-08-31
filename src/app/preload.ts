@@ -29,6 +29,7 @@ const senderWhitelist = [
   'to:file:rename',
   'to:file:delete',
   'to:file:properties',
+  'to:i18n:set',
 ];
 
 // Can be sent from the main process and received
@@ -48,6 +49,7 @@ const receiverWhitelist = [
   'from:notification:display',
   'from:path:properties',
   'from:path:renamed',
+  'from:i18n:set',
 ];
 
 /**
@@ -91,6 +93,7 @@ contextBridge.exposeInMainWorld('executionBridge', contextBridgeChannel());
 
 contextBridge.exposeInMainWorld('mked', {
   getActiveFilePath: () => ipcRenderer.sendSync('mked:get-active-file'),
+  getAppLocale: () => ipcRenderer.sendSync('mked:get-locale'),
   openMkedUrl: (url: string) => ipcRenderer.send('mked:open-url', url),
   pathDirname: (p: string) => ipcRenderer.invoke('mked:path:dirname', p),
   resolvePath: (base: string, rel: string) => {

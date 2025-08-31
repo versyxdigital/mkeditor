@@ -1,0 +1,11 @@
+{
+  "title": "属性",
+  "label_path": "路径：",
+  "label_type": "类型：",
+  "label_size": "大小：",
+  "label_created": "创建时间：",
+  "label_modified": "修改时间：",
+  "type_directory": "目录",
+  "type_file": "文件",
+  "close_button": "关闭"
+}

@@ -1,0 +1,8 @@
+{
+  "version_label": "Версия",
+  "built_with_love_by": "Создано с любовью компанией",
+  "libraries_intro": "MKEditor использует следующие библиотеки с открытым исходным кодом:",
+  "libraries_list": "monaco, bootstrap, fontawesome, markdown-it, highlight.js, split.js, sweetalert2, webpack и electron.",
+  "view_source_prefix": "Посмотреть исходный код",
+  "view_source_here": "здесь"
+}

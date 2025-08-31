@@ -183,14 +183,16 @@ app.on('ready', () => {
 autoUpdater.on('update-available', async (event) => {
   context?.webContents.send('from:notification:display', {
     status: 'info',
-    message: `Update ${event.version} is available, downloading in the background...`,
+    key: 'notifications:update_available',
+    values: { version: event.version },
   });
 });
 
 autoUpdater.on('update-downloaded', async (event) => {
   context?.webContents.send('from:notification:display', {
     status: 'success',
-    message: `Update ${event.version} has been downloaded, restart to update.`,
+    key: 'notifications:update_downloaded',
+    values: { version: event.version },
   });
 });
 

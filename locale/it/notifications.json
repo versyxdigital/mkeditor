@@ -1,0 +1,32 @@
+{
+  "unable_export_preview": "Impossibile esportare l’anteprima",
+  "unable_save_markdown": "Impossibile salvare il markdown",
+  "exported_html_success": "Anteprima esportata in HTML",
+  "saved_markdown_success": "File Markdown salvato",
+
+  "generic_error_try_again": "Si è verificato un errore. Riprova.",
+
+  "unable_open_file": "Impossibile aprire il file.",
+  "path_not_exist": "Il percorso non esiste.",
+  "permission_denied_open_path": "Permesso negato, impossibile aprire il percorso.",
+  "unable_open_path": "Impossibile aprire il percorso.",
+  "unable_open_folder": "Impossibile aprire la cartella.",
+
+  "file_created": "File creato.",
+  "unable_create_file": "Impossibile creare il file.",
+  "folder_created": "Cartella creata.",
+  "unable_create_folder": "Impossibile creare la cartella.",
+
+  "renamed_success": "Rinominato.",
+  "unable_rename": "Impossibile rinominare.",
+  "deleted_success": "Eliminato.",
+  "unable_delete": "Impossibile eliminare.",
+
+  "settings_file_corrupted_reset": "File delle impostazioni danneggiato. Ripristino alle impostazioni predefinite.",
+  "settings_update_success": "Impostazioni aggiornate con successo.",
+  "unable_save_settings_permission_denied": "Impossibile salvare le impostazioni: permesso negato.",
+  "unable_save_settings_unknown_error": "Impossibile salvare le impostazioni: errore sconosciuto.",
+
+  "update_available": "Aggiornamento {{version}} disponibile, download in background in corso...",
+  "update_downloaded": "Aggiornamento {{version}} scaricato, riavvia per aggiornare."
+}

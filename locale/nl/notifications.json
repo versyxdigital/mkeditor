@@ -1,0 +1,32 @@
+{
+  "unable_export_preview": "Voorbeeld kan niet worden geëxporteerd",
+  "unable_save_markdown": "Markdown kan niet worden opgeslagen",
+  "exported_html_success": "Voorbeeld geëxporteerd naar HTML",
+  "saved_markdown_success": "Markdown-bestand opgeslagen",
+
+  "generic_error_try_again": "Er is een fout opgetreden. Probeer het opnieuw.",
+
+  "unable_open_file": "Kan bestand niet openen.",
+  "path_not_exist": "Het pad bestaat niet.",
+  "permission_denied_open_path": "Toegang geweigerd, kan het pad niet openen.",
+  "unable_open_path": "Kan pad niet openen.",
+  "unable_open_folder": "Kan map niet openen.",
+
+  "file_created": "Bestand gemaakt.",
+  "unable_create_file": "Kan bestand niet maken.",
+  "folder_created": "Map gemaakt.",
+  "unable_create_folder": "Kan map niet maken.",
+
+  "renamed_success": "Hernoemd.",
+  "unable_rename": "Kan niet hernoemen.",
+  "deleted_success": "Verwijderd.",
+  "unable_delete": "Kan niet verwijderen.",
+
+  "settings_file_corrupted_reset": "Instellingsbestand beschadigd. Standaardinstellingen worden hersteld.",
+  "settings_update_success": "Instellingen succesvol bijgewerkt.",
+  "unable_save_settings_permission_denied": "Kan instellingen niet opslaan: toegang geweigerd.",
+  "unable_save_settings_unknown_error": "Kan instellingen niet opslaan: onbekende fout.",
+
+  "update_available": "Update {{version}} is beschikbaar, wordt op de achtergrond gedownload...",
+  "update_downloaded": "Update {{version}} is gedownload, herstart om bij te werken."
+}

@@ -1,0 +1,11 @@
+{
+  "title": "Propiedades",
+  "label_path": "Ruta:",
+  "label_type": "Tipo:",
+  "label_size": "Tamaño:",
+  "label_created": "Creado:",
+  "label_modified": "Modificado:",
+  "type_directory": "Directorio",
+  "type_file": "Archivo",
+  "close_button": "Cerrar"
+}

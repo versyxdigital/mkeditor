@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { dirname, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
 import type { Logger, LogMessage } from '../interfaces/Logging';
@@ -214,6 +214,13 @@ export class AppBridge {
       event.returnValue = AppStorage.getActiveFilePath();
     });
 
+    // Provide app locale to renderer
+    ipcMain.on('mked:get-locale', (event) => {
+      const locale =
+        this.providers.settings?.getSetting('locale') ?? app.getLocale();
+      event.returnValue = locale;
+    });
+
     // Provide path resolution through IPC to avoid having to set
     // nodeIntegration to true.
     ipcMain.handle('mked:path:dirname', (_e, p: string) => dirname(p));
@@ -226,6 +233,15 @@ export class AppBridge {
         this.handleMkedUrl(url);
       } catch (e) {
         this.providers.logger?.log.error('[mked:open-url]', e);
+      }
+    });
+
+    // Broadcast language changes to the renderer
+    ipcMain.on('to:i18n:set', (_e, lng: string) => {
+      try {
+        this.context.webContents.send('from:i18n:set', lng);
+      } catch (e) {
+        this.providers.logger?.log.error('[to:i18n:set]', e);
       }
     });
   }

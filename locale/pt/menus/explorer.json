@@ -1,0 +1,23 @@
+{
+  "new_file": "Novo arquivo...",
+  "new_folder": "Nova pasta...",
+  "open_folder": "Abrir pasta...",
+  "collapse_explorer": "Recolher explorador",
+  "open_settings": "Abrir configurações...",
+  "open_file": "Abrir arquivo",
+  "rename_file": "Renomear arquivo...",
+  "delete_file": "Excluir arquivo...",
+  "show_properties": "Mostrar propriedades...",
+  "expand_folder": "Expandir pasta",
+  "rename_folder": "Renomear pasta...",
+  "delete_folder": "Excluir pasta...",
+
+  "prompt_new_file_title": "Nome do novo arquivo",
+  "prompt_new_file_placeholder": "Sem título.md",
+  "prompt_new_folder_title": "Nome da nova pasta",
+  "prompt_rename_file_title": "Renomear arquivo",
+  "prompt_rename_folder_title": "Renomear pasta",
+  "confirm_delete_file_title": "Excluir arquivo?",
+  "confirm_delete_folder_title": "Excluir pasta?",
+  "confirm_delete_button": "Excluir"
+}

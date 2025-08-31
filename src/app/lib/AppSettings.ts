@@ -1,7 +1,7 @@
 import { homedir } from 'os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { normalize } from 'path';
-import type { BrowserWindow } from 'electron';
+import { app, type BrowserWindow } from 'electron';
 import type { SettingsFile } from '../interfaces/Settings';
 import type { Providers } from '../interfaces/Providers';
 import { deepMerge, hasAllKeys } from '../util';
@@ -36,6 +36,7 @@ export class AppSettings {
     minimap: true,
     systemtheme: true,
     scrollsync: true,
+    locale: app.getLocale(),
     exportSettings: {
       withStyles: true,
       container: 'container-fluid',
@@ -74,6 +75,25 @@ export class AppSettings {
   }
 
   /**
+   * Get the editor settings.
+   *
+   * @returns - the editor settings
+   */
+  public getSettings() {
+    return this.applied;
+  }
+
+  /**
+   * Get an editor setting.
+   *
+   * @param key - the setting key
+   * @returns - the setting
+   */
+  public getSetting<K extends keyof SettingsFile>(key: K) {
+    return this.applied?.[key];
+  }
+
+  /**
    * Provide access to a provider.
    *
    * @param provider - the provider to access
@@ -89,11 +109,20 @@ export class AppSettings {
    * @returns - the settings
    */
   loadFile() {
-    const file = readFileSync(this.filePath, {
-      encoding: 'utf-8',
-    });
+    try {
+      const file = readFileSync(this.filePath, {
+        encoding: 'utf-8',
+      });
 
-    return JSON.parse(file);
+      return JSON.parse(file);
+    } catch (err) {
+      this.context.webContents.send('from:notification:display', {
+        status: 'error',
+        key: 'notifications:settings_file_corrupted_reset',
+      });
+
+      return this.settings;
+    }
   }
 
   /**
@@ -153,21 +182,21 @@ export class AppSettings {
       if (!init) {
         this.context.webContents.send('from:notification:display', {
           status: 'success',
-          message: 'Settings successfully updated.',
+          key: 'notifications:settings_update_success',
         });
       }
     } catch (err) {
       const detail = err as { code: string };
-      const message =
+      const key =
         detail.code === 'EPERM'
-          ? 'Unable to save settings: permission denied.'
-          : 'Unable to save settings: unknown error.';
+          ? 'notifications:unable_save_settings_permission_denied'
+          : 'notifications:unable_save_settings_unknown_error';
 
-      this.providers.logger?.log.error(message, err);
+      this.providers.logger?.log.error(key, err);
 
       this.context.webContents.send('from:notification:display', {
         status: 'error',
-        message,
+        key,
       });
     }
   }

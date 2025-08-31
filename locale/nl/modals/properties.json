@@ -1,0 +1,11 @@
+{
+  "title": "Eigenschappen",
+  "label_path": "Pad:",
+  "label_type": "Type:",
+  "label_size": "Grootte:",
+  "label_created": "Gemaakt:",
+  "label_modified": "Gewijzigd:",
+  "type_directory": "Map",
+  "type_file": "Bestand",
+  "close_button": "Sluiten"
+}

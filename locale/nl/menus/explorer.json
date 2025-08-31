@@ -1,0 +1,23 @@
+{
+  "new_file": "Nieuw bestand...",
+  "new_folder": "Nieuwe map...",
+  "open_folder": "Map openen...",
+  "collapse_explorer": "Verkenner samenvouwen",
+  "open_settings": "Instellingen openen...",
+  "open_file": "Bestand openen",
+  "rename_file": "Bestand hernoemen...",
+  "delete_file": "Bestand verwijderen...",
+  "show_properties": "Eigenschappen weergeven...",
+  "expand_folder": "Map uitvouwen",
+  "rename_folder": "Map hernoemen...",
+  "delete_folder": "Map verwijderen...",
+
+  "prompt_new_file_title": "Naam van nieuw bestand",
+  "prompt_new_file_placeholder": "Naamloos.md",
+  "prompt_new_folder_title": "Naam van nieuwe map",
+  "prompt_rename_file_title": "Bestand hernoemen",
+  "prompt_rename_folder_title": "Map hernoemen",
+  "confirm_delete_file_title": "Bestand verwijderen?",
+  "confirm_delete_folder_title": "Map verwijderen?",
+  "confirm_delete_button": "Verwijderen"
+}

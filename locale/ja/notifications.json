@@ -1,0 +1,32 @@
+{
+  "unable_export_preview": "プレビューをエクスポートできません",
+  "unable_save_markdown": "Markdown を保存できません",
+  "exported_html_success": "プレビューを HTML にエクスポートしました",
+  "saved_markdown_success": "Markdown ファイルを保存しました",
+
+  "generic_error_try_again": "エラーが発生しました。もう一度お試しください。",
+
+  "unable_open_file": "ファイルを開けません。",
+  "path_not_exist": "パスが存在しません。",
+  "permission_denied_open_path": "許可が拒否されました。パスを開けません。",
+  "unable_open_path": "パスを開けません。",
+  "unable_open_folder": "フォルダーを開けません。",
+
+  "file_created": "ファイルを作成しました。",
+  "unable_create_file": "ファイルを作成できません。",
+  "folder_created": "フォルダーを作成しました。",
+  "unable_create_folder": "フォルダーを作成できません。",
+
+  "renamed_success": "名前を変更しました。",
+  "unable_rename": "名前を変更できません。",
+  "deleted_success": "削除しました。",
+  "unable_delete": "削除できません。",
+
+  "settings_file_corrupted_reset": "設定ファイルが破損しています。デフォルト設定に戻します。",
+  "settings_update_success": "設定を更新しました。",
+  "unable_save_settings_permission_denied": "設定を保存できません: 許可が拒否されました。",
+  "unable_save_settings_unknown_error": "設定を保存できません: 不明なエラー。",
+
+  "update_available": "更新 {{version}} が利用可能です。バックグラウンドでダウンロード中…",
+  "update_downloaded": "更新 {{version}} がダウンロードされました。再起動して更新してください。"
+}

@@ -1,0 +1,21 @@
+{
+  "title": "Paramètres d’exportation",
+  "intro": "Vous pouvez ici configurer les paramètres pour les exportations HTML et PDF ; les paramètres sont enregistrés automatiquement lors de leur modification.",
+  "settings_file_info": "Votre fichier de paramètres se trouve à ~/.mkeditor/settings.json.",
+  "export_with_styles_label": "Exporter avec les styles",
+  "export_with_styles_help": "Activez ceci pour exporter avec les styles Bootstrap, FontAwesome et KaTeX fournis par des CDN officiels avec vérifications d’intégrité et de crossorigin.",
+  "set_container_label": "Définir le conteneur",
+  "set_container_option_container": "container",
+  "set_container_option_container_fluid": "container-fluid",
+  "set_container_help": "Définir la classe de largeur du conteneur ; ‘fluid’ est plus large.",
+  "set_font_size_label": "Définir la taille de police",
+  "set_font_size_help": "Définir la taille de la police en px.",
+  "set_line_spacing_label": "Définir l’interligne",
+  "set_line_spacing_help": "Définir l’espacement vertical des lignes.",
+  "set_background_colour_label": "Définir la couleur d’arrière‑plan",
+  "set_background_colour_help": "Définir la couleur d’arrière‑plan.",
+  "set_font_colour_label": "Définir la couleur de police",
+  "set_font_colour_help": "Définir la couleur de la police.",
+  "save_settings": "Enregistrer les paramètres",
+  "reset_to_default": "Réinitialiser par défaut"
+}

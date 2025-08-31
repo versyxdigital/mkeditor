@@ -1,0 +1,20 @@
+{
+  "reset_split": "Indeling editor/voorbeeld resetten",
+  "bold_tooltip": "Ctrl + B",
+  "italic_tooltip": "Ctrl + I",
+  "strikethrough_tooltip": "Ctrl + G",
+  "unordered_list_tooltip": "Ctrl + 2",
+  "ordered_list_tooltip": "Ctrl + 3",
+  "insert_link_tooltip": "Ctrl + H",
+  "table_menu_tooltip": "Ctrl + T",
+  "codeblock_menu_tooltip": "Ctrl + K, <_>",
+  "alert_menu_tooltip": "Ctrl + L, <_>",
+  "save_markdown_file": "Markdown-bestand opslaan",
+  "save_button": "Opslaan",
+  "configure_export_settings": "Exportinstellingen configureren",
+  "export_html_tooltip": "Exporteren naar HTML-bestand",
+  "export_pdf_tooltip": "Exporteren naar PDF-bestand",
+  "export_to_prefix": "Exporteren naar ",
+  "export_html_label": "HTML",
+  "export_pdf_label": "PDF"
+}

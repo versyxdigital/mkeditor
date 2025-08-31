@@ -2,6 +2,7 @@ import Swal from 'sweetalert2';
 import type { ContextBridgeAPI } from '../../interfaces/Bridge';
 import { withMdExtension } from '../../util';
 import { dom } from '../../dom';
+import { t } from '../../i18n';
 
 interface ContextMenuItem {
   label: string;
@@ -21,12 +22,12 @@ export function getContextMenuItems(
     if (treeRoot) {
       items.push(
         {
-          label: 'New File...',
+          label: t('menus-explorer:new_file'),
           action: async () => {
             const result = await Swal.fire({
-              title: 'New file name',
+              title: t('menus-explorer:prompt_new_file_title'),
               input: 'text',
-              inputPlaceholder: 'Untitled.md',
+              inputPlaceholder: t('menus-explorer:prompt_new_file_placeholder'),
               showCancelButton: true,
               draggable: true,
               customClass: {
@@ -44,10 +45,10 @@ export function getContextMenuItems(
           },
         },
         {
-          label: 'New Folder...',
+          label: t('menus-explorer:new_folder'),
           action: async () => {
             const result = await Swal.fire({
-              title: 'New folder name',
+              title: t('menus-explorer:prompt_new_folder_title'),
               input: 'text',
               showCancelButton: true,
               draggable: true,
@@ -70,7 +71,7 @@ export function getContextMenuItems(
     } else {
       items.push(
         {
-          label: 'Open Folder...',
+          label: t('menus-explorer:open_folder'),
           action: () => {
             bridge.send('to:folder:open', true);
           },
@@ -81,13 +82,13 @@ export function getContextMenuItems(
     // Defaults
     items.push(
       {
-        label: 'Collapse Explorer',
+        label: t('menus-explorer:collapse_explorer'),
         action: () => {
           dom.buttons.sidebar.click();
         },
       },
       {
-        label: 'Open Settings',
+        label: t('menus-explorer:open_settings'),
         action: () => {
           dom.buttons.settings.click();
         },
@@ -97,17 +98,17 @@ export function getContextMenuItems(
     const path = li.dataset.path;
     items.push(
       {
-        label: 'Open File',
+        label: t('menus-explorer:open_file'),
         action: () => {
           openFile(path);
         },
       },
       { divider: true, label: '', action: () => {} },
       {
-        label: 'Rename File...',
+        label: t('menus-explorer:rename_file'),
         action: async () => {
           const result = await Swal.fire({
-            title: 'Rename file',
+            title: t('menus-explorer:prompt_rename_file_title'),
             input: 'text',
             inputValue: path.split(/[/\\]/).pop(),
             showCancelButton: true,
@@ -127,14 +128,14 @@ export function getContextMenuItems(
         },
       },
       {
-        label: 'Delete File...',
+        label: t('menus-explorer:delete_file'),
         action: async () => {
           const confirm = await Swal.fire({
-            title: 'Delete file?',
+            title: t('menus-explorer:confirm_delete_file_title'),
             icon: 'warning',
             showCancelButton: true,
             draggable: true,
-            confirmButtonText: 'Delete',
+            confirmButtonText: t('menus-explorer:confirm_delete_button'),
             customClass: {
               popup: ['rounded', 'shadow'],
               actions: 'mt-2',
@@ -147,20 +148,20 @@ export function getContextMenuItems(
       },
       { divider: true, label: '', action: () => {} },
       {
-        label: 'Show Properties...',
+        label: t('menus-explorer:show_properties'),
         action: () => {
           bridge.send('to:file:properties', { path });
         },
       },
       { divider: true, label: '', action: () => {} },
       {
-        label: 'Collapse Explorer',
+        label: t('menus-explorer:collapse_explorer'),
         action: () => {
           dom.buttons.sidebar.click();
         },
       },
       {
-        label: 'Open Settings...',
+        label: t('menus-explorer:open_settings'),
         action: () => {
           dom.buttons.settings.click();
         },
@@ -170,7 +171,7 @@ export function getContextMenuItems(
     const path = li.dataset.path;
     items.push(
       {
-        label: 'Expand Folder',
+        label: t('menus-explorer:expand_folder'),
         action: () => {
           const span = li.querySelector(':scope > span.file-name');
           const ul = li.querySelector(':scope > ul') as HTMLElement | null;
@@ -181,12 +182,12 @@ export function getContextMenuItems(
       },
       { divider: true, label: '', action: () => {} },
       {
-        label: 'New File...',
+        label: t('menus-explorer:new_file'),
         action: async () => {
           const result = await Swal.fire({
-            title: 'New file name',
+            title: t('menus-explorer:prompt_new_file_title'),
             input: 'text',
-            inputPlaceholder: 'Untitled.md',
+            inputPlaceholder: t('menus-explorer:prompt_new_file_placeholder'),
             showCancelButton: true,
             draggable: true,
             customClass: {
@@ -204,10 +205,10 @@ export function getContextMenuItems(
         },
       },
       {
-        label: 'New Folder...',
+        label: t('menus-explorer:new_folder'),
         action: async () => {
           const result = await Swal.fire({
-            title: 'New folder name',
+            title: t('menus-explorer:prompt_new_folder_title'),
             input: 'text',
             showCancelButton: true,
             draggable: true,
@@ -227,10 +228,10 @@ export function getContextMenuItems(
       },
       { divider: true, label: '', action: () => {} },
       {
-        label: 'Rename Folder...',
+        label: t('menus-explorer:rename_folder'),
         action: async () => {
           const result = await Swal.fire({
-            title: 'Rename folder',
+            title: t('menus-explorer:prompt_rename_folder_title'),
             input: 'text',
             inputValue: path.split(/[/\\]/).pop(),
             showCancelButton: true,
@@ -247,13 +248,13 @@ export function getContextMenuItems(
         },
       },
       {
-        label: 'Delete Folder...',
+        label: t('menus-explorer:delete_folder'),
         action: async () => {
           const confirm = await Swal.fire({
-            title: 'Delete folder?',
+            title: t('menus-explorer:confirm_delete_folder_title'),
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Delete',
+            confirmButtonText: t('menus-explorer:confirm_delete_button'),
             draggable: true,
             customClass: {
               popup: ['rounded', 'shadow'],
@@ -268,20 +269,20 @@ export function getContextMenuItems(
       },
       { divider: true, label: '', action: () => {} },
       {
-        label: 'Show Properties...',
+        label: t('menus-explorer:show_properties'),
         action: () => {
           bridge.send('to:file:properties', { path });
         },
       },
       { divider: true, label: '', action: () => {} },
       {
-        label: 'Collapse Explorer',
+        label: t('menus-explorer:collapse_explorer'),
         action: () => {
           dom.buttons.sidebar.click();
         },
       },
       {
-        label: 'Open Settings...',
+        label: t('menus-explorer:open_settings'),
         action: () => {
           dom.buttons.settings.click();
         },

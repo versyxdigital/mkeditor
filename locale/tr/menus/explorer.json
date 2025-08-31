@@ -1,0 +1,23 @@
+{
+  "new_file": "Yeni dosya...",
+  "new_folder": "Yeni klasör...",
+  "open_folder": "Klasör aç...",
+  "collapse_explorer": "Gezgini daralt",
+  "open_settings": "Ayarları aç...",
+  "open_file": "Dosya aç",
+  "rename_file": "Dosyayı yeniden adlandır...",
+  "delete_file": "Dosyayı sil...",
+  "show_properties": "Özellikleri göster...",
+  "expand_folder": "Klasörü genişlet",
+  "rename_folder": "Klasörü yeniden adlandır...",
+  "delete_folder": "Klasörü sil...",
+
+  "prompt_new_file_title": "Yeni dosya adı",
+  "prompt_new_file_placeholder": "Adsız.md",
+  "prompt_new_folder_title": "Yeni klasör adı",
+  "prompt_rename_file_title": "Dosyayı yeniden adlandır",
+  "prompt_rename_folder_title": "Klasörü yeniden adlandır",
+  "confirm_delete_file_title": "Dosya silinsin mi?",
+  "confirm_delete_folder_title": "Klasör silinsin mi?",
+  "confirm_delete_button": "Sil"
+}

@@ -8,6 +8,7 @@ import type { FileManager } from './FileManager';
 import type { FileTreeManager } from './FileTreeManager';
 import { showFilePropertiesWindow } from '../dom';
 import { notify } from '../util';
+import { t } from '../i18n';
 
 /**
  * Register bridge channel listeners.
@@ -234,12 +235,20 @@ export function registerBridgeListeners(
   });
 
   // Enable notifications from the main context.
-  bridge.receive(
-    'from:notification:display',
-    (event: { status: string; message: string }) => {
-      notify.send(event.status, event.message);
-    },
-  );
+  bridge.receive('from:notification:display', (event: any) => {
+    const { status } = event || {};
+    const key: string | undefined = event?.key;
+    const values: Record<string, unknown> | undefined = event?.values;
+    const message: string | undefined = event?.message;
+
+    const text = key
+      ? t(key, values)
+      : typeof message === 'string'
+        ? message
+        : '';
+
+    if (text) notify.send(status || 'info', text);
+  });
 
   // Trigger the file properties window from the context menu.
   bridge.receive('from:path:properties', (info: FileProperties) => {
