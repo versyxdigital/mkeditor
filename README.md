@@ -35,7 +35,7 @@ MKEditor comes with full support for styling your documents with:
 - Fontawesome
 - Highlight.js
 
-### Create alerts
+## Create alerts
 
 ```sh
 ::: primary
@@ -45,7 +45,7 @@ MKEditor comes with full support for styling your documents with:
 
 ![alerts](https://versyxdigital.github.io/assets/img/alerts.png)
 
-### Format code
+## Format code
 
 ```javascript
 document.addEventListener('DOMContentLoaded', () => {
@@ -79,7 +79,7 @@ Syntax highlighting is supported for lots of languages, including but not limite
 <img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-powershell.png">
 </p>
 
-### Write math
+## Write math
 
 ```sh
 $\sqrt{3x-1}+(1+x)^2$
@@ -93,7 +93,7 @@ MKEditor comes with full support for writing expressions with LaTeX.
 
 MKEditor includes a fully configurable and resizable preview renderer. View your styled or unstyled output in real time. 👀
 
-## Customizable Setings
+## Customizable Settings
 Customize your settings, enable word-wrapping, toggle automatic indentation, switch between light or dark mode and more. 🌙
 
 ## Export to HTML & PDF
