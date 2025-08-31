@@ -258,17 +258,17 @@ export function createSidebarToggle(mkeditor: editor.IStandaloneCodeEditor) {
 }
 
 export function showFilePropertiesWindow(info: FileProperties) {
+  const pathType = info.isDirectory
+    ? t('modals-properties:type_directory')
+    : t('modals-properties:type_file');
+
   const html = `
     <dl class="mb-0 small text-start">
       <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_path')}</dt>
       <dd class="col-auto me-4">${info.path}</dd>
 
       <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_type')}</dt>
-      <dd class="col-auto me-4">${
-        info.isDirectory
-          ? t('modals-properties:type_directory')
-          : t('modals-properties:type_file')
-      }</dd>
+      <dd class="col-auto me-4">${pathType}</dd>
 
       <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_size')}</dt>
       <dd class="col-auto me-4">${info.size}</dd>
