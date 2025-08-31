@@ -3,6 +3,7 @@ import Swal from 'sweetalert2';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { dom } from '../dom';
+import { t } from '../i18n';
 
 /**
  * Handle editor files, models and tabs.
@@ -43,7 +44,9 @@ export class FileManager {
     private bridge: ContextBridgeAPI,
     private mkeditor: editor.IStandaloneCodeEditor,
     private dispatcher: EditorDispatcher,
-  ) {}
+  ) {
+    this.registerFileTabOrderListener();
+  }
 
   /**
    * Add a new tab for an activated file.
@@ -106,13 +109,13 @@ export class FileManager {
     if (original !== current && !this.isLogFile) {
       const result = await Swal.fire({
         customClass: { container: 'unsaved-changes-popup' },
-        title: 'Unsaved changes',
-        text: 'Save changes to your file before closing?',
+        title: t('modals-unsaved:title'),
+        text: t('modals-unsaved:text'),
         showCancelButton: true,
         showDenyButton: true,
-        confirmButtonText: 'Save & close',
-        denyButtonText: 'Close without saving',
-        cancelButtonText: 'Cancel',
+        confirmButtonText: t('modals-unsaved:confirm'),
+        denyButtonText: t('modals-unsaved:deny'),
+        cancelButtonText: t('modals-unsaved:cancel'),
       });
 
       if (result.isConfirmed) {
@@ -157,6 +160,30 @@ export class FileManager {
   }
 
   /**
+   * Register tab reorder event listener.
+   *
+   * @returns
+   */
+  private registerFileTabOrderListener() {
+    dom.tabs?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!dom.tabs) return;
+
+      const after = this.getDragAfterElement(dom.tabs, e.clientX);
+      const dragging = dom.tabs.querySelector(
+        'li.dragging',
+      ) as HTMLLIElement | null;
+      if (!dragging) return;
+
+      if (after == null) {
+        dom.tabs.appendChild(dragging);
+      } else {
+        dom.tabs.insertBefore(dragging, after);
+      }
+    });
+  }
+
+  /**
    * Synchronize the order of the tabs after reordering.
    *
    * @returns
@@ -180,7 +207,7 @@ export class FileManager {
    * @param x - the tab index offset
    * @returns
    */
-  public getDragAfterElement(container: HTMLElement, x: number) {
+  private getDragAfterElement(container: HTMLElement, x: number) {
     const elements = Array.from(
       container.querySelectorAll('li:not(.dragging)'),
     ) as HTMLElement[];

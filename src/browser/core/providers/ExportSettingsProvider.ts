@@ -10,6 +10,11 @@ export class ExportSettingsProvider {
   private settings: ExportSettings = defaults;
   private registered = false;
 
+  private saveTimer: number | null = null;
+  private debounceMs = 250;
+  private lastPersistedJSON = '';
+  private isApplying = false;
+
   constructor(mode: 'web' | 'desktop', dispatcher: EditorDispatcher) {
     this.mode = mode;
     this.dispatcher = dispatcher;
@@ -53,6 +58,8 @@ export class ExportSettingsProvider {
     const { exports: ex } = dom;
     if (!ex) return;
 
+    this.isApplying = true;
+
     const settings = this.settings;
 
     ex.withStyles.checked = settings.withStyles;
@@ -62,6 +69,8 @@ export class ExportSettingsProvider {
     ex.background.value = settings.background;
     ex.fontColor.value = settings.fontColor;
 
+    this.isApplying = false;
+
     syncPreviewToExportSettings(settings, dom.preview.dom);
   }
 
@@ -69,45 +78,65 @@ export class ExportSettingsProvider {
     if (this.registered) return;
     this.registered = true;
     const { exports: ex, buttons } = dom;
+
+    const persist = () => {
+      this.setUIState();
+      this.schedule();
+    };
+
     ex.withStyles.addEventListener('change', (e) => {
+      if (this.isApplying) return;
       const target = e.target as HTMLInputElement;
       this.settings.withStyles = target.checked;
       const toolbar = buttons.save.styled as HTMLInputElement;
       if (toolbar) toolbar.checked = target.checked;
-      this.persist();
+      persist();
     });
+
     ex.container.addEventListener('change', (e) => {
+      if (this.isApplying) return;
       const target = e.target as HTMLSelectElement;
       this.settings.container = target.value as 'container' | 'container-fluid';
-      this.persist();
+      persist();
     });
+
     ex.fontSize.addEventListener('change', (e) => {
+      if (this.isApplying) return;
       const target = e.target as HTMLInputElement;
       this.settings.fontSize = parseInt(target.value, 10);
-      this.persist();
+      persist();
     });
+
     ex.lineSpacing.addEventListener('input', (e) => {
+      if (this.isApplying) return;
       const target = e.target as HTMLInputElement;
       this.settings.lineSpacing = parseFloat(target.value);
-      this.persist();
+      this.setUIState();
+      this.schedule(400); // slightly longer debounce for slider drag
     });
+
     ex.background.addEventListener('change', (e) => {
+      if (this.isApplying) return;
       const target = e.target as HTMLInputElement;
       this.settings.background = target.value;
-      this.persist();
+      persist();
     });
+
     ex.fontColor.addEventListener('change', (e) => {
+      if (this.isApplying) return;
       const target = e.target as HTMLInputElement;
       this.settings.fontColor = target.value;
-      this.persist();
+      persist();
     });
+
     const toolbar = buttons.save.styled as HTMLInputElement;
     if (toolbar) {
       toolbar.addEventListener('change', (e) => {
+        if (this.isApplying) return;
         const target = e.target as HTMLInputElement;
         this.settings.withStyles = target.checked;
         ex.withStyles.checked = target.checked;
-        this.persist();
+        persist();
       });
     }
   }
@@ -119,8 +148,34 @@ export class ExportSettingsProvider {
     );
   }
 
-  private persist() {
-    this.setUIState();
+  /**
+   * Schedule an export save delay
+   *
+   * @param overrideDelay
+   */
+  private schedule(overrideDelay?: number) {
+    const delay = overrideDelay ?? this.debounceMs;
+    if (this.saveTimer !== null) {
+      window.clearTimeout(this.saveTimer);
+    }
+    this.saveTimer = window.setTimeout(() => {
+      this.saveTimer = null;
+      this.save();
+    }, delay);
+  }
+
+  /**
+   * Save export settings.
+   *
+   * @returns
+   */
+  private save() {
+    const nextJSON = JSON.stringify(this.settings);
+
+    if (nextJSON === this.lastPersistedJSON) {
+      return;
+    }
+
     if (this.mode === 'web') {
       this.updateSettingsInLocalStorage();
     } else {
@@ -129,6 +184,6 @@ export class ExportSettingsProvider {
       });
     }
 
-    syncPreviewToExportSettings(this.settings, dom.preview.dom);
+    this.lastPersistedJSON = nextJSON;
   }
 }

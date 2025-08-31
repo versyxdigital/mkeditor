@@ -1,0 +1,11 @@
+{
+  "title": "プロパティ",
+  "label_path": "パス:",
+  "label_type": "種類:",
+  "label_size": "サイズ:",
+  "label_created": "作成日時:",
+  "label_modified": "更新日時:",
+  "type_directory": "ディレクトリ",
+  "type_file": "ファイル",
+  "close_button": "閉じる"
+}

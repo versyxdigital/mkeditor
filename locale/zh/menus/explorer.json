@@ -1,0 +1,23 @@
+{
+  "new_file": "新建文件...",
+  "new_folder": "新建文件夹...",
+  "open_folder": "打开文件夹...",
+  "collapse_explorer": "折叠资源管理器",
+  "open_settings": "打开设置...",
+  "open_file": "打开文件",
+  "rename_file": "重命名文件...",
+  "delete_file": "删除文件...",
+  "show_properties": "显示属性...",
+  "expand_folder": "展开文件夹",
+  "rename_folder": "重命名文件夹...",
+  "delete_folder": "删除文件夹...",
+
+  "prompt_new_file_title": "新文件名称",
+  "prompt_new_file_placeholder": "未命名.md",
+  "prompt_new_folder_title": "新文件夹名称",
+  "prompt_rename_file_title": "重命名文件",
+  "prompt_rename_folder_title": "重命名文件夹",
+  "confirm_delete_file_title": "删除文件？",
+  "confirm_delete_folder_title": "删除文件夹？",
+  "confirm_delete_button": "删除"
+}

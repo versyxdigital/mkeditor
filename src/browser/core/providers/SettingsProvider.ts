@@ -2,6 +2,7 @@ import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { EditorSettings, ValidSetting } from '../../interfaces/Editor';
 import type { EditorDispatcher } from '../../events/EditorDispatcher';
 import { settings } from '../../config';
+import { getAvailableLocales, normalizeLanguage } from '../../i18n';
 import { dom } from '../../dom';
 
 export class SettingsProvider {
@@ -56,12 +57,35 @@ export class SettingsProvider {
   }
 
   /**
+   * Get an editor setting.
+   *
+   * @param key - the setting key
+   * @returns - the setting
+   */
+  public getSetting<K extends keyof EditorSettings>(key: K) {
+    return this.settings[key];
+  }
+
+  /**
    * Set the editor settings.
    *
    * @param settings - the settings to set
    */
   public setSettings(settings: EditorSettings) {
     this.settings = settings;
+  }
+
+  /**
+   * Set a specific editor setting.
+   *
+   * @param key - the settings key
+   * @param value - the value to set
+   */
+  public setSetting<K extends keyof EditorSettings>(
+    key: K,
+    value: EditorSettings[K],
+  ) {
+    this.settings[key] = value;
   }
 
   /**
@@ -81,27 +105,19 @@ export class SettingsProvider {
   }
 
   /**
-   * Set a specific editor setting.
-   *
-   * @param key - the settings key
-   * @param value - the value to set
-   */
-  public setSetting(key: string, value: boolean) {
-    this.settings[key as ValidSetting] = value;
-  }
-
-  /**
    * Register DOM event listeners for changes to editor settings.
    */
   public registerDOMListeners() {
     const toggler = dom.settings;
+    this.populateLocaleOptions(toggler.locale);
+    this.registerLocaleChangeListener(toggler.locale);
     this.registerAutoIndentChangeListener(toggler.autoindent);
     this.registerDarkModeChangeListener(toggler.darkmode);
     this.registerMinimapChangeListener(toggler.minimap);
     this.registerWordWrapChangeListener(toggler.wordwrap);
     this.registerWhitespaceChangeListener(toggler.whitespace);
     this.registerSystemThemeOverrideChangeListener(toggler.systemtheme);
-
+    this.registerScrollSyncChangeListener(toggler.scrollsync);
     this.setUIState();
   }
 
@@ -121,12 +137,18 @@ export class SettingsProvider {
 
     for (const k of Object.keys(settings)) {
       const key = k as ValidSetting;
-      if (key !== 'darkmode') {
+      if (key !== 'darkmode' && key !== 'locale') {
         settings[key].checked = this.settings[key];
       }
     }
 
     settings.darkmode.checked = this.theme === 'dark';
+
+    if (settings.locale) {
+      const current = this.settings.locale || 'en';
+      settings.locale.value = normalizeLanguage(current);
+    }
+
     if (this.mode !== 'web') {
       settings.darkmode.disabled = this.settings.systemtheme;
     }
@@ -175,6 +197,49 @@ export class SettingsProvider {
    */
   private updateSettingsInLocalStorage() {
     localStorage.setItem('mkeditor-settings', JSON.stringify(this.settings));
+  }
+
+  /**
+   * Populate available locales in the select element.
+   */
+  private async populateLocaleOptions(select: HTMLSelectElement | null) {
+    if (!select) return;
+    // Only populate once
+    if (select.options.length > 0) return;
+    try {
+      const list = await getAvailableLocales();
+      // Sort by native name then code
+      list.sort(
+        (a, b) =>
+          a.native.localeCompare(b.native) || a.code.localeCompare(b.code),
+      );
+      for (const l of list) {
+        const opt = document.createElement('option');
+        opt.value = l.code;
+        opt.textContent = `${l.native} (${l.name})`;
+        select.appendChild(opt);
+      }
+
+      const current = this.settings.locale || 'en';
+      select.value = current;
+    } catch {
+      // no-op
+    }
+  }
+
+  /**
+   * Register the handler for locale changes.
+   */
+  private registerLocaleChangeListener(handler: Element) {
+    handler.addEventListener('change', (event) => {
+      const target = <HTMLSelectElement>event.target;
+      const locale = target.value;
+      this.setSetting('locale', locale);
+      window.setLanguage(locale);
+      this.persist();
+    });
+
+    return this;
   }
 
   /**
@@ -355,6 +420,23 @@ export class SettingsProvider {
    */
   public setSystemThemeOverride() {
     dom.settings.darkmode.checked = this.theme === 'dark';
+
+    return this;
+  }
+
+  /**
+   * Register the handler for the mini-map settings.
+   *
+   * @param handler - the handler
+   * @returns this
+   */
+  private registerScrollSyncChangeListener(handler: Element) {
+    handler.addEventListener('click', (event) => {
+      const target = <HTMLInputElement>event.target;
+      this.setSetting('scrollsync', target.checked);
+      // no-op: setting checked on editor model onDidScrollChange listener
+      this.persist();
+    });
 
     return this;
   }

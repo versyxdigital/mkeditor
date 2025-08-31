@@ -3,57 +3,62 @@ import type {
   ListenerEvent,
   ListenerEventCallback,
 } from '../interfaces/Dispatcher';
+import { logger } from '../util';
 
 export class BaseDispatcher implements Dispatcher {
-  public _listeners?: {
-    [index: string]: ListenerEventCallback[];
+  public listeners?: {
+    [index: string]: Set<ListenerEventCallback>;
   };
 
   addEventListener(type: string, listener: ListenerEventCallback): void {
-    if (this._listeners === undefined) this._listeners = {};
-    const listeners = this._listeners;
+    if (this.listeners === undefined) this.listeners = {};
+    const listeners = this.listeners;
 
     if (listeners[type] === undefined) {
-      listeners[type] = [];
+      listeners[type] = new Set<ListenerEventCallback>();
     }
 
-    if (!listeners[type].includes(listener)) {
-      listeners[type].push(listener);
-    }
+    listeners[type].add(listener);
   }
 
   hasEventListener(type: string, listener: ListenerEventCallback): boolean {
-    if (this._listeners === undefined) return false;
-    const listeners = this._listeners;
-    return listeners[type] !== undefined && listeners[type].includes(listener);
+    if (this.listeners === undefined) return false;
+    const listeners = this.listeners;
+    return listeners[type] !== undefined && listeners[type].has(listener);
   }
 
   removeEventListener(type: string, listener: ListenerEventCallback): void {
-    if (this._listeners === undefined) return;
-    const listeners = this._listeners;
-    const listenerA = listeners[type];
+    if (this.listeners === undefined) return;
+    const listeners = this.listeners;
+    const listenerSet = listeners[type];
 
-    if (listenerA !== undefined) {
-      const index = listenerA.indexOf(listener);
-      if (index !== -1) {
-        listenerA.splice(index, 1);
-      }
+    if (listenerSet !== undefined) {
+      listenerSet.delete(listener);
     }
   }
 
   dispatchEvent(event: ListenerEvent): void {
-    if (this._listeners === undefined) return;
-    const listeners = this._listeners;
-    const listenerA = listeners[event.type];
+    if (this.listeners === undefined) return;
+    const listeners = this.listeners;
+    const listenerSet = listeners[event.type];
 
-    if (listenerA !== undefined) {
+    if (listenerSet !== undefined) {
       event.target = this;
 
-      const copy = listenerA.slice(0);
+      // Snapshot to avoid iterator invalidation if the set is mutated
+      const snapshot = Array.from(listenerSet);
 
-      for (let i = 0, j = copy.length; i < j; ++i) {
-        copy[i].call(this, event);
+      for (let i = 0, j = snapshot.length; i < j; ++i) {
+        const cb = snapshot[i];
+        // Guard against handlers removing handlers mid-dispatch
+        if (!listenerSet.has(cb)) continue;
+        cb.call(this, event);
       }
     }
+
+    logger?.debug(
+      'Renderer event dispatch',
+      JSON.stringify({ listenerSet, event }),
+    );
   }
 }

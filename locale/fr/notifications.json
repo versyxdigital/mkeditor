@@ -1,0 +1,32 @@
+{
+  "unable_export_preview": "Impossible d’exporter l’aperçu",
+  "unable_save_markdown": "Impossible d’enregistrer le markdown",
+  "exported_html_success": "Aperçu exporté en HTML",
+  "saved_markdown_success": "Fichier Markdown enregistré",
+
+  "generic_error_try_again": "Une erreur s’est produite. Veuillez réessayer.",
+
+  "unable_open_file": "Impossible d’ouvrir le fichier.",
+  "path_not_exist": "Le chemin n’existe pas.",
+  "permission_denied_open_path": "Permission refusée, impossible d’ouvrir le chemin.",
+  "unable_open_path": "Impossible d’ouvrir le chemin.",
+  "unable_open_folder": "Impossible d’ouvrir le dossier.",
+
+  "file_created": "Fichier créé.",
+  "unable_create_file": "Impossible de créer le fichier.",
+  "folder_created": "Dossier créé.",
+  "unable_create_folder": "Impossible de créer le dossier.",
+
+  "renamed_success": "Renommé.",
+  "unable_rename": "Impossible de renommer.",
+  "deleted_success": "Supprimé.",
+  "unable_delete": "Impossible de supprimer.",
+
+  "settings_file_corrupted_reset": "Fichier de paramètres corrompu. Retour aux paramètres par défaut.",
+  "settings_update_success": "Paramètres mis à jour avec succès.",
+  "unable_save_settings_permission_denied": "Impossible d’enregistrer les paramètres : permission refusée.",
+  "unable_save_settings_unknown_error": "Impossible d’enregistrer les paramètres : erreur inconnue.",
+
+  "update_available": "Mise à jour {{version}} disponible, téléchargement en arrière-plan…",
+  "update_downloaded": "Mise à jour {{version}} téléchargée, redémarrez pour mettre à jour."
+}

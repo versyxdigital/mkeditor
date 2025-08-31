@@ -1,6 +1,6 @@
 export interface Dispatcher {
-  _listeners?: {
-    [index: string]: ListenerEventCallback[];
+  listeners?: {
+    [index: string]: Set<ListenerEventCallback>;
   };
 
   addEventListener(type: string, listener: ListenerEventCallback): void;
@@ -12,7 +12,7 @@ export interface Dispatcher {
 export interface ListenerEvent {
   target?: Dispatcher;
   type: string;
-  message: any;
+  detail: any;
 }
 
 export type ListenerEventCallback = (event: ListenerEvent) => any;

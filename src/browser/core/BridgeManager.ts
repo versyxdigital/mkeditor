@@ -3,11 +3,9 @@ import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { BridgeProviders } from '../interfaces/Providers';
 import type { SettingsFile } from '../interfaces/Editor';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
+import { registerBridgeListeners } from './BridgeListeners';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
-import { BridgeSettings } from './BridgeSettings';
-import { registerBridgeListeners } from './BridgeListeners';
-import { dom } from '../dom';
 
 /**
  * Bridge handler.
@@ -39,9 +37,6 @@ export class BridgeManager {
   /** File tree helper */
   private fileTreeManager: FileTreeManager;
 
-  /** Settings helper */
-  private settings: BridgeSettings;
-
   /**
    * Create a new bridge handler.
    */
@@ -63,8 +58,6 @@ export class BridgeManager {
       this.fileManager.openFileFromPath(path),
     );
 
-    this.settings = new BridgeSettings(this.bridge, this.mkeditor);
-
     // Register event listeners for events sent through IPC channels.
     registerBridgeListeners(
       this.bridge,
@@ -73,33 +66,11 @@ export class BridgeManager {
       this.providers,
       this.fileManager,
       this.fileTreeManager,
-      this.settings,
     );
-
-    // Configure the event listener for file tab reordering.
-    // TODO: find a more appropriate place for this.
-    dom.tabs?.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      if (!dom.tabs) {
-        return;
-      }
-      const after = this.fileManager.getDragAfterElement(dom.tabs, e.clientX);
-      const dragging = dom.tabs.querySelector(
-        'li.dragging',
-      ) as HTMLLIElement | null;
-      if (!dragging) {
-        return;
-      }
-      if (after == null) {
-        dom.tabs.appendChild(dragging);
-      } else {
-        dom.tabs.insertBefore(dragging, after);
-      }
-    });
 
     // Configure event listener for a settings update event.
     this.dispatcher.addEventListener('editor:bridge:settings', (event) => {
-      this.saveSettingsToFile(event.message);
+      this.saveSettingsToFile(event.detail);
     });
   }
 
@@ -115,13 +86,13 @@ export class BridgeManager {
   }
 
   /**
-   * BridgeSettings wrapper method to save settings to file.
+   * Save settings to file.
    *
    * @param settings - the settings to save.
    * @returns
    */
   public saveSettingsToFile(settings: Partial<SettingsFile>) {
-    this.settings.saveSettingsToFile(settings);
+    this.bridge.send('to:settings:save', { settings });
   }
 
   /**
@@ -150,6 +121,15 @@ export class BridgeManager {
     } else {
       this.fileManager.exportToPDF(content);
     }
+  }
+
+  /**
+   * Request a language change via the main process.
+   *
+   * @param lng - the language code (e.g., 'en', 'fr')
+   */
+  public setLanguage(lng: string) {
+    this.bridge.send('to:i18n:set', lng);
   }
 
   /**

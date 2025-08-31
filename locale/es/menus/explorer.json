@@ -1,0 +1,23 @@
+{
+  "new_file": "Nuevo archivo...",
+  "new_folder": "Nueva carpeta...",
+  "open_folder": "Abrir carpeta...",
+  "collapse_explorer": "Colapsar explorador",
+  "open_settings": "Abrir configuración...",
+  "open_file": "Abrir archivo",
+  "rename_file": "Renombrar archivo...",
+  "delete_file": "Eliminar archivo...",
+  "show_properties": "Mostrar propiedades...",
+  "expand_folder": "Expandir carpeta",
+  "rename_folder": "Renombrar carpeta...",
+  "delete_folder": "Eliminar carpeta...",
+
+  "prompt_new_file_title": "Nombre del nuevo archivo",
+  "prompt_new_file_placeholder": "Sin título.md",
+  "prompt_new_folder_title": "Nombre de la nueva carpeta",
+  "prompt_rename_file_title": "Renombrar archivo",
+  "prompt_rename_folder_title": "Renombrar carpeta",
+  "confirm_delete_file_title": "¿Eliminar archivo?",
+  "confirm_delete_folder_title": "¿Eliminar carpeta?",
+  "confirm_delete_button": "Eliminar"
+}

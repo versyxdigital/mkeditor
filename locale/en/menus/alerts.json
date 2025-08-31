@@ -1,0 +1,10 @@
+{
+  "primary": "Primary",
+  "secondary": "Secondary",
+  "success": "Success",
+  "danger": "Danger",
+  "warning": "Warning",
+  "info": "Information",
+  "light": "Light",
+  "dark": "Dark"
+}

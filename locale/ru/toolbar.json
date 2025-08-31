@@ -1,0 +1,20 @@
+{
+  "reset_split": "Сбросить разделение редактор/предпросмотр",
+  "bold_tooltip": "Ctrl + B",
+  "italic_tooltip": "Ctrl + I",
+  "strikethrough_tooltip": "Ctrl + G",
+  "unordered_list_tooltip": "Ctrl + 2",
+  "ordered_list_tooltip": "Ctrl + 3",
+  "insert_link_tooltip": "Ctrl + H",
+  "table_menu_tooltip": "Ctrl + T",
+  "codeblock_menu_tooltip": "Ctrl + K, <_>",
+  "alert_menu_tooltip": "Ctrl + L, <_>",
+  "save_markdown_file": "Сохранить файл Markdown",
+  "save_button": "Сохранить",
+  "configure_export_settings": "Настроить параметры экспорта",
+  "export_html_tooltip": "Экспортировать в файл HTML",
+  "export_pdf_tooltip": "Экспортировать в файл PDF",
+  "export_to_prefix": "Экспорт в ",
+  "export_html_label": "HTML",
+  "export_pdf_label": "PDF"
+}

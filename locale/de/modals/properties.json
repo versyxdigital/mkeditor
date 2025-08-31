@@ -1,0 +1,11 @@
+{
+  "title": "Eigenschaften",
+  "label_path": "Pfad:",
+  "label_type": "Typ:",
+  "label_size": "Größe:",
+  "label_created": "Erstellt:",
+  "label_modified": "Geändert:",
+  "type_directory": "Verzeichnis",
+  "type_file": "Datei",
+  "close_button": "Schließen"
+}

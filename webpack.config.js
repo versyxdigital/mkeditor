@@ -20,7 +20,15 @@ module.exports = {
   optimization: {
     minimizer: [
       new TerserWebpackPlugin({
-        extractComments: true,
+        extractComments: false,
+        terserOptions: {
+          compress: {
+            passes: 2,
+          },
+          format: {
+            comments: false,
+          },
+        },
       }),
     ],
   },
@@ -94,6 +102,10 @@ module.exports = {
           to: './icon.png',
         },
         { from: './src/browser/views' },
+        {
+          from: './locale',
+          to: './locale',
+        },
         {
           from: './node_modules/katex/dist/fonts/*',
           to: 'fonts/[name][ext]',

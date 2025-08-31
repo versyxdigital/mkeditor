@@ -1,0 +1,20 @@
+{
+  "reset_split": "에디터/미리보기 분할 초기화",
+  "bold_tooltip": "Ctrl + B",
+  "italic_tooltip": "Ctrl + I",
+  "strikethrough_tooltip": "Ctrl + G",
+  "unordered_list_tooltip": "Ctrl + 2",
+  "ordered_list_tooltip": "Ctrl + 3",
+  "insert_link_tooltip": "Ctrl + H",
+  "table_menu_tooltip": "Ctrl + T",
+  "codeblock_menu_tooltip": "Ctrl + K, <_>",
+  "alert_menu_tooltip": "Ctrl + L, <_>",
+  "save_markdown_file": "Markdown 파일 저장",
+  "save_button": "저장",
+  "configure_export_settings": "내보내기 설정 구성",
+  "export_html_tooltip": "HTML 파일로 내보내기",
+  "export_pdf_tooltip": "PDF 파일로 내보내기",
+  "export_to_prefix": "다음으로 내보내기 ",
+  "export_html_label": "HTML",
+  "export_pdf_label": "PDF"
+}

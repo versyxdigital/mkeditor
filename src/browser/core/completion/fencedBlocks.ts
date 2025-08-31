@@ -1,0 +1,35 @@
+export const autoCompleteFencedConfig = {
+  alertblocks: {
+    literal: ':::',
+    regex: /^:::/,
+    types: [
+      'success',
+      'info',
+      'warning',
+      'danger',
+      'primary',
+      'secondary',
+      'light',
+      'dark',
+    ],
+  },
+  codeblocks: {
+    literal: '```',
+    regex: /^```/,
+    types: [
+      'c',
+      'cpp',
+      'csharp',
+      'javascript',
+      'json',
+      'php',
+      'python',
+      'rust',
+      'shell',
+      'sql',
+      'typescript',
+      'xml',
+      'yaml',
+    ],
+  },
+};

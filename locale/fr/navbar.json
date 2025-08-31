@@ -1,0 +1,9 @@
+{
+  "toggle_sidebar": "Afficher/masquer la barre latérale",
+  "character_count": "Nombre de caractères :",
+  "word_count": "Nombre de mots :",
+  "settings_tooltip": "Configurer les paramètres de l’éditeur",
+  "shortcuts_tooltip": "Afficher les raccourcis de l’éditeur",
+  "theme_switch_notice": "Ce commutateur est désactivé sur ordinateur si vous utilisez le thème du système.",
+  "active_file_default": "MKEditor"
+}

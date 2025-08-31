@@ -1,0 +1,23 @@
+{
+  "new_file": "Новий файл...",
+  "new_folder": "Нова папка...",
+  "open_folder": "Відкрити папку...",
+  "collapse_explorer": "Згорнути провідник",
+  "open_settings": "Відкрити налаштування...",
+  "open_file": "Відкрити файл",
+  "rename_file": "Перейменувати файл...",
+  "delete_file": "Видалити файл...",
+  "show_properties": "Показати властивості...",
+  "expand_folder": "Розгорнути папку",
+  "rename_folder": "Перейменувати папку...",
+  "delete_folder": "Видалити папку...",
+
+  "prompt_new_file_title": "Назва нового файлу",
+  "prompt_new_file_placeholder": "Без назви.md",
+  "prompt_new_folder_title": "Назва нової папки",
+  "prompt_rename_file_title": "Перейменувати файл",
+  "prompt_rename_folder_title": "Перейменувати папку",
+  "confirm_delete_file_title": "Видалити файл?",
+  "confirm_delete_folder_title": "Видалити папку?",
+  "confirm_delete_button": "Видалити"
+}
