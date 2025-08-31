@@ -35,7 +35,7 @@ MKEditor comes with full support for styling your documents with:
 - Fontawesome
 - Highlight.js
 
-### Create alerts:
+### Create alerts
 
 ```sh
 ::: primary
