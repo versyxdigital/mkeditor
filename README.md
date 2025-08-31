@@ -1,6 +1,6 @@
 [![Tests](https://github.com/versyxdigital/mkeditor/actions/workflows/tests.yml/badge.svg)](https://github.com/versyxdigital/mkeditor/actions/workflows/tests.yml) &nbsp;&nbsp;&nbsp;&nbsp;[![CodeQL](https://github.com/versyxdigital/mkeditor/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/versyxdigital/mkeditor/actions/workflows/github-code-scanning/codeql)
 
-# MKEditor
+# [MKEditor](https://versyxdigital.github.io/mkeditor)
 
 Markdown with _style_.
 
@@ -35,7 +35,7 @@ MKEditor comes with full support for styling your documents with:
 - Fontawesome
 - Highlight.js
 
-### Create alerts:
+### Create alerts
 
 ```sh
 ::: primary
@@ -43,7 +43,9 @@ MKEditor comes with full support for styling your documents with:
 :::
 ```
 
-### Format code:
+![alerts](https://versyxdigital.github.io/assets/img/alerts.png)
+
+### Format code
 
 ```javascript
 document.addEventListener('DOMContentLoaded', () => {
@@ -51,9 +53,33 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 ```
 
-MKEditor supports syntax highlighting for lots of languages!
+```php
+$route = $app['router']->dispatch(
+    $method,
+    $request->getUri()->getPath()
+);
+```
 
-### Write math:
+```rust
+if args[1] == "-h" || args[1] == "--help" {
+    println!("{}", usage());
+    return;
+}
+```
+
+Syntax highlighting is supported for lots of languages, including but not limited to:
+
+<p>
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-cpp.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-cs.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-php.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-js.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-ts.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-python.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-powershell.png">
+</p>
+
+### Write math
 
 ```sh
 $\sqrt{3x-1}+(1+x)^2$
@@ -61,20 +87,18 @@ $\sqrt{3x-1}+(1+x)^2$
 
 $\sqrt{3x-1}+(1+x)^2$
 
-MKEditor comes with full support for writing expressions with LaTeX!
+MKEditor comes with full support for writing expressions with LaTeX.
 
-## Preview documents as you type
+## Live Preview
 
-MKEditor includes a built-in, fully configurable, resizable preview renderer. View your styled or unstyled output in real time.
+MKEditor includes a fully configurable and resizable preview renderer. View your styled or unstyled output in real time. 👀
 
-## Customize to your preference
-Customize your settings, enable word-wrapping, toggle automatic indentation, switch between light mode or dark mode and more.
+## Customizable Setings
+Customize your settings, enable word-wrapping, toggle automatic indentation, switch between light or dark mode and more. 🌙
 
 ## Export to HTML & PDF
 
 MKEditor comes with full support for exporting your markdown to HTML and PDF 🚀.
-
-Built with ❤️ by [Versyx Digital](https://github.com/versyxdigital)
 
 # Developer Documentation
 
@@ -125,3 +149,5 @@ MKEditor occasionally uses [Codex](https://chatgpt.com/codex) as an **augmentati
 # License
 
 MKEditor is open source software licensed under the [MIT License](./LICENSE).
+
+Built with ❤️ by [Versyx Digital](https://github.com/versyxdigital)
