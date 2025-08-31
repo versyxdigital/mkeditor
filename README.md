@@ -51,18 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 ```
 
-Syntax highlighting is supported for lots of languages
-
-<p>
-<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-cpp.png">
-<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-cs.png">
-<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-php.png">
-<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-js.png">
-<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-ts.png">
-<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-python.png">
-<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-powershell.png">
-<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-json.png">
-</p>
+Syntax highlighting is supported for lots of languages!
 
 ## Write math
 
