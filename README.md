@@ -1,6 +1,6 @@
 [![Tests](https://github.com/versyxdigital/mkeditor/actions/workflows/tests.yml/badge.svg)](https://github.com/versyxdigital/mkeditor/actions/workflows/tests.yml) &nbsp;&nbsp;&nbsp;&nbsp;[![CodeQL](https://github.com/versyxdigital/mkeditor/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/versyxdigital/mkeditor/actions/workflows/github-code-scanning/codeql)
 
-# [MKEditor](https://versyxdigital.github.io/mkeditor)
+# MKEditor
 
 Markdown with _style_.
 
@@ -35,15 +35,13 @@ MKEditor comes with full support for styling your documents with:
 - Fontawesome
 - Highlight.js
 
-## Create alerts
+### Create alerts:
 
 ```sh
 ::: primary
 ✨ Create alerts
 :::
 ```
-
-![alerts](https://versyxdigital.github.io/assets/img/alerts.png)
 
 ## Format code
 
@@ -53,21 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 ```
 
-```php
-$route = $app['router']->dispatch(
-    $method,
-    $request->getUri()->getPath()
-);
-```
-
-```rust
-if args[1] == "-h" || args[1] == "--help" {
-    println!("{}", usage());
-    return;
-}
-```
-
-Syntax highlighting is supported for lots of languages, including but not limited to:
+Syntax highlighting is supported for lots of languages
 
 <p>
 <img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-cpp.png">
@@ -77,6 +61,7 @@ Syntax highlighting is supported for lots of languages, including but not limite
 <img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-ts.png">
 <img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-python.png">
 <img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-powershell.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-json.png">
 </p>
 
 ## Write math
@@ -87,67 +72,25 @@ $\sqrt{3x-1}+(1+x)^2$
 
 $\sqrt{3x-1}+(1+x)^2$
 
-MKEditor comes with full support for writing expressions with LaTeX.
+MKEditor comes with full support for writing expressions with LaTeX!
 
-## Live Preview
+## Preview documents as you type
 
-MKEditor includes a fully configurable and resizable preview renderer. View your styled or unstyled output in real time. 👀
+MKEditor includes a built-in, fully configurable, resizable preview renderer. View your styled or unstyled output in real time.
 
-## Customizable Settings
-Customize your settings, enable word-wrapping, toggle automatic indentation, switch between light or dark mode and more. 🌙
+## Customize to your preference
+Customize your settings, enable word-wrapping, toggle automatic indentation, switch between light mode or dark mode and more.
 
 ## Export to HTML & PDF
 
 MKEditor comes with full support for exporting your markdown to HTML and PDF 🚀.
 
-# Developer Documentation
+Built with ❤️ by [Versyx Digital](https://github.com/versyxdigital)
 
-## Building from source
+# Contributing
 
-If you would like to build from source, please follow the steps below:
-
-1. Clone the repository
-    ```sh
-    git clone git@github.com:versyxdigital/mkeditor.git
-    ```
-
-2. Install dependencies
-    ```sh
-    npm install
-    ```
-
-To build just the editor:
-
-```sh
-npm run build-editor
-```
-
-To build just the electron app:
-
-```sh
-npm run build-app
-```
-
-To make an installable package (rebuilds both editor and app):
-
-```sh
-npm run make-installer
-```
-
-## Further Documentation 
-
-MKEditor is split into two components: the browser-based renderer and the Electron desktop application. The browser renderer is a standalone web app, designed for markdown editing directly in the browser. The Electron app wraps the browser renderer, adding desktop-specific features such as file system access, native dialogs, and offline support.
-
-- [Main process](./src/app/README.md): Documentation for the MKEditor electron app
-- [Renderer](./src/browser/README.md): Documentation for the MKEditor web app
-
-## AI Usage Policy
-
-MKEditor occasionally uses [Codex](https://chatgpt.com/codex) as an **augmentative tool** for tasks such as generating documentation, boilerplate code, and expanding on **existing ideas**. This is strictly to speed up the development flow. All AI-assisted contributions are reviewed, verified, and refined manually before inclusion.
-
+Developer documentation can be found [here](./CONTRIBUTING.md).
 
 # License
 
 MKEditor is open source software licensed under the [MIT License](./LICENSE).
-
-Built with ❤️ by [Versyx Digital](https://github.com/versyxdigital)
