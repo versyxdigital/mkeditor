@@ -1,0 +1,32 @@
+{
+  "unable_export_preview": "Не удалось экспортировать предварительный просмотр",
+  "unable_save_markdown": "Не удалось сохранить Markdown",
+  "exported_html_success": "Предпросмотр экспортирован в HTML",
+  "saved_markdown_success": "Файл Markdown сохранён",
+
+  "generic_error_try_again": "Произошла ошибка. Пожалуйста, попробуйте ещё раз.",
+
+  "unable_open_file": "Не удалось открыть файл.",
+  "path_not_exist": "Путь не существует.",
+  "permission_denied_open_path": "Доступ запрещён, невозможно открыть путь.",
+  "unable_open_path": "Не удалось открыть путь.",
+  "unable_open_folder": "Не удалось открыть папку.",
+
+  "file_created": "Файл создан.",
+  "unable_create_file": "Не удалось создать файл.",
+  "folder_created": "Папка создана.",
+  "unable_create_folder": "Не удалось создать папку.",
+
+  "renamed_success": "Переименовано.",
+  "unable_rename": "Не удалось переименовать.",
+  "deleted_success": "Удалено.",
+  "unable_delete": "Не удалось удалить.",
+
+  "settings_file_corrupted_reset": "Файл настроек повреждён. Возврат к настройкам по умолчанию.",
+  "settings_update_success": "Настройки успешно обновлены.",
+  "unable_save_settings_permission_denied": "Не удалось сохранить настройки: доступ запрещён.",
+  "unable_save_settings_unknown_error": "Не удалось сохранить настройки: неизвестная ошибка.",
+
+  "update_available": "Доступно обновление {{version}}, скачивание в фоновом режиме…",
+  "update_downloaded": "Обновление {{version}} загружено, перезапустите для установки."
+}

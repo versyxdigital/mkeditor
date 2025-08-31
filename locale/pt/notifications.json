@@ -1,0 +1,32 @@
+{
+  "unable_export_preview": "Não foi possível exportar a prévia",
+  "unable_save_markdown": "Não foi possível salvar o markdown",
+  "exported_html_success": "Prévia exportada para HTML",
+  "saved_markdown_success": "Arquivo Markdown salvo",
+
+  "generic_error_try_again": "Ocorreu um erro. Tente novamente.",
+
+  "unable_open_file": "Não foi possível abrir o arquivo.",
+  "path_not_exist": "O caminho não existe.",
+  "permission_denied_open_path": "Permissão negada, não é possível abrir o caminho.",
+  "unable_open_path": "Não foi possível abrir o caminho.",
+  "unable_open_folder": "Não foi possível abrir a pasta.",
+
+  "file_created": "Arquivo criado.",
+  "unable_create_file": "Não foi possível criar o arquivo.",
+  "folder_created": "Pasta criada.",
+  "unable_create_folder": "Não foi possível criar a pasta.",
+
+  "renamed_success": "Renomeado.",
+  "unable_rename": "Não foi possível renomear.",
+  "deleted_success": "Excluído.",
+  "unable_delete": "Não foi possível excluir.",
+
+  "settings_file_corrupted_reset": "Arquivo de configurações corrompido. Retornando às configurações padrão.",
+  "settings_update_success": "Configurações atualizadas com sucesso.",
+  "unable_save_settings_permission_denied": "Não foi possível salvar as configurações: permissão negada.",
+  "unable_save_settings_unknown_error": "Não foi possível salvar as configurações: erro desconhecido.",
+
+  "update_available": "A atualização {{version}} está disponível, baixando em segundo plano...",
+  "update_downloaded": "A atualização {{version}} foi baixada, reinicie para atualizar."
+}

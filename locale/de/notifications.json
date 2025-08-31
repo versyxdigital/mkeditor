@@ -1,0 +1,32 @@
+{
+  "unable_export_preview": "Vorschau kann nicht exportiert werden",
+  "unable_save_markdown": "Markdown kann nicht gespeichert werden",
+  "exported_html_success": "Vorschau als HTML exportiert",
+  "saved_markdown_success": "Markdown-Datei gespeichert",
+
+  "generic_error_try_again": "Ein Fehler ist aufgetreten. Bitte erneut versuchen.",
+
+  "unable_open_file": "Datei kann nicht geöffnet werden.",
+  "path_not_exist": "Der Pfad existiert nicht.",
+  "permission_denied_open_path": "Zugriff verweigert, Pfad kann nicht geöffnet werden.",
+  "unable_open_path": "Pfad kann nicht geöffnet werden.",
+  "unable_open_folder": "Ordner kann nicht geöffnet werden.",
+
+  "file_created": "Datei erstellt.",
+  "unable_create_file": "Datei kann nicht erstellt werden.",
+  "folder_created": "Ordner erstellt.",
+  "unable_create_folder": "Ordner kann nicht erstellt werden.",
+
+  "renamed_success": "Umbenannt.",
+  "unable_rename": "Umbenennen nicht möglich.",
+  "deleted_success": "Gelöscht.",
+  "unable_delete": "Löschen nicht möglich.",
+
+  "settings_file_corrupted_reset": "Einstellungsdatei beschädigt. Standardwerte werden wiederhergestellt.",
+  "settings_update_success": "Einstellungen erfolgreich aktualisiert.",
+  "unable_save_settings_permission_denied": "Einstellungen können nicht gespeichert werden: Zugriff verweigert.",
+  "unable_save_settings_unknown_error": "Einstellungen können nicht gespeichert werden: Unbekannter Fehler.",
+
+  "update_available": "Update {{version}} ist verfügbar, wird im Hintergrund heruntergeladen...",
+  "update_downloaded": "Update {{version}} wurde heruntergeladen, zum Aktualisieren neu starten."
+}
