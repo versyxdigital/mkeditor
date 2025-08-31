@@ -63,7 +63,7 @@ MKEditor is split into two main components:
 
 ### Pull Requests
 - Open PRs against the `main` branch.
-- Fill out the [Pull Request Template](./.github/PULL_REQUEST_TEMPLATE.md).
+- Fill out the [Pull Request Template](./.github/pull_request_template.md).
 - Reference related issues using `Closes #<issue>` or `Related to #<issue>`.
 - Ensure your PR is focused and not overloaded with unrelated changes.
 
