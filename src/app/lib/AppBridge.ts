@@ -216,10 +216,8 @@ export class AppBridge {
 
     // Provide app locale to renderer
     ipcMain.on('mked:get-locale', (event) => {
-      console.log(this.providers);
       const locale =
         this.providers.settings?.getSetting('locale') ?? app.getLocale();
-      console.log({ locale });
       event.returnValue = locale;
     });
 
