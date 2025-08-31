@@ -24,12 +24,18 @@ const namespaces: { ns: string; path: string }[] = [
   { ns: 'modals-shortcuts', path: 'locale/{{lng}}/modals/shortcuts.json' },
 ];
 
+// Cache fetched JSON resources by URL (dedupe concurrent/duplicate requests)
+const resourceCache = new Map<string, Promise<Record<string, any>>>();
+
+// Track languages already loaded into i18next to avoid re-adding bundles
+const loadedLanguages = new Set<string>();
+
 /**
  * Resolve a path for the given language.
  *
  * @param template - the path
  * @param lng - the language to replace
- * @returns 
+ * @returns
  */
 function resolvePath(template: string, lng: string) {
   return template.replace('{{lng}}', lng);
@@ -39,12 +45,23 @@ function resolvePath(template: string, lng: string) {
  * Fetch the JSON from the given i18n file.
  *
  * @param url - the path to the JSON file
- * @returns 
+ * @returns
  */
 async function fetchJson(url: string) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to load: ${url}`);
-  return (await res.json()) as Record<string, any>;
+  if (resourceCache.has(url)) return resourceCache.get(url)!;
+
+  const p = (async () => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to load: ${url}`);
+    return (await res.json()) as Record<string, any>;
+  })().catch((err) => {
+    // On failure, clear the cache entry so subsequent attempts can retry
+    resourceCache.delete(url);
+    throw err;
+  });
+
+  resourceCache.set(url, p);
+  return p;
 }
 
 /**
@@ -79,14 +96,42 @@ export async function getAvailableLocales(): Promise<LocaleInfo[]> {
 }
 
 /**
+ * Get the app locale.
+ *
+ * @returns - the app locale
+ */
+export function getUserLocale(mode: 'desktop' | 'web') {
+  let userLocale = 'en';
+
+  if (mode === 'desktop') {
+    if (Object.prototype.hasOwnProperty.call(window, 'mked') && window.mked) {
+      userLocale = window.mked.getAppLocale();
+    }
+  } else {
+    const settings = JSON.parse(
+      <string>localStorage.getItem('mkeditor-settings'),
+    );
+
+    if (settings && settings.locale) {
+      userLocale = settings.locale;
+    } else {
+      userLocale = navigator.language;
+    }
+  }
+
+  return userLocale;
+}
+
+/**
  * Load the combined i18n bundle.
  *
  * @param lng - the language to load
- * @returns 
+ * @returns
  */
 async function loadCombinedBundle(lng: string) {
   const bundle = resolvePath('locale/{{lng}}/all.json', lng);
   try {
+    if (loadedLanguages.has(lng)) return true;
     const data = await fetchJson(bundle);
     // { [namespace]: { ...translations } }
     for (const ns of Object.keys(data)) {
@@ -95,6 +140,7 @@ async function loadCombinedBundle(lng: string) {
         i18next.addResourceBundle(lng, ns, nsData, true, true);
       }
     }
+    loadedLanguages.add(lng);
     return true;
   } catch (e) {
     // all.json not found, will fallback to individual bundles
@@ -110,14 +156,22 @@ async function loadCombinedBundle(lng: string) {
  */
 async function fallbackLoadBundles(lng: string) {
   console.info('i18n bundle load fallback reached');
-  for (const { ns, path } of namespaces) {
-    try {
-      const data = await fetchJson(resolvePath(path, lng));
-      i18next.addResourceBundle(lng, ns, data, true, true);
-    } catch (e) {
-      logger?.error(`i18n', 'Failed to load fallback bundles for ${lng}`);
+  const results = await Promise.allSettled(
+    namespaces.map(({ path }) => fetchJson(resolvePath(path, lng))),
+  );
+
+  results.forEach((res, idx) => {
+    const { ns } = namespaces[idx];
+    if (res.status === 'fulfilled') {
+      try {
+        i18next.addResourceBundle(lng, ns, res.value, true, true);
+      } catch {}
+    } else {
+      logger?.error(`i18n: Failed to load fallback bundle '${ns}' for ${lng}`);
     }
-  }
+  });
+
+  loadedLanguages.add(lng);
 }
 
 /**
@@ -125,7 +179,7 @@ async function fallbackLoadBundles(lng: string) {
  * E.g. en-GB -> en
  *
  * @param lng - the language to load
- * @returns 
+ * @returns
  */
 export function normalizeLanguage(lng: string | null | undefined) {
   if (!lng) return 'en';
@@ -134,13 +188,38 @@ export function normalizeLanguage(lng: string | null | undefined) {
 }
 
 /**
+ * Initialize i18n with the user's locale.
+ *
+ * @param mode - determines where to check for overridden locale.
+ */
+export function initI18n(mode: 'web' | 'desktop') {
+  const locale = getUserLocale(mode);
+
+  // Precompute all i18n bindings and warm language bundle fetch ASAP
+  prepareBindings(document);
+  prefetchLanguage(locale);
+
+  // Set initial html lang attribute early for a11y and consistency
+  document.documentElement.setAttribute('lang', normalizeLanguage(locale));
+
+  // Init i18n and then apply language (resources already warming)
+  prepareI18n(locale, false).then((lng) => {
+    changeLanguage(lng);
+    console.log(`initialized i18n for locale: ${lng}`);
+  });
+}
+
+/**
  * Initialize i18n.
  *
  * @param initialLng - the language to load
  * @param shouldLoadBundle - see comment within
- * @returns 
+ * @returns
  */
-export async function initI18n(initialLng: string, shouldLoadBundle: boolean) {
+export async function prepareI18n(
+  initialLng: string,
+  shouldLoadBundle: boolean,
+) {
   const lng = normalizeLanguage(initialLng);
 
   if (shouldLoadBundle) {
@@ -159,6 +238,7 @@ export async function initI18n(initialLng: string, shouldLoadBundle: boolean) {
     ns: namespaces.map((n) => n.ns),
     defaultNS: 'app',
     interpolation: { escapeValue: false },
+    initAsync: false,
   });
 
   return lng;
@@ -184,7 +264,7 @@ export async function changeLanguage(lng: string) {
 /**
  * Get the translation for the given key
  * @param key - e.g. app:title
- * @returns 
+ * @returns
  */
 export function t(key: string) {
   return i18next.t(key);
@@ -204,27 +284,33 @@ let bindings: NodeBinding[] | null = null;
  * Build the i18n DOM bindings.
  *
  * @param root - the document root
- * @returns 
+ * @returns
  */
 export function buildBindings(root: ParentNode = document) {
   const list: NodeBinding[] = [];
 
-  // text content
-  root.querySelectorAll('[data-i18n-text]')?.forEach((el) => {
-    const key = (el as HTMLElement).dataset.i18nText as string;
-    list.push({ el, kind: 'text', key });
-  });
+  // Single-pass scan for all supported data-i18n-* attributes
+  const nodes = root.querySelectorAll(
+    '[data-i18n-text],[data-i18n-title],[data-i18n-placeholder]',
+  );
 
-  // title attribute
-  root.querySelectorAll('[data-i18n-title]')?.forEach((el) => {
-    const key = (el as HTMLElement).dataset.i18nTitle as string;
-    list.push({ el, kind: 'title', key });
-  });
+  nodes.forEach((el) => {
+    const htmlEl = el as HTMLElement;
+    if (htmlEl.dataset.i18nText) {
+      list.push({ el, kind: 'text', key: htmlEl.dataset.i18nText });
+    }
 
-  // placeholder attribute
-  root.querySelectorAll('[data-i18n-placeholder]')?.forEach((el) => {
-    const key = (el as HTMLElement).dataset.i18nPlaceholder as string;
-    list.push({ el, kind: 'placeholder', key });
+    if (htmlEl.dataset.i18nTitle) {
+      list.push({ el, kind: 'title', key: htmlEl.dataset.i18nTitle });
+    }
+
+    if (htmlEl.dataset.i18nPlaceholder) {
+      list.push({
+        el,
+        kind: 'placeholder',
+        key: htmlEl.dataset.i18nPlaceholder,
+      });
+    }
   });
 
   return list;
@@ -255,31 +341,48 @@ export function applyTranslations(root: ParentNode = document) {
       html.setAttribute('lang', i18next.language);
     }
 
-    const scope = root ? buildBindings(root) : (bindings ?? buildBindings());
+    // Reuse pre-built bindings if available; otherwise build once and cache
+    const scope = root
+      ? buildBindings(root)
+      : bindings
+        ? bindings
+        : (bindings = buildBindings());
+
     const cache = new Map<string, string>();
 
-    requestAnimationFrame(() => {
-      for (const b of scope) {
-        const val = cache.get(b.key) ?? t(b.key);
-        if (!cache.has(b.key)) cache.set(b.key, val);
+    for (const bdg of scope) {
+      const val = cache.get(bdg.key) ?? t(bdg.key);
+      if (!cache.has(bdg.key)) cache.set(bdg.key, val);
 
-        if (b.kind === 'text') {
-          if (b.el.textContent !== val) b.el.textContent = val;
-        } else if (b.kind === 'title') {
-          const el = b.el as HTMLElement;
-          if (el.getAttribute('title') !== val) el.setAttribute('title', val);
-          if (
-            el.getAttribute('data-bs-original-title') !== null &&
-            el.getAttribute('data-bs-original-title') !== val
-          ) {
-            el.setAttribute('data-bs-original-title', val);
-          }
-        } else {
-          const el = b.el as HTMLElement;
-          if (el.getAttribute('placeholder') !== val)
-            el.setAttribute('placeholder', val);
+      if (bdg.kind === 'text') {
+        if (bdg.el.textContent !== val) bdg.el.textContent = val;
+      } else if (bdg.kind === 'title') {
+        const el = bdg.el as HTMLElement;
+        if (el.getAttribute('title') !== val) el.setAttribute('title', val);
+        if (
+          el.getAttribute('data-bs-original-title') !== null &&
+          el.getAttribute('data-bs-original-title') !== val
+        ) {
+          el.setAttribute('data-bs-original-title', val);
         }
+      } else {
+        const el = bdg.el as HTMLElement;
+        if (el.getAttribute('placeholder') !== val)
+          el.setAttribute('placeholder', val);
       }
-    });
+    }
   }
+}
+
+/**
+ * Warm the cache for a language's combined bundle.
+ * Does not mutate i18next; safe to call before init.
+ *
+ * @param lng - the language to preload
+ * @returns
+ */
+export function prefetchLanguage(lng: string) {
+  const base = normalizeLanguage(lng);
+  const bundle = resolvePath('locale/{{lng}}/all.json', base);
+  void fetchJson(bundle);
 }

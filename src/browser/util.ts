@@ -110,33 +110,6 @@ export function getExecutionBridge() {
 }
 
 /**
- * Get the app locale.
- *
- * @returns - the app locale
- */
-export function getAppLocale(mode: 'desktop' | 'web') {
-  let userLocale = 'en';
-
-  if (mode === 'desktop') {
-    if (Object.prototype.hasOwnProperty.call(window, 'mked') && window.mked) {
-      userLocale = window.mked.getAppLocale();
-    }
-  } else {
-    const settings = JSON.parse(
-      <string>localStorage.getItem('mkeditor-settings'),
-    );
-
-    if (settings && settings.locale) {
-      userLocale = settings.locale;
-    } else {
-      userLocale = navigator.language;
-    }
-  }
-
-  return userLocale;
-}
-
-/**
  * Self render callback shared by all markdown extensions.
  */
 export function selfRender(

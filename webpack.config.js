@@ -20,7 +20,15 @@ module.exports = {
   optimization: {
     minimizer: [
       new TerserWebpackPlugin({
-        extractComments: true,
+        extractComments: false,
+        terserOptions: {
+          compress: {
+            passes: 2,
+          },
+          format: {
+            comments: false,
+          },
+        },
       }),
     ],
   },

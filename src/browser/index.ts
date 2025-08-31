@@ -7,6 +7,8 @@ import { MkedLinkProvider } from './core/providers/MkedLinkProvider';
 import { SettingsProvider } from './core/providers/SettingsProvider';
 import { ExportSettingsProvider } from './core/providers/ExportSettingsProvider';
 import { BridgeManager } from './core/BridgeManager';
+import { initI18n, changeLanguage } from './i18n';
+import { getExecutionBridge } from './util';
 import {
   dom,
   showSplashScreen,
@@ -14,8 +16,6 @@ import {
   createSidebarToggle,
   resetEditorPreviewSplit,
 } from './dom';
-import { getAppLocale, getExecutionBridge } from './util';
-import { initI18n, changeLanguage } from './i18n';
 
 // The bi-directional synchronous bridge to the main execution context.
 // Exposed on the window object through the preloader.
@@ -24,14 +24,13 @@ const api = getExecutionBridge();
 // App mode (desktop or web).
 const mode = api !== 'web' ? 'desktop' : 'web';
 
-// Initialize i18n based on app or browser locale
-const locale = getAppLocale(mode);
-initI18n(locale, false).then((lng) => changeLanguage(lng));
+// Precompute bindings, warm language bundle fetch and initialize i18n.
+initI18n(mode);
 
-// If the app is in web mode hide the filetree sidebar.
 if (api === 'web') {
+  // If the app is in web mode hide the filetree sidebar.
   dom.sidebar.classList.add('d-none');
-  // Expose a language setter for web
+  // Expose a language setter for web mode.
   window.setLanguage = (lng: string) => {
     changeLanguage(lng);
   };
