@@ -90,3 +90,13 @@ To make an installable package (rebuilds both editor and app):
 ```sh
 npm run make-installer
 ```
+
+Some developer documentation can be found here:
+
+- [Main process](./src/app/README.md)
+- [Renderer](./src/browser/README.md)
+
+
+## License
+
+MKEditor is open source software licensed under the [MIT License](./LICENSE).
