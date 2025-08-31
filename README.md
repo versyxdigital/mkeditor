@@ -96,6 +96,10 @@ Some developer documentation can be found here:
 - [Main process](./src/app/README.md)
 - [Renderer](./src/browser/README.md)
 
+## AI Usage Policy
+
+MKEditor occasionally uses [Codex](https://chatgpt.com/codex) as an **augmentative tool** for tasks such as generating documentation, boilerplate code, and expanding on **existing ideas**. This is strictly to speed up the development flow. All AI-assisted contributions are reviewed, verified, and refined manually before inclusion.
+
 
 ## License
 
