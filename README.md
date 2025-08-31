@@ -43,7 +43,7 @@ MKEditor comes with full support for styling your documents with:
 :::
 ```
 
-### Format code:
+## Format code
 
 ```javascript
 document.addEventListener('DOMContentLoaded', () => {
@@ -51,9 +51,20 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 ```
 
-MKEditor supports syntax highlighting for lots of languages!
+Syntax highlighting is supported for lots of languages
 
-### Write math:
+<p>
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-cpp.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-cs.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-php.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-js.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-ts.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-python.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-powershell.png">
+<img style="width: 35px;" src="https://code.visualstudio.com/assets/home/language-json.png">
+</p>
+
+## Write math
 
 ```sh
 $\sqrt{3x-1}+(1+x)^2$
@@ -76,51 +87,9 @@ MKEditor comes with full support for exporting your markdown to HTML and PDF �
 
 Built with ❤️ by [Versyx Digital](https://github.com/versyxdigital)
 
-# Developer Documentation
+# Contributing
 
-## Building from source
-
-If you would like to build from source, please follow the steps below:
-
-1. Clone the repository
-    ```sh
-    git clone git@github.com:versyxdigital/mkeditor.git
-    ```
-
-2. Install dependencies
-    ```sh
-    npm install
-    ```
-
-To build just the editor:
-
-```sh
-npm run build-editor
-```
-
-To build just the electron app:
-
-```sh
-npm run build-app
-```
-
-To make an installable package (rebuilds both editor and app):
-
-```sh
-npm run make-installer
-```
-
-## Further Documentation 
-
-MKEditor is split into two components: the browser-based renderer and the Electron desktop application. The browser renderer is a standalone web app, designed for markdown editing directly in the browser. The Electron app wraps the browser renderer, adding desktop-specific features such as file system access, native dialogs, and offline support.
-
-- [Main process](./src/app/README.md): Documentation for the MKEditor electron app
-- [Renderer](./src/browser/README.md): Documentation for the MKEditor web app
-
-## AI Usage Policy
-
-MKEditor occasionally uses [Codex](https://chatgpt.com/codex) as an **augmentative tool** for tasks such as generating documentation, boilerplate code, and expanding on **existing ideas**. This is strictly to speed up the development flow. All AI-assisted contributions are reviewed, verified, and refined manually before inclusion.
-
+Developer documentation can be found [here](./CONTRIBUTING.md).
 
 # License
 
