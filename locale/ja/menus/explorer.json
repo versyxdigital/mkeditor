@@ -1,0 +1,23 @@
+{
+  "new_file": "新しいファイル...",
+  "new_folder": "新しいフォルダー...",
+  "open_folder": "フォルダーを開く...",
+  "collapse_explorer": "エクスプローラーを折りたたむ",
+  "open_settings": "設定を開く...",
+  "open_file": "ファイルを開く",
+  "rename_file": "ファイル名を変更...",
+  "delete_file": "ファイルを削除...",
+  "show_properties": "プロパティを表示...",
+  "expand_folder": "フォルダーを展開",
+  "rename_folder": "フォルダー名を変更...",
+  "delete_folder": "フォルダーを削除...",
+
+  "prompt_new_file_title": "新しいファイル名",
+  "prompt_new_file_placeholder": "無題.md",
+  "prompt_new_folder_title": "新しいフォルダー名",
+  "prompt_rename_file_title": "ファイル名を変更",
+  "prompt_rename_folder_title": "フォルダー名を変更",
+  "confirm_delete_file_title": "ファイルを削除しますか？",
+  "confirm_delete_folder_title": "フォルダーを削除しますか？",
+  "confirm_delete_button": "削除"
+}

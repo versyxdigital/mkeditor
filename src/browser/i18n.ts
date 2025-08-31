@@ -25,6 +25,7 @@ const namespaces: { ns: string; path: string }[] = [
   { ns: 'navbar', path: 'locale/{{lng}}/navbar.json' },
   { ns: 'sidebar', path: 'locale/{{lng}}/sidebar.json' },
   { ns: 'toolbar', path: 'locale/{{lng}}/toolbar.json' },
+  { ns: 'menus-explorer', path: 'locale/{{lng}}/menus/explorer.json' },
   { ns: 'notifications', path: 'locale/{{lng}}/notifications.json' },
   { ns: 'menus-codeblocks', path: 'locale/{{lng}}/menus/codeblocks.json' },
   { ns: 'menus-alerts', path: 'locale/{{lng}}/menus/alerts.json' },

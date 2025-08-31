@@ -1,0 +1,23 @@
+{
+  "new_file": "Nouveau fichier...",
+  "new_folder": "Nouveau dossier...",
+  "open_folder": "Ouvrir le dossier...",
+  "collapse_explorer": "Replier l’explorateur",
+  "open_settings": "Ouvrir les paramètres...",
+  "open_file": "Ouvrir le fichier",
+  "rename_file": "Renommer le fichier...",
+  "delete_file": "Supprimer le fichier...",
+  "show_properties": "Afficher les propriétés...",
+  "expand_folder": "Développer le dossier",
+  "rename_folder": "Renommer le dossier...",
+  "delete_folder": "Supprimer le dossier...",
+
+  "prompt_new_file_title": "Nom du nouveau fichier",
+  "prompt_new_file_placeholder": "Sans titre.md",
+  "prompt_new_folder_title": "Nom du nouveau dossier",
+  "prompt_rename_file_title": "Renommer le fichier",
+  "prompt_rename_folder_title": "Renommer le dossier",
+  "confirm_delete_file_title": "Supprimer le fichier ?",
+  "confirm_delete_folder_title": "Supprimer le dossier ?",
+  "confirm_delete_button": "Supprimer"
+}
