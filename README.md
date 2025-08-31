@@ -2,7 +2,7 @@
 
 # MKEditor
 
-The simple markdown editor.
+Markdown with _style_.
 
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
@@ -10,10 +10,14 @@ The simple markdown editor.
 | MacOS       | v3.5.1  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v3.5.1/mkeditor-setup-3.5.1.pkg) |
 | Linux       | v3.5.1  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v3.5.1/mkeditor-setup-3.5.1.deb)  |
 
-Use it through your [browser](https://versyxdigital.github.io/mkeditor/web/) or download for desktop. More documentation is available at the [website](https://versyxdigital.github.io/mkeditor).
+Download for desktop or use it directly through your [browser](https://versyxdigital.github.io/mkeditor/web/).
 
-![MKEditor](https://versyxdigital.github.io/mkeditor/assets/img/demo-dark.png)
-![MKEditor](https://versyxdigital.github.io/mkeditor/assets/img/demo.png)
+More documentation is available at the [website](https://versyxdigital.github.io/mkeditor).
+
+<p>
+    <img src="https://versyxdigital.github.io/mkeditor/assets/img/demo-dark.png" alt="MKEditor dark mode" width="45%" style="display:inline-block; margin-right:10px;" />
+    <img src="https://versyxdigital.github.io/mkeditor/assets/img/demo.png" alt="MKEditor light mode" width="45%" style="display:inline-block;" />
+</p>
 
 # Welcome
 
@@ -21,31 +25,25 @@ Thank you for choosing MKEditor 😊, I hope you find this tool useful for all y
 
 If you have any issues or questions, please feel free to submit an [issue](https://github.com/versyxdigital/mkeditor/issues).
 
----
+MKEditor fully supports the [CommonMark](https://commonmark.org/) spec and comes with additional goodies.
 
-Open the help menu using the button at the top right for a complete list of editor shortcuts.
+## **Great** support for _custom_ styling
 
-You can also view a cheatsheet [here](https://versyxdigital.github.io/mkeditor/shortcuts).
-
----
-
-MKEditor fully supports the [CommonMark](https://commonmark.org/) spec and comes with a few additional goodies.
-
-**Great** support for _custom_ styling with:
+MKEditor comes with full support for styling your documents with:
 
 - Bootstrap
 - Fontawesome
 - Highlight.js
 
-Create alerts:
+### Create alerts:
 
-```md
+```sh
 ::: primary
 ✨ Create alerts
 :::
 ```
 
-Format some code:
+### Format code:
 
 ```javascript
 document.addEventListener('DOMContentLoaded', () => {
@@ -53,13 +51,35 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 ```
 
-MKEditor also includes a built-in, resizable preview renderer and support for exporting your markdown to HTML, with or without styles 🚀.
+### Write math:
 
+```sh
+$\sqrt{3x-1}+(1+x)^2$
+```
+
+$\sqrt{3x-1}+(1+x)^2$
+
+MKEditor comes with full support for LaTeX!
+
+## Preview documents as you type
+
+MKEditor includes a built-in, fully configurable, resizable preview renderer. View your styled or unstyled output in real time.
+
+## Export to HTML & PDF
+
+MKEditor comes with full support for exporting your markdown to HTML and PDF, with or without styles 🚀.
+
+## Customize to your preference
 Customize your settings, switch between light mode and dark mode, write some documents and have fun!
+
+---
 
 Built with ❤️ by [Versyx Digital](https://github.com/versyxdigital)
 
-## Building from Source
+---
+
+
+# Building from Source
 
 If you would like to build from source, please follow the steps below:
 
@@ -91,16 +111,18 @@ To make an installable package (rebuilds both editor and app):
 npm run make-installer
 ```
 
-Some developer documentation can be found here:
+## Developer Documentation 
 
-- [Main process](./src/app/README.md)
-- [Renderer](./src/browser/README.md)
+MKEditor is split into two components: the browser-based renderer and the Electron desktop application. The browser renderer is a standalone web app, designed for markdown editing directly in the browser. The Electron app wraps the browser renderer, adding desktop-specific features such as file system access, native dialogs, and offline support.
+
+- [Main process](./src/app/README.md): Documentation for the MKEditor electron app
+- [Renderer](./src/browser/README.md): Documentation for the MKEditor web app
 
 ## AI Usage Policy
 
 MKEditor occasionally uses [Codex](https://chatgpt.com/codex) as an **augmentative tool** for tasks such as generating documentation, boilerplate code, and expanding on **existing ideas**. This is strictly to speed up the development flow. All AI-assisted contributions are reviewed, verified, and refined manually before inclusion.
 
 
-## License
+# License
 
 MKEditor is open source software licensed under the [MIT License](./LICENSE).
