@@ -84,6 +84,17 @@
     "save_settings": "Salva impostazioni",
     "reset_to_default": "Ripristina valori predefiniti"
   },
+  "modals-properties": {
+    "title": "Proprietà",
+    "label_path": "Percorso:",
+    "label_type": "Tipo:",
+    "label_size": "Dimensione:",
+    "label_created": "Creato:",
+    "label_modified": "Modificato:",
+    "type_directory": "Directory",
+    "type_file": "File",
+    "close_button": "Chiudi"
+  },
   "modals-settings": {
     "title": "Impostazioni dell'editor",
     "intro": "Qui puoi personalizzare varie impostazioni dell'editor; le impostazioni vengono salvate automaticamente quando le modifichi.",
@@ -156,6 +167,13 @@
       "column_selection": "Selezione colonna (blocco)",
       "column_selection_mousewheel": "Selezione colonna (blocco)"
     }
+  },
+  "modals-unsaved": {
+    "title": "Modifiche non salvate",
+    "text": "Salvare le modifiche prima di chiudere?",
+    "confirm": "Salva e chiudi",
+    "deny": "Chiudi senza salvare",
+    "cancel": "Annulla"
   },
   "navbar": {
     "toggle_sidebar": "Mostra/nascondi barra laterale",

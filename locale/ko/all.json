@@ -84,6 +84,17 @@
     "save_settings": "설정 저장",
     "reset_to_default": "기본값으로 재설정"
   },
+  "modals-properties": {
+    "title": "속성",
+    "label_path": "경로:",
+    "label_type": "유형:",
+    "label_size": "크기:",
+    "label_created": "생성일:",
+    "label_modified": "수정일:",
+    "type_directory": "디렉터리",
+    "type_file": "파일",
+    "close_button": "닫기"
+  },
   "modals-settings": {
     "title": "에디터 설정",
     "intro": "여기에서 다양한 에디터 설정을 사용자 지정할 수 있으며, 설정은 업데이트될 때 자동으로 저장됩니다.",
@@ -156,6 +167,13 @@
       "column_selection": "열(박스) 선택",
       "column_selection_mousewheel": "열(박스) 선택"
     }
+  },
+  "modals-unsaved": {
+    "title": "저장되지 않은 변경 사항",
+    "text": "닫기 전에 변경 사항을 저장하시겠습니까?",
+    "confirm": "저장하고 닫기",
+    "deny": "저장하지 않고 닫기",
+    "cancel": "취소"
   },
   "navbar": {
     "toggle_sidebar": "사이드바 표시/숨기기",

@@ -1,0 +1,11 @@
+{
+  "title": "속성",
+  "label_path": "경로:",
+  "label_type": "유형:",
+  "label_size": "크기:",
+  "label_created": "생성일:",
+  "label_modified": "수정일:",
+  "type_directory": "디렉터리",
+  "type_file": "파일",
+  "close_button": "닫기"
+}

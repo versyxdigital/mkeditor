@@ -1,0 +1,11 @@
+{
+  "title": "Özellikler",
+  "label_path": "Yol:",
+  "label_type": "Tür:",
+  "label_size": "Boyut:",
+  "label_created": "Oluşturma:",
+  "label_modified": "Değiştirilme:",
+  "type_directory": "Dizin",
+  "type_file": "Dosya",
+  "close_button": "Kapat"
+}

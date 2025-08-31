@@ -84,6 +84,17 @@
     "save_settings": "設定を保存",
     "reset_to_default": "デフォルトにリセット"
   },
+  "modals-properties": {
+    "title": "プロパティ",
+    "label_path": "パス:",
+    "label_type": "種類:",
+    "label_size": "サイズ:",
+    "label_created": "作成日時:",
+    "label_modified": "更新日時:",
+    "type_directory": "ディレクトリ",
+    "type_file": "ファイル",
+    "close_button": "閉じる"
+  },
   "modals-settings": {
     "title": "エディター設定",
     "intro": "ここでは各種エディター設定をカスタマイズできます。設定は更新時に自動的に保存されます。",
@@ -156,6 +167,13 @@
       "column_selection": "列（ボックス）選択",
       "column_selection_mousewheel": "列（ボックス）選択"
     }
+  },
+  "modals-unsaved": {
+    "title": "未保存の変更",
+    "text": "閉じる前に変更を保存しますか？",
+    "confirm": "保存して閉じる",
+    "deny": "保存せずに閉じる",
+    "cancel": "キャンセル"
   },
   "navbar": {
     "toggle_sidebar": "サイドバーの切り替え",

@@ -1,0 +1,11 @@
+{
+  "title": "Propriétés",
+  "label_path": "Chemin :",
+  "label_type": "Type :",
+  "label_size": "Taille :",
+  "label_created": "Créé :",
+  "label_modified": "Modifié :",
+  "type_directory": "Dossier",
+  "type_file": "Fichier",
+  "close_button": "Fermer"
+}

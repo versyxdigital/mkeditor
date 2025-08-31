@@ -84,6 +84,17 @@
     "save_settings": "Instellingen opslaan",
     "reset_to_default": "Standaardwaarden herstellen"
   },
+  "modals-properties": {
+    "title": "Eigenschappen",
+    "label_path": "Pad:",
+    "label_type": "Type:",
+    "label_size": "Grootte:",
+    "label_created": "Gemaakt:",
+    "label_modified": "Gewijzigd:",
+    "type_directory": "Map",
+    "type_file": "Bestand",
+    "close_button": "Sluiten"
+  },
   "modals-settings": {
     "title": "Editorinstellingen",
     "intro": "Hier kun je diverse editorinstellingen aanpassen; instellingen worden automatisch opgeslagen wanneer je ze wijzigt.",
@@ -156,6 +167,13 @@
       "column_selection": "Kolom- (blok)selectie",
       "column_selection_mousewheel": "Kolom- (blok)selectie"
     }
+  },
+  "modals-unsaved": {
+    "title": "Niet-opgeslagen wijzigingen",
+    "text": "Wijzigingen opslaan voordat je sluit?",
+    "confirm": "Opslaan en sluiten",
+    "deny": "Sluiten zonder op te slaan",
+    "cancel": "Annuleren"
   },
   "navbar": {
     "toggle_sidebar": "Zijbalk in-/uitschakelen",

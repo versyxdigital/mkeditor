@@ -84,6 +84,17 @@
     "save_settings": "Enregistrer les paramètres",
     "reset_to_default": "Réinitialiser par défaut"
   },
+  "modals-properties": {
+    "title": "Propriétés",
+    "label_path": "Chemin :",
+    "label_type": "Type :",
+    "label_size": "Taille :",
+    "label_created": "Créé :",
+    "label_modified": "Modifié :",
+    "type_directory": "Dossier",
+    "type_file": "Fichier",
+    "close_button": "Fermer"
+  },
   "modals-settings": {
     "title": "Paramètres de l’éditeur",
     "intro": "Vous pouvez ici personnaliser divers paramètres de l’éditeur ; les paramètres sont enregistrés automatiquement lors de leur modification.",
@@ -156,6 +167,13 @@
       "column_selection": "Sélection en colonne (bloc)",
       "column_selection_mousewheel": "Sélection en colonne (bloc)"
     }
+  },
+  "modals-unsaved": {
+    "title": "Modifications non enregistrées",
+    "text": "Enregistrer les modifications avant de fermer ?",
+    "confirm": "Enregistrer et fermer",
+    "deny": "Fermer sans enregistrer",
+    "cancel": "Annuler"
   },
   "navbar": {
     "toggle_sidebar": "Afficher/masquer la barre latérale",

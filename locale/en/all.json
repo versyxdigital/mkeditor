@@ -84,6 +84,17 @@
     "save_settings": "Save Settings",
     "reset_to_default": "Reset to Default"
   },
+  "modals-properties": {
+    "title": "Properties",
+    "label_path": "Path:",
+    "label_type": "Type:",
+    "label_size": "Size:",
+    "label_created": "Created:",
+    "label_modified": "Modified:",
+    "type_directory": "Directory",
+    "type_file": "File",
+    "close_button": "Close"
+  },
   "modals-settings": {
     "title": "Editor settings",
     "intro": "Here you can customize various editor settings according to your preferences, settings are automatically saved as they are updated.",
@@ -156,6 +167,13 @@
       "column_selection": "Column (box) selection",
       "column_selection_mousewheel": "Column (box) selection"
     }
+  },
+  "modals-unsaved": {
+    "title": "Unsaved changes",
+    "text": "Save changes to your file before closing?",
+    "confirm": "Save & close",
+    "deny": "Close without saving",
+    "cancel": "Cancel"
   },
   "navbar": {
     "toggle_sidebar": "Toggle sidebar",

@@ -84,6 +84,17 @@
     "save_settings": "Ayarları kaydet",
     "reset_to_default": "Varsayılanlara sıfırla"
   },
+  "modals-properties": {
+    "title": "Özellikler",
+    "label_path": "Yol:",
+    "label_type": "Tür:",
+    "label_size": "Boyut:",
+    "label_created": "Oluşturma:",
+    "label_modified": "Değiştirilme:",
+    "type_directory": "Dizin",
+    "type_file": "Dosya",
+    "close_button": "Kapat"
+  },
   "modals-settings": {
     "title": "Editör ayarları",
     "intro": "Burada çeşitli editör ayarlarını özelleştirebilirsiniz; ayarlar güncellendikçe otomatik olarak kaydedilir.",
@@ -156,6 +167,13 @@
       "column_selection": "Sütun (kutu) seçimi",
       "column_selection_mousewheel": "Sütun (kutu) seçimi"
     }
+  },
+  "modals-unsaved": {
+    "title": "Kaydedilmemiş değişiklikler",
+    "text": "Kapatmadan önce değişiklikler kaydedilsin mi?",
+    "confirm": "Kaydet ve kapat",
+    "deny": "Kaydetmeden kapat",
+    "cancel": "İptal"
   },
   "navbar": {
     "toggle_sidebar": "Kenar çubuğunu aç/kapat",

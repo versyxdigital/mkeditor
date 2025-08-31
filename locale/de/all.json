@@ -84,6 +84,17 @@
     "save_settings": "Einstellungen speichern",
     "reset_to_default": "Auf Standard zurücksetzen"
   },
+  "modals-properties": {
+    "title": "Eigenschaften",
+    "label_path": "Pfad:",
+    "label_type": "Typ:",
+    "label_size": "Größe:",
+    "label_created": "Erstellt:",
+    "label_modified": "Geändert:",
+    "type_directory": "Verzeichnis",
+    "type_file": "Datei",
+    "close_button": "Schließen"
+  },
   "modals-settings": {
     "title": "Editor-Einstellungen",
     "intro": "Hier kannst du verschiedene Editor-Einstellungen anpassen; Änderungen werden automatisch gespeichert.",
@@ -156,6 +167,13 @@
       "column_selection": "Spaltenauswahl (Blockauswahl)",
       "column_selection_mousewheel": "Spaltenauswahl (Blockauswahl)"
     }
+  },
+  "modals-unsaved": {
+    "title": "Nicht gespeicherte Änderungen",
+    "text": "Änderungen vor dem Schließen speichern?",
+    "confirm": "Speichern & schließen",
+    "deny": "Ohne Speichern schließen",
+    "cancel": "Abbrechen"
   },
   "navbar": {
     "toggle_sidebar": "Seitenleiste ein-/ausblenden",
