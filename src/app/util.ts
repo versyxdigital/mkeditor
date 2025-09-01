@@ -59,3 +59,16 @@ export function hasAllKeys(a: any, b: any): boolean {
 
   return true;
 }
+
+/**
+ * Normalize the language, map BCP-47 to base language.
+ * E.g. en-GB -> en
+ *
+ * @param lng - the language to load
+ * @returns
+ */
+export function normalizeLanguage(lng: string | null | undefined) {
+  if (!lng) return 'en';
+  const base = lng.toLowerCase().split(/[-_]/)[0];
+  return base || 'en';
+}

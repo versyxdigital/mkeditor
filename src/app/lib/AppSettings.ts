@@ -4,7 +4,7 @@ import { normalize } from 'path';
 import { app, type BrowserWindow } from 'electron';
 import type { SettingsFile } from '../interfaces/Settings';
 import type { Providers } from '../interfaces/Providers';
-import { deepMerge, hasAllKeys } from '../util';
+import { deepMerge, hasAllKeys, normalizeLanguage } from '../util';
 
 /**
  * AppSettings
@@ -36,7 +36,7 @@ export class AppSettings {
     minimap: true,
     systemtheme: true,
     scrollsync: true,
-    locale: app.getLocale(),
+    locale: normalizeLanguage(app.getLocale()),
     exportSettings: {
       withStyles: true,
       container: 'container-fluid',

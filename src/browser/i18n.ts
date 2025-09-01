@@ -14,6 +14,22 @@ type NodeBinding =
 
 let bindings: NodeBinding[] | null = null;
 
+const supportedLocales = [
+  'en',
+  'de',
+  'es',
+  'fr',
+  'it',
+  'nl',
+  'pt',
+  'ru',
+  'uk',
+  'tr',
+  'zh',
+  'ja',
+  'ko',
+];
+
 /**
  * i18n files.
  * These files are combind at build-time into a singular all.json file
@@ -131,6 +147,10 @@ export function getUserLocale(mode: 'desktop' | 'web') {
     } else {
       userLocale = navigator.language;
     }
+  }
+
+  if (!supportedLocales.includes(normalizeLanguage(userLocale))) {
+    userLocale = 'en';
   }
 
   return userLocale;

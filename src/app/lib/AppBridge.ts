@@ -3,6 +3,7 @@ import { dirname, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
 import type { Logger, LogMessage } from '../interfaces/Logging';
 import { AppStorage } from './AppStorage';
+import { normalizeLanguage } from '../util';
 /**
  * AppBridge
  */
@@ -217,7 +218,8 @@ export class AppBridge {
     // Provide app locale to renderer
     ipcMain.on('mked:get-locale', (event) => {
       const locale =
-        this.providers.settings?.getSetting('locale') ?? app.getLocale();
+        this.providers.settings?.getSetting('locale') ??
+        normalizeLanguage(app.getLocale());
       event.returnValue = locale;
     });
 
