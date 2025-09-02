@@ -2,8 +2,7 @@
   "app": {
     "document_title": "MKEditor",
     "app_name": "mkeditor",
-    "brand_name": "MKEditor",
-    "tagline": "Markdown 更简单"
+    "brand_name": "MKEditor"
   },
   "menus-alerts": {
     "primary": "主要",
