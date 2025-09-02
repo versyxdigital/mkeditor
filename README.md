@@ -10,6 +10,11 @@ Markdown with _style_.
 | MacOS       | v3.6.0  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v3.6.0/mkeditor-setup-3.6.0.pkg) |
 | Linux       | v3.6.0  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v3.6.0/mkeditor-setup-3.6.0.deb)  |
 
+> [!NOTE] 
+> Supported languages:
+>
+> 🇬🇧 English, 🇩🇪 Deutsch, 🇪🇸 Español, 🇫🇷 Français, 🇮🇹 Italiano, 🇳🇱 Nederlands, 🇵🇹 Português, 🇷🇺 Русский, 🇺🇦 Українська, 🇹🇷 Türkçe, 🇨🇳 简体中文, 🇯🇵 日本語, 🇰🇷 한국어
+
 Download for desktop or use it directly through your [browser](https://versyxdigital.github.io/mkeditor/web/).
 
 More documentation is available at the [website](https://versyxdigital.github.io/mkeditor).
