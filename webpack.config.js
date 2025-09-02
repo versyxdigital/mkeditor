@@ -1,8 +1,8 @@
 const path = require('path');
-const webpack = require('webpack');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const HtmlMinimizerPlugin = require('html-minimizer-webpack-plugin');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const TerserWebpackPlugin = require('terser-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   mode: 'production',
@@ -30,6 +30,7 @@ module.exports = {
           },
         },
       }),
+      new HtmlMinimizerPlugin(),
     ],
   },
   module: {
