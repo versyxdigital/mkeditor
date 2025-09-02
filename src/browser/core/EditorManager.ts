@@ -11,12 +11,16 @@ import { debounce, logger } from '../util';
 import { dom } from '../dom';
 
 interface EditorConstructOptions {
+  mode: 'web' | 'desktop';
   dispatcher: EditorDispatcher;
   init?: boolean | undefined;
   watch?: boolean | undefined;
 }
 
 export class EditorManager {
+  /** App mode */
+  private mode: 'web' | 'desktop';
+
   /** Editor instance */
   private mkeditor: editor.IStandaloneCodeEditor | null = null;
 
@@ -39,6 +43,7 @@ export class EditorManager {
    * Create a new mkeditor.
    */
   public constructor(opts: EditorConstructOptions) {
+    this.mode = opts.mode;
     this.dispatcher = opts.dispatcher;
 
     dom.about.version.innerHTML = APP_VERSION;
@@ -74,10 +79,17 @@ export class EditorManager {
    */
   public create({ watch = false }) {
     try {
+      let editorContent = welcomeMarkdown;
+      // For web mode, fetch stored content from localStorage
+      if (this.mode === 'web') {
+        const webStoredContent = localStorage.getItem('mkeditor-content');
+        if (webStoredContent) editorContent = webStoredContent;
+      }
+
       // Create the underlying monaco editor.
       // See https://microsoft.github.io/monaco-editor/
       this.mkeditor = editor.create(dom.editor.dom, {
-        value: welcomeMarkdown,
+        value: editorContent,
         language: 'markdown',
         wordBasedSuggestions: 'off',
         autoIndent: 'advanced',
@@ -136,7 +148,11 @@ export class EditorManager {
    */
   public updateBridgedContent({ init }: { init?: boolean } = {}) {
     if (!this.providers.bridge) {
-      return false;
+      // For web mode, store changes in localStorage
+      if (this.mode === 'web' && this.mkeditor) {
+        localStorage.setItem('mkeditor-content', this.mkeditor.getValue());
+      }
+      return;
     }
 
     const hasChanged = init

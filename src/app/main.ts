@@ -167,7 +167,7 @@ if (!app.requestSingleInstanceLock()) {
     app.focus();
     // If user has opened the app via a file, then set active file.
     if (args.length >= 2) {
-      const filepath = args.find(arg => arg.toLowerCase().endsWith(".md"));
+      const filepath = args.find((arg) => arg.toLowerCase().endsWith('.md'));
       if (context && filepath) AppStorage.openPath(context, filepath);
     }
   });

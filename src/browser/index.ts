@@ -41,6 +41,7 @@ const dispatcher = new EditorDispatcher();
 
 // Create a new editor manager.
 const editorManager = new EditorManager({
+  mode,
   dispatcher,
   init: true,
   watch: true,
