@@ -74,6 +74,7 @@ export const dom = {
       pdf: <HTMLButtonElement>document.querySelector('#export-to-pdf'),
       styled: <HTMLButtonElement>document.querySelector('#export-with-styles'),
     },
+    delete: <HTMLButtonElement>document.querySelector('#app-markdown-delete'),
     resetSplit: <HTMLButtonElement>document.querySelector('#split-reset'),
     resetExportSettings: <HTMLButtonElement>(
       document.querySelector('#export-settings-reset')

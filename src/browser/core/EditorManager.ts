@@ -84,6 +84,11 @@ export class EditorManager {
       if (this.mode === 'web') {
         const webStoredContent = localStorage.getItem('mkeditor-content');
         if (webStoredContent) editorContent = webStoredContent;
+
+        dom.buttons.delete.addEventListener('click', () => {
+          localStorage.removeItem('mkeditor-content');
+          this.mkeditor?.setValue(welcomeMarkdown);
+        });
       }
 
       // Create the underlying monaco editor.

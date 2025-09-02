@@ -28,8 +28,11 @@ const mode = api !== 'web' ? 'desktop' : 'web';
 initI18n(mode);
 
 if (api === 'web') {
-  // If the app is in web mode hide the filetree sidebar.
+  // If the app is in web mode hide the filetree sidebar,
+  // show the markdown content delete button.
   dom.sidebar.classList.add('d-none');
+  dom.buttons.delete.classList.remove('d-none');
+
   // Expose a language setter for web mode.
   window.setLanguage = (lng: string) => {
     changeLanguage(lng);

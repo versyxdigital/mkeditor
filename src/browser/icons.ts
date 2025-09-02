@@ -31,6 +31,7 @@ import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
 import { faTableColumns } from '@fortawesome/free-solid-svg-icons/faTableColumns';
 import { faTasks } from '@fortawesome/free-solid-svg-icons/faTasks';
 import { faTerminal } from '@fortawesome/free-solid-svg-icons/faTerminal';
+import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
 
 library.add(
   faBars,
@@ -65,6 +66,7 @@ library.add(
   faTableColumns,
   faTasks,
   faTerminal,
+  faTrash,
 );
 
 dom.watch();
