@@ -18,6 +18,7 @@ import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
 import type { LogConfig } from './interfaces/Logging';
+import { AppState } from './lib/AppState';
 
 /** --------------------App Logging------------------------------- */
 
@@ -95,6 +96,11 @@ function main(file: string | null = null) {
   // Load the main process settings handler
   const settings = new AppSettings(context);
   settings.provide('logger', logconfig);
+
+  // State should be instantiated here.
+  const state = new AppState(context);
+  state.provide('logger', logconfig);
+  state.setEnabled(settings.getSetting('stateEnabled') ?? false);
 
   // Load the main process "bridge" to handle IPC traffic across
   // execution contexts.
