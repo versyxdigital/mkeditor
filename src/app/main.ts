@@ -108,8 +108,8 @@ function main(file: string | null = null) {
   const menu = new AppMenu(context);
   menu.provide('logger', logconfig);
   menu.provide('state', state);
-  menu.register(); // Register all menu items
   state.provide('menu', menu);
+  menu.register(); // Register all menu items
 
   // Load the main process "bridge" to handle IPC traffic across
   // execution contexts.

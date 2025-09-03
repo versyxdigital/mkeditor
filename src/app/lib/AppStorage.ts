@@ -1,6 +1,12 @@
 import { app, dialog, type BrowserWindow } from 'electron';
-import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
-import { basename, dirname, join } from 'path';
+import {
+  statSync,
+  readFileSync,
+  writeFileSync,
+  promises as fs,
+  realpathSync
+} from 'fs';
+import { basename, dirname, join, normalize } from 'path';
 import type { SaveFileOptions } from '../interfaces/Storage';
 import type { AppState } from './AppState';
 
@@ -38,18 +44,22 @@ export class AppStorage {
    * @returns
    */
   static setActiveFile(context: BrowserWindow, file: string | null = null) {
-    const filename = file ? basename(file) : '';
-    const content = file ? readFileSync(file, { encoding: 'utf-8' }) : '';
+    // Normalize path to avoid duplicate tabs due to differing separators/case
+    const normalized = file ? AppStorage.toCanonicalPath(file) : null;
+    const filename = normalized ? basename(normalized) : '';
+    const content = normalized
+      ? readFileSync(normalized, { encoding: 'utf-8' })
+      : '';
 
-    AppStorage.activeFilePath = file;
+    AppStorage.activeFilePath = normalized;
 
-    if (file) {
-      app.addRecentDocument(file); // electorn native
-      AppStorage.state?.addRecentPath(file, 'file'); // MKEditor
+    if (normalized) {
+      app.addRecentDocument(normalized); // electorn native
+      AppStorage.state?.addRecentPath(normalized, 'file'); // MKEditor
     }
 
     context.webContents.send('from:file:opened', {
-      file,
+      file: normalized,
       filename,
       content,
     });
@@ -300,16 +310,17 @@ export class AppStorage {
         throw new Error('invalidpath');
       }
 
-      const stats = await fs.stat(filepath);
+      const p = AppStorage.toCanonicalPath(filepath);
+      const stats = await fs.stat(p);
       if (stats.isDirectory()) {
-        const tree = await AppStorage.readDirectory(filepath);
+        const tree = await AppStorage.readDirectory(p);
         context.webContents.send('from:folder:opened', {
-          path: filepath,
+          path: p,
           tree,
         });
-        AppStorage.state?.addRecentPath(filepath, 'folder');
+        AppStorage.state?.addRecentPath(p, 'folder');
       } else if (stats.isFile()) {
-        AppStorage.setActiveFile(context, filepath);
+        AppStorage.setActiveFile(context, p);
       } else {
         throw new Error('unsupported');
       }
@@ -510,5 +521,19 @@ export class AppStorage {
         return { type: 'file', name: entry.name, path: full };
       }),
     );
+  }
+
+  /**
+   * Convert a path to a canonical, OS-native format so the renderer
+   * sees a consistent string for the same file/folder.
+   */
+  private static toCanonicalPath(p: string): string {
+    try {
+      // Resolve symlinks and produce native separators/casing
+      return realpathSync.native ? realpathSync.native(p) : realpathSync(p);
+    } catch {
+      // Fall back to simple normalization when path can't be resolved yet
+      return normalize(p);
+    }
   }
 }
