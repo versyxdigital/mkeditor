@@ -154,11 +154,14 @@ function main(file: string | null = null) {
         (settings.getSetting('stateEnabled') ?? true) &&
         (settings.getSetting('launchWithLast') ?? true);
 
-      if (!file && wantsRestore) {
+      // TODO why is it a "." when opening without a file?
+      if (!file || file.trim() === '.' && wantsRestore) {
+        log.info(state.getRecent());
         const recent = state.getRecent()[0];
         if (recent) {
           try {
             const url = new URL(recent.uri);
+            log.info('Opening recent: ' + url);
             let p = decodeURIComponent(url.pathname);
             if (process.platform === 'win32' && /^\/[a-zA-Z]:/.test(p)) {
               p = p.slice(1);
