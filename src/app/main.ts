@@ -101,6 +101,7 @@ function main(file: string | null = null) {
   const state = new AppState(context);
   state.provide('logger', logconfig);
   state.setEnabled(settings.getSetting('stateEnabled') ?? false);
+  AppStorage.setState(state); // Pass singleton to static AppStorage
 
   // Load the main process "bridge" to handle IPC traffic across
   // execution contexts.
@@ -145,8 +146,33 @@ function main(file: string | null = null) {
       } else {
         context.webContents.send('from:theme:set', settings.applied?.darkmode);
       }
+
       context.webContents.send('from:settings:set', settings.loadFile());
-      AppStorage.openActiveFile(context, file);
+
+      // Restore last opened folder/file if configured and no file was directly requested
+      const wantsRestore =
+        (settings.getSetting('stateEnabled') ?? true) &&
+        (settings.getSetting('launchWithLast') ?? true);
+
+      if (!file && wantsRestore) {
+        const recent = state.getRecent()[0];
+        if (recent) {
+          try {
+            const url = new URL(recent.uri);
+            let p = decodeURIComponent(url.pathname);
+            if (process.platform === 'win32' && /^\/[a-zA-Z]:/.test(p)) {
+              p = p.slice(1);
+            }
+            AppStorage.openPath(context, p);
+          } catch {
+            // ignore
+          }
+        } else {
+          AppStorage.openActiveFile(context, file);
+        }
+      } else {
+        AppStorage.openActiveFile(context, file);
+      }
     }
   });
 

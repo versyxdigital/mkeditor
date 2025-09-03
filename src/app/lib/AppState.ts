@@ -18,21 +18,21 @@ export class AppState {
   /** The browser window */
   private context: BrowserWindow;
 
-  /** Application settings dir path */
+  /** Application state dir path */
   private appPath: string;
 
-  /** Application settings file path */
+  /** Application state file path */
   private filePath: string;
 
   /** Has been newly created with defaults */
   private isNewFile: boolean = false;
 
-  /** Providers to provide functions to the settings */
+  /** Providers to provide functions to the state handler */
   private providers: Providers = {
     logger: null,
   };
 
-  /** Default editor settings */
+  /** Default editor state */
   private state: StateFile = {
     recent: { entries: [] },
   };
@@ -41,7 +41,7 @@ export class AppState {
   private enabled: boolean = true;
 
   /**
-   * Create a new app settings handler.
+   * Create a new app state handler.
    *
    * @param context - the browser window
    * @returns
@@ -57,9 +57,6 @@ export class AppState {
 
     // Check for state file integrity
     if (!this.isNewFile && !hasAllKeys(this.state, loaded)) {
-      console.log(
-        'state file does not exist or does not have all keys, creating now...',
-      );
       this.saveStateToFile(deepMerge(this.state, loaded));
     }
 
@@ -75,7 +72,7 @@ export class AppState {
    */
   public setEnabled(enabled: boolean) {
     this.enabled = enabled;
-    this.providers.logger?.log.error('state is now enabled...');
+    this.providers.logger?.log.info('state is now enabled...');
   }
 
   /**
@@ -149,8 +146,8 @@ export class AppState {
   }
 
   /**
-   * Load settings file.
-   * @returns - the settings
+   * Load state file.
+   * @returns - the state
    */
   loadFile() {
     try {
@@ -162,7 +159,7 @@ export class AppState {
     } catch (err) {
       this.context.webContents.send('from:notification:display', {
         status: 'error',
-        key: 'notifications:settings_file_corrupted_reset',
+        key: 'notifications:state_file_corrupted_reset',
       });
 
       return defaultState;
@@ -189,7 +186,7 @@ export class AppState {
   /**
    * Save current state to the state file.
    *
-   * @param settings - the state to save
+   * @param state - the state to save
    * @param init - first-time init
    * @returns
    */

@@ -2,6 +2,7 @@ import { app, dialog, type BrowserWindow } from 'electron';
 import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
 import { join, dirname } from 'path';
 import type { SaveFileOptions } from '../interfaces/Storage';
+import type { AppState } from './AppState';
 
 /**
  * AppStorage
@@ -9,6 +10,17 @@ import type { SaveFileOptions } from '../interfaces/Storage';
 export class AppStorage {
   /** The active file path */
   private static activeFilePath: string | null = null;
+
+  private static state: AppState | null = null;
+
+  /**
+   * Set app state singleton.
+   *
+   * @param state instance of AppState
+   */
+  static setState(state: AppState) {
+    this.state = state;
+  }
 
   /**
    * Get the path to the active file
@@ -31,7 +43,10 @@ export class AppStorage {
 
     AppStorage.activeFilePath = file;
 
-    if (file) app.addRecentDocument(file);
+    if (file) {
+      app.addRecentDocument(file); // electorn native
+      AppStorage.state?.addRecentPath(file, 'file'); // MKEditor
+    }
 
     context.webContents.send('from:file:opened', {
       file,
@@ -292,6 +307,7 @@ export class AppStorage {
           path: filePath,
           tree,
         });
+        AppStorage.state?.addRecentPath(filePath, 'folder');
       } else if (stats.isFile()) {
         AppStorage.setActiveFile(context, filePath);
       } else {
