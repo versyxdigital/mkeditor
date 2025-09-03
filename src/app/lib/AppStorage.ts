@@ -1,6 +1,6 @@
 import { app, dialog, type BrowserWindow } from 'electron';
 import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
-import { join, dirname } from 'path';
+import { basename, dirname, join } from 'path';
 import type { SaveFileOptions } from '../interfaces/Storage';
 import type { AppState } from './AppState';
 
@@ -38,7 +38,7 @@ export class AppStorage {
    * @returns
    */
   static setActiveFile(context: BrowserWindow, file: string | null = null) {
-    const filename = file ? file.split('\\').slice(-1).pop() : '';
+    const filename = file ? basename(file) : '';
     const content = file ? readFileSync(file, { encoding: 'utf-8' }) : '';
 
     AppStorage.activeFilePath = file;
@@ -294,22 +294,22 @@ export class AppStorage {
    * @param filePath - the filepath
    * @returns
    */
-  static async openPath(context: BrowserWindow, filePath: string) {
+  static async openPath(context: BrowserWindow, filepath: string) {
     try {
-      if (!filePath || typeof filePath !== 'string') {
+      if (!filepath || typeof filepath !== 'string') {
         throw new Error('invalidpath');
       }
 
-      const stats = await fs.stat(filePath);
+      const stats = await fs.stat(filepath);
       if (stats.isDirectory()) {
-        const tree = await AppStorage.readDirectory(filePath);
+        const tree = await AppStorage.readDirectory(filepath);
         context.webContents.send('from:folder:opened', {
-          path: filePath,
+          path: filepath,
           tree,
         });
-        AppStorage.state?.addRecentPath(filePath, 'folder');
+        AppStorage.state?.addRecentPath(filepath, 'folder');
       } else if (stats.isFile()) {
-        AppStorage.setActiveFile(context, filePath);
+        AppStorage.setActiveFile(context, filepath);
       } else {
         throw new Error('unsupported');
       }
