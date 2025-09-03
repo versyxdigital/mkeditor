@@ -138,7 +138,7 @@ export class SettingsProvider {
     for (const k of Object.keys(settings)) {
       const key = k as ValidSetting;
       if (key !== 'darkmode' && key !== 'locale') {
-        settings[key].checked = this.settings[key];
+        if (settings[key]) settings[key].checked = this.settings[key];
       }
     }
 
