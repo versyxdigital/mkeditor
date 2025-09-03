@@ -33,6 +33,8 @@ export const dom = {
     ),
     scrollsync: <HTMLInputElement>document.querySelector('#scrollsync-setting'),
     locale: <HTMLSelectElement>document.querySelector('#locale-setting'),
+    launchWithLast: null,
+    stateEnabled: null,
     fileinfo: <HTMLParagraphElement>(
       document.querySelector('#app-settings-file-info')
     ),
