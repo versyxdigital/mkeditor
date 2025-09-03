@@ -9,10 +9,8 @@ export interface EditorSettings {
   systemtheme: boolean;
   scrollsync: boolean;
   locale: string;
-  /** Enable saving persistent state (recents, etc.) */
-  stateEnabled?: boolean;
-  /** Restore last open item on launch */
-  launchWithLast?: boolean;
+  stateEnabled: boolean;
+  launchWithLast: boolean;
 }
 
 export interface ExportSettings {
