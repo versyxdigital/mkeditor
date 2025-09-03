@@ -15,7 +15,7 @@ export class AppMenu {
   private context: BrowserWindow;
 
   /** Providers */
-  private providers = initMainProviders; 
+  private providers = initMainProviders;
 
   /**
    * Create a new app menu handler to manage the app menu.
@@ -228,7 +228,8 @@ export class AppMenu {
               AppStorage.openPath(this.context, getPathFromUrl(e.uri));
             } catch {
               this.providers.logger?.log.error(
-                'Unable to add item to recent submnu', e
+                'Unable to add item to recent submnu',
+                e,
               );
             }
           },

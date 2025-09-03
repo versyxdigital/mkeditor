@@ -129,7 +129,6 @@ function main(file: string | null = null) {
   // Register all IPC event listeners
   bridge.register();
 
-
   // Register the mked:// protocol for opening linked markdown documents
   // in new tabs from within the editor.*
   protocol.handle('mked', (request) => {

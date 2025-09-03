@@ -3,7 +3,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { normalize } from 'path';
 import { app, type BrowserWindow } from 'electron';
 import type { SettingsFile } from '../interfaces/Settings';
-import { deepMerge, hasAllKeys, initMainProviders, normalizeLanguage } from '../util';
+import {
+  deepMerge,
+  hasAllKeys,
+  initMainProviders,
+  normalizeLanguage,
+} from '../util';
 
 /**
  * AppSettings
