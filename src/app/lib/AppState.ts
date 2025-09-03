@@ -30,7 +30,7 @@ export class AppState {
   /** Providers to provide functions to the state handler */
   private providers: Providers = {
     logger: null,
-    state: null
+    state: null,
   };
 
   /** Default editor state */

@@ -25,7 +25,7 @@ export class AppSettings {
   /** Providers to provide functions to the settings */
   private providers: Providers = {
     logger: null,
-    state: null
+    state: null,
   };
 
   /** Default editor settings */

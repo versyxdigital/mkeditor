@@ -158,7 +158,7 @@ function main(file: string | null = null) {
         (settings.getSetting('launchWithLast') ?? true);
 
       // TODO why is it a "." when opening without a file?
-      if (!file || file.trim() === '.' && wantsRestore) {
+      if (!file || (file.trim() === '.' && wantsRestore)) {
         log.info(state.getRecent());
         const recent = state.getRecent()[0];
         if (recent) {

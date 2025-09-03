@@ -1,4 +1,9 @@
-import { app, Menu, type MenuItemConstructorOptions, type BrowserWindow } from 'electron';
+import {
+  app,
+  Menu,
+  type MenuItemConstructorOptions,
+  type BrowserWindow,
+} from 'electron';
 import type { BridgeProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
 
@@ -205,7 +210,7 @@ export class AppMenu {
 
   /**
    * Build the recent items submenu
-   * @returns 
+   * @returns
    */
   private buildRecentSubmenu() {
     const items: MenuItemConstructorOptions[] = [];

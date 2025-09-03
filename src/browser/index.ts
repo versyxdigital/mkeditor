@@ -67,7 +67,8 @@ if (mkeditor) {
 
   // Register new command handler for the editor to provide and handle editor
   // commands and actions (e.g. bold, alertblock etc.)
-  editorManager.provide('commands', new CommandProvider(mkeditor));
+  const commandProvider = new CommandProvider(mkeditor);
+  editorManager.provide('commands', commandProvider);
 
   // Register a new completion provider for the editor auto-completion
   editorManager.provide('completion', new CompletionProvider(mkeditor));
@@ -82,6 +83,9 @@ if (mkeditor) {
 
     // Create a new bridge communication handler.
     const bridgeManager = new BridgeManager(api, mkeditor, dispatcher);
+
+    // Register desktop-only commands
+    commandProvider.registerDesktopOnly(api);
 
     // Attach providers.
     bridgeManager.provide('settings', editorManager.providers.settings);

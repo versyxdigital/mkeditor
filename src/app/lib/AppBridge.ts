@@ -211,6 +211,16 @@ export class AppBridge {
       event.sender.send('from:path:properties', info);
     });
 
+    // Recent: clear list
+    ipcMain.on('to:recent:clear', () => {
+      try {
+        this.providers.state?.clearRecent();
+        // TODO add menu to providers + method to rebuild menu
+      } catch (e) {
+        this.providers.logger?.log.error('[to:recent:clear]', e);
+      }
+    });
+
     // mked:// protocol handlers
     ipcMain.on('mked:get-active-file', (event) => {
       event.returnValue = AppStorage.getActiveFilePath();
