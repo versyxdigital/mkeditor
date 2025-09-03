@@ -124,9 +124,12 @@ export class AppBridge {
       AppStorage.openDirectory(this.context);
     });
 
-    ipcMain.on('to:file:openpath', (event, { path }: { path: string }) => {
-      AppStorage.openPath(this.context, path);
-    });
+    ipcMain.on(
+      'to:file:openpath',
+      (_, { path, recent}: { path: string; recent?: boolean; }) => {
+        AppStorage.openPath(this.context, path, recent !== false);
+      },
+    );
 
     // Save an existing file, this is also used by the renderer bridge "from:file:open" listener, if
     // editor content changes are detected by logic in the renderer process, the renderer bridge will

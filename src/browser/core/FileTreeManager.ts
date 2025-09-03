@@ -191,7 +191,11 @@ export class FileTreeManager {
           li.dataset.hasChildren === 'true' &&
           li.dataset.path
         ) {
-          this.bridge.send('to:file:openpath', { path: li.dataset.path });
+          // Load directory contents without polluting the "Recent" list
+          this.bridge.send('to:file:openpath', {
+            path: li.dataset.path,
+            recent: false,
+          });
         }
       }
     } else if (li.classList.contains('file') && li.dataset.path) {

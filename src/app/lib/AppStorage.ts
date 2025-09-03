@@ -4,7 +4,7 @@ import {
   readFileSync,
   writeFileSync,
   promises as fs,
-  realpathSync
+  realpathSync,
 } from 'fs';
 import { basename, dirname, join, normalize } from 'path';
 import type { SaveFileOptions } from '../interfaces/Storage';
@@ -304,7 +304,11 @@ export class AppStorage {
    * @param filePath - the filepath
    * @returns
    */
-  static async openPath(context: BrowserWindow, filepath: string) {
+  static async openPath(
+    context: BrowserWindow,
+    filepath: string,
+    includeRecent: boolean = true,
+  ) {
     try {
       if (!filepath || typeof filepath !== 'string') {
         throw new Error('invalidpath');
@@ -318,7 +322,7 @@ export class AppStorage {
           path: p,
           tree,
         });
-        AppStorage.state?.addRecentPath(p, 'folder');
+        if (includeRecent) AppStorage.state?.addRecentPath(p, 'folder');
       } else if (stats.isFile()) {
         AppStorage.setActiveFile(context, p);
       } else {
@@ -356,11 +360,13 @@ export class AppStorage {
         throw new Error('noselection');
       }
 
-      const tree = await AppStorage.readDirectory(filePaths[0]);
+      const p = AppStorage.toCanonicalPath(filePaths[0]);
+      const tree = await AppStorage.readDirectory(p);
       context.webContents.send('from:folder:opened', {
-        path: filePaths[0],
+        path: p,
         tree,
       });
+      AppStorage.state?.addRecentPath(p, 'folder');
       return tree;
     } catch (err) {
       if ((err as Error).message !== 'noselection') {
