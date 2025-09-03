@@ -18,12 +18,17 @@ jest.mock('../src/app/lib/AppSettings', () => ({
   AppSettings: jest.fn().mockImplementation(() => ({
     applied: { systemtheme: false },
     provide: jest.fn(),
+    getSetting: jest.fn(() => true),
+    getSettings: jest.fn(() => ({})),
     loadFile: jest.fn(() => ({})),
   })),
 }));
 
 jest.mock('../src/app/lib/AppStorage', () => ({
-  AppStorage: { setActiveFile: jest.fn() },
+  AppStorage: {
+    setActiveFile: jest.fn(),
+    setState: jest.fn(),
+  },
 }));
 
 import { app, BrowserWindow } from 'electron';
