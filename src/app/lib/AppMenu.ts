@@ -106,6 +106,12 @@ export class AppMenu {
             label: 'Open Recent',
             submenu: recentSubmenu,
           },
+          {
+            label: 'Clear All Recent',
+            click: () => {
+              this.providers.state?.clearRecent();
+            },
+          },
           { type: 'separator' },
           {
             label: 'Settings...',
