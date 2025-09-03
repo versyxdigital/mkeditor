@@ -101,6 +101,7 @@ function main(file: string | null = null) {
   const state = new AppState(context);
   state.provide('logger', logconfig);
   state.setEnabled(settings.getSetting('stateEnabled') ?? false);
+  settings.provide('state', state);
   AppStorage.setState(state); // Pass singleton to static AppStorage
 
   // Load the main process "bridge" to handle IPC traffic across
@@ -108,11 +109,13 @@ function main(file: string | null = null) {
   const bridge = new AppBridge(context);
   bridge.provide('settings', settings);
   bridge.provide('logger', logconfig);
+  bridge.provide('state', state);
   bridge.register(); // Register all IPC event listeners
 
   // Load the electron application menu
   const menu = new AppMenu(context);
   menu.provide('logger', logconfig);
+  menu.provide('state', state);
   menu.register(); // Register all menu items
 
   // Configure the app's tray icon and context menu

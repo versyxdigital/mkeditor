@@ -20,6 +20,7 @@ export class AppBridge {
   /** Providers to provide functions to the bridge */
   private providers: SettingsProviders = {
     logger: null,
+    state: null,
     settings: null,
   };
 

@@ -1,4 +1,4 @@
-import { app, Menu, type BrowserWindow } from 'electron';
+import { app, Menu, type MenuItemConstructorOptions, type BrowserWindow } from 'electron';
 import type { BridgeProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
 
@@ -13,6 +13,7 @@ export class AppMenu {
   private providers: BridgeProviders = {
     bridge: null,
     logger: null,
+    state: null,
   };
 
   /**
@@ -46,6 +47,8 @@ export class AppMenu {
    * @returns
    */
   register() {
+    const recentSubmenu = this.buildRecentSubmenu();
+
     app.applicationMenu = Menu.buildFromTemplate([
       {
         label: 'File',
@@ -92,6 +95,11 @@ export class AppMenu {
             },
             accelerator:
               process.platform === 'darwin' ? 'Cmd+Shift+S' : 'Ctrl+Shift+S',
+          },
+          { type: 'separator' },
+          {
+            label: 'Open Recent',
+            submenu: recentSubmenu,
           },
           { type: 'separator' },
           {
@@ -177,7 +185,7 @@ export class AppMenu {
    * @param context - the browser window
    * @returns
    */
-  buildTrayContextMenu(context: BrowserWindow) {
+  public buildTrayContextMenu(context: BrowserWindow) {
     return Menu.buildFromTemplate([
       {
         label: 'Show Window',
@@ -186,21 +194,53 @@ export class AppMenu {
           context.maximize();
         },
       },
-      {
-        label: 'Open Recent',
-        role: 'recentDocuments',
-        submenu: [
-          {
-            label: 'Clear Recent',
-            role: 'clearRecentDocuments',
-          },
-        ],
-      },
+      { label: 'Open Recent', submenu: this.buildRecentSubmenu() },
       { type: 'separator' },
       {
         label: 'Quit',
         click: () => app.quit(),
       },
     ]);
+  }
+
+  /**
+   * Build the recent items submenu
+   * @returns 
+   */
+  private buildRecentSubmenu() {
+    const items: MenuItemConstructorOptions[] = [];
+    const entries = this.providers.state?.getRecent() || [];
+    if (entries.length === 0) {
+      items.push({ label: 'No Recent', enabled: false });
+    } else {
+      for (const e of entries) {
+        items.push({
+          label: `${e.label} ${e.type === 'folder' ? '(folder)' : ''}`.trim(),
+          click: () => {
+            try {
+              const url = new URL(e.uri);
+              let p = decodeURIComponent(url.pathname);
+              if (process.platform === 'win32' && /^\/[a-zA-Z]:/.test(p)) {
+                p = p.slice(1);
+              }
+              AppStorage.openPath(this.context, p);
+            } catch {
+              // ignore
+            }
+          },
+        });
+      }
+    }
+
+    items.push({ type: 'separator' });
+    items.push({
+      label: 'Clear Recent',
+      click: () => {
+        this.providers.state?.clearRecent();
+        this.register(); // rebuild menu
+      },
+    });
+
+    return items;
   }
 }
