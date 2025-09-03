@@ -36,6 +36,8 @@ export class AppSettings {
     minimap: true,
     systemtheme: true,
     scrollsync: true,
+    stateEnabled: true,
+    launchWithLast: true,
     locale: normalizeLanguage(app.getLocale()),
     exportSettings: {
       withStyles: true,
