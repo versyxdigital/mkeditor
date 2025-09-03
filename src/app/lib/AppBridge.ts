@@ -1,9 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { dirname, resolve } from 'path';
-import type { SettingsProviders } from '../interfaces/Providers';
 import type { Logger, LogMessage } from '../interfaces/Logging';
 import { AppStorage } from './AppStorage';
-import { normalizeLanguage } from '../util';
+import { initMainProviders, normalizeLanguage } from '../util';
 /**
  * AppBridge
  */
@@ -17,12 +16,8 @@ export class AppBridge {
   /** Flag to determine whether content has changed */
   private editorContentHasChanged: boolean = false;
 
-  /** Providers to provide functions to the bridge */
-  private providers: SettingsProviders = {
-    logger: null,
-    state: null,
-    settings: null,
-  };
+  /** Providers */
+  private providers = initMainProviders;
 
   /**
    * Create a new AppBridge instance to manage IPC traffic.
@@ -215,7 +210,6 @@ export class AppBridge {
     ipcMain.on('to:recent:clear', () => {
       try {
         this.providers.state?.clearRecent();
-        // TODO add menu to providers + method to rebuild menu
       } catch (e) {
         this.providers.logger?.log.error('[to:recent:clear]', e);
       }

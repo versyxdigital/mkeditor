@@ -3,8 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { normalize } from 'path';
 import { app, type BrowserWindow } from 'electron';
 import type { SettingsFile } from '../interfaces/Settings';
-import type { Providers } from '../interfaces/Providers';
-import { deepMerge, hasAllKeys, normalizeLanguage } from '../util';
+import { deepMerge, hasAllKeys, initMainProviders, normalizeLanguage } from '../util';
 
 /**
  * AppSettings
@@ -22,11 +21,8 @@ export class AppSettings {
   /** Has been newly created with defaults */
   private isNewFile: boolean = false;
 
-  /** Providers to provide functions to the settings */
-  private providers: Providers = {
-    logger: null,
-    state: null,
-  };
+  /** Providers */
+  private providers = initMainProviders;
 
   /** Default editor settings */
   private settings: SettingsFile = {

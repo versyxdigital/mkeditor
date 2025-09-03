@@ -1,3 +1,13 @@
+import { MainProviders } from "./interfaces/Providers";
+
+export const initMainProviders: MainProviders = {
+  bridge: null,
+  logger: null,
+  menu: null,
+  state: null,
+  settings: null,
+}
+
 /**
  * Deep-merge source into target, preferring values from source when present.
  *

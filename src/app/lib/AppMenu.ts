@@ -4,8 +4,8 @@ import {
   type MenuItemConstructorOptions,
   type BrowserWindow,
 } from 'electron';
-import type { BridgeProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
+import { initMainProviders } from '../util';
 
 /**
  * AppMenu
@@ -14,12 +14,8 @@ export class AppMenu {
   /** The browser window */
   private context: BrowserWindow;
 
-  /** Providers to provide functions to the menu */
-  private providers: BridgeProviders = {
-    bridge: null,
-    logger: null,
-    state: null,
-  };
+  /** Providers */
+  private providers = initMainProviders; 
 
   /**
    * Create a new app menu handler to manage the app menu.
@@ -226,7 +222,7 @@ export class AppMenu {
     } else {
       for (const e of entries) {
         items.push({
-          label: `${e.label} ${e.type === 'folder' ? '(folder)' : ''}`.trim(),
+          label: `${e.label}${e.type === 'folder' ? '/' : ''}`.trim(),
           click: () => {
             try {
               const url = new URL(e.uri);
@@ -242,15 +238,6 @@ export class AppMenu {
         });
       }
     }
-
-    items.push({ type: 'separator' });
-    items.push({
-      label: 'Clear Recent',
-      click: () => {
-        this.providers.state?.clearRecent();
-        this.register(); // rebuild menu
-      },
-    });
 
     return items;
   }

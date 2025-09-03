@@ -1,18 +1,14 @@
 import type { AppBridge } from '../lib/AppBridge';
+import type { AppMenu } from '../lib/AppMenu';
 import type { AppSettings } from '../lib/AppSettings';
 import type { AppState } from '../lib/AppState';
 import type { LogConfig } from './Logging';
 
-export interface Providers {
+export interface MainProviders {
   [key: string]: unknown | null;
-  logger: LogConfig | null;
-  state: AppState | null;
-}
-
-export interface BridgeProviders extends Providers {
   bridge: AppBridge | null;
-}
-
-export interface SettingsProviders extends Providers {
+  logger: LogConfig | null;
+  menu: AppMenu | null;
+  state: AppState | null;
   settings: AppSettings | null;
 }

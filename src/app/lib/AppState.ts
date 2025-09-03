@@ -3,9 +3,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { basename, normalize } from 'path';
 import { pathToFileURL } from 'url';
 import type { BrowserWindow } from 'electron';
-import type { Providers } from '../interfaces/Providers';
 import type { RecentEntry, RecentType, StateFile } from '../interfaces/State';
-import { deepMerge, hasAllKeys } from '../util';
+import { deepMerge, hasAllKeys, initMainProviders } from '../util';
 
 const defaultState: StateFile = {
   recent: { entries: [] },
@@ -27,11 +26,8 @@ export class AppState {
   /** Has been newly created with defaults */
   private isNewFile: boolean = false;
 
-  /** Providers to provide functions to the state handler */
-  private providers: Providers = {
-    logger: null,
-    state: null,
-  };
+  /** Providers */
+  private providers = initMainProviders;
 
   /** Default editor state */
   private state: StateFile = {
@@ -104,6 +100,7 @@ export class AppState {
   public clearRecent() {
     this.state.recent.entries = [];
     this.saveStateToFile(this.state);
+    this.providers.menu?.register();
   }
 
   /**
@@ -130,6 +127,7 @@ export class AppState {
       // Trim to a reasonable max length
       this.state.recent.entries = entries.slice(0, 20);
       this.saveStateToFile(this.state);
+      this.providers.menu?.register();
     } catch {
       // no-op
     }

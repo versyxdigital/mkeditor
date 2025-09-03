@@ -104,25 +104,30 @@ function main(file: string | null = null) {
   settings.provide('state', state);
   AppStorage.setState(state); // Pass singleton to static AppStorage
 
-  // Load the main process "bridge" to handle IPC traffic across
-  // execution contexts.
-  const bridge = new AppBridge(context);
-  bridge.provide('settings', settings);
-  bridge.provide('logger', logconfig);
-  bridge.provide('state', state);
-  bridge.register(); // Register all IPC event listeners
-
   // Load the electron application menu
   const menu = new AppMenu(context);
   menu.provide('logger', logconfig);
   menu.provide('state', state);
   menu.register(); // Register all menu items
+  state.provide('menu', menu);
+
+  // Load the main process "bridge" to handle IPC traffic across
+  // execution contexts.
+  const bridge = new AppBridge(context);
+  bridge.provide('settings', settings);
+  bridge.provide('logger', logconfig);
+  bridge.provide('menu', menu);
+  bridge.provide('state', state);
 
   // Configure the app's tray icon and context menu
   const tray = new Tray(nativeImage.createFromDataURL(iconBase64()));
   tray.setContextMenu(menu.buildTrayContextMenu(context));
   tray.setToolTip('MKEditor');
   tray.setTitle('MKEditor');
+
+  // Register all IPC event listeners
+  bridge.register();
+
 
   // Register the mked:// protocol for opening linked markdown documents
   // in new tabs from within the editor.*
