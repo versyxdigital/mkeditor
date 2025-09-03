@@ -9,6 +9,21 @@ export const initMainProviders: MainProviders = {
 };
 
 /**
+ * Get the path from a URL
+ *
+ * @param uri - e.g. file://
+ * @returns - the file path
+ */
+export function getPathFromUrl(uri: string) {
+  const url = new URL(uri);
+  let p = decodeURIComponent(url.pathname);
+  if (process.platform === 'win32' && /^\/[a-zA-Z]:/.test(p)) {
+    p = p.slice(1);
+  }
+  return p;
+}
+
+/**
  * Deep-merge source into target, preferring values from source when present.
  *
  * @param target - target object

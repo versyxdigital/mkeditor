@@ -5,7 +5,7 @@ import {
   type BrowserWindow,
 } from 'electron';
 import { AppStorage } from './AppStorage';
-import { initMainProviders } from '../util';
+import { getPathFromUrl, initMainProviders } from '../util';
 
 /**
  * AppMenu
@@ -225,14 +225,11 @@ export class AppMenu {
           label: `${e.label}${e.type === 'folder' ? '/' : ''}`.trim(),
           click: () => {
             try {
-              const url = new URL(e.uri);
-              let p = decodeURIComponent(url.pathname);
-              if (process.platform === 'win32' && /^\/[a-zA-Z]:/.test(p)) {
-                p = p.slice(1);
-              }
-              AppStorage.openPath(this.context, p);
+              AppStorage.openPath(this.context, getPathFromUrl(e.uri));
             } catch {
-              // ignore
+              this.providers.logger?.log.error(
+                'Unable to add item to recent submnu', e
+              );
             }
           },
         });
