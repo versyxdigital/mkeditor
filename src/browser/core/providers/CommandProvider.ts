@@ -193,7 +193,7 @@ export class CommandProvider {
   public registerDesktopOnly(bridge: ContextBridgeAPI) {
     this.mkeditor.addAction({
       id: 'clear-recent',
-      label: 'Clear Recent',
+      label: 'Clear All Recent Items',
       run: () => {
         bridge.send('to:recent:clear', null);
       },

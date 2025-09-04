@@ -126,7 +126,7 @@ export class AppBridge {
 
     ipcMain.on(
       'to:file:openpath',
-      (_, { path, recent}: { path: string; recent?: boolean; }) => {
+      (_, { path, recent }: { path: string; recent?: boolean }) => {
         AppStorage.openPath(this.context, path, recent !== false);
       },
     );
