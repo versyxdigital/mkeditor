@@ -102,18 +102,18 @@ function main(file: string | null = null) {
   const state = new AppState(context);
   state.provide('logger', logconfig);
   state.setEnabled(settings.getSetting('stateEnabled') ?? false);
+  // Provide state to settings and static app storage.
   settings.provide('state', state);
-  AppStorage.setState(state); // Pass singleton to static AppStorage
+  AppStorage.setState(state);
 
   // Load the electron application menu
   const menu = new AppMenu(context);
   menu.provide('logger', logconfig);
   menu.provide('state', state);
-  state.provide('menu', menu);
+  state.provide('menu', menu); // Provide menu to state handler
   menu.register(); // Register all menu items
 
-  // Load the main process "bridge" to handle IPC traffic across
-  // execution contexts.
+  // Load the bridge to handle IPC traffic across contexts.
   const bridge = new AppBridge(context);
   bridge.provide('settings', settings);
   bridge.provide('logger', logconfig);

@@ -67,6 +67,14 @@ body[data-theme='dark'] {
   }
 }
 
+#app-settings {
+  .modal-dialog {
+    .modal-content {
+      min-width: 650px;
+    }
+  }
+}
+
 .app-logo {
   width: 200px;
 }
