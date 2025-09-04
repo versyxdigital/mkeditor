@@ -193,7 +193,6 @@ export class AppState {
    */
   saveStateToFile(state: Partial<StateFile>) {
     try {
-      // TODO copy-pasted from AppSettings, refactor properly
       const base = existsSync(this.filePath)
         ? (this.loadFile() as StateFile)
         : this.state;

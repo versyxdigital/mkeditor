@@ -111,14 +111,51 @@ export class SettingsProvider {
     const toggler = dom.settings;
     this.populateLocaleOptions(toggler.locale);
     this.registerLocaleChangeListener(toggler.locale);
-    this.registerAutoIndentChangeListener(toggler.autoindent);
-    this.registerDarkModeChangeListener(toggler.darkmode);
-    this.registerMinimapChangeListener(toggler.minimap);
-    this.registerWordWrapChangeListener(toggler.wordwrap);
-    this.registerWhitespaceChangeListener(toggler.whitespace);
-    this.registerSystemThemeOverrideChangeListener(toggler.systemtheme);
-    this.registerScrollSyncChangeListener(toggler.scrollsync);
-    this.registerRecentItemsEnabledChangeListener(toggler.recentItemsEnabled);
+
+    this.registerToggleChangeListener(
+      toggler.autoindent,
+      'autoindent',
+      this.setAudoIndent.bind(this),
+    );
+
+    this.registerToggleChangeListener(
+      toggler.darkmode,
+      'darkmode',
+      this.setTheme.bind(this),
+    );
+
+    this.registerToggleChangeListener(
+      toggler.minimap,
+      'minimap',
+      this.setMinimap.bind(this),
+    );
+
+    this.registerToggleChangeListener(
+      toggler.wordwrap,
+      'wordwrap',
+      this.setWordWrap.bind(this),
+    );
+
+    this.registerToggleChangeListener(
+      toggler.whitespace,
+      'whitespace',
+      this.setWhitespace.bind(this),
+    );
+
+    this.registerToggleChangeListener(
+      toggler.systemtheme,
+      'systemtheme',
+      this.setSystemThemeOverride.bind(this),
+    );
+
+    this.registerToggleChangeListener(toggler.scrollsync, 'scrollsync');
+
+    this.registerToggleChangeListener(
+      toggler.recentItemsEnabled,
+      'recentItemsEnabled',
+      this.setRecentItemsEnabled.bind(this),
+    );
+
     this.setUIState();
   }
 
@@ -243,17 +280,15 @@ export class SettingsProvider {
     return this;
   }
 
-  /**
-   * Register the handler for the auto-indent settings.
-   *
-   * @param handler - the handler
-   * @returns this
-   */
-  private registerAutoIndentChangeListener(handler: Element) {
+  private registerToggleChangeListener<T extends Element>(
+    handler: T,
+    setting: keyof EditorSettings,
+    fn?: () => void,
+  ) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
-      this.setSetting('autoindent', target.checked);
-      this.setAudoIndent();
+      this.setSetting(setting, target.checked);
+      if (fn) fn();
       this.persist();
     });
 
@@ -268,23 +303,6 @@ export class SettingsProvider {
   public setAudoIndent() {
     this.mkeditor.updateOptions({
       autoIndent: this.settings.autoindent ? 'advanced' : 'none',
-    });
-
-    return this;
-  }
-
-  /**
-   * Register the handler for the dark-mode settings.
-   *
-   * @param handler - the handler
-   * @returns this
-   */
-  private registerDarkModeChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('darkmode', target.checked);
-      this.setTheme();
-      this.persist();
     });
 
     return this;
@@ -308,23 +326,6 @@ export class SettingsProvider {
   }
 
   /**
-   * Register the handler for the mini-map settings.
-   *
-   * @param handler - the handler
-   * @returns this
-   */
-  private registerMinimapChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('minimap', target.checked);
-      this.setMinimap();
-      this.persist();
-    });
-
-    return this;
-  }
-
-  /**
    * Set the mini-map settings.
    *
    * @returns this
@@ -332,23 +333,6 @@ export class SettingsProvider {
   public setMinimap() {
     this.mkeditor.updateOptions({
       minimap: { enabled: this.settings.minimap },
-    });
-
-    return this;
-  }
-
-  /**
-   * Register the hanlder for the word-wrap settings.
-   *
-   * @param handler - the handler
-   * @returns this
-   */
-  private registerWordWrapChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('wordwrap', target.checked);
-      this.setWordWrap();
-      this.persist();
     });
 
     return this;
@@ -368,23 +352,6 @@ export class SettingsProvider {
   }
 
   /**
-   * Register the hanlder for the whitespace rendering settings.
-   *
-   * @param handler - the handler
-   * @returns this
-   */
-  private registerWhitespaceChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('whitespace', target.checked);
-      this.setWhitespace();
-      this.persist();
-    });
-
-    return this;
-  }
-
-  /**
    * Set whitespace settings.
    *
    * @returns this
@@ -398,63 +365,12 @@ export class SettingsProvider {
   }
 
   /**
-   * Register the hanlder for the system theme override settings.
-   *
-   * @param handler - the handler
-   * @returns this
-   */
-  private registerSystemThemeOverrideChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('systemtheme', target.checked);
-      this.setSystemThemeOverride();
-      this.persist();
-    });
-
-    return this;
-  }
-
-  /**
    * Set system theme override settings.
    *
    * @returns this
    */
   public setSystemThemeOverride() {
     dom.settings.darkmode.checked = this.theme === 'dark';
-
-    return this;
-  }
-
-  /**
-   * Register the handler for the mini-map settings.
-   *
-   * @param handler - the handler
-   * @returns this
-   */
-  private registerScrollSyncChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('scrollsync', target.checked);
-      // no-op: setting checked on editor model onDidScrollChange listener
-      this.persist();
-    });
-
-    return this;
-  }
-
-  /**
-   * Register the handler for the state enabled setting.
-   *
-   * @param handler - the handler
-   * @returns this
-   */
-  private registerRecentItemsEnabledChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('recentItemsEnabled', target.checked);
-      this.setRecentItemsEnabled();
-      this.persist();
-    });
 
     return this;
   }
