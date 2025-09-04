@@ -159,8 +159,8 @@ function main(file: string | null = null) {
 
       // Restore last opened folder/file if configured and no file was directly requested
       const wantsRestore =
-        (settings.getSetting('stateEnabled') ?? true) &&
-        (settings.getSetting('launchWithLast') ?? true);
+        settings.getSetting('stateEnabled') &&
+        settings.getSetting('launchWithLast');
 
       // TODO why is it a "." when opening without a file?
       if (!file || (file.trim() === '.' && wantsRestore)) {
