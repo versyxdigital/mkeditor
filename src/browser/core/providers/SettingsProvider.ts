@@ -118,7 +118,7 @@ export class SettingsProvider {
     this.registerWhitespaceChangeListener(toggler.whitespace);
     this.registerSystemThemeOverrideChangeListener(toggler.systemtheme);
     this.registerScrollSyncChangeListener(toggler.scrollsync);
-    this.registerRecentItemsEnabledChangeListener(toggler.stateEnabled);
+    this.registerRecentItemsEnabledChangeListener(toggler.recentItemsEnabled);
     this.setUIState();
   }
 
@@ -451,7 +451,7 @@ export class SettingsProvider {
   private registerRecentItemsEnabledChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
-      this.setSetting('stateEnabled', target.checked);
+      this.setSetting('recentItemsEnabled', target.checked);
       this.setRecentItemsEnabled();
       this.persist();
     });
@@ -466,7 +466,7 @@ export class SettingsProvider {
    */
   public setRecentItemsEnabled() {
     this.dispatcher.setRecentItemsEnabled({
-      enabled: this.settings.stateEnabled,
+      enabled: this.settings.recentItemsEnabled,
     });
 
     return this;

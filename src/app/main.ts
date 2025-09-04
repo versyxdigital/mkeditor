@@ -101,7 +101,7 @@ function main(file: string | null = null) {
   // State should be instantiated here.
   const state = new AppState(context);
   state.provide('logger', logconfig);
-  state.setEnabled(settings.getSetting('stateEnabled') ?? true);
+  state.setEnabled(settings.getSetting('recentItemsEnabled') ?? true);
   // Provide state to settings and static app storage.
   settings.provide('state', state);
   AppStorage.setState(state);
@@ -160,7 +160,8 @@ function main(file: string | null = null) {
       // Restore last opened folder/file if configured and no file was directly requested
       if (
         !file ||
-        (file.trim() === '.' && settings.getSetting('stateEnabled') === true)
+        (file.trim() === '.' &&
+          settings.getSetting('recentItemsEnabled') === true)
       ) {
         const recents = state.getRecent();
         const top = recents[0];
