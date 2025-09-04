@@ -131,10 +131,6 @@ export class AppBridge {
       },
     );
 
-    // Save an existing file, this is also used by the renderer bridge "from:file:open" listener, if
-    // editor content changes are detected by logic in the renderer process, the renderer bridge will
-    // submit a save event to this channel with prompt and fromOpen both defined, otherwise it'll just
-    // submit an open event directly to the "to:file:open" channel instead.
     ipcMain.on(
       'to:file:save',
       async (
@@ -174,10 +170,6 @@ export class AppBridge {
       },
     );
 
-    // Save as event, doesn't require checks on "activeFile",
-    // this will simply just call AppStorage save and triger
-    // the dialog for the user to save the file to the location
-    // of their choice.
     ipcMain.on('to:file:saveas', (event, data) => {
       AppStorage.saveFile(this.context, {
         id: event.sender.id,
@@ -209,7 +201,10 @@ export class AppBridge {
       event.sender.send('from:path:properties', info);
     });
 
-    // Recent: clear list
+    ipcMain.on('to:recent:enable', (_e, { enabled }) => {
+      this.providers.state?.setEnabled(enabled);
+    });
+
     ipcMain.on('to:recent:clear', () => {
       try {
         this.providers.state?.clearRecent();
