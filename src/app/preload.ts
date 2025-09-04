@@ -32,6 +32,7 @@ const senderWhitelist = [
   'to:i18n:set',
   'to:recent:open',
   'to:recent:clear',
+  'to:recent:enable',
 ];
 
 // Can be sent from the main process and received
