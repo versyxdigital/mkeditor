@@ -5,7 +5,9 @@ import {
   type BrowserWindow,
 } from 'electron';
 import { AppStorage } from './AppStorage';
-import { getPathFromUrl, initMainProviders } from '../util';
+import { getPathFromUrl } from '../util';
+import type { LogConfig } from '../interfaces/Logging';
+import type { AppState } from './AppState';
 
 /**
  * AppMenu
@@ -14,33 +16,24 @@ export class AppMenu {
   /** The browser window */
   private context: BrowserWindow;
 
-  /** Providers */
-  private providers = initMainProviders;
+  /** State */
+  private state: AppState;
+
+  /** Logger */
+  private logger: LogConfig;
 
   /**
    * Create a new app menu handler to manage the app menu.
    *
    * @param context - the browser window
-   * @param register - register all menu items immediately
    * @returns
    */
-  constructor(context: BrowserWindow, register = false) {
+  constructor(context: BrowserWindow, state: AppState, logger: LogConfig) {
     this.context = context;
+    this.state = state;
+    this.logger = logger;
 
-    if (register) {
-      this.register();
-    }
-  }
-
-  /**
-   * Provide access to a provider.
-   *
-   * @param provider - the provider to access
-   * @param instance - the associated provider instance
-   * @returns
-   */
-  provide<T>(provider: string, instance: T) {
-    this.providers[provider] = instance;
+    this.register();
   }
 
   /**
@@ -105,7 +98,7 @@ export class AppMenu {
           {
             label: 'Clear All Recent',
             click: () => {
-              this.providers.state?.clearRecent();
+              this.state.clearRecent();
             },
           },
           { type: 'separator' },
@@ -118,10 +111,7 @@ export class AppMenu {
           {
             label: 'Open Log...',
             click: () => {
-              AppStorage.openPath(
-                this.context,
-                <string>this.providers.logger?.logpath,
-              );
+              AppStorage.openPath(this.context, <string>this.logger.logpath);
             },
           },
           { type: 'separator' },
@@ -216,7 +206,7 @@ export class AppMenu {
    */
   private buildRecentSubmenu() {
     const items: MenuItemConstructorOptions[] = [];
-    const entries = this.providers.state?.getRecent() || [];
+    const entries = this.state.getRecent() || [];
     if (entries.length === 0) {
       items.push({ label: 'No Recent', enabled: false });
     } else {
@@ -227,10 +217,7 @@ export class AppMenu {
             try {
               AppStorage.openPath(this.context, getPathFromUrl(e.uri));
             } catch {
-              this.providers.logger?.log.error(
-                'Unable to add item to recent submnu',
-                e,
-              );
+              this.logger.log.error('Unable to add item to recent submnu', e);
             }
           },
         });

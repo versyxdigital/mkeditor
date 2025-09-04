@@ -88,61 +88,47 @@ function main(file: string | null = null) {
   // Load the editor frontend
   context.loadFile(join(__dirname, '../index.html'));
 
-  // Prevent navigation to links within the BrowserWindow. This is usually
-  // emitted when a user clicks a link that would cause a full page load.
-  // Instead of preventing the app's main window from being redirected, we
-  // block it here and then handle links navigation further down below.*
+  // Prevent navigation to links within the BrowserWindow.
   context.webContents.on('will-navigate', (event) => event.preventDefault());
 
-  // Load the main process settings handler
-  const settings = new AppSettings(context);
-  settings.provide('logger', logconfig);
+  // Create settings handler for editor settings
+  const settings = new AppSettings(context, logconfig);
 
-  // State should be instantiated here.
-  const state = new AppState(context);
-  state.provide('logger', logconfig);
+  // Create app state handler for managing recent items
+  const state = new AppState(context, logconfig);
   state.setEnabled(settings.getSetting('recentItemsEnabled') ?? true);
-  // Provide state to settings and static app storage.
-  settings.provide('state', state);
+
+  // Provide singleton access to state handler
   AppStorage.setState(state);
 
-  // Load the electron application menu
-  const menu = new AppMenu(context);
-  menu.provide('logger', logconfig);
-  menu.provide('state', state);
-  state.provide('menu', menu); // Provide menu to state handler
-  menu.register(); // Register all menu items
+  // Create app menu handler and build menu items
+  const menu = new AppMenu(context, state, logconfig);
 
-  // Load the bridge to handle IPC traffic across contexts.
-  const bridge = new AppBridge(context);
-  bridge.provide('settings', settings);
-  bridge.provide('logger', logconfig);
-  bridge.provide('menu', menu);
-  bridge.provide('state', state);
+  // Rebuild menu items when state changes (e.g. recent items)
+  state.onDidStateChange(() => menu.register());
 
-  // Configure the app's tray icon and context menu
+  // Create app bridge handler for IPC traffic management
+  const bridge = new AppBridge(context, settings, state, logconfig);
+
+  // Configure the app system tray icon
   const tray = new Tray(nativeImage.createFromDataURL(iconBase64()));
   tray.setContextMenu(menu.buildTrayContextMenu(context));
   tray.setToolTip('MKEditor');
   tray.setTitle('MKEditor');
 
-  // Register all IPC event listeners
-  bridge.register();
-
-  // Register the mked:// protocol for opening linked markdown documents
-  // in new tabs from within the editor.*
+  // Register the mked:// protocol handler
   protocol.handle('mked', (request) => {
     bridge.handleMkedUrl(request.url);
-    return new Response(''); // satisfy the protocol
+    return new Response('');
   });
 
   // Set the window open handler for HTTP(S) URLs.*
   context.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url); // Use the user's default browser
-    return { action: 'deny' }; // No new window in main process
+    shell.openExternal(url);
+    return { action: 'deny' };
   });
 
-  // On finished frotend loading, set the editor theme and settings,
+  // On finished frontend loading, set the editor theme and settings,
   // and set the active file (untitled new file if no file open).
   context.webContents.on('did-finish-load', () => {
     if (context) {

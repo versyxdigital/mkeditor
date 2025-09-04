@@ -1,8 +1,10 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { dirname, resolve } from 'path';
-import type { Logger, LogMessage } from '../interfaces/Logging';
+import type { Logger, LogMessage, LogConfig } from '../interfaces/Logging';
 import { AppStorage } from './AppStorage';
-import { initMainProviders, normalizeLanguage } from '../util';
+import { normalizeLanguage } from '../util';
+import type { AppSettings } from './AppSettings';
+import type { AppState } from './AppState';
 /**
  * AppBridge
  */
@@ -16,33 +18,33 @@ export class AppBridge {
   /** Flag to determine whether content has changed */
   private editorContentHasChanged: boolean = false;
 
-  /** Providers */
-  private providers = initMainProviders;
+  /** Logger */
+  private logger: LogConfig;
+
+  /** Settings */
+  private settings: AppSettings;
+
+  /** State */
+  private state: AppState;
 
   /**
    * Create a new AppBridge instance to manage IPC traffic.
    *
    * @param context - the browser window
-   * @param register - register all IPC listeners immediately
    * @returns
    */
-  constructor(context: BrowserWindow, register = false) {
+  constructor(
+    context: BrowserWindow,
+    settings: AppSettings,
+    state: AppState,
+    logger: LogConfig,
+  ) {
     this.context = context;
+    this.settings = settings;
+    this.state = state;
+    this.logger = logger;
 
-    if (register) {
-      this.register();
-    }
-  }
-
-  /**
-   * Provide access to a provider.
-   *
-   * @param provider - the provider to access
-   * @param instance - the associated provider instance
-   * @returns
-   */
-  provide<T>(provider: string, instance: T) {
-    this.providers[provider] = instance;
+    this.register();
   }
 
   /**
@@ -52,7 +54,7 @@ export class AppBridge {
   register() {
     // Enable logging from the renderer context
     ipcMain.on('log', (_e, { level, msg, meta }: LogMessage) => {
-      const logger = this.providers.logger?.log;
+      const logger = this.logger.log;
       if (!logger) return;
 
       if (
@@ -78,7 +80,7 @@ export class AppBridge {
     });
 
     ipcMain.on('to:settings:save', (_e, { settings }) => {
-      this.providers.settings?.saveSettingsToFile(settings);
+      this.settings.saveSettingsToFile(settings);
     });
 
     ipcMain.on('to:html:export', (event, { content }) => {
@@ -194,14 +196,14 @@ export class AppBridge {
     });
 
     ipcMain.on('to:recent:enable', (_e, { enabled }) => {
-      this.providers.state?.setEnabled(enabled);
+      this.state.setEnabled(enabled);
     });
 
     ipcMain.on('to:recent:clear', () => {
       try {
-        this.providers.state?.clearRecent();
+        this.state.clearRecent();
       } catch (e) {
-        this.providers.logger?.log.error('[to:recent:clear]', e);
+        this.logger.log.error('[to:recent:clear]', e);
       }
     });
 
@@ -211,7 +213,7 @@ export class AppBridge {
 
     ipcMain.on('mked:get-locale', (event) => {
       const locale =
-        this.providers.settings?.getSetting('locale') ??
+        this.settings.getSetting('locale') ??
         normalizeLanguage(app.getLocale());
       event.returnValue = locale;
     });
@@ -225,7 +227,7 @@ export class AppBridge {
       try {
         this.handleMkedUrl(url);
       } catch (e) {
-        this.providers.logger?.log.error('[mked:open-url]', e);
+        this.logger.log.error('[mked:open-url]', e);
       }
     });
 
@@ -233,7 +235,7 @@ export class AppBridge {
       try {
         this.context.webContents.send('from:i18n:set', lng);
       } catch (e) {
-        this.providers.logger?.log.error('[to:i18n:set]', e);
+        this.logger.log.error('[to:i18n:set]', e);
       }
     });
   }
@@ -252,9 +254,7 @@ export class AppBridge {
         AppStorage.openActiveFile(this.context, path);
       }
     } catch {
-      this.providers.logger?.log.error(
-        `Malformed path to linked document: ${url}`,
-      );
+      this.logger.log.error(`Malformed path to linked document: ${url}`);
     }
   }
 

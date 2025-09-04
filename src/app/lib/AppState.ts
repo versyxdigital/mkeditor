@@ -3,8 +3,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { basename, normalize } from 'path';
 import { pathToFileURL } from 'url';
 import type { BrowserWindow } from 'electron';
+import type { LogConfig } from '../interfaces/Logging';
 import type { RecentEntry, RecentType, StateFile } from '../interfaces/State';
-import { deepMerge, hasAllKeys, initMainProviders } from '../util';
+import { deepMerge, hasAllKeys } from '../util';
 
 const defaultState: StateFile = {
   recent: { entries: [] },
@@ -26,8 +27,8 @@ export class AppState {
   /** Has been newly created with defaults */
   private isNewFile: boolean = false;
 
-  /** Providers */
-  private providers = initMainProviders;
+  /** Logger */
+  private logger: LogConfig;
 
   /** Default editor state */
   private state: StateFile = {
@@ -37,14 +38,18 @@ export class AppState {
   /** Quick flag to check state enabled/disabled */
   private enabled: boolean = true;
 
+  /** Change listeners */
+  private listeners: Set<() => void> = new Set();
+
   /**
    * Create a new app state handler.
    *
    * @param context - the browser window
    * @returns
    */
-  constructor(context: BrowserWindow) {
+  constructor(context: BrowserWindow, logger: LogConfig) {
     this.context = context;
+    this.logger = logger;
     this.appPath = normalize(homedir() + '/.mkeditor/');
     this.filePath = this.appPath + 'state.json';
 
@@ -69,7 +74,7 @@ export class AppState {
    */
   public setEnabled(enabled: boolean) {
     this.enabled = enabled;
-    this.providers.logger?.log.info('state is now enabled...');
+    this.logger.log.info('state is now enabled...');
   }
 
   /**
@@ -100,7 +105,7 @@ export class AppState {
   public clearRecent() {
     this.state.recent.entries = [];
     this.saveStateToFile(this.state);
-    this.providers.menu?.register();
+    this.dispatchStateChange();
   }
 
   /**
@@ -127,21 +132,19 @@ export class AppState {
       // Trim to a reasonable max length
       this.state.recent.entries = entries.slice(0, 20);
       this.saveStateToFile(this.state);
-      this.providers.menu?.register();
+      this.dispatchStateChange();
     } catch {
       // no-op
     }
   }
 
   /**
-   * Provide access to a provider.
-   *
-   * @param provider - the provider to access
-   * @param instance - the associated provider instance
-   * @returns
+   * Subscribe to state changes.
+   * Returns an unsubscribe function.
    */
-  provide<T>(provider: string, instance: T) {
-    this.providers[provider] = instance;
+  public onDidStateChange(listener: () => void) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
   /**
@@ -212,12 +215,27 @@ export class AppState {
           ? 'notifications:unable_save_state_permission_denied'
           : 'notifications:unable_save_state_unknown_error';
 
-      this.providers.logger?.log.error(key, err);
+      this.logger.log.error(key, err);
 
       this.context.webContents.send('from:notification:display', {
         status: 'error',
         key,
       });
     }
+  }
+
+  /**
+   * Emit the state change.
+   */
+  private dispatchStateChange() {
+    this.listeners.forEach((fn) => {
+      try {
+        fn();
+      } catch {
+        this.logger.log.error(
+          'Unable to emit recent items state update event.',
+        );
+      }
+    });
   }
 }

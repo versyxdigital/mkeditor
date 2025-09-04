@@ -1,12 +1,4 @@
-import type { MainProviders } from './interfaces/Providers';
-
-export const initMainProviders: MainProviders = {
-  bridge: null,
-  logger: null,
-  menu: null,
-  state: null,
-  settings: null,
-};
+// Removed legacy service-locator provider registry
 
 /**
  * Get the path from a URL
