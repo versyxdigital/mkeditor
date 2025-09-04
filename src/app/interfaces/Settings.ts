@@ -8,7 +8,6 @@ export interface EditorSettings {
   scrollsync: boolean;
   locale: string;
   stateEnabled?: boolean;
-  launchWithLast?: boolean;
 }
 
 export interface ExportSettings {

@@ -119,7 +119,6 @@ export class SettingsProvider {
     this.registerSystemThemeOverrideChangeListener(toggler.systemtheme);
     this.registerScrollSyncChangeListener(toggler.scrollsync);
     this.registerRecentItemsEnabledChangeListener(toggler.stateEnabled);
-    this.registerLaunchWithLastChangeListener(toggler.launchWithLast);
     this.setUIState();
   }
 
@@ -466,25 +465,8 @@ export class SettingsProvider {
    * @returns this
    */
   public setRecentItemsEnabled() {
-    this.dispatcher.setRecentItemsEnabled({ 
-      enabled: this.settings.stateEnabled
-    });
-
-    return this;
-  }
-
-  /**
-   * Register the handler for the launch with last setting.
-   *
-   * @param handler - the handler
-   * @returns this
-   */
-  private registerLaunchWithLastChangeListener(handler: Element) {
-    handler.addEventListener('click', (event) => {
-      const target = <HTMLInputElement>event.target;
-      this.setSetting('launchWithLast', target.checked);
-      // no-op: will affect next launch
-      this.persist();
+    this.dispatcher.setRecentItemsEnabled({
+      enabled: this.settings.stateEnabled,
     });
 
     return this;

@@ -67,24 +67,20 @@ export class AppBridge {
       (logger as Logger)[level](msg, meta);
     });
 
-    // Set the app window title
     ipcMain.on('to:title:set', (event, title = null) => {
       this.contextWindowTitle = title ? `MKEditor - ${title}` : 'MKEditor';
       this.setWindowTitle();
     });
 
-    // Set the editor state to track content changes in the main process.
     ipcMain.on('to:editor:state', (event, hasChanged: boolean) => {
       this.editorContentHasChanged = hasChanged;
       this.setWindowTitle();
     });
 
-    // Save editor settings to file (~/.mkeditor/settings.json)
     ipcMain.on('to:settings:save', (event, { settings }) => {
       this.providers.settings?.saveSettingsToFile(settings);
     });
 
-    // Export rendered HTML, triggered from the renderer process
     ipcMain.on('to:html:export', (event, { content }) => {
       AppStorage.saveFile(this.context, {
         id: event.sender.id,
@@ -93,7 +89,6 @@ export class AppBridge {
       });
     });
 
-    // Export rendered HTML to PDF
     ipcMain.on('to:pdf:export', async (event, { content }) => {
       const offscreen = new BrowserWindow({
         show: false,
@@ -107,15 +102,12 @@ export class AppBridge {
       });
     });
 
-    // Create a new file, linked to the application menu
     ipcMain.on('to:file:new', () => {
       AppStorage.createNewFile(this.context).then(() => {
         this.setWindowTitle();
       });
     });
 
-    // Open a new file, forwarded from the renderer process
-    // via received from:file:open event.
     ipcMain.on('to:file:open', () => {
       AppStorage.showOpenDialog(this.context);
     });
@@ -213,12 +205,10 @@ export class AppBridge {
       }
     });
 
-    // mked:// protocol handlers
     ipcMain.on('mked:get-active-file', (event) => {
       event.returnValue = AppStorage.getActiveFilePath();
     });
 
-    // Provide app locale to renderer
     ipcMain.on('mked:get-locale', (event) => {
       const locale =
         this.providers.settings?.getSetting('locale') ??
@@ -226,8 +216,6 @@ export class AppBridge {
       event.returnValue = locale;
     });
 
-    // Provide path resolution through IPC to avoid having to set
-    // nodeIntegration to true.
     ipcMain.handle('mked:path:dirname', (_e, p: string) => dirname(p));
     ipcMain.handle('mked:path:resolve', (_e, base: string, rel: string) =>
       resolve(base, rel),
@@ -241,7 +229,6 @@ export class AppBridge {
       }
     });
 
-    // Broadcast language changes to the renderer
     ipcMain.on('to:i18n:set', (_e, lng: string) => {
       try {
         this.context.webContents.send('from:i18n:set', lng);

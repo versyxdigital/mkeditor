@@ -21,8 +21,6 @@
   "state": "File/Folder Tracking",
   "stateenabled_label": "Enable recent items",
   "stateenabled_help": "Enable tracking of recently opened files and folders.",
-  "launchwithlast_label": "Launch with last opened",
-  "launchwithlast_help": "Re-launch MKEditor with your last-opened items.",
   "language_label": "Language",
   "language_help": "Select the interface language.",
   "save_settings": "Save Settings"

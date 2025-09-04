@@ -12,7 +12,6 @@ export const settings: EditorSettings = {
   systemtheme: true,
   scrollsync: true,
   stateEnabled: true,
-  launchWithLast: true,
   locale: normalizeLanguage(navigator.language),
 };
 
