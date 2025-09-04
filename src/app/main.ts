@@ -11,7 +11,7 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log/main';
 import { existsSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
-import { join, normalize } from 'path';
+import { join, normalize, dirname } from 'path';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
 import { AppSettings } from './lib/AppSettings';
@@ -164,12 +164,29 @@ function main(file: string | null = null) {
 
       // TODO why is it a "." when opening without a file?
       if (!file || (file.trim() === '.' && wantsRestore)) {
-        const recent = state.getRecent()[0];
-        if (recent) {
+        const recents = state.getRecent();
+        const top = recents[0];
+
+        if (top) {
           try {
-            AppStorage.openPath(context, getPathFromUrl(recent.uri));
-          } catch {
-            log.error('Unable to open recent file', recent);
+            if (top.type === 'folder') {
+              // Open the most recent folder only
+              const folderPath = getPathFromUrl(top.uri);
+              AppStorage.openPath(context, folderPath);
+            } else {
+              // Open the most recent file and the last opened folder
+              const filePath = getPathFromUrl(top.uri);
+              const lastFolderEntry = recents.find((e) => e.type === 'folder');
+              const folderPath = lastFolderEntry
+                ? getPathFromUrl(lastFolderEntry.uri)
+                : dirname(filePath);
+
+              // Open the folder first so the file remains most recent
+              if (folderPath) AppStorage.openPath(context, folderPath);
+              AppStorage.openPath(context, filePath);
+            }
+          } catch (e) {
+            log.error('Unable to restore from recent entries', e);
           }
         } else {
           AppStorage.openActiveFile(context, file);

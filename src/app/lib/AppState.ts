@@ -177,7 +177,7 @@ export class AppState {
     }
 
     if (!existsSync(this.filePath)) {
-      this.saveStateToFile(defaultState, true);
+      this.saveStateToFile(defaultState);
       this.isNewFile = true;
     }
   }
@@ -186,10 +186,9 @@ export class AppState {
    * Save current state to the state file.
    *
    * @param state - the state to save
-   * @param init - first-time init
    * @returns
    */
-  saveStateToFile(state: Partial<StateFile>, init = false) {
+  saveStateToFile(state: Partial<StateFile>) {
     try {
       // TODO copy-pasted from AppSettings, refactor properly
       const base = existsSync(this.filePath)
@@ -206,13 +205,6 @@ export class AppState {
       });
 
       this.state = updated;
-
-      if (!init) {
-        this.context.webContents.send('from:notification:display', {
-          status: 'success',
-          key: 'notifications:state_update_success',
-        });
-      }
     } catch (err) {
       const detail = err as { code: string };
       const key =
