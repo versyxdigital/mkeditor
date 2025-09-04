@@ -16,6 +16,13 @@ export class EditorDispatcher extends BaseDispatcher {
     });
   }
 
+  setRecentItemsEnabled({ enabled }: { enabled: boolean }) {
+    this.dispatchEvent({
+      type: 'editor:recent:enable',
+      detail: enabled,
+    });
+  }
+
   bridgeSettings({ settings }: { settings: Partial<SettingsFile> }) {
     this.dispatchEvent({
       type: 'editor:bridge:settings',

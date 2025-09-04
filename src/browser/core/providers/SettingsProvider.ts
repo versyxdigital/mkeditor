@@ -118,7 +118,7 @@ export class SettingsProvider {
     this.registerWhitespaceChangeListener(toggler.whitespace);
     this.registerSystemThemeOverrideChangeListener(toggler.systemtheme);
     this.registerScrollSyncChangeListener(toggler.scrollsync);
-    this.registerStateEnabledChangeListener(toggler.stateEnabled);
+    this.registerRecentItemsEnabledChangeListener(toggler.stateEnabled);
     this.registerLaunchWithLastChangeListener(toggler.launchWithLast);
     this.setUIState();
   }
@@ -449,11 +449,11 @@ export class SettingsProvider {
    * @param handler - the handler
    * @returns this
    */
-  private registerStateEnabledChangeListener(handler: Element) {
+  private registerRecentItemsEnabledChangeListener(handler: Element) {
     handler.addEventListener('click', (event) => {
       const target = <HTMLInputElement>event.target;
       this.setSetting('stateEnabled', target.checked);
-      this.setStateEnabled();
+      this.setRecentItemsEnabled();
       this.persist();
     });
 
@@ -465,8 +465,11 @@ export class SettingsProvider {
    *
    * @returns this
    */
-  public setStateEnabled() {
-    // TODO bridge event to disable state in main process
+  public setRecentItemsEnabled() {
+    this.dispatcher.setRecentItemsEnabled({ 
+      enabled: this.settings.stateEnabled
+    });
+
     return this;
   }
 

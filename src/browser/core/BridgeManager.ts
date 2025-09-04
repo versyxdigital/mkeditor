@@ -72,6 +72,13 @@ export class BridgeManager {
     this.dispatcher.addEventListener('editor:bridge:settings', (event) => {
       this.saveSettingsToFile(event.detail);
     });
+
+    // Configure event listener for a recent items switch event.
+    this.dispatcher.addEventListener('editor:recent:enable', (event) => {
+      this.bridge.send('to:recent:enable', {
+        enabled: event.detail,
+      });
+    });
   }
 
   /**
