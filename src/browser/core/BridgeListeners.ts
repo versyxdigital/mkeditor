@@ -52,9 +52,9 @@ export function registerBridgeListeners(
   bridge.receive('from:settings:set', (s: SettingsFile) => {
     loadSettingsFromBridgeListener(s);
     providers.settings?.setSettings(s);
-    providers.settings?.registerDOMListeners();
+    providers.settings?.registerChangeListeners();
     providers.exportSettings?.setSettings(s.exportSettings);
-    providers.exportSettings?.registerDOMListeners();
+    providers.exportSettings?.registerChangeListeners();
   });
 
   // Enable new files from outside of the renderer execution context.

@@ -32,10 +32,8 @@ export class SettingsProvider {
     this.mode = mode;
     this.mkeditor = mkeditor;
     this.dispatcher = dispatcher;
-
     this.loadSettings();
-
-    this.registerDOMListeners();
+    this.registerChangeListeners();
   }
 
   /**
@@ -107,7 +105,7 @@ export class SettingsProvider {
   /**
    * Register DOM event listeners for changes to editor settings.
    */
-  public registerDOMListeners() {
+  public registerChangeListeners() {
     const toggler = dom.settings;
     this.populateLocaleOptions(toggler.locale);
     this.registerLocaleChangeListener(toggler.locale);
