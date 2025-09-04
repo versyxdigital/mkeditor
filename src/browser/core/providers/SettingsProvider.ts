@@ -118,6 +118,8 @@ export class SettingsProvider {
     this.registerWhitespaceChangeListener(toggler.whitespace);
     this.registerSystemThemeOverrideChangeListener(toggler.systemtheme);
     this.registerScrollSyncChangeListener(toggler.scrollsync);
+    this.registerStateEnabledChangeListener(toggler.stateEnabled);
+    this.registerLaunchWithLastChangeListener(toggler.launchWithLast);
     this.setUIState();
   }
 
@@ -435,6 +437,50 @@ export class SettingsProvider {
       const target = <HTMLInputElement>event.target;
       this.setSetting('scrollsync', target.checked);
       // no-op: setting checked on editor model onDidScrollChange listener
+      this.persist();
+    });
+
+    return this;
+  }
+
+  /**
+   * Register the handler for the state enabled setting.
+   *
+   * @param handler - the handler
+   * @returns this
+   */
+  private registerStateEnabledChangeListener(handler: Element) {
+    handler.addEventListener('click', (event) => {
+      const target = <HTMLInputElement>event.target;
+      this.setSetting('stateEnabled', target.checked);
+      this.setStateEnabled();
+      this.persist();
+    });
+
+    return this;
+  }
+
+  /**
+   * Set the state enabled setting.
+   *
+   * @returns this
+   */
+  public setStateEnabled() {
+    // TODO bridge event to disable state in main process
+    return this;
+  }
+
+  /**
+   * Register the handler for the launch with last setting.
+   *
+   * @param handler - the handler
+   * @returns this
+   */
+  private registerLaunchWithLastChangeListener(handler: Element) {
+    handler.addEventListener('click', (event) => {
+      const target = <HTMLInputElement>event.target;
+      this.setSetting('launchWithLast', target.checked);
+      // no-op: will affect next launch
       this.persist();
     });
 
