@@ -114,6 +114,9 @@
     "appearance": "Apparence",
     "systemtheme_label": "Utiliser le thème du système",
     "systemtheme_help": "Laisser le thème du système remplacer vos paramètres enregistrés.",
+    "state": "Suivi des fichiers et dossiers",
+    "stateenabled_label": "Activer les éléments récents",
+    "stateenabled_help": "Activer le suivi des fichiers et dossiers récemment ouverts.",
     "language_label": "Langue",
     "language_help": "Sélectionnez la langue de l’interface.",
     "save_settings": "Enregistrer les paramètres"

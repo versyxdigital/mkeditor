@@ -114,6 +114,9 @@
     "appearance": "Aspetto",
     "systemtheme_label": "Usa tema di sistema",
     "systemtheme_help": "Consenti al tema di sistema di sostituire le impostazioni salvate.",
+    "state": "Monitoraggio di file e cartelle",
+    "stateenabled_label": "Abilita elementi recenti",
+    "stateenabled_help": "Abilita il monitoraggio di file e cartelle aperti di recente.",
     "language_label": "Lingua",
     "language_help": "Seleziona la lingua dell’interfaccia.",
     "save_settings": "Salva impostazioni"

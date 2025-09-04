@@ -114,6 +114,9 @@
     "appearance": "Apariencia",
     "systemtheme_label": "Usar tema del sistema",
     "systemtheme_help": "Permitir que el tema del sistema sobrescriba tus ajustes guardados.",
+    "state": "Seguimiento de archivos y carpetas",
+    "stateenabled_label": "Activar elementos recientes",
+    "stateenabled_help": "Activar el seguimiento de archivos y carpetas abiertos recientemente.",
     "language_label": "Idioma",
     "language_help": "Selecciona el idioma de la interfaz.",
     "save_settings": "Guardar ajustes"

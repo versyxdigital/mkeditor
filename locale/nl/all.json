@@ -114,6 +114,9 @@
     "appearance": "Uiterlijk",
     "systemtheme_label": "Systeemthema gebruiken",
     "systemtheme_help": "Het systeemthema mag je opgeslagen instellingen overschrijven.",
+    "state": "Bestanden en mappen bijhouden",
+    "stateenabled_label": "Recente items inschakelen",
+    "stateenabled_help": "Het bijhouden van recent geopende bestanden en mappen inschakelen.",
     "language_label": "Taal",
     "language_help": "Selecteer de taal van de interface.",
     "save_settings": "Instellingen opslaan"

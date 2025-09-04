@@ -18,6 +18,9 @@
   "appearance": "外観",
   "systemtheme_label": "システムテーマを使用",
   "systemtheme_help": "システムテーマが保存済み設定を上書きできるようにします。",
+  "state": "ファイル/フォルダーの追跡",
+  "stateenabled_label": "最近の項目を有効にする",
+  "stateenabled_help": "最近開いたファイルとフォルダーの追跡を有効にします。",
   "language_label": "言語",
   "language_help": "インターフェースの言語を選択します。",
   "save_settings": "設定を保存"
