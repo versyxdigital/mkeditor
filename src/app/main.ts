@@ -158,7 +158,6 @@ function main(file: string | null = null) {
       context.webContents.send('from:settings:set', settings.loadFile());
 
       // Restore last opened folder/file if configured and no file was directly requested
-      // TODO why is it a "." when opening without a file?
       if (
         !file ||
         (file.trim() === '.' && settings.getSetting('stateEnabled') === true)

@@ -67,17 +67,17 @@ export class AppBridge {
       (logger as Logger)[level](msg, meta);
     });
 
-    ipcMain.on('to:title:set', (event, title = null) => {
+    ipcMain.on('to:title:set', (_e, title = null) => {
       this.contextWindowTitle = title ? `MKEditor - ${title}` : 'MKEditor';
       this.setWindowTitle();
     });
 
-    ipcMain.on('to:editor:state', (event, hasChanged: boolean) => {
+    ipcMain.on('to:editor:state', (_e, hasChanged: boolean) => {
       this.editorContentHasChanged = hasChanged;
       this.setWindowTitle();
     });
 
-    ipcMain.on('to:settings:save', (event, { settings }) => {
+    ipcMain.on('to:settings:save', (_e, { settings }) => {
       this.providers.settings?.saveSettingsToFile(settings);
     });
 
