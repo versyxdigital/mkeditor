@@ -210,7 +210,10 @@
     "unable_save_settings_permission_denied": "No se pueden guardar los ajustes: permiso denegado.",
     "unable_save_settings_unknown_error": "No se pueden guardar los ajustes: error desconocido.",
     "update_available": "La actualización {{version}} está disponible, descargando en segundo plano...",
-    "update_downloaded": "La actualización {{version}} se ha descargado, reinicia para actualizar."
+    "update_downloaded": "La actualización {{version}} se ha descargado, reinicia para actualizar.",
+    "state_file_corrupted_reset": "El archivo de estado está dañado. Volviendo al estado predeterminado.",
+    "unable_save_state_permission_denied": "No se puede guardar el estado: permiso denegado.",
+    "unable_save_state_unknown_error": "No se puede guardar el estado: error desconocido."
   },
   "sidebar": {
     "explorer": "Explorador"

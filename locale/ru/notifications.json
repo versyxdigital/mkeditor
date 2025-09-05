@@ -28,5 +28,8 @@
   "unable_save_settings_unknown_error": "Не удалось сохранить настройки: неизвестная ошибка.",
 
   "update_available": "Доступно обновление {{version}}, скачивание в фоновом режиме…",
-  "update_downloaded": "Обновление {{version}} загружено, перезапустите для установки."
+  "update_downloaded": "Обновление {{version}} загружено, перезапустите для установки.",
+  "state_file_corrupted_reset": "Файл состояния поврежден. Возврат к состоянию по умолчанию.",
+  "unable_save_state_permission_denied": "Не удалось сохранить состояние: доступ запрещен.",
+  "unable_save_state_unknown_error": "Не удалось сохранить состояние: неизвестная ошибка."
 }

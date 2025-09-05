@@ -210,7 +210,10 @@
     "unable_save_settings_permission_denied": "Impossible d’enregistrer les paramètres : permission refusée.",
     "unable_save_settings_unknown_error": "Impossible d’enregistrer les paramètres : erreur inconnue.",
     "update_available": "Mise à jour {{version}} disponible, téléchargement en arrière-plan…",
-    "update_downloaded": "Mise à jour {{version}} téléchargée, redémarrez pour mettre à jour."
+    "update_downloaded": "Mise à jour {{version}} téléchargée, redémarrez pour mettre à jour.",
+    "state_file_corrupted_reset": "Fichier d'état corrompu. Retour à l'état par défaut.",
+    "unable_save_state_permission_denied": "Impossible d'enregistrer l'état : permission refusée.",
+    "unable_save_state_unknown_error": "Impossible d'enregistrer l'état : erreur inconnue."
   },
   "sidebar": {
     "explorer": "Explorateur"

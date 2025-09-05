@@ -210,7 +210,10 @@
     "unable_save_settings_permission_denied": "設定を保存できません: 許可が拒否されました。",
     "unable_save_settings_unknown_error": "設定を保存できません: 不明なエラー。",
     "update_available": "更新 {{version}} が利用可能です。バックグラウンドでダウンロード中…",
-    "update_downloaded": "更新 {{version}} がダウンロードされました。再起動して更新してください。"
+    "update_downloaded": "更新 {{version}} がダウンロードされました。再起動して更新してください。",
+    "state_file_corrupted_reset": "状態ファイルが破損しました。デフォルトの状態に戻します。",
+    "unable_save_state_permission_denied": "状態を保存できません: アクセスが拒否されました。",
+    "unable_save_state_unknown_error": "状態を保存できません: 不明なエラー。"
   },
   "sidebar": {
     "explorer": "エクスプローラー"

@@ -210,7 +210,10 @@
     "unable_save_settings_permission_denied": "Ayarlar kaydedilemiyor: izin reddedildi.",
     "unable_save_settings_unknown_error": "Ayarlar kaydedilemiyor: bilinmeyen hata.",
     "update_available": "Güncelleme {{version}} mevcut, arka planda indiriliyor...",
-    "update_downloaded": "Güncelleme {{version}} indirildi, güncellemek için yeniden başlatın."
+    "update_downloaded": "Güncelleme {{version}} indirildi, güncellemek için yeniden başlatın.",
+    "state_file_corrupted_reset": "Durum dosyası bozuk. Varsayılan duruma dönülüyor.",
+    "unable_save_state_permission_denied": "Durum kaydedilemiyor: izin reddedildi.",
+    "unable_save_state_unknown_error": "Durum kaydedilemiyor: bilinmeyen hata."
   },
   "sidebar": {
     "explorer": "Gezgin"
