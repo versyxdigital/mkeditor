@@ -200,8 +200,7 @@ function main(file: string | null = null) {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', (event, args) => {
-    console.log({ event, args });
+  app.on('second-instance', (_e, args) => {
     app.focus();
     // If user has opened the app via a file, then set active file.
     if (args.length >= 2) {

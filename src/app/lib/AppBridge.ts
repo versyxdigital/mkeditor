@@ -197,6 +197,9 @@ export class AppBridge {
 
     ipcMain.on('to:recent:enable', (_e, { enabled }) => {
       this.state.setEnabled(enabled);
+      if (!enabled) {
+        this.state.clearRecent();
+      }
     });
 
     ipcMain.on('to:recent:clear', () => {
