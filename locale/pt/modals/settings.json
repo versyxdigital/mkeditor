@@ -18,6 +18,9 @@
   "appearance": "Aparência",
   "systemtheme_label": "Usar tema do sistema",
   "systemtheme_help": "Permitir que o tema do sistema substitua suas configurações salvas.",
+  "state": "Rastreamento de arquivos e pastas",
+  "stateenabled_label": "Ativar itens recentes",
+  "stateenabled_help": "Ativar o rastreamento de arquivos e pastas abertos recentemente.",
   "language_label": "Idioma",
   "language_help": "Selecione o idioma da interface.",
   "save_settings": "Salvar configurações"

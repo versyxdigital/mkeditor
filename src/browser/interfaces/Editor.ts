@@ -9,6 +9,7 @@ export interface EditorSettings {
   systemtheme: boolean;
   scrollsync: boolean;
   locale: string;
+  recentItemsEnabled: boolean;
 }
 
 export interface ExportSettings {

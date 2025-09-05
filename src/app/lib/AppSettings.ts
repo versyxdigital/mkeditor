@@ -2,8 +2,8 @@ import { homedir } from 'os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { normalize } from 'path';
 import { app, type BrowserWindow } from 'electron';
+import type { LogConfig } from '../interfaces/Logging';
 import type { SettingsFile } from '../interfaces/Settings';
-import type { Providers } from '../interfaces/Providers';
 import { deepMerge, hasAllKeys, normalizeLanguage } from '../util';
 
 /**
@@ -22,10 +22,8 @@ export class AppSettings {
   /** Has been newly created with defaults */
   private isNewFile: boolean = false;
 
-  /** Providers to provide functions to the settings */
-  private providers: Providers = {
-    logger: null,
-  };
+  /** Logger */
+  private logger: LogConfig;
 
   /** Default editor settings */
   private settings: SettingsFile = {
@@ -36,6 +34,7 @@ export class AppSettings {
     minimap: true,
     systemtheme: true,
     scrollsync: true,
+    recentItemsEnabled: true,
     locale: normalizeLanguage(app.getLocale()),
     exportSettings: {
       withStyles: true,
@@ -56,8 +55,9 @@ export class AppSettings {
    * @param context - the browser window
    * @returns
    */
-  constructor(context: BrowserWindow) {
+  constructor(context: BrowserWindow, logger: LogConfig) {
     this.context = context;
+    this.logger = logger;
     this.appPath = normalize(homedir() + '/.mkeditor/');
     this.filePath = this.appPath + 'settings.json';
 
@@ -91,17 +91,6 @@ export class AppSettings {
    */
   public getSetting<K extends keyof SettingsFile>(key: K) {
     return this.applied?.[key];
-  }
-
-  /**
-   * Provide access to a provider.
-   *
-   * @param provider - the provider to access
-   * @param instance - the associated provider instance
-   * @returns
-   */
-  provide<T>(provider: string, instance: T) {
-    this.providers[provider] = instance;
   }
 
   /**
@@ -192,7 +181,7 @@ export class AppSettings {
           ? 'notifications:unable_save_settings_permission_denied'
           : 'notifications:unable_save_settings_unknown_error';
 
-      this.providers.logger?.log.error(key, err);
+      this.logger.log.error(key, err);
 
       this.context.webContents.send('from:notification:display', {
         status: 'error',

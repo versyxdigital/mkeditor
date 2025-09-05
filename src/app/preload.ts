@@ -30,6 +30,9 @@ const senderWhitelist = [
   'to:file:delete',
   'to:file:properties',
   'to:i18n:set',
+  'to:recent:open',
+  'to:recent:clear',
+  'to:recent:enable',
 ];
 
 // Can be sent from the main process and received

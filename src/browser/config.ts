@@ -11,6 +11,7 @@ export const settings: EditorSettings = {
   minimap: true,
   systemtheme: true,
   scrollsync: true,
+  recentItemsEnabled: true,
   locale: normalizeLanguage(navigator.language),
 };
 

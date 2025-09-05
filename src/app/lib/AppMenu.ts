@@ -1,6 +1,13 @@
-import { app, Menu, type BrowserWindow } from 'electron';
-import type { BridgeProviders } from '../interfaces/Providers';
+import {
+  app,
+  Menu,
+  type MenuItemConstructorOptions,
+  type BrowserWindow,
+} from 'electron';
 import { AppStorage } from './AppStorage';
+import { getPathFromUrl } from '../util';
+import type { LogConfig } from '../interfaces/Logging';
+import type { AppState } from './AppState';
 
 /**
  * AppMenu
@@ -9,36 +16,24 @@ export class AppMenu {
   /** The browser window */
   private context: BrowserWindow;
 
-  /** Providers to provide functions to the menu */
-  private providers: BridgeProviders = {
-    bridge: null,
-    logger: null,
-  };
+  /** State */
+  private state: AppState;
+
+  /** Logger */
+  private logger: LogConfig;
 
   /**
    * Create a new app menu handler to manage the app menu.
    *
    * @param context - the browser window
-   * @param register - register all menu items immediately
    * @returns
    */
-  constructor(context: BrowserWindow, register = false) {
+  constructor(context: BrowserWindow, state: AppState, logger: LogConfig) {
     this.context = context;
+    this.state = state;
+    this.logger = logger;
 
-    if (register) {
-      this.register();
-    }
-  }
-
-  /**
-   * Provide access to a provider.
-   *
-   * @param provider - the provider to access
-   * @param instance - the associated provider instance
-   * @returns
-   */
-  provide<T>(provider: string, instance: T) {
-    this.providers[provider] = instance;
+    this.register();
   }
 
   /**
@@ -46,6 +41,8 @@ export class AppMenu {
    * @returns
    */
   register() {
+    const recentSubmenu = this.buildRecentSubmenu();
+
     app.applicationMenu = Menu.buildFromTemplate([
       {
         label: 'File',
@@ -95,6 +92,17 @@ export class AppMenu {
           },
           { type: 'separator' },
           {
+            label: 'Open Recent',
+            submenu: recentSubmenu,
+          },
+          {
+            label: 'Clear All Recent',
+            click: () => {
+              this.state.clearRecent();
+            },
+          },
+          { type: 'separator' },
+          {
             label: 'Settings...',
             click: () => {
               this.context.webContents.send('from:modal:open', 'settings'); // channel / provider
@@ -103,10 +111,7 @@ export class AppMenu {
           {
             label: 'Open Log...',
             click: () => {
-              AppStorage.openPath(
-                this.context,
-                <string>this.providers.logger?.logpath,
-              );
+              AppStorage.openPath(this.context, <string>this.logger.logpath);
             },
           },
           { type: 'separator' },
@@ -177,7 +182,7 @@ export class AppMenu {
    * @param context - the browser window
    * @returns
    */
-  buildTrayContextMenu(context: BrowserWindow) {
+  public buildTrayContextMenu(context: BrowserWindow) {
     return Menu.buildFromTemplate([
       {
         label: 'Show Window',
@@ -186,21 +191,39 @@ export class AppMenu {
           context.maximize();
         },
       },
-      {
-        label: 'Open Recent',
-        role: 'recentDocuments',
-        submenu: [
-          {
-            label: 'Clear Recent',
-            role: 'clearRecentDocuments',
-          },
-        ],
-      },
+      { label: 'Open Recent', submenu: this.buildRecentSubmenu() },
       { type: 'separator' },
       {
         label: 'Quit',
         click: () => app.quit(),
       },
     ]);
+  }
+
+  /**
+   * Build the recent items submenu
+   * @returns
+   */
+  private buildRecentSubmenu() {
+    const items: MenuItemConstructorOptions[] = [];
+    const entries = this.state.getRecent() || [];
+    if (entries.length === 0) {
+      items.push({ label: 'No Recent', enabled: false });
+    } else {
+      for (const e of entries) {
+        items.push({
+          label: `${e.label}${e.type === 'folder' ? '/' : ''}`.trim(),
+          click: () => {
+            try {
+              AppStorage.openPath(this.context, getPathFromUrl(e.uri));
+            } catch {
+              this.logger.log.error('Unable to add item to recent submnu', e);
+            }
+          },
+        });
+      }
+    }
+
+    return items;
   }
 }

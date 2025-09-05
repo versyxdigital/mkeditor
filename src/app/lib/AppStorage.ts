@@ -1,7 +1,14 @@
 import { app, dialog, type BrowserWindow } from 'electron';
-import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
-import { join, dirname } from 'path';
+import {
+  statSync,
+  readFileSync,
+  writeFileSync,
+  promises as fs,
+  realpathSync,
+} from 'fs';
+import { basename, dirname, join, normalize } from 'path';
 import type { SaveFileOptions } from '../interfaces/Storage';
+import type { AppState } from './AppState';
 
 /**
  * AppStorage
@@ -9,6 +16,17 @@ import type { SaveFileOptions } from '../interfaces/Storage';
 export class AppStorage {
   /** The active file path */
   private static activeFilePath: string | null = null;
+
+  private static state: AppState | null = null;
+
+  /**
+   * Set app state singleton.
+   *
+   * @param state instance of AppState
+   */
+  static setState(state: AppState) {
+    this.state = state;
+  }
 
   /**
    * Get the path to the active file
@@ -26,15 +44,22 @@ export class AppStorage {
    * @returns
    */
   static setActiveFile(context: BrowserWindow, file: string | null = null) {
-    const filename = file ? file.split('\\').slice(-1).pop() : '';
-    const content = file ? readFileSync(file, { encoding: 'utf-8' }) : '';
+    // Normalize path to avoid duplicate tabs due to differing separators/case
+    const normalized = file ? AppStorage.toCanonicalPath(file) : null;
+    const filename = normalized ? basename(normalized) : '';
+    const content = normalized
+      ? readFileSync(normalized, { encoding: 'utf-8' })
+      : '';
 
-    AppStorage.activeFilePath = file;
+    AppStorage.activeFilePath = normalized;
 
-    if (file) app.addRecentDocument(file);
+    if (normalized) {
+      app.addRecentDocument(normalized); // electorn native
+      AppStorage.state?.addRecentPath(normalized, 'file'); // MKEditor
+    }
 
     context.webContents.send('from:file:opened', {
-      file,
+      file: normalized,
       filename,
       content,
     });
@@ -279,21 +304,27 @@ export class AppStorage {
    * @param filePath - the filepath
    * @returns
    */
-  static async openPath(context: BrowserWindow, filePath: string) {
+  static async openPath(
+    context: BrowserWindow,
+    filepath: string,
+    includeRecent: boolean = true,
+  ) {
     try {
-      if (!filePath || typeof filePath !== 'string') {
+      if (!filepath || typeof filepath !== 'string') {
         throw new Error('invalidpath');
       }
 
-      const stats = await fs.stat(filePath);
+      const p = AppStorage.toCanonicalPath(filepath);
+      const stats = await fs.stat(p);
       if (stats.isDirectory()) {
-        const tree = await AppStorage.readDirectory(filePath);
+        const tree = await AppStorage.readDirectory(p);
         context.webContents.send('from:folder:opened', {
-          path: filePath,
+          path: p,
           tree,
         });
+        if (includeRecent) AppStorage.state?.addRecentPath(p, 'folder');
       } else if (stats.isFile()) {
-        AppStorage.setActiveFile(context, filePath);
+        AppStorage.setActiveFile(context, p);
       } else {
         throw new Error('unsupported');
       }
@@ -329,11 +360,13 @@ export class AppStorage {
         throw new Error('noselection');
       }
 
-      const tree = await AppStorage.readDirectory(filePaths[0]);
+      const p = AppStorage.toCanonicalPath(filePaths[0]);
+      const tree = await AppStorage.readDirectory(p);
       context.webContents.send('from:folder:opened', {
-        path: filePaths[0],
+        path: p,
         tree,
       });
+      AppStorage.state?.addRecentPath(p, 'folder');
       return tree;
     } catch (err) {
       if ((err as Error).message !== 'noselection') {
@@ -494,5 +527,19 @@ export class AppStorage {
         return { type: 'file', name: entry.name, path: full };
       }),
     );
+  }
+
+  /**
+   * Convert a path to a canonical, OS-native format so the renderer
+   * sees a consistent string for the same file/folder.
+   */
+  private static toCanonicalPath(p: string): string {
+    try {
+      // Resolve symlinks and produce native separators/casing
+      return realpathSync.native ? realpathSync.native(p) : realpathSync(p);
+    } catch {
+      // Fall back to simple normalization when path can't be resolved yet
+      return normalize(p);
+    }
   }
 }

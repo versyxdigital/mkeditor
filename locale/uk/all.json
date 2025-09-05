@@ -114,6 +114,9 @@
     "appearance": "Вигляд",
     "systemtheme_label": "Використовувати системну тему",
     "systemtheme_help": "Дозволити системній темі перевизначати збережені налаштування.",
+    "state": "Відстеження файлів і папок",
+    "stateenabled_label": "Увімкнути нещодавні елементи",
+    "stateenabled_help": "Увімкнути відстеження нещодавно відкритих файлів і папок.",
     "language_label": "Мова",
     "language_help": "Виберіть мову інтерфейсу.",
     "save_settings": "Зберегти налаштування"
@@ -207,7 +210,10 @@
     "unable_save_settings_permission_denied": "Не вдалося зберегти налаштування: доступ заборонено.",
     "unable_save_settings_unknown_error": "Не вдалося зберегти налаштування: невідома помилка.",
     "update_available": "Оновлення {{version}} доступне, завантаження у фоновому режимі…",
-    "update_downloaded": "Оновлення {{version}} завантажено, перезапустіть для оновлення."
+    "update_downloaded": "Оновлення {{version}} завантажено, перезапустіть для оновлення.",
+    "state_file_corrupted_reset": "Файл стану пошкоджено. Повернення до стану за замовчуванням.",
+    "unable_save_state_permission_denied": "Не вдалося зберегти стан: доступ заборонено.",
+    "unable_save_state_unknown_error": "Не вдалося зберегти стан: невідома помилка."
   },
   "sidebar": {
     "explorer": "Провідник"

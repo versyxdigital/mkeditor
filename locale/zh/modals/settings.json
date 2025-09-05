@@ -18,6 +18,9 @@
   "appearance": "外观",
   "systemtheme_label": "使用系统主题",
   "systemtheme_help": "允许系统主题覆盖已保存的设置。",
+  "state": "文件和文件夹跟踪",
+  "stateenabled_label": "启用最近项目",
+  "stateenabled_help": "启用对最近打开的文件和文件夹的跟踪。",
   "language_label": "语言",
   "language_help": "选择界面语言。",
   "save_settings": "保存设置"

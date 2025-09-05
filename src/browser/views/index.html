@@ -648,7 +648,7 @@
               >.
             </p>
             <hr />
-            <p class="text-muted">
+            <p class="text-muted mb-2">
               <strong data-i18n-text="modals-settings:formatting"
                 >Formatting</strong
               >
@@ -694,10 +694,6 @@
                 >
               </label>
             </div>
-            <hr />
-            <p class="text-muted">
-              <strong data-i18n-text="modals-settings:editing">Editing</strong>
-            </p>
             <div class="form-check mt-3">
               <input
                 type="checkbox"
@@ -719,58 +715,90 @@
               </label>
             </div>
             <hr />
-            <p class="text-muted">
+            <p class="text-muted mb-2">
               <strong data-i18n-text="modals-settings:miscellaneous"
                 >Miscellaneous</strong
               >
             </p>
-            <div class="form-check mt-3">
-              <input
-                type="checkbox"
-                class="form-check-input setting"
-                id="minimap-setting"
-              />
-              <label
-                class="form-check-label d-flex flex-column"
-                for="minimap-setting"
-              >
-                <span data-i18n-text="modals-settings:minimap_label"
-                  >Display minimap</span
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="form-check">
+                <input
+                  type="checkbox"
+                  class="form-check-input setting"
+                  id="minimap-setting"
+                />
+                <label
+                  class="form-check-label d-flex flex-column"
+                  for="minimap-setting"
                 >
-                <small
-                  class="text-muted"
-                  data-i18n-text="modals-settings:minimap_help"
-                  >Display the editor minimap.</small
+                  <span data-i18n-text="modals-settings:minimap_label"
+                    >Display minimap</span
+                  >
+                  <small
+                    class="text-muted"
+                    data-i18n-text="modals-settings:minimap_help"
+                    >Display the editor minimap.</small
+                  >
+                </label>
+              </div>
+              <div class="form-check">
+                <input
+                  type="checkbox"
+                  class="form-check-input setting"
+                  id="scrollsync-setting"
+                />
+                <label
+                  class="form-check-label d-flex flex-column"
+                  for="scrollsync-setting"
                 >
-              </label>
-            </div>
-            <div class="form-check mt-3">
-              <input
-                type="checkbox"
-                class="form-check-input setting"
-                id="scrollsync-setting"
-              />
-              <label
-                class="form-check-label d-flex flex-column"
-                for="scrollsync-setting"
-              >
-                <span data-i18n-text="modals-settings:scrollsync_label"
-                  >Use scroll sync</span
-                >
-                <small
-                  class="text-muted"
-                  data-i18n-text="modals-settings:scrollsync_help"
-                  >Enable scroll sync between the editor and the preview.</small
-                >
-              </label>
+                  <span data-i18n-text="modals-settings:scrollsync_label"
+                    >Use scroll sync</span
+                  >
+                  <small
+                    class="text-muted"
+                    data-i18n-text="modals-settings:scrollsync_help"
+                    >Enable scroll sync between the editor and the
+                    preview.</small
+                  >
+                </label>
+              </div>
             </div>
             <hr />
-            <p class="text-muted">
+            <p class="text-muted mb-2">
+              <strong data-i18n-text="modals-settings:state"
+                >File/Folder Tracking</strong
+              >
+            </p>
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="form-check">
+                <input
+                  type="checkbox"
+                  class="form-check-input setting"
+                  id="recent-items-enabled-setting"
+                />
+                <label
+                  class="form-check-label d-flex flex-column"
+                  for="recent-items-enabled-setting"
+                >
+                  <span data-i18n-text="modals-settings:stateenabled_label"
+                    >Enable recent items</span
+                  >
+                  <small
+                    class="text-muted"
+                    data-i18n-text="modals-settings:stateenabled_help"
+                    >Enable tracking of recently opened files and
+                    folders.</small
+                  >
+                </label>
+              </div>
+            </div>
+            <hr />
+            <p class="text-muted mb-2">
               <strong data-i18n-text="modals-settings:appearance"
                 >Appearance</strong
               >
             </p>
-            <div class="form-check mt-3">
+            <div class="form-check">
               <input
                 type="checkbox"
                 class="form-check-input setting"
@@ -793,7 +821,7 @@
             <div class="form-group mt-3">
               <label
                 for="locale-setting"
-                class="form-label"
+                class="form-label text-muted"
                 data-i18n-text="modals-settings:language_label"
                 >Language</label
               >

@@ -18,6 +18,9 @@
   "appearance": "Görünüm",
   "systemtheme_label": "Sistem temasını kullan",
   "systemtheme_help": "Sistem temasının kaydedilmiş ayarları değiştirmesine izin ver.",
+  "state": "Dosya ve klasör takibi",
+  "stateenabled_label": "Son öğeleri etkinleştir",
+  "stateenabled_help": "Son açılan dosya ve klasörlerin takibini etkinleştir.",
   "language_label": "Dil",
   "language_help": "Arayüz dilini seçin.",
   "save_settings": "Ayarları kaydet"

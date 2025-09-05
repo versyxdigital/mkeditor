@@ -114,6 +114,9 @@
     "appearance": "Uiterlijk",
     "systemtheme_label": "Systeemthema gebruiken",
     "systemtheme_help": "Het systeemthema mag je opgeslagen instellingen overschrijven.",
+    "state": "Bestanden en mappen bijhouden",
+    "stateenabled_label": "Recente items inschakelen",
+    "stateenabled_help": "Het bijhouden van recent geopende bestanden en mappen inschakelen.",
     "language_label": "Taal",
     "language_help": "Selecteer de taal van de interface.",
     "save_settings": "Instellingen opslaan"
@@ -207,7 +210,10 @@
     "unable_save_settings_permission_denied": "Kan instellingen niet opslaan: toegang geweigerd.",
     "unable_save_settings_unknown_error": "Kan instellingen niet opslaan: onbekende fout.",
     "update_available": "Update {{version}} is beschikbaar, wordt op de achtergrond gedownload...",
-    "update_downloaded": "Update {{version}} is gedownload, herstart om bij te werken."
+    "update_downloaded": "Update {{version}} is gedownload, herstart om bij te werken.",
+    "state_file_corrupted_reset": "Statusbestand beschadigd. Standaardstatus wordt hersteld.",
+    "unable_save_state_permission_denied": "Kan status niet opslaan: toegang geweigerd.",
+    "unable_save_state_unknown_error": "Kan status niet opslaan: onbekende fout."
   },
   "sidebar": {
     "explorer": "Verkenner"

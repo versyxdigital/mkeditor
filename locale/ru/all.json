@@ -114,6 +114,9 @@
     "appearance": "Оформление",
     "systemtheme_label": "Использовать системную тему",
     "systemtheme_help": "Позволить системной теме переопределять сохранённые настройки.",
+    "state": "Отслеживание файлов и папок",
+    "stateenabled_label": "Включить недавние элементы",
+    "stateenabled_help": "Включить отслеживание недавно открытых файлов и папок.",
     "language_label": "Язык",
     "language_help": "Выберите язык интерфейса.",
     "save_settings": "Сохранить настройки"
@@ -207,7 +210,10 @@
     "unable_save_settings_permission_denied": "Не удалось сохранить настройки: доступ запрещён.",
     "unable_save_settings_unknown_error": "Не удалось сохранить настройки: неизвестная ошибка.",
     "update_available": "Доступно обновление {{version}}, скачивание в фоновом режиме…",
-    "update_downloaded": "Обновление {{version}} загружено, перезапустите для установки."
+    "update_downloaded": "Обновление {{version}} загружено, перезапустите для установки.",
+    "state_file_corrupted_reset": "Файл состояния поврежден. Возврат к состоянию по умолчанию.",
+    "unable_save_state_permission_denied": "Не удалось сохранить состояние: доступ запрещен.",
+    "unable_save_state_unknown_error": "Не удалось сохранить состояние: неизвестная ошибка."
   },
   "sidebar": {
     "explorer": "Проводник"

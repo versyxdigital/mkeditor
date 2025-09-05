@@ -28,5 +28,8 @@
   "unable_save_settings_unknown_error": "Einstellungen können nicht gespeichert werden: Unbekannter Fehler.",
 
   "update_available": "Update {{version}} ist verfügbar, wird im Hintergrund heruntergeladen...",
-  "update_downloaded": "Update {{version}} wurde heruntergeladen, zum Aktualisieren neu starten."
+  "update_downloaded": "Update {{version}} wurde heruntergeladen, zum Aktualisieren neu starten.",
+  "state_file_corrupted_reset": "Statusdatei beschädigt. Standardzustand wird wiederhergestellt.",
+  "unable_save_state_permission_denied": "Status kann nicht gespeichert werden: Zugriff verweigert.",
+  "unable_save_state_unknown_error": "Status kann nicht gespeichert werden: Unbekannter Fehler."
 }

@@ -19,7 +19,7 @@ export class ExportSettingsProvider {
     this.mode = mode;
     this.dispatcher = dispatcher;
     this.loadSettings();
-    this.registerDOMListeners();
+    this.registerChangeListeners();
   }
 
   public getDefaultSettings() {
@@ -74,7 +74,7 @@ export class ExportSettingsProvider {
     syncPreviewToExportSettings(settings, dom.preview.dom);
   }
 
-  public registerDOMListeners() {
+  public registerChangeListeners() {
     if (this.registered) return;
     this.registered = true;
     const { exports: ex, buttons } = dom;

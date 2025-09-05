@@ -58,10 +58,59 @@ export class FileTreeManager {
 
     let parent: HTMLElement;
     if (!this.treeRoot || parentPath === this.treeRoot) {
+      // Rebuild the entire tree starting from the root path and show the
+      // top-level folder as the root node in the explorer.
       dom.filetree.innerHTML = '';
-      parent = dom.filetree;
       this.directoryMap.clear();
-      this.directoryMap.set(parentPath, dom.filetree);
+
+      // Create a visible root directory node for the opened folder
+      const rootLi = document.createElement('li');
+      rootLi.classList.add('ft-node', 'directory');
+      rootLi.dataset.path = parentPath;
+      rootLi.dataset.hasChildren = tree && tree.length > 0 ? 'true' : 'false';
+
+      const span = document.createElement('span');
+      span.classList.add('file-name');
+
+      const chevron = document.createElement('span');
+      chevron.classList.add('me-1');
+      // Root starts expanded by default
+      chevron.innerHTML = '<i class="fa fa-chevron-down"></i>';
+      chevron.style.display = 'inline-block';
+      chevron.style.fontSize = '0.7em';
+      if (
+        !rootLi.dataset.hasChildren ||
+        rootLi.dataset.hasChildren === 'false'
+      ) {
+        chevron.firstElementChild?.classList.add('invisible');
+      }
+      span.appendChild(chevron);
+
+      const icon = document.createElement('span');
+      icon.classList.add('me-1');
+      // Root starts expanded, so use open-folder icon
+      icon.innerHTML = '<i class="fa fa-folder-open"></i>';
+      span.appendChild(icon);
+
+      // Use the basename of the root path for the label
+      const parts = parentPath.split(/[/\\]/).filter(Boolean);
+      span.append(parts[parts.length - 1] || parentPath);
+
+      rootLi.appendChild(span);
+
+      // Child list for the root directory (visible by default)
+      const rootUl = document.createElement('ul');
+      rootUl.classList.add('list-unstyled', 'ps-3');
+      rootUl.style.display = '';
+      // Mark as loaded to avoid re-fetching when toggling the root
+      rootUl.dataset.loaded = 'true';
+      rootLi.appendChild(rootUl);
+
+      dom.filetree.appendChild(rootLi);
+
+      parent = rootUl;
+      // Map the root path to its child UL for further population
+      this.directoryMap.set(parentPath, rootUl);
     } else {
       const ul = this.directoryMap.get(parentPath);
       if (!ul) {
@@ -191,7 +240,11 @@ export class FileTreeManager {
           li.dataset.hasChildren === 'true' &&
           li.dataset.path
         ) {
-          this.bridge.send('to:file:openpath', { path: li.dataset.path });
+          // Load directory contents without polluting the "Recent" list
+          this.bridge.send('to:file:openpath', {
+            path: li.dataset.path,
+            recent: false,
+          });
         }
       }
     } else if (li.classList.contains('file') && li.dataset.path) {

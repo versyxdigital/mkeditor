@@ -114,6 +114,9 @@
     "appearance": "外観",
     "systemtheme_label": "システムテーマを使用",
     "systemtheme_help": "システムテーマが保存済み設定を上書きできるようにします。",
+    "state": "ファイル/フォルダーの追跡",
+    "stateenabled_label": "最近の項目を有効にする",
+    "stateenabled_help": "最近開いたファイルとフォルダーの追跡を有効にします。",
     "language_label": "言語",
     "language_help": "インターフェースの言語を選択します。",
     "save_settings": "設定を保存"
@@ -207,7 +210,10 @@
     "unable_save_settings_permission_denied": "設定を保存できません: 許可が拒否されました。",
     "unable_save_settings_unknown_error": "設定を保存できません: 不明なエラー。",
     "update_available": "更新 {{version}} が利用可能です。バックグラウンドでダウンロード中…",
-    "update_downloaded": "更新 {{version}} がダウンロードされました。再起動して更新してください。"
+    "update_downloaded": "更新 {{version}} がダウンロードされました。再起動して更新してください。",
+    "state_file_corrupted_reset": "状態ファイルが破損しました。デフォルトの状態に戻します。",
+    "unable_save_state_permission_denied": "状態を保存できません: アクセスが拒否されました。",
+    "unable_save_state_unknown_error": "状態を保存できません: 不明なエラー。"
   },
   "sidebar": {
     "explorer": "エクスプローラー"

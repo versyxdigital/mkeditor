@@ -10,6 +10,7 @@ import type {
   ValidCommand,
   DropdownProviders,
 } from '../../interfaces/Providers';
+import type { ContextBridgeAPI } from '../../interfaces/Bridge';
 import { commands, alertblocks, codeblocks } from '../mappings/editorCommands';
 import { getOSPlatform } from '../../util';
 import { dom } from '../../dom';
@@ -182,6 +183,21 @@ export class CommandProvider {
         },
       });
     }
+  }
+
+  /**
+   * Register desktop-only commands.
+   *
+   * @param bridge execution bridge handler
+   */
+  public registerDesktopOnly(bridge: ContextBridgeAPI) {
+    this.mkeditor.addAction({
+      id: 'clear-recent',
+      label: 'Clear All Recent Items',
+      run: () => {
+        bridge.send('to:recent:clear', null);
+      },
+    });
   }
 
   /**

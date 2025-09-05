@@ -114,6 +114,9 @@
     "appearance": "Appearance",
     "systemtheme_label": "Use system theme",
     "systemtheme_help": "Let your system theme override your stored settings.",
+    "state": "File/Folder Tracking",
+    "stateenabled_label": "Enable recent items",
+    "stateenabled_help": "Enable tracking of recently opened files and folders.",
     "language_label": "Language",
     "language_help": "Select the interface language.",
     "save_settings": "Save Settings"
@@ -206,6 +209,9 @@
     "settings_update_success": "Settings successfully updated.",
     "unable_save_settings_permission_denied": "Unable to save settings: permission denied.",
     "unable_save_settings_unknown_error": "Unable to save settings: unknown error.",
+    "state_file_corrupted_reset": "State file, corrupted. Returning to default state.",
+    "unable_save_state_permission_denied": "Unable to save state: permission denied.",
+    "unable_save_state_unknown_error": "Unable to save state: unknown error.",
     "update_available": "Update {{version}} is available, downloading in the background...",
     "update_downloaded": "Update {{version}} has been downloaded, restart to update."
   },

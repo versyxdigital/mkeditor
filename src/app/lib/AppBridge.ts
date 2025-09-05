@@ -1,9 +1,10 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { dirname, resolve } from 'path';
-import type { SettingsProviders } from '../interfaces/Providers';
-import type { Logger, LogMessage } from '../interfaces/Logging';
+import type { Logger, LogMessage, LogConfig } from '../interfaces/Logging';
 import { AppStorage } from './AppStorage';
 import { normalizeLanguage } from '../util';
+import type { AppSettings } from './AppSettings';
+import type { AppState } from './AppState';
 /**
  * AppBridge
  */
@@ -17,36 +18,33 @@ export class AppBridge {
   /** Flag to determine whether content has changed */
   private editorContentHasChanged: boolean = false;
 
-  /** Providers to provide functions to the bridge */
-  private providers: SettingsProviders = {
-    logger: null,
-    settings: null,
-  };
+  /** Logger */
+  private logger: LogConfig;
+
+  /** Settings */
+  private settings: AppSettings;
+
+  /** State */
+  private state: AppState;
 
   /**
    * Create a new AppBridge instance to manage IPC traffic.
    *
    * @param context - the browser window
-   * @param register - register all IPC listeners immediately
    * @returns
    */
-  constructor(context: BrowserWindow, register = false) {
+  constructor(
+    context: BrowserWindow,
+    settings: AppSettings,
+    state: AppState,
+    logger: LogConfig,
+  ) {
     this.context = context;
+    this.settings = settings;
+    this.state = state;
+    this.logger = logger;
 
-    if (register) {
-      this.register();
-    }
-  }
-
-  /**
-   * Provide access to a provider.
-   *
-   * @param provider - the provider to access
-   * @param instance - the associated provider instance
-   * @returns
-   */
-  provide<T>(provider: string, instance: T) {
-    this.providers[provider] = instance;
+    this.register();
   }
 
   /**
@@ -56,7 +54,7 @@ export class AppBridge {
   register() {
     // Enable logging from the renderer context
     ipcMain.on('log', (_e, { level, msg, meta }: LogMessage) => {
-      const logger = this.providers.logger?.log;
+      const logger = this.logger.log;
       if (!logger) return;
 
       if (
@@ -71,24 +69,20 @@ export class AppBridge {
       (logger as Logger)[level](msg, meta);
     });
 
-    // Set the app window title
-    ipcMain.on('to:title:set', (event, title = null) => {
+    ipcMain.on('to:title:set', (_e, title = null) => {
       this.contextWindowTitle = title ? `MKEditor - ${title}` : 'MKEditor';
       this.setWindowTitle();
     });
 
-    // Set the editor state to track content changes in the main process.
-    ipcMain.on('to:editor:state', (event, hasChanged: boolean) => {
+    ipcMain.on('to:editor:state', (_e, hasChanged: boolean) => {
       this.editorContentHasChanged = hasChanged;
       this.setWindowTitle();
     });
 
-    // Save editor settings to file (~/.mkeditor/settings.json)
-    ipcMain.on('to:settings:save', (event, { settings }) => {
-      this.providers.settings?.saveSettingsToFile(settings);
+    ipcMain.on('to:settings:save', (_e, { settings }) => {
+      this.settings.saveSettingsToFile(settings);
     });
 
-    // Export rendered HTML, triggered from the renderer process
     ipcMain.on('to:html:export', (event, { content }) => {
       AppStorage.saveFile(this.context, {
         id: event.sender.id,
@@ -97,7 +91,6 @@ export class AppBridge {
       });
     });
 
-    // Export rendered HTML to PDF
     ipcMain.on('to:pdf:export', async (event, { content }) => {
       const offscreen = new BrowserWindow({
         show: false,
@@ -111,15 +104,12 @@ export class AppBridge {
       });
     });
 
-    // Create a new file, linked to the application menu
     ipcMain.on('to:file:new', () => {
       AppStorage.createNewFile(this.context).then(() => {
         this.setWindowTitle();
       });
     });
 
-    // Open a new file, forwarded from the renderer process
-    // via received from:file:open event.
     ipcMain.on('to:file:open', () => {
       AppStorage.showOpenDialog(this.context);
     });
@@ -128,14 +118,13 @@ export class AppBridge {
       AppStorage.openDirectory(this.context);
     });
 
-    ipcMain.on('to:file:openpath', (event, { path }: { path: string }) => {
-      AppStorage.openPath(this.context, path);
-    });
+    ipcMain.on(
+      'to:file:openpath',
+      (_, { path, recent }: { path: string; recent?: boolean }) => {
+        AppStorage.openPath(this.context, path, recent !== false);
+      },
+    );
 
-    // Save an existing file, this is also used by the renderer bridge "from:file:open" listener, if
-    // editor content changes are detected by logic in the renderer process, the renderer bridge will
-    // submit a save event to this channel with prompt and fromOpen both defined, otherwise it'll just
-    // submit an open event directly to the "to:file:open" channel instead.
     ipcMain.on(
       'to:file:save',
       async (
@@ -175,10 +164,6 @@ export class AppBridge {
       },
     );
 
-    // Save as event, doesn't require checks on "activeFile",
-    // this will simply just call AppStorage save and triger
-    // the dialog for the user to save the file to the location
-    // of their choice.
     ipcMain.on('to:file:saveas', (event, data) => {
       AppStorage.saveFile(this.context, {
         id: event.sender.id,
@@ -210,21 +195,32 @@ export class AppBridge {
       event.sender.send('from:path:properties', info);
     });
 
-    // mked:// protocol handlers
+    ipcMain.on('to:recent:enable', (_e, { enabled }) => {
+      this.state.setEnabled(enabled);
+      if (!enabled) {
+        this.state.clearRecent();
+      }
+    });
+
+    ipcMain.on('to:recent:clear', () => {
+      try {
+        this.state.clearRecent();
+      } catch (e) {
+        this.logger.log.error('[to:recent:clear]', e);
+      }
+    });
+
     ipcMain.on('mked:get-active-file', (event) => {
       event.returnValue = AppStorage.getActiveFilePath();
     });
 
-    // Provide app locale to renderer
     ipcMain.on('mked:get-locale', (event) => {
       const locale =
-        this.providers.settings?.getSetting('locale') ??
+        this.settings.getSetting('locale') ??
         normalizeLanguage(app.getLocale());
       event.returnValue = locale;
     });
 
-    // Provide path resolution through IPC to avoid having to set
-    // nodeIntegration to true.
     ipcMain.handle('mked:path:dirname', (_e, p: string) => dirname(p));
     ipcMain.handle('mked:path:resolve', (_e, base: string, rel: string) =>
       resolve(base, rel),
@@ -234,16 +230,15 @@ export class AppBridge {
       try {
         this.handleMkedUrl(url);
       } catch (e) {
-        this.providers.logger?.log.error('[mked:open-url]', e);
+        this.logger.log.error('[mked:open-url]', e);
       }
     });
 
-    // Broadcast language changes to the renderer
     ipcMain.on('to:i18n:set', (_e, lng: string) => {
       try {
         this.context.webContents.send('from:i18n:set', lng);
       } catch (e) {
-        this.providers.logger?.log.error('[to:i18n:set]', e);
+        this.logger.log.error('[to:i18n:set]', e);
       }
     });
   }
@@ -262,9 +257,7 @@ export class AppBridge {
         AppStorage.openActiveFile(this.context, path);
       }
     } catch {
-      this.providers.logger?.log.error(
-        `Malformed path to linked document: ${url}`,
-      );
+      this.logger.log.error(`Malformed path to linked document: ${url}`);
     }
   }
 

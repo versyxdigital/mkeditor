@@ -11,13 +11,15 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log/main';
 import { existsSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
-import { join, normalize } from 'path';
+import { join, normalize, dirname } from 'path';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
 import type { LogConfig } from './interfaces/Logging';
+import { AppState } from './lib/AppState';
+import { getPathFromUrl } from './util';
 
 /** --------------------App Logging------------------------------- */
 
@@ -86,48 +88,47 @@ function main(file: string | null = null) {
   // Load the editor frontend
   context.loadFile(join(__dirname, '../index.html'));
 
-  // Prevent navigation to links within the BrowserWindow. This is usually
-  // emitted when a user clicks a link that would cause a full page load.
-  // Instead of preventing the app's main window from being redirected, we
-  // block it here and then handle links navigation further down below.*
+  // Prevent navigation to links within the BrowserWindow.
   context.webContents.on('will-navigate', (event) => event.preventDefault());
 
-  // Load the main process settings handler
-  const settings = new AppSettings(context);
-  settings.provide('logger', logconfig);
+  // Create settings handler for editor settings
+  const settings = new AppSettings(context, logconfig);
 
-  // Load the main process "bridge" to handle IPC traffic across
-  // execution contexts.
-  const bridge = new AppBridge(context);
-  bridge.provide('settings', settings);
-  bridge.provide('logger', logconfig);
-  bridge.register(); // Register all IPC event listeners
+  // Create app state handler for managing recent items
+  const state = new AppState(context, logconfig);
+  state.setEnabled(settings.getSetting('recentItemsEnabled') ?? true);
 
-  // Load the electron application menu
-  const menu = new AppMenu(context);
-  menu.provide('logger', logconfig);
-  menu.register(); // Register all menu items
+  // Provide singleton access to state handler
+  AppStorage.setState(state);
 
-  // Configure the app's tray icon and context menu
+  // Create app menu handler and build menu items
+  const menu = new AppMenu(context, state, logconfig);
+
+  // Rebuild menu items when state changes (e.g. recent items)
+  state.onDidStateChange(() => menu.register());
+
+  // Create app bridge handler for IPC traffic management
+  const bridge = new AppBridge(context, settings, state, logconfig);
+
+  // Configure the app system tray icon
   const tray = new Tray(nativeImage.createFromDataURL(iconBase64()));
   tray.setContextMenu(menu.buildTrayContextMenu(context));
   tray.setToolTip('MKEditor');
   tray.setTitle('MKEditor');
 
-  // Register the mked:// protocol for opening linked markdown documents
-  // in new tabs from within the editor.*
+  // Register the mked:// protocol handler
   protocol.handle('mked', (request) => {
     bridge.handleMkedUrl(request.url);
-    return new Response(''); // satisfy the protocol
+    return new Response('');
   });
 
   // Set the window open handler for HTTP(S) URLs.*
   context.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url); // Use the user's default browser
-    return { action: 'deny' }; // No new window in main process
+    shell.openExternal(url);
+    return { action: 'deny' };
   });
 
-  // On finished frotend loading, set the editor theme and settings,
+  // On finished frontend loading, set the editor theme and settings,
   // and set the active file (untitled new file if no file open).
   context.webContents.on('did-finish-load', () => {
     if (context) {
@@ -139,8 +140,45 @@ function main(file: string | null = null) {
       } else {
         context.webContents.send('from:theme:set', settings.applied?.darkmode);
       }
+
       context.webContents.send('from:settings:set', settings.loadFile());
-      AppStorage.openActiveFile(context, file);
+
+      // Restore last opened folder/file if configured and no file was directly requested
+      if (
+        !file ||
+        (file.trim() === '.' &&
+          settings.getSetting('recentItemsEnabled') === true)
+      ) {
+        const recents = state.getRecent();
+        const top = recents[0];
+
+        if (top) {
+          try {
+            if (top.type === 'folder') {
+              // Open the most recent folder only
+              const folderPath = getPathFromUrl(top.uri);
+              AppStorage.openPath(context, folderPath);
+            } else {
+              // Open the most recent file and the last opened folder
+              const filePath = getPathFromUrl(top.uri);
+              const lastFolderEntry = recents.find((e) => e.type === 'folder');
+              const folderPath = lastFolderEntry
+                ? getPathFromUrl(lastFolderEntry.uri)
+                : dirname(filePath);
+
+              // Open the folder first so the file remains most recent
+              if (folderPath) AppStorage.openPath(context, folderPath);
+              AppStorage.openPath(context, filePath);
+            }
+          } catch (e) {
+            log.error('Unable to restore from recent entries', e);
+          }
+        } else {
+          AppStorage.openActiveFile(context, file);
+        }
+      } else {
+        AppStorage.openActiveFile(context, file);
+      }
     }
   });
 
@@ -162,8 +200,7 @@ function main(file: string | null = null) {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', (event, args) => {
-    console.log({ event, args });
+  app.on('second-instance', (_e, args) => {
     app.focus();
     // If user has opened the app via a file, then set active file.
     if (args.length >= 2) {

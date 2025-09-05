@@ -114,6 +114,9 @@
     "appearance": "Görünüm",
     "systemtheme_label": "Sistem temasını kullan",
     "systemtheme_help": "Sistem temasının kaydedilmiş ayarları değiştirmesine izin ver.",
+    "state": "Dosya ve klasör takibi",
+    "stateenabled_label": "Son öğeleri etkinleştir",
+    "stateenabled_help": "Son açılan dosya ve klasörlerin takibini etkinleştir.",
     "language_label": "Dil",
     "language_help": "Arayüz dilini seçin.",
     "save_settings": "Ayarları kaydet"
@@ -207,7 +210,10 @@
     "unable_save_settings_permission_denied": "Ayarlar kaydedilemiyor: izin reddedildi.",
     "unable_save_settings_unknown_error": "Ayarlar kaydedilemiyor: bilinmeyen hata.",
     "update_available": "Güncelleme {{version}} mevcut, arka planda indiriliyor...",
-    "update_downloaded": "Güncelleme {{version}} indirildi, güncellemek için yeniden başlatın."
+    "update_downloaded": "Güncelleme {{version}} indirildi, güncellemek için yeniden başlatın.",
+    "state_file_corrupted_reset": "Durum dosyası bozuk. Varsayılan duruma dönülüyor.",
+    "unable_save_state_permission_denied": "Durum kaydedilemiyor: izin reddedildi.",
+    "unable_save_state_unknown_error": "Durum kaydedilemiyor: bilinmeyen hata."
   },
   "sidebar": {
     "explorer": "Gezgin"

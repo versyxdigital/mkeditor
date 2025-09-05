@@ -20,5 +20,10 @@
     "confirm_delete_file_title": "Excluir arquivo?",
     "confirm_delete_folder_title": "Excluir pasta?",
     "confirm_delete_button": "Excluir"
+  },
+  "notifications": {
+    "state_file_corrupted_reset": "Arquivo de estado corrompido. Retornando ao estado padrão.",
+    "unable_save_state_permission_denied": "Não foi possível salvar o estado: permissão negada.",
+    "unable_save_state_unknown_error": "Não foi possível salvar o estado: erro desconhecido."
   }
 }

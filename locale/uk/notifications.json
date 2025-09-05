@@ -28,5 +28,8 @@
   "unable_save_settings_unknown_error": "Не вдалося зберегти налаштування: невідома помилка.",
 
   "update_available": "Оновлення {{version}} доступне, завантаження у фоновому режимі…",
-  "update_downloaded": "Оновлення {{version}} завантажено, перезапустіть для оновлення."
+  "update_downloaded": "Оновлення {{version}} завантажено, перезапустіть для оновлення.",
+  "state_file_corrupted_reset": "Файл стану пошкоджено. Повернення до стану за замовчуванням.",
+  "unable_save_state_permission_denied": "Не вдалося зберегти стан: доступ заборонено.",
+  "unable_save_state_unknown_error": "Не вдалося зберегти стан: невідома помилка."
 }
