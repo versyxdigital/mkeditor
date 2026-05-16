@@ -33,23 +33,27 @@ This document describes how MKEditor is put together internally: how the two exe
 │       │   ┌──────────────────────────────────────────┐                    │
 │       │   │              index.ts (boot)             │                    │
 │       │   │  icons → i18n → Dispatcher → Editor      │                    │
-│       │   │  → Providers → (BridgeManager if desk.)  │                    │
-│       │   └──┬───────────────┬───────────────────────┘                    │
-│       │      │               │                                            │
-│       │      v               v                                            │
-│  ┌────┴─────────────┐   ┌────────────────────┐    ┌────────────────────┐  │
-│  │  EditorManager   │   │ BridgeManager      │    │ Providers          │  │
-│  │  - Monaco (1)    │   │  - FileManager     │    │  - Settings        │  │
-│  │  - render→preview│   │  - FileTreeManager │    │  - ExportSettings  │  │
-│  │  - watch loop    │   │  - registerListn.. │    │  - Commands        │  │
-│  └─────────┬────────┘   └─────────┬──────────┘    │  - Completion      │  │
-│            │                      │               │  - MkedLink        │  │
-│            v                      v               └──────┬─────────────┘  │
-│      ┌─────────────────────────────────────────────────┐ │                │
-│      │                  dom.ts (singleton refs)        │<┘                │
-│      └─────────────────────────────────────────────────┘                  │
+│       │   │  → mount <App> → onEditorReady wires     │                    │
+│       │   │  Providers + (BridgeManager if desktop)  │                    │
+│       │   └──┬───────────────┬──────────────┬────────┘                    │
+│       │      │               │              │                             │
+│       │      v               v              v                             │
+│  ┌────┴─────────────┐  ┌──────────────┐  ┌──────────────────────────────┐ │
+│  │  EditorManager   │  │ BridgeMgr    │  │ React tree (src/browser/     │ │
+│  │  - Monaco (1)    │  │  - FileMgr   │  │   react/)                    │ │
+│  │  - watch loop    │  │  - FileTreeMgr│ │  - App + Navbar + TabBar +   │ │
+│  │  - dispatcher    │  │  - bridge    │  │    Workspace + EditorHost +  │ │
+│  │    .render()     │  │    listeners │  │    PreviewPane + EditorToolbar│ │
+│  └────────┬─────────┘  └──────┬───────┘  │  - 5 Modals + sonner Toaster │ │
+│           │                   │          │  - Contexts wrap managers via│ │
+│           v                   v          │    useSyncExternalStore      │ │
+│   ┌──────────────────────────────────────│  - Module-level *External    │ │
+│   │  Providers (Settings, ExportSettings,│    seams for non-React calls │ │
+│   │  Commands, Completion, MkedLink)     └──────────────────────────────┘ │
+│   │   - subscribe / getSnapshot / updateSetting / setPersistHandler       │ │
+│   └────────────────────────────────────────────────────────────────────────┤
 │                                                                           │
-│   Markdown (markdown-it + extensions)  ─►  preview innerHTML              │
+│   Markdown (markdown-it + extensions)  ─►  PreviewPane #preview-content   │
 │   HTMLExporter (CDN-styled)            ─►  to:html / to:pdf or web export │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
@@ -89,53 +93,106 @@ The channel whitelists are the **canonical contract** between the two processes;
 
 ## 3. Renderer Module Map
 
+The renderer has two halves: the **managers** (data + IPC, no React) under `src/browser/core/` + the seam files in `src/browser/`, and the **React tree** (UI + presentation) under `src/browser/react/`.
+
 ```
 src/browser/
-├── index.ts                       composition root
-├── i18n.ts                        i18next bundle loader + DOM binding
+├── index.ts                       composition root — mounts <App>, constructs managers,
+│                                  wires the persist-handler callbacks
+├── i18n.ts                        i18next bundle loader + data-i18n walker (splash only)
 ├── icons.ts                       FontAwesome registry
-├── dom.ts                         singleton DOM query map + tooltip/splash/split helpers
-├── util.ts                        debounce, notify (toast mixin), getOSPlatform,
-│                                  getExecutionBridge, selfRender, syncPreviewToExportSettings
+├── dom.ts                         small constant map (editor / preview / scroll meta) used by
+│                                  non-React modules (HTMLExporter, ScrollSync, LineNumber)
+├── notify.ts                      sonnerToast(level, msg) — neutral seam shared by React +
+│                                  non-React callers (BridgeListeners)
+├── splash.ts                      showSplashScreen + fade helpers (boot-time)
+├── util.ts                        debounce, getExecutionBridge, syncPreviewToExportSettings
 ├── config.ts                      default EditorSettings + ExportSettings
 ├── version.ts                     generated at build from package.json
 │
-├── views/index.html               base shell (all IDs read by dom.ts)
-├── assets/                        SCSS, icons, intro.js (welcome markdown)
+├── views/index.html               minimal shell: splash overlay, #react-root mount, bottom
+│                                  <nav> with #editor-functions and #bottom-toolbar-right
+│                                  portal hosts. All Tailwind-styled.
+├── assets/                        SCSS partials (base, editor, preview, sidebar, tabs,
+│                                  darkmode) + intro.ts (welcome markdown)
 │
-├── core/
-│   ├── EditorManager.ts           Monaco lifecycle + render loop + watch
+├── core/  (managers — data + IPC, no React)
+│   ├── EditorManager.ts           Monaco lifecycle + watch loop (dispatches editor:render)
 │   ├── Markdown.ts                markdown-it instance with all extensions
-│   ├── FileManager.ts             tab model map + open/close/save plumbing
-│   ├── FileTreeManager.ts         file tree DOM build + context menu trigger
+│   ├── FileManager.ts             tab model map + open/close (with prompt seam) + reorder
+│   ├── FileTreeManager.ts         tree model + bridge plumbing (no DOM build now)
 │   ├── BridgeManager.ts           desktop-only orchestrator (FileManager + FileTreeManager)
 │   ├── BridgeListeners.ts         registerBridgeListeners(): from:* dispatch
-│   ├── ToolbarListeners.ts        registerUIToolbarListeners(): save/export buttons
 │   ├── HTMLExporter.ts            CDN-styled standalone HTML export
 │   ├── completion/                fenced block + list marker logic
 │   ├── mappings/                  editor command table + explorer context menu items
 │   └── providers/
-│       ├── SettingsProvider.ts         Monaco options + DOM toggles + theme + persist
-│       ├── ExportSettingsProvider.ts   live preview style + debounced persist
-│       ├── CommandProvider.ts          Monaco actions, Bootstrap modals/dropdowns, chord keys
+│       ├── SettingsProvider.ts         Monaco options + theme; subscribe/getSnapshot/
+│       │                              updateSetting + setPersistHandler
+│       ├── ExportSettingsProvider.ts   live preview style + debounced persist (same surface)
+│       ├── CommandProvider.ts          Monaco actions + chord keys (drives toolbar popovers
+│       │                              via a registered setOpenDropdown callback)
 │       ├── CompletionProvider.ts       regex-triggered fenced block proposals
 │       └── MkedLinkProvider.ts         markdown-relative-link → mked://
 │
 ├── events/
 │   ├── Dispatcher.ts              minimal EventTarget-like base
-│   └── EditorDispatcher.ts        wraps it: render(), setTrackedContent(), bridgeSettings()
+│   └── EditorDispatcher.ts        wraps it: render(), setTrackedContent(), message()
 │
 ├── extensions/
 │   ├── editor/{WordCount,ScrollSync}.ts
 │   └── renderer/{AlertBlock,LineNumber,LinkTarget,ImageStyle,TableStyle}.ts
 │
-└── interfaces/
-    ├── Bridge.ts        ContextBridgeAPI ({ send, receive })
-    ├── Completion.ts    CompletionItem, Matcher
-    ├── Dispatcher.ts    Dispatcher, ListenerEvent
-    ├── Editor.ts        EditorSettings, ExportSettings, SettingsFile, EditorCommand
-    ├── File.ts          File, FileProperties, RenamedPath
-    └── Providers.ts     Providers/EditorProviders/BridgeProviders/ModalProviders/...
+├── interfaces/
+│   ├── Bridge.ts        ContextBridgeAPI ({ send, receive })
+│   ├── Completion.ts    CompletionItem, Matcher
+│   ├── Dispatcher.ts    Dispatcher, ListenerEvent
+│   ├── Editor.ts        EditorSettings, ExportSettings, SettingsFile, EditorCommand
+│   ├── File.ts          File, FileProperties, RenamedPath
+│   └── Providers.ts     Providers / EditorProviders / BridgeProviders
+│
+└── react/  (UI — React 19 + shadcn/ui + Tailwind v4)
+    ├── App.tsx                    top-level composition: providers + chrome + modals
+    ├── lib/utils.ts               cn() helper (shadcn default)
+    ├── styles/tailwind.css        @tailwind + theme tokens (light + [data-theme='dark'])
+    ├── hooks/
+    │   ├── useTranslation.ts      thin i18next.on('languageChanged') wrapper
+    │   ├── useCounts.ts           word/character count from editor:render
+    │   └── useNotify.ts           re-exports sonnerToast from src/browser/notify.ts
+    ├── contexts/
+    │   ├── ManagersContext.tsx    provides editor / file / tree / bridge / providers
+    │   ├── SettingsContext.tsx    useSyncExternalStore over SettingsProvider
+    │   ├── ExportSettingsContext.tsx     same for ExportSettingsProvider
+    │   ├── FilesContext.tsx       useSyncExternalStore over FileManager
+    │   ├── FileTreeContext.tsx    useSyncExternalStore over FileTreeManager
+    │   ├── UIStateContext.tsx     sidebar open/closed + toggle
+    │   ├── ModalsContext.tsx      open/closeModal('settings'|'shortcuts'|...) + the
+    │   │                          openModalExternal seam used by BridgeListeners +
+    │   │                          CommandProvider keybindings
+    │   ├── PromptsContext.tsx     Dialog-driven prompt/confirm; openPromptExternal /
+    │   │                          confirmExternal / promptExternal seams used by
+    │   │                          FileManager.closeTab + explorerContextMenu
+    │   └── PropertiesContext.tsx  FileProperties modal state + showPropertiesExternal
+    ├── components/
+    │   ├── Navbar.tsx             top chrome (sidebar toggle, file name, counts, cog,
+    │   │                          help) — shadcn Tooltip for icon hints
+    │   ├── TabBar.tsx             native HTML5 DnD reorder; close button → FileManager
+    │   ├── Sidebar.tsx, FileTreePanel.tsx     file explorer
+    │   ├── Workspace.tsx          react-resizable-panels editor/preview split
+    │   ├── EditorHost.tsx         Monaco mount (single useEffect, never re-mounted)
+    │   ├── EditorToolbar.tsx      shadcn Button toolbar (bold/italic/lists/...);
+    │   │                          alert/code/tables Popovers
+    │   ├── PreviewPane.tsx        subscribes to editor:render; writes Markdown.render
+    │   │                          into #preview-content innerHTML
+    │   ├── BottomToolbarRight.tsx darkmode shadcn Switch + build chip → AboutModal
+    │   ├── Icon.tsx               FontAwesome SVG wrapper (no MutationObserver)
+    │   ├── modals/
+    │   │   ├── SettingsModal.tsx       shadcn Switch/Select/Checkbox/Input
+    │   │   ├── ExportSettingsModal.tsx same
+    │   │   ├── AboutModal.tsx, ShortcutsModal.tsx, PropertiesModal.tsx
+    │   └── ui/                    shadcn copy-in primitives (Dialog, ContextMenu,
+    │                              DropdownMenu, Popover, Tooltip, Switch, Select,
+    │                              Checkbox, Input, Label, Button)
 ```
 
 ### Provider attachment
@@ -152,15 +209,25 @@ There are two "manager" classes, each with a generic `provide<T>(key, instance)`
 
 This is the only DI surface — there's no container. Order in [index.ts](../src/browser/index.ts) matters: providers are constructed, attached to the editor, then (desktop) the bridge is constructed and the _same_ provider instances are re-attached to it.
 
+After the bridge is up, the composition root calls `settings.setPersistHandler(s => bridgeManager.saveSettingsToFile(s))` and the same for `exportSettings` — providers persist directly through a callback rather than firing an event.
+
+### Manager ↔ React seam
+
+Managers do not import React or Radix; React does not own data or IPC. The two sides communicate through three patterns:
+
+1. **`useSyncExternalStore` over a manager observable surface.** Each manager exposing reactive state implements `subscribe(listener) → unsubscribe` + `getSnapshot()` returning a stable reference (only re-built on emit). `FilesContext`, `FileTreeContext`, `SettingsContext`, `ExportSettingsContext` all read this way; React re-renders only on emits.
+2. **Module-level callback seams (`*External` functions).** Non-React callers reach the React tree through plain functions: `openModalExternal`, `openPromptExternal` / `confirmExternal` / `promptExternal`, `showPropertiesExternal`, `sonnerToast`. Each is a `let` in its owning module that React's `<App>` installs at first render via a one-off `register*` call inside a sentinel component. `BridgeListeners.from:modal:open`, `from:path:properties`, `from:notification:display`, `FileManager.closeTab`, and the explorer context-menu actions all use these.
+3. **Imperative refs.** The shared `workspaceGroupRef` (`react-resizable-panels` Group) is passed from `<App>` to both `<Workspace>` and `<EditorToolbar>` so the split-reset button can call `setLayout({...})` without a DOM bridge.
+
 ### Custom event bus
 
-[EditorDispatcher](../src/browser/events/EditorDispatcher.ts) is a tiny `EventTarget`-like that other modules use to decouple the editor watch loop from settings persistence and re-renders:
+[EditorDispatcher](../src/browser/events/EditorDispatcher.ts) is a tiny `EventTarget`-like that decouples Monaco's watch loop from the React tree:
 
-- `editor:render` — fired by `FileManager.activateFile`; handled in `EditorManager` to recompute counts + preview.
-- `editor:track:content` — used to update the "originalValue" baseline that drives the "unsaved changes" star in the title bar.
-- `editor:bridge:settings` — `SettingsProvider`/`ExportSettingsProvider` emit this on a user change; `BridgeManager` listens and forwards as `to:settings:save`.
+- `editor:render` — fired by `EditorManager.watch` after a debounced re-render tick + by `FileManager.activateFile`; consumed by `<PreviewPane>` (writes `Markdown.render(...)` into `#preview-content.innerHTML`) and `useCounts` (recomputes word/character counts in the navbar).
+- `editor:track:content` — fired when a file save / open updates the baseline; consumed by `EditorManager`'s watch loop to compare against current value.
+- `message` — kept for completeness; not currently used in the React tree.
 
-There is no global event bus — every event flows through the single `EditorDispatcher` instance constructed in `index.ts`.
+`editor:bridge:settings` was dropped in Phase 9 — settings persist via the `setPersistHandler` callback described above.
 
 ## 4. Key Data Flows
 
@@ -182,23 +249,31 @@ main.ts (ready)
 Renderer (index.ts)
   ├─ icons.ts registers FA glyphs
   ├─ initI18n(mode) — prepareBindings, prefetch combined bundle, init i18next,
-  │                   apply translations, set <html lang>
+  │                   apply translations (splash <h1>), set <html lang>
   ├─ new EditorDispatcher
-  ├─ new EditorManager({init:true, watch:true})
-  │     → editor.create(...)
-  │     → registerUIToolbarListeners(...)
-  │     → onDidChangeModelContent → debounced bridge update + auto-list +
-  │                                  CompletionProvider.suggestOnValidInput +
-  │                                  setTimeout(render+counts, 150)
-  ├─ attach SettingsProvider, ExportSettingsProvider, CommandProvider,
-  │         CompletionProvider
-  ├─ if desktop:
-  │     api.receive('from:i18n:set', changeLanguage)
-  │     new BridgeManager → registers from:* listeners
-  │     attach providers to BridgeManager
-  │     new MkedLinkProvider(mkeditor)
-  │     editorManager.updateBridgedContent({init:true})
-  └─ wire splits + sidebar + splash
+  ├─ new EditorManager({mode, dispatcher})  (no Monaco yet — that's <EditorHost>'s job)
+  ├─ createRoot(#react-root).render(<App initialManagers={...} onEditorReady=…/>)
+  │     React mounts the full provider tree synchronously; <ModalsBridge>,
+  │     <PromptsBridge>, <PropertiesBridge> install the module-level seams.
+  ├─ <EditorHost> useEffect runs:
+  │     editorManager.create({mount, watch:true})  → monaco.editor.create(...)
+  │     onReady() callback fires…
+  └─ onEditorReady() in index.ts:
+       ├─ provide SettingsProvider, ExportSettingsProvider, CommandProvider,
+       │         CompletionProvider on editorManager
+       ├─ desktop only:
+       │   ├─ new BridgeManager → registers from:* listeners
+       │   ├─ attach providers to BridgeManager
+       │   ├─ wire settings.setPersistHandler(s => bridge.saveSettingsToFile(s))
+       │   │  and the same for exportSettings
+       │   ├─ new MkedLinkProvider(mkeditor)
+       │   ├─ editorManager.updateBridgedContent({init:true})
+       │   └─ override window.setLanguage to flow through the bridge
+       └─ setReactManagers(prev => ({...prev, bridgeManager, fileManager, ...}))
+           ↑ pushes the now-attached providers back into React state so
+             SettingsContext / ExportSettingsContext / FilesContext re-
+             subscribe with the live managers.
+       └─ showSplashScreen({duration:750}) — fades splash + bottom nav in.
 ```
 
 ### 4.2 Boot (web)
@@ -206,21 +281,23 @@ Renderer (index.ts)
 Same as above minus:
 
 - No `executionBridge`, so `mode === 'web'`.
-- Sidebar (`#sidebar`) hidden, delete-content button shown.
-- `SettingsProvider`/`ExportSettingsProvider` read from `localStorage` instead of receiving via `from:settings:set`.
+- React renders the sidebar collapsed by default (`initialSidebarOpen = false`); delete-content button shown in `<EditorToolbar>`.
+- `SettingsProvider`/`ExportSettingsProvider` read from `localStorage` instead of receiving via `from:settings:set`. Neither has a registered `persistHandler` — `persist()` falls through to localStorage.
 - `EditorManager` reads `mkeditor-content` from `localStorage` as initial editor content (falls back to `welcomeMarkdown`).
 - `updateBridgedContent` writes back to `localStorage` on each debounced change.
+- `onEditorReady` still calls `setReactManagers(prev => ({...prev}))` to force a React re-read so the now-attached providers wire through to `SettingsContext` / `ExportSettingsContext`.
 
 ### 4.3 Edit → preview render
 
 1. User types in Monaco.
-2. `onDidChangeModelContent` fires in [EditorManager.watch](../src/browser/core/EditorManager.ts:187).
+2. `onDidChangeModelContent` fires in [EditorManager.watch](../src/browser/core/EditorManager.ts).
 3. Debounced `updateBridgedContent()` runs (~250ms) → desktop sends `to:editor:state` with `hasChanged` boolean; web writes content to `localStorage`.
 4. `CompletionProvider.autoContinueListMarkers` runs synchronously if Enter was the last key.
 5. `CompletionProvider.suggestOnValidInput` updates active proposal regex if user just typed `:::` or ` ``` `.
-6. `setTimeout(..., 150)` updates word/character counts and calls `EditorManager.render`.
-7. `render()` calls `Markdown.render(value)` and assigns to `dom.preview.dom.innerHTML`, then `refreshLines()` invalidates the ScrollSync line cache.
-8. `LineNumber` extension stamped `class="has-line-data" data-line-start data-line-end` on rendered tokens so ScrollSync can find them.
+6. `setTimeout(..., 150)` fires `dispatcher.render()`.
+7. `<PreviewPane>` subscribes to `editor:render` and writes `Markdown.render(value)` into `#preview-content.innerHTML`, then calls `refreshLines()` to invalidate the ScrollSync line cache.
+8. `useCounts` (in `<Navbar>`) also subscribes to `editor:render` and recomputes word/character counts from the latest editor value.
+9. `LineNumber` extension stamped `class="has-line-data" data-line-start data-line-end` on rendered tokens so ScrollSync can find them.
 
 ### 4.4 Scroll sync
 
@@ -252,9 +329,10 @@ Same chain but with `to:file:saveas` (no path). The user picks a path in the OS 
 ### 4.8 File tree workflow
 
 - User clicks **Open Folder** in the menu or empty-tree context menu → `to:folder:open` → `AppStorage.openDirectory` → `from:folder:opened` with `{ path, tree }`.
-- [FileTreeManager.buildFileTree](../src/browser/core/FileTreeManager.ts:49) clears the tree when receiving a new root, then builds nested `<ul>`/`<li>` nodes (directories first, sorted by name). Each directory is registered in `directoryMap` so that subsequent partial-tree updates can be inserted in place.
-- Right-click → [getContextMenuItems](../src/browser/core/mappings/explorerContextMenu.ts:13) — items depend on whether you clicked empty space, a file, or a folder. Actions translate to `to:file:create`, `to:folder:create`, `to:file:rename`, `to:file:delete`, `to:file:properties`.
-- Rename triggers `from:path:renamed` so that any open tab with the old path gets its model re-keyed in [BridgeListeners.ts:178-223](../src/browser/core/BridgeListeners.ts#L178-L223).
+- [FileTreeManager.buildFileTree](../src/browser/core/FileTreeManager.ts) updates its in-memory snapshot when receiving a new root or partial subtree, sorted directories-first by name. Each directory is registered in `directoryMap` so subsequent partial updates can be merged in place. Snapshot emit drives a React re-render via `FileTreeContext`.
+- `<FileTreePanel>` renders the tree from `FileTreeContext`; expand state lives in component-local React state. Lazy-loading fires `fileTreeManager.requestDirectoryContents(path)` on first expand of a `hasChildren && !loaded` directory.
+- Right-click on any row populates `contextNode` from the closest `<li[data-path]>` and feeds it to [getContextMenuItems](../src/browser/core/mappings/explorerContextMenu.ts) inside a single top-level Radix `<ContextMenu>` wrapper. Items depend on whether you clicked empty space, a file, or a folder. Actions translate to `to:file:create`, `to:folder:create`, `to:file:rename`, `to:file:delete`, `to:file:properties`. Prompt + confirm flows go through `promptExternal` / `confirmExternal` (`PromptsContext`).
+- Rename triggers `from:path:renamed` so that any open tab with the old path gets its model re-keyed in [BridgeListeners.ts](../src/browser/core/BridgeListeners.ts).
 
 ### 4.9 Export to HTML / PDF
 
@@ -277,19 +355,21 @@ Web:
 
 ### 4.10 Settings change
 
-DOM toggles in `#app-settings` are listened to by [SettingsProvider](../src/browser/core/providers/SettingsProvider.ts) — each handler updates Monaco options (or `<body data-theme>` for darkmode), then calls `persist()`:
+`<SettingsModal>` consumes `SettingsContext` and drives each control through `updateSetting(key, value)`:
 
-- Web: writes the whole `EditorSettings` to `localStorage`.
-- Desktop: emits `editor:bridge:settings` → [BridgeManager](../src/browser/core/BridgeManager.ts:72) sends `to:settings:save` → [AppSettings.saveSettingsToFile](../src/app/lib/AppSettings.ts:161) merges with the existing file, writes, and sends a success toast.
+1. `updateSetting` writes `currentSettings[key] = value`.
+2. `applyOne(key)` runs the matching side effect — Monaco option update (`autoindent`, `minimap`, `wordwrap`, `whitespace`), `<body data-theme>` flip + `editor.setTheme('vs'|'vs-dark')` for `darkmode`, or `window.setLanguage(...)` for `locale`.
+3. `emit()` rebuilds the snapshot reference and notifies subscribers — `useSyncExternalStore` triggers a React re-render in any consumer of `SettingsContext` (the modal itself, the bottom-toolbar darkmode switch).
+4. `persist()` writes to localStorage (web) or calls the registered `persistHandler` (desktop) which routes to `bridgeManager.saveSettingsToFile` → `to:settings:save` → [AppSettings.saveSettingsToFile](../src/app/lib/AppSettings.ts:161) merges with the existing file, writes, and sends a success toast.
 
 `ExportSettingsProvider` follows the same pattern but debounces (~250ms; ~400ms for the line-spacing slider) and dedupes against the last persisted JSON to avoid redundant writes. It also calls `syncPreviewToExportSettings` so the live preview reflects export styling immediately.
 
 ### 4.11 Language change
 
-- User picks a locale in `#locale-setting`. SettingsProvider stores it and calls `window.setLanguage(lng)`.
+- User picks a locale in the Settings modal's `<Select>`. `SettingsContext.updateSetting('locale', code)` triggers `SettingsProvider.applyOne('locale')` which calls `window.setLanguage(code)`.
 - Web: this is bound directly to `changeLanguage(lng)`.
 - Desktop: bound to `BridgeManager.setLanguage` → `to:i18n:set` → `AppBridge` re-broadcasts as `from:i18n:set` → renderer's bootstrap listener calls `changeLanguage(lng)`.
-- `changeLanguage` loads the combined bundle for that locale (falls back to per-namespace fetches), switches i18next, then `applyTranslations` walks the pre-built bindings table and updates `textContent` / `title` / `placeholder`. `refreshTooltips` rebuilds Bootstrap tooltips.
+- `changeLanguage` loads the combined bundle for that locale (falls back to per-namespace fetches), switches i18next, then `applyTranslations` walks the (now tiny) bindings table — only the splash `<h1>` still uses `data-i18n-text`. React components re-render through `useTranslation` (which subscribes to i18next's `languageChanged` event).
 
 ## 5. Settings Schema
 
@@ -340,6 +420,8 @@ The defaults live in [AppSettings.settings](../src/app/lib/AppSettings.ts:31) (m
 
 Custom extension protocol is described in [src/browser/extensions/README.md](../src/browser/extensions/README.md).
 
+The `alert alert-*`, `img-fluid`, and `table table-sm table-bordered table-striped` classes are Bootstrap names that survive into the rendered markup so the **exported** HTML (which CDN-loads Bootstrap) renders them correctly. The **live preview** in the editor pane gets minimal fallback styling from [\_preview.scss](../src/browser/assets/scss/_preview.scss) (responsive `img`, `.container`/`.container-fluid` width); alert blocks and tables show as unstyled blocks in the live preview today. A follow-up can add Tailwind-aware fallback rules to match the export's appearance.
+
 ## 7. Build Pipeline
 
 ```
@@ -365,41 +447,48 @@ Webpack config ([webpack.config.js](../webpack.config.js)):
 
 ## 8. Tests
 
-Lightweight Jest + jsdom suite under [tests/](../tests/):
+Jest + jsdom under [tests/](../tests/). Manager-level tests live at the root; React component tests use `@testing-library/react` and live under `tests/react/`.
 
-| File                | Covers                                                                                                                 |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `app.test.ts`       | Asserts `BrowserWindow` is constructed on `app.ready`.                                                                 |
-| `bridge.test.ts`    | `BridgeManager` registers all expected `from:*` listeners and forwards correctly.                                      |
-| `editor.test.ts`    | `EditorManager` calls `monaco.editor.create` with the right options.                                                   |
-| `markdown.test.ts`  | `Markdown` produces alerts, target="\_blank", responsive images, line markers, LaTeX, and resists fuzzy linkification. |
-| `providers.test.ts` | Providers attach to both `EditorManager` and `BridgeManager` correctly.                                                |
+| File                           | Covers                                                                                                                 |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `app.test.ts`                  | Asserts `BrowserWindow` is constructed on `app.ready`.                                                                 |
+| `bridge.test.ts`               | `BridgeManager` registers all expected `from:*` listeners and forwards correctly.                                      |
+| `editor.test.ts`               | `EditorManager` calls `monaco.editor.create` with the right options.                                                   |
+| `markdown.test.ts`             | `Markdown` produces alerts, target="\_blank", responsive images, line markers, LaTeX, and resists fuzzy linkification. |
+| `providers.test.ts`            | Providers attach to both `EditorManager` and `BridgeManager` correctly.                                                |
+| `react/TabBar.test.tsx`        | Render, activate-on-click, close-button (with mocked FileManager).                                                     |
+| `react/FileTreePanel.test.tsx` | Render top-level nodes, expand directory, click file → `openFileFromPath`.                                             |
+| `react/SettingsModal.test.tsx` | Toggling checkboxes calls `SettingsProvider.updateSetting`.                                                            |
+| `react/EditorToolbar.test.tsx` | Button clicks call the matching CommandProvider method; ref-based split-reset.                                         |
+| `react/PreviewPane.test.tsx`   | Catch-up render on mount; re-renders on `editor:render` event.                                                         |
 
-Mocks in [tests/**mocks**/](../tests/__mocks__/) stand in for `electron`, `monaco-editor`, and `sweetalert2`.
+Mocks in [tests/**mocks**/](../tests/__mocks__/) stand in for `electron`, `monaco-editor`, and CSS imports. The `tests/utils/render.tsx` helper wraps a component in the full provider tree with stubbable manager overrides — see existing component tests for usage.
 
 ## 9. Notable Conventions and Gotchas
 
-- **Centralised DOM**: every renderer module reads/writes the DOM via [dom.ts](../src/browser/dom.ts). If you change HTML in [views/index.html](../src/browser/views/index.html), update `dom.ts` (and likely the test fixtures in [tests/](../tests/)). 59 IDs flow through that file today.
-- **No framework**: Bootstrap (modals, dropdowns, tooltips), SweetAlert2 (prompts/toasts), split.js (panes) are the entire "UI framework". DOM mutations are imperative.
-- **Mode flag**: every persistence-touching subsystem takes `mode: 'web' | 'desktop'`. Avoid sprinkling `if (window.executionBridge)` checks elsewhere — go through the constructor flag.
+- **Managers own data + IPC. React owns UI + presentation.** Managers under [core/](../src/browser/core/) and the seam files at [src/browser/](../src/browser/) (`dom.ts`, `notify.ts`, `splash.ts`, `util.ts`, `i18n.ts`) do not import React or Radix. React components under [react/](../src/browser/react/) do not import `ipcRenderer` or read `localStorage` directly.
+- **Cross-boundary seams.** Non-React callers reach the React tree through module-level `*External` functions registered by sentinel components inside `<App>`. Adding a new seam = define a `let externalFn` in the owning context, export a `register*` setter, install it from a `<Bridge>` component during the React mount.
+- **Reactive provider surface.** Any state that React needs to render is exposed by its owning manager as `subscribe(listener) → unsubscribe` + `getSnapshot()` (returning a stable reference between emits). React contexts pull through `useSyncExternalStore`. Don't add fields directly to React state if a manager already owns them.
+- **Single Monaco instance.** Only [EditorManager.create](../src/browser/core/EditorManager.ts) calls `editor.create(...)`; `<EditorHost>`'s `useEffect` has `[]` deps so it never re-mounts. If you find yourself needing a second Monaco instance, you almost certainly want a model swap instead.
+- **Mode flag**: every persistence-touching subsystem takes `mode: 'web' | 'desktop'`. Avoid sprinkling `if (window.executionBridge)` checks — go through the constructor flag.
 - **Channel whitelists**: when you add a new IPC channel, you **must** add it to both lists in [preload.ts](../src/app/preload.ts) or it will silently no-op.
-- **Notifications**: prefer `{ status, key: 'notifications:<key>', values }`. Plain-string `message` works but won't be localised.
+- **Notifications**: prefer `{ status, key: 'notifications:<key>', values }`. Plain-string `message` works but won't be localised. Toasts render via `sonner` (see [notify.ts](../src/browser/notify.ts) + the `<Toaster />` in `<App>`).
+- **Tooltips**: shadcn `<Tooltip>` only (no `data-bs-toggle`, no Bootstrap JS). The Bootstrap CSS that used to back tooltips is no longer bundled.
+- **Bootstrap CDN in exports**: [HTMLExporter](../src/browser/core/HTMLExporter.ts) still injects CDN `<link>`/`<script>` for Bootstrap, FontAwesome, highlight.js, KaTeX into the exported standalone HTML when `withStyles` is on. That's deliberate — the export is a self-contained document, not the live preview.
 - **File tree filter**: today `readDirectory` returns only `.md` files and directories. Other extensions are invisible to the explorer.
-- **`from:file:opened` reuse**: opening a file when the only open tab is an untitled empty tab re-keys that tab in place rather than creating a second one ([BridgeListeners.ts:117-162](../src/browser/core/BridgeListeners.ts#L117-L162)).
+- **`from:file:opened` reuse**: opening a file when the only open tab is an untitled empty tab re-keys that tab in place rather than creating a second one ([BridgeListeners.ts](../src/browser/core/BridgeListeners.ts)).
 - **Log truncation**: `main.log` is truncated on every Electron launch ([main.ts:28](../src/app/main.ts#L28)). Capture it before relaunching for repro.
 - **PDF export on macOS**: auto-update is disabled without code signing; mac users are on manual downloads. PDF export uses an offscreen window — works fine without signing.
-- **`mked://` only opens local `.md` files** that already appear in the open file tree ([MkedLinkProvider.ts:26-33](../src/browser/core/providers/MkedLinkProvider.ts#L26-L33)).
-- **Welcome content**: first-run editor content comes from [src/browser/assets/intro.js](../src/browser/assets/intro.js); in web mode it's replaced once the user has written anything (persisted to `localStorage`).
-- **i18n init quirk**: there's a TODO noting `i18next.init` fails on first load if combined bundle is loaded synchronously; the workaround is `prepareI18n(initialLng, false)` then `changeLanguage(lng)` ([i18n.ts:314-339](../src/browser/i18n.ts#L314-L339)).
+- **`mked://` only opens local `.md` files** that already appear in the open file tree ([MkedLinkProvider.ts](../src/browser/core/providers/MkedLinkProvider.ts)).
+- **Welcome content**: first-run editor content comes from [src/browser/assets/intro.ts](../src/browser/assets/intro.ts); in web mode it's replaced once the user has written anything (persisted to `localStorage`).
+- **i18n walker is tiny now**: only the splash `<h1 data-i18n-text="app:app_name">` in [views/index.html](../src/browser/views/index.html) still uses the attribute-driven walker. Everything else translates via `useTranslation`.
 
-## 10. Planned Direction
+## 10. React Migration
 
-A React migration is on the roadmap to replace the current direct-DOM layer. No design has been committed yet; this document records that the current architecture is amenable to it because:
+The React migration documented in [docs/REACT_MIGRATION.md](REACT_MIGRATION.md) is complete (Phases 1-10). The renderer is now React 19 + shadcn/ui + Tailwind v4 on top of the existing managers and IPC bridge. The legacy Bootstrap / SweetAlert2 / split.js / @popperjs/core dependencies are all gone; only `bootstrap` CSS is referenced in the exported HTML CDN injection, not in the bundle.
 
-- All DOM access is funneled through one module ([dom.ts](../src/browser/dom.ts)), so the surface to replace is small and well-defined.
-- The Monaco instance is created by `EditorManager` and reused everywhere; React would own the surrounding chrome, not the editor itself.
-- Providers and bridge logic have no view-layer coupling — they manipulate Monaco options, IPC, and DOM through `dom.ts`.
-- i18n is attribute-driven (`data-i18n-*`); a React layer can offer a hook + provider over the same i18next instance.
-- Bootstrap components could be swapped one-by-one with a React UI library or retained behind thin wrappers.
+Subsequent UI/UX work should:
 
-When that work begins, this document should be updated with the chosen approach.
+- Follow the shadcn copy-in pattern in [src/browser/react/components/ui/](../src/browser/react/components/ui/) when adding new primitives.
+- Add managers' state via `subscribe`/`getSnapshot` + a context wrapper, not via React state owned in components.
+- Cross the manager/React boundary through new `*External` seams, mirroring `openModalExternal` / `openPromptExternal` / `showPropertiesExternal` / `sonnerToast`.

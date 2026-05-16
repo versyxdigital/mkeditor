@@ -13,31 +13,25 @@ Living document. Tracks planned work, open architectural questions, and recently
 
 ## Recently Landed
 
+- 🟢 **React migration** _(2026-05-16)_ — Renderer rewritten as React 19 + shadcn/ui + Tailwind v4 on top of the existing managers and IPC bridge. Bootstrap, SweetAlert2, split.js, and `@popperjs/core` removed. CSS bundle shrunk ~229 KB. See [REACT_MIGRATION.md](REACT_MIGRATION.md) for the full ten-phase history; current state described in [ARCHITECTURE.md](ARCHITECTURE.md) and [../CLAUDE.md](../CLAUDE.md).
 - 🟢 **Context & architecture docs** _(2026-05-16)_ — Added [CLAUDE.md](../CLAUDE.md) and [docs/ARCHITECTURE.md](ARCHITECTURE.md) covering process boundaries, IPC contract, renderer composition, data flows, build pipeline, conventions.
 
 ---
 
-## 1. React Migration _(planned — top priority)_
+## 1. React Migration _(complete)_
 
-🟡 Replace the renderer's direct-DOM/Bootstrap UI layer with React. Monaco itself stays as-is — React owns the chrome around it (toolbar, sidebar, file tree, tabs, modals, settings, splash, splits), not the editor surface.
-
-**Detailed plan**: [REACT_MIGRATION.md](REACT_MIGRATION.md) — stack decisions, target architecture, ten-phase execution plan, risks, and per-phase exit criteria. **Always defer to that doc for the migration.** This entry is a status pointer.
-
-### Status
-
-Stack decided 2026-05-16: React 19 + shadcn/ui + Tailwind v4, staying on Webpack, replacing split.js and SweetAlert2 along the way. Open questions from the prior version of this section are all answered in [REACT_MIGRATION.md §Decisions](REACT_MIGRATION.md#decisions). Execution not yet started.
+🟢 Done (2026-05-16). The renderer is React 19 + shadcn/ui + Tailwind v4. Managers (Monaco, Files, FileTree, Bridge, providers) keep their roles; only the view layer changed. Bootstrap renderer-side, SweetAlert2, split.js, and `@popperjs/core` are gone. See [REACT_MIGRATION.md](REACT_MIGRATION.md) for the phase-by-phase history.
 
 ---
 
 ## 2. Dependency Wiring / DI Cleanup
 
-⚪ The current `manager.provide<T>(key, instance)` pattern (see [interfaces/Providers.ts](../src/browser/interfaces/Providers.ts)) has known sharp edges: weak typing on the indexed map, implicit construction order in [index.ts](../src/browser/index.ts), nullable provider fields requiring `?.` everywhere, and the same instances being registered against multiple managers.
+⚪ The `manager.provide<T>(key, instance)` pattern (see [interfaces/Providers.ts](../src/browser/interfaces/Providers.ts)) still has the sharp edges that motivated the original entry: weak typing on the indexed map, implicit construction order in [index.ts](../src/browser/index.ts), the same provider instances registered against both `EditorManager` and `BridgeManager`. The React migration grew this pattern (every manager now also has a `subscribe`/`getSnapshot` observable surface + module-level `*External` callback seams), but didn't change the underlying `provide()` mechanism.
 
-**Status**: discussion in progress. Options on the table:
+**Status**: deferred from before the React migration; now ready to revisit. Options:
 
 - **(A) Drop `provide()` for constructor injection** — pass deps directly to constructors, kill the indexed maps. Zero new deps, fixes typing and nullability, easier tests. Composition stays in `index.ts` as a `bootstrap()` function.
 - **(B) Adopt a lightweight DI container** — e.g. `typed-inject` (~5kb, no decorators) or `tsyringe` (decorators, needs `reflect-metadata`). Buys lifecycle hooks, scoped resolution, swap-by-token testing. Cost: bundle weight + framework convention.
-- **(C) Defer until React migration** — the migration tears up the provider wiring anyway; introducing context-based DI naturally during React adoption avoids doing the cleanup twice.
 
 Decision needed before significant new feature work touches provider wiring.
 
@@ -55,14 +49,16 @@ Decision needed before significant new feature work touches provider wiring.
 
 ---
 
-## 4. Post-React Opportunities _(speculative)_
+## 4. Post-React Opportunities
 
-Don't pursue these until React migration lands.
+Now that the React migration is in.
 
-- ⚪ **Re-evaluate Bootstrap dependency** — once components are React, consider replacing the JS portion with headless primitives; keep or drop CSS independently.
-- ⚪ **Component-level tests** — React Testing Library suite covering tabs, file tree, modals, settings.
-- ⚪ **Theming** — current dark/light flips a `data-theme` body attribute; explore CSS-variables-driven themes once the component tree is in place.
-- ⚪ **Plugin/extension system for users** — markdown-it has the seams already ([extensions/README.md](../src/browser/extensions/README.md)); the UI side would be far cleaner to extend post-React.
+- 🔵 **Markdown-extension styling for the live preview.** The markdown-it extensions still emit Bootstrap class names (`alert alert-*`, `img-fluid`, `table table-sm table-bordered table-striped`) so the exported HTML (which CDN-loads Bootstrap) renders correctly. The live preview only has minimal fallback styling in `_preview.scss` — alert blocks and tables show as unstyled blocks today. Add Tailwind-aware rules (or rewrite the extensions to emit Tailwind classes + keep Bootstrap classes for export only) so the live preview matches the export.
+- 🔵 **Expanded component test coverage.** Phase 10 landed the 5 spec'd RTL suites (`TabBar`, `FileTreePanel`, `SettingsModal`, `EditorToolbar`, `PreviewPane`). Next layer: the rest of `react/components/modals/*`, `BottomToolbarRight`, `Navbar`, the `PromptDialog` flow, hooks (`useCounts`, `useNotify`).
+- ⚪ **Theming customisation.** Dark/light is hardwired today; explore exposing the brand `--primary` and a couple of secondary tokens as user settings.
+- ⚪ **Plugin/extension system for users.** markdown-it has the seams already ([extensions/README.md](../src/browser/extensions/README.md)); the React UI side is now much easier to extend.
+- ⚪ **Phase 9 dom.ts residue.** `dom.ts` retains four constants (`editor.dom`, `preview.dom`, `preview.wrapper`, `meta.scroll`) for `HTMLExporter` + `ScrollSync` + `LineNumber` + the test fallback. If those consumers move under React (or expose their own seam), the file can be retired entirely.
+- ⚪ **`document.getElementById` portal-host pattern.** `<EditorToolbar>` and `<BottomToolbarRight>` portal into static-HTML hosts inside the bottom `<nav>` shell. Could be cleaned up by either rendering the bottom nav from React directly, or moving the `<nav>` shell inside `#react-root`.
 
 ---
 
