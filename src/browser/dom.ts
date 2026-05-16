@@ -13,69 +13,8 @@ export const dom = {
   get app(): HTMLDivElement {
     return document.querySelector('#react-root') as HTMLDivElement;
   },
-  build: <HTMLSpanElement>document.querySelector('#app-build-id'),
   get sidebar(): HTMLDivElement {
     return document.querySelector('#sidebar') as HTMLDivElement;
-  },
-  about: {
-    modal: <HTMLDivElement>document.querySelector('#app-about'),
-    version: <HTMLSpanElement>document.querySelector('#app-version'),
-  },
-  shortcuts: {
-    modal: <HTMLDivElement>document.querySelector('#app-shortcuts'),
-  },
-  settings: {
-    modal: <HTMLDivElement>document.querySelector('#app-settings'),
-    autoindent: <HTMLInputElement>document.querySelector('#autoindent-setting'),
-    darkmode: <HTMLInputElement>document.querySelector('#darkmode-setting'),
-    wordwrap: <HTMLInputElement>document.querySelector('#wordwrap-setting'),
-    whitespace: <HTMLInputElement>document.querySelector('#whitespace-setting'),
-    minimap: <HTMLInputElement>document.querySelector('#minimap-setting'),
-    systemtheme: <HTMLInputElement>(
-      document.querySelector('#systemtheme-setting')
-    ),
-    scrollsync: <HTMLInputElement>document.querySelector('#scrollsync-setting'),
-    locale: <HTMLSelectElement>document.querySelector('#locale-setting'),
-    fileinfo: <HTMLParagraphElement>(
-      document.querySelector('#app-settings-file-info')
-    ),
-  },
-  exports: {
-    modal: <HTMLDivElement>document.querySelector('#export-settings'),
-    withStyles: <HTMLInputElement>document.querySelector('#export-with-styles'),
-    container: <HTMLSelectElement>(
-      document.querySelector('#export-setting-container')
-    ),
-    fontSize: <HTMLInputElement>(
-      document.querySelector('#export-setting-fontsize')
-    ),
-    lineSpacing: <HTMLInputElement>(
-      document.querySelector('#export-setting-linespacing')
-    ),
-    background: <HTMLInputElement>(
-      document.querySelector('#export-setting-background')
-    ),
-    fontColor: <HTMLInputElement>(
-      document.querySelector('#export-setting-font-color')
-    ),
-  },
-  icons: {
-    darkmode: <HTMLLabelElement>document.querySelector('#darkmode-icon'),
-  },
-  buttons: {
-    // Save handlers inside the still-Bootstrap settings + export-settings
-    // modals (Phase 7 will retire them). The Phase 6 toolbar buttons
-    // (save markdown / export HTML / export PDF / delete content /
-    // export-with-styles toggle / split-reset) are owned by React.
-    save: {
-      settings: <HTMLButtonElement>document.querySelector('#app-settings-save'),
-      exportSettings: <HTMLButtonElement>(
-        document.querySelector('#export-settings-save')
-      ),
-    },
-    resetExportSettings: <HTMLButtonElement>(
-      document.querySelector('#export-settings-reset')
-    ),
   },
   editor: {
     dom: <HTMLDivElement>document.querySelector('#editor'),

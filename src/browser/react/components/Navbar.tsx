@@ -1,21 +1,20 @@
 import * as React from 'react';
 
 import { useFiles } from '../contexts/FilesContext';
+import { useModals } from '../contexts/ModalsContext';
 import { useUIState } from '../contexts/UIStateContext';
 import { useCounts } from '../hooks/useCounts';
 import { useTranslation } from '../hooks/useTranslation';
 
 /**
  * Top chrome. Replaces the legacy `<nav class="navbar navbar-expand">`
- * that used to live in views/index.html.
- *
- * The settings cog and shortcuts icon still carry `data-bs-toggle="modal"
- * data-bs-target="#..."` attributes — Bootstrap 5's event delegation
- * picks up dynamically-rendered triggers, so the legacy modal HTML in
- * index.html continues to work until Phase 7 swaps to shadcn dialogs.
+ * that used to live in views/index.html. The settings cog and shortcuts
+ * icon dispatch through ModalsContext (Phase 7) — the legacy modal HTML
+ * + `data-bs-toggle="modal"` triggers were dropped in this phase.
  */
 export const Navbar: React.FC = () => {
   const { toggleSidebar } = useUIState();
+  const { openModal } = useModals();
   const { t } = useTranslation();
   const { activeFile, tabs } = useFiles();
   const counts = useCounts();
@@ -65,8 +64,10 @@ export const Navbar: React.FC = () => {
           <a
             className="text-muted hover-fade ms-3"
             href="#"
-            data-bs-toggle="modal"
-            data-bs-target="#app-settings"
+            onClick={(e) => {
+              e.preventDefault();
+              openModal('settings');
+            }}
           >
             <i className="fas fa-cogs hover-fade" />
           </a>
@@ -80,8 +81,10 @@ export const Navbar: React.FC = () => {
           <a
             className="text-muted hover-fade mx-3"
             href="#"
-            data-bs-toggle="modal"
-            data-bs-target="#app-shortcuts"
+            onClick={(e) => {
+              e.preventDefault();
+              openModal('shortcuts');
+            }}
           >
             <i className="fa fa-question-circle hover-fade" />
           </a>

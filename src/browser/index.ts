@@ -84,6 +84,7 @@ function onEditorReady() {
   editorManager.provide('commands', new CommandProvider(mkeditor));
   editorManager.provide('completion', new CompletionProvider(mkeditor));
 
+  let desktopExtras: Partial<Managers> = {};
   if (api !== 'web') {
     api.receive('from:i18n:set', (lng: string) => {
       changeLanguage(lng);
@@ -108,15 +109,21 @@ function onEditorReady() {
       bridgeManager.setLanguage(lng);
     };
 
-    // Push the new managers into React state so FilesContext can subscribe
-    // to fileManager. FileTreeContext (Phase 5) will use fileTreeManager.
-    setReactManagers?.((prev) => ({
-      ...prev,
+    desktopExtras = {
       bridgeManager,
       fileManager: bridgeManager.fileManager,
       fileTreeManager: bridgeManager.fileTreeManager,
-    }));
+    };
   }
+
+  // Push a managers update unconditionally. `editorManager.providers` was
+  // mutated in place by the `provide(...)` calls above, so a fresh
+  // managers object is required to make React contexts (SettingsContext,
+  // ExportSettingsContext) re-evaluate `providers.settings` /
+  // `.exportSettings` and re-subscribe via `useSyncExternalStore`.
+  // Without this, web mode never sees the providers attach and every
+  // setting/modal control becomes a no-op.
+  setReactManagers?.((prev) => ({ ...prev, ...desktopExtras }));
 
   // Splits, sidebar visibility, and split-reset are now owned by the
   // React tree (<Shell> + <Workspace> in App.tsx). The legacy

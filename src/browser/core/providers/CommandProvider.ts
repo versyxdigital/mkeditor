@@ -3,24 +3,16 @@ import {
   KeyCode,
   KeyMod,
 } from 'monaco-editor/esm/vs/editor/editor.api';
-import { Modal } from 'bootstrap';
-import type {
-  ModalProviders,
-  ValidModal,
-  ValidCommand,
-} from '../../interfaces/Providers';
+import type { ValidCommand } from '../../interfaces/Providers';
 import { commands, alertblocks, codeblocks } from '../mappings/editorCommands';
+import { openModalExternal } from '../../react/contexts/ModalsContext';
 import { getOSPlatform } from '../../util';
-import { dom } from '../../dom';
 
 export type ToolbarDropdownKey = 'alertblocks' | 'codeblocks' | 'tables';
 
 export class CommandProvider {
   /** Editor instance */
   private mkeditor: editor.IStandaloneCodeEditor;
-
-  /** Editor command modal triggers (Phase 7 will replace these). */
-  private modals: ModalProviders;
 
   /**
    * Bridge to <EditorToolbar>'s dropdown open state. Registered by the
@@ -35,18 +27,13 @@ export class CommandProvider {
    * Create a new mkeditor command handler.
    *
    * Responsible for creating a command handler and handling editor commands.
+   * Phase 7 dropped the Bootstrap `Modal` instances — modals are now
+   * React state-driven via `openModalExternal` from ModalsContext.
    *
    * @param mkeditor - the editor instance
    */
   public constructor(mkeditor: editor.IStandaloneCodeEditor) {
     this.mkeditor = mkeditor;
-
-    this.modals = {
-      about: new Modal(dom.about.modal),
-      settings: new Modal(dom.settings.modal),
-      shortcuts: new Modal(dom.shortcuts.modal),
-    };
-
     this.register();
   }
 
@@ -69,7 +56,7 @@ export class CommandProvider {
       id: 'settings',
       label: 'Open Settings Dialog',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Semicolon],
-      run: () => this.modals.settings.toggle(),
+      run: () => openModalExternal('settings'),
     });
 
     // Register command keybinding for displaying shortcuts modal action
@@ -77,7 +64,7 @@ export class CommandProvider {
       id: 'shortcuts',
       label: 'Open Shortcuts Help',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Backquote],
-      run: () => this.modals.shortcuts.toggle(),
+      run: () => openModalExternal('shortcuts'),
     });
 
     // Register command keybinding for displaying about modal action
@@ -85,7 +72,7 @@ export class CommandProvider {
       id: 'About',
       label: 'Open About Information',
       keybindings: [KeyMod.CtrlCmd | KeyCode.Slash],
-      run: () => this.modals.about.toggle(),
+      run: () => openModalExternal('about'),
     });
 
     // Two-stage chord shortcuts: a bare Ctrl+L / Ctrl+K / Ctrl+T opens
@@ -129,10 +116,9 @@ export class CommandProvider {
       this.mkeditor.addAction(<editor.IActionDescriptor>commands[cmd]);
     }
 
-    // The legacy `dom.build` element (the build-version chip in the
-    // bottom-toolbar right-side <ul>) stays legacy until Phase 7. Its
-    // click handler also stays: clicking it opens the About modal.
-    dom.build.addEventListener('click', () => this.modals.about.toggle());
+    // Phase 7 moved the build-version chip into <BottomToolbarRight>;
+    // its onClick now opens the React About modal via ModalsContext.
+    // No DOM listener is registered from here anymore.
 
     for (const block of alertblocks) {
       // Register command keybindings for each alertblock type.
@@ -167,16 +153,6 @@ export class CommandProvider {
         },
       });
     }
-  }
-
-  /**
-   * get an editor modal triggered by a command.
-   *
-   * @param key - the modal key
-   * @returns
-   */
-  public getModal(key: ValidModal) {
-    return this.modals[key] as Modal;
   }
 
   /**

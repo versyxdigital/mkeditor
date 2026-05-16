@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { Modal } from 'bootstrap';
 import type { GroupImperativeHandle } from 'react-resizable-panels';
 
 import { HTMLExporter } from '../../core/HTMLExporter';
@@ -9,6 +8,7 @@ import { alertblocks, codeblocks } from '../../core/mappings/editorCommands';
 import type { ToolbarDropdownKey } from '../../core/providers/CommandProvider';
 import { dom } from '../../dom';
 import { useManagers } from '../contexts/ManagersContext';
+import { useModals } from '../contexts/ModalsContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { Icon } from './Icon';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -32,6 +32,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   workspaceGroupRef,
 }) => {
   const { mode, editorManager, bridgeManager, providers } = useManagers();
+  const { openModal } = useModals();
   const { t } = useTranslation();
 
   // Controlled open state for the alert/code/table popups. Shared across
@@ -114,10 +115,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     }
   };
 
-  const openExportSettingsModal = () => {
-    const el = document.getElementById('export-settings');
-    if (el) Modal.getOrCreateInstance(el).show();
-  };
+  const openExportSettingsModal = () => openModal('exportSettings');
 
   const handleDelete = () => editorManager.resetContent();
 

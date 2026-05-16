@@ -2,8 +2,6 @@ import { editor, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { ScrollSync } from '../extensions/editor/ScrollSync';
-import { registerUIToolbarListeners } from './ToolbarListeners';
-import { APP_VERSION } from '../version';
 import { welcomeMarkdown } from '../assets/intro';
 import { debounce, logger } from '../util';
 import { dom } from '../dom';
@@ -49,12 +47,11 @@ export class EditorManager {
     this.mode = opts.mode;
     this.dispatcher = opts.dispatcher;
 
-    dom.about.version.innerHTML = APP_VERSION;
-    dom.build.innerHTML = `v${APP_VERSION}`;
-
     // editor:render is handled by <PreviewPane> (innerHTML write) and
     // <Counts> via useCounts (word/character counts). EditorManager
-    // no longer subscribes here.
+    // no longer subscribes here. The "v3.6.0" build chip and About
+    // modal version label both source APP_VERSION directly from
+    // <BottomToolbarRight> / <AboutModal>.
 
     if (opts.init) {
       this.create({ watch: opts.watch });
@@ -136,9 +133,6 @@ export class EditorManager {
       this.dispatcher.addEventListener('editor:track:content', (event) => {
         this.loadedInitialEditorValue = event.detail;
       });
-
-      // Event listeners for the renderer context's UI toolbar.
-      registerUIToolbarListeners(this.mkeditor, this.providers);
 
       // Window resize relayouts Monaco. The editor-pane resize is now
       // observed by <EditorHost>'s ResizeObserver, and the split-pane

@@ -1,4 +1,3 @@
-import type { Modal } from 'bootstrap';
 import type { BridgeManager } from '../core/BridgeManager';
 import type { CommandProvider } from '../core/providers/CommandProvider';
 import type { SettingsProvider } from '../core/providers/SettingsProvider';
@@ -13,12 +12,6 @@ export interface Providers {
   exportSettings: ExportSettingsProvider | null;
 }
 
-export interface ModalProviders {
-  about: Modal;
-  settings: Modal;
-  shortcuts: Modal;
-}
-
 export interface BridgeProviders extends Omit<Providers, 'bridge'> {
   [key: string]: unknown | null;
 }
@@ -28,4 +21,3 @@ export interface EditorProviders extends Providers {
 }
 
 export type ValidCommand = keyof CommandProvider;
-export type ValidModal = keyof ModalProviders;

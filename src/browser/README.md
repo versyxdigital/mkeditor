@@ -18,7 +18,6 @@ This folder contains the renderer (browser) side of MKEditor: the Monaco editor,
   - `FileManager.ts`, `FileTreeManager.ts`: Tabbed files/models and explorer tree handling.
   - `BridgeManager.ts`: Desktop-only orchestrator around the execution bridge.
   - `BridgeListeners.ts`: Subscribes to `from:*` channels; syncs settings/theme/files, shows notifications.
-  - `ToolbarListeners.ts`: Registers toolbar event listeners and actions.
   - `mappings/`: Command and explorer context‑menu mappings.
   - `completion/`: Data/logic for completions (lists, fenced blocks, etc.).
 - `events/`: Lightweight event/dispatcher system used inside the renderer.

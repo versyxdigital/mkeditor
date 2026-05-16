@@ -6,7 +6,6 @@ describe('Bridge communication', () => {
     document.body.innerHTML = `
       <div id="editor"></div>
       <div id="preview"></div>
-      <div id="app-about"><span id="app-version"></span></div>
     `;
     ({ BridgeManager } = await import('../src/browser/core/BridgeManager'));
     ({ EditorDispatcher } = await import(

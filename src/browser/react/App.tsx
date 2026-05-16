@@ -11,12 +11,24 @@ import { ManagersProvider, type Managers } from './contexts/ManagersContext';
 import { UIStateProvider, useUIState } from './contexts/UIStateContext';
 import { FilesProvider } from './contexts/FilesContext';
 import { FileTreeProvider } from './contexts/FileTreeContext';
+import {
+  ModalsProvider,
+  registerOpenModal,
+  useModals,
+} from './contexts/ModalsContext';
+import { SettingsContextProvider } from './contexts/SettingsContext';
+import { ExportSettingsContextProvider } from './contexts/ExportSettingsContext';
 import { LegacyShell } from './components/LegacyShell';
 import { Navbar } from './components/Navbar';
 import { TabBar } from './components/TabBar';
 import { Sidebar } from './components/Sidebar';
 import { Workspace } from './components/Workspace';
 import { EditorToolbar } from './components/EditorToolbar';
+import { BottomToolbarRight } from './components/BottomToolbarRight';
+import { SettingsModal } from './components/modals/SettingsModal';
+import { ExportSettingsModal } from './components/modals/ExportSettingsModal';
+import { AboutModal } from './components/modals/AboutModal';
+import { ShortcutsModal } from './components/modals/ShortcutsModal';
 
 import './styles/tailwind.css';
 
@@ -63,22 +75,47 @@ export const App: React.FC<AppProps> = ({
 
   return (
     <ManagersProvider value={managers}>
-      <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
-        <FilesProvider>
-          <FileTreeProvider>
-            <LegacyShell />
-            <Navbar />
-            <TabBar />
-            <Shell
-              onEditorReady={onEditorReady}
-              workspaceGroupRef={workspaceGroupRef}
-            />
-            <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
-          </FileTreeProvider>
-        </FilesProvider>
-      </UIStateProvider>
+      <SettingsContextProvider>
+        <ExportSettingsContextProvider>
+          <ModalsProvider>
+            <ModalsBridge />
+            <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
+              <FilesProvider>
+                <FileTreeProvider>
+                  <LegacyShell />
+                  <Navbar />
+                  <TabBar />
+                  <Shell
+                    onEditorReady={onEditorReady}
+                    workspaceGroupRef={workspaceGroupRef}
+                  />
+                  <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
+                  <BottomToolbarRight />
+                  <SettingsModal />
+                  <ExportSettingsModal />
+                  <AboutModal />
+                  <ShortcutsModal />
+                </FileTreeProvider>
+              </FilesProvider>
+            </UIStateProvider>
+          </ModalsProvider>
+        </ExportSettingsContextProvider>
+      </SettingsContextProvider>
     </ManagersProvider>
   );
+};
+
+/**
+ * Registers ModalsContext's `openModal` with the module-level setter that
+ * non-React callers (BridgeListeners' `from:modal:open`, CommandProvider's
+ * keybindings) invoke via `openModalExternal`. Renders nothing.
+ */
+const ModalsBridge: React.FC = () => {
+  const { openModal } = useModals();
+  React.useEffect(() => {
+    registerOpenModal(openModal);
+  }, [openModal]);
+  return null;
 };
 
 /**

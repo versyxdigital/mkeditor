@@ -1,11 +1,15 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { File, FileProperties, RenamedPath } from '../interfaces/File';
-import type { BridgeProviders, ValidModal } from '../interfaces/Providers';
+import type { BridgeProviders } from '../interfaces/Providers';
 import type { SettingsFile } from '../interfaces/Editor';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import type { FileManager } from './FileManager';
 import type { FileTreeManager } from './FileTreeManager';
+import {
+  openModalExternal,
+  type ModalKey,
+} from '../react/contexts/ModalsContext';
 import { showFilePropertiesWindow } from '../dom';
 import { notify } from '../util';
 import { t } from '../i18n';
@@ -39,22 +43,23 @@ export function registerBridgeListeners(
     });
   };
 
-  // Set the theme according to the user's system theme
+  // Set the theme according to the user's system theme. Phase 7
+  // dropped setUIState() — React subscribes to SettingsProvider's
+  // emitter so the navbar darkmode toggle reflects the change.
   bridge.receive('from:theme:set', (shouldUseDarkMode: boolean) => {
     if (shouldUseDarkMode) {
-      providers.settings?.setSetting('darkmode', shouldUseDarkMode);
-      providers.settings?.setTheme();
-      providers.settings?.setUIState();
+      providers.settings?.updateSetting('darkmode', shouldUseDarkMode);
     }
   });
 
-  // Set settings from stored settings file (%HOME%/.mkeditor/settings.json)
+  // Set settings from stored settings file (%HOME%/.mkeditor/settings.json).
+  // Phase 7 dropped registerDOMListeners — the providers' setSettings
+  // emits to SettingsContext / ExportSettingsContext subscribers and
+  // the React modals re-render to reflect the loaded values.
   bridge.receive('from:settings:set', (s: SettingsFile) => {
     loadSettingsFromBridgeListener(s);
     providers.settings?.setSettings(s);
-    providers.settings?.registerDOMListeners();
     providers.exportSettings?.setSettings(s.exportSettings);
-    providers.exportSettings?.registerDOMListeners();
   });
 
   // Enable new files from outside of the renderer execution context.
@@ -161,10 +166,11 @@ export function registerBridgeListeners(
     mkeditor.trigger(command, 'editor.action.quickCommand', {});
   });
 
-  // Enable access to the monaco editor shortcuts modal.
-  bridge.receive('from:modal:open', (modal: ValidModal) => {
-    const handler = providers.commands?.getModal(modal);
-    handler?.toggle();
+  // Opens a React shadcn-Dialog modal triggered from the main process
+  // (e.g., a tray/menu item). Phase 7 routed this through ModalsContext
+  // instead of the legacy Bootstrap `Modal.toggle()`.
+  bridge.receive('from:modal:open', (modal: ModalKey) => {
+    openModalExternal(modal);
   });
 
   // Enable notifications from the main context.

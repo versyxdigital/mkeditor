@@ -4,23 +4,62 @@ import { exportSettings as defaults } from '../../config';
 import { syncPreviewToExportSettings } from '../../util';
 import { dom } from '../../dom';
 
+/**
+ * Export-settings data + IPC owner. Phase 7 strips this of DOM
+ * responsibilities — `registerDOMListeners`, `setUIState`,
+ * `isApplying` are all gone. React's <ExportSettingsModal> reads
+ * from the snapshot via `subscribe`/`getSnapshot` and drives changes
+ * through `updateSetting(key, value)` (or `setSettings(...)` for
+ * batch loads coming from the bridge).
+ *
+ * Persistence stays debounced (250ms for most settings, 400ms for the
+ * line-spacing slider) and dedupes against `lastPersistedJSON`.
+ *
+ * The live preview style sync still happens on every state change —
+ * after Phase 7 we run it from `applyAll()` instead of `setUIState()`.
+ */
 export class ExportSettingsProvider {
   private mode: 'web' | 'desktop' = 'web';
   private dispatcher: EditorDispatcher;
-  private settings: ExportSettings = defaults;
-  private registered = false;
+  private currentSettings: ExportSettings = { ...defaults };
+
+  /** Stable snapshot for useSyncExternalStore consumers. */
+  private snapshot: ExportSettings = this.currentSettings;
+  private listeners = new Set<() => void>();
 
   private saveTimer: number | null = null;
   private debounceMs = 250;
   private lastPersistedJSON = '';
-  private isApplying = false;
 
   constructor(mode: 'web' | 'desktop', dispatcher: EditorDispatcher) {
     this.mode = mode;
     this.dispatcher = dispatcher;
     this.loadSettings();
-    this.registerDOMListeners();
   }
+
+  // ---------------------------------------------------------------------
+  // Observable surface
+  // ---------------------------------------------------------------------
+
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  public getSnapshot(): ExportSettings {
+    return this.snapshot;
+  }
+
+  private emit() {
+    this.snapshot = { ...this.currentSettings };
+    this.listeners.forEach((l) => l());
+  }
+
+  // ---------------------------------------------------------------------
+  // Mode + defaults + getters/setters
+  // ---------------------------------------------------------------------
 
   public getDefaultSettings() {
     return {
@@ -34,116 +73,69 @@ export class ExportSettingsProvider {
   }
 
   public getSettings() {
-    return this.settings;
+    return this.currentSettings;
   }
 
-  public setSettings(settings: ExportSettings) {
-    this.settings = settings;
-    this.setUIState();
+  /** Apply a complete settings object (e.g., from `from:settings:set`). */
+  public setSettings(next: ExportSettings) {
+    this.currentSettings = { ...next };
+    this.applyPreviewSync();
+    this.emit();
   }
+
+  // ---------------------------------------------------------------------
+  // React-facing entrypoints: state + apply + emit + persist
+  // ---------------------------------------------------------------------
+
+  /**
+   * Update a single setting. Drives the live preview sync, emits to
+   * SettingsContext subscribers, and schedules a debounced persist.
+   * `lineSpacing` gets a longer debounce (400ms) to suit slider drag.
+   */
+  public updateSetting<K extends keyof ExportSettings>(
+    key: K,
+    value: ExportSettings[K],
+  ) {
+    this.currentSettings[key] = value;
+    this.applyPreviewSync();
+    this.emit();
+    this.schedule(key === 'lineSpacing' ? 400 : undefined);
+  }
+
+  private applyPreviewSync() {
+    syncPreviewToExportSettings(this.currentSettings, dom.preview.dom);
+  }
+
+  // ---------------------------------------------------------------------
+  // Persistence
+  // ---------------------------------------------------------------------
 
   private loadSettings() {
     if (this.mode === 'web') {
       const storage = localStorage.getItem('mkeditor-export-settings');
       if (storage) {
-        this.settings = JSON.parse(storage) as ExportSettings;
+        try {
+          this.currentSettings = JSON.parse(storage) as ExportSettings;
+        } catch {
+          this.currentSettings = { ...defaults };
+          this.updateSettingsInLocalStorage();
+        }
       } else {
         this.updateSettingsInLocalStorage();
       }
     }
-    this.setUIState();
-  }
-
-  public setUIState() {
-    const { exports: ex } = dom;
-    if (!ex) return;
-
-    this.isApplying = true;
-
-    const settings = this.settings;
-
-    ex.withStyles.checked = settings.withStyles;
-    ex.container.value = settings.container;
-    ex.fontSize.value = settings.fontSize?.toString();
-    ex.lineSpacing.value = settings.lineSpacing?.toString();
-    ex.background.value = settings.background;
-    ex.fontColor.value = settings.fontColor;
-
-    this.isApplying = false;
-
-    syncPreviewToExportSettings(settings, dom.preview.dom);
-  }
-
-  public registerDOMListeners() {
-    if (this.registered) return;
-    this.registered = true;
-    const { exports: ex } = dom;
-
-    const persist = () => {
-      this.setUIState();
-      this.schedule();
-    };
-
-    ex.withStyles.addEventListener('change', (e) => {
-      if (this.isApplying) return;
-      const target = e.target as HTMLInputElement;
-      this.settings.withStyles = target.checked;
-      persist();
-    });
-
-    ex.container.addEventListener('change', (e) => {
-      if (this.isApplying) return;
-      const target = e.target as HTMLSelectElement;
-      this.settings.container = target.value as 'container' | 'container-fluid';
-      persist();
-    });
-
-    ex.fontSize.addEventListener('change', (e) => {
-      if (this.isApplying) return;
-      const target = e.target as HTMLInputElement;
-      this.settings.fontSize = parseInt(target.value, 10);
-      persist();
-    });
-
-    ex.lineSpacing.addEventListener('input', (e) => {
-      if (this.isApplying) return;
-      const target = e.target as HTMLInputElement;
-      this.settings.lineSpacing = parseFloat(target.value);
-      this.setUIState();
-      this.schedule(400); // slightly longer debounce for slider drag
-    });
-
-    ex.background.addEventListener('change', (e) => {
-      if (this.isApplying) return;
-      const target = e.target as HTMLInputElement;
-      this.settings.background = target.value;
-      persist();
-    });
-
-    ex.fontColor.addEventListener('change', (e) => {
-      if (this.isApplying) return;
-      const target = e.target as HTMLInputElement;
-      this.settings.fontColor = target.value;
-      persist();
-    });
-
-    // Phase 6 removed the redundant "toolbar styled" listener — it
-    // querySelector'd the same `#export-with-styles` element as
-    // `ex.withStyles`, so the two listeners synced a checkbox to itself.
+    this.applyPreviewSync();
+    this.snapshot = { ...this.currentSettings };
   }
 
   public updateSettingsInLocalStorage() {
     localStorage.setItem(
       'mkeditor-export-settings',
-      JSON.stringify(this.settings),
+      JSON.stringify(this.currentSettings),
     );
   }
 
-  /**
-   * Schedule an export save delay
-   *
-   * @param overrideDelay
-   */
+  /** Schedule a debounced persist (250ms default, 400ms for the slider). */
   private schedule(overrideDelay?: number) {
     const delay = overrideDelay ?? this.debounceMs;
     if (this.saveTimer !== null) {
@@ -155,23 +147,16 @@ export class ExportSettingsProvider {
     }, delay);
   }
 
-  /**
-   * Save export settings.
-   *
-   * @returns
-   */
+  /** Persist if the serialised settings actually changed. */
   private save() {
-    const nextJSON = JSON.stringify(this.settings);
-
-    if (nextJSON === this.lastPersistedJSON) {
-      return;
-    }
+    const nextJSON = JSON.stringify(this.currentSettings);
+    if (nextJSON === this.lastPersistedJSON) return;
 
     if (this.mode === 'web') {
       this.updateSettingsInLocalStorage();
     } else {
       this.dispatcher.bridgeSettings({
-        settings: { exportSettings: this.settings },
+        settings: { exportSettings: this.currentSettings },
       });
     }
 

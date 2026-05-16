@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { Modal } from 'bootstrap';
 
 import type { TreeNode } from '../../core/FileTreeManager';
 import {
@@ -9,6 +8,7 @@ import {
 import { useFiles } from '../contexts/FilesContext';
 import { useFileTree } from '../contexts/FileTreeContext';
 import { useManagers } from '../contexts/ManagersContext';
+import { useModals } from '../contexts/ModalsContext';
 import { useUIState } from '../contexts/UIStateContext';
 import { Icon } from './Icon';
 import {
@@ -42,6 +42,7 @@ export const FileTreePanel: React.FC = () => {
   const { fileTreeManager, fileManager, bridgeManager } = useManagers();
   const { nodes, treeRoot } = useFileTree();
   const { activeFile } = useFiles();
+  const { openModal } = useModals();
   const { toggleSidebar } = useUIState();
 
   const [expandedPaths, setExpandedPaths] = React.useState<Set<string>>(
@@ -137,13 +138,10 @@ export const FileTreePanel: React.FC = () => {
     () => ({
       openFile: (path: string) => fileManager?.openFileFromPath(path),
       toggleSidebar,
-      openSettings: () => {
-        const el = document.getElementById('app-settings');
-        if (el) Modal.getOrCreateInstance(el).show();
-      },
+      openSettings: () => openModal('settings'),
       expandFolder,
     }),
-    [fileManager, toggleSidebar, expandFolder],
+    [fileManager, toggleSidebar, openModal, expandFolder],
   );
 
   const items: MenuItem[] = React.useMemo(() => {

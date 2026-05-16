@@ -12,19 +12,6 @@ beforeEach(async () => {
   document.body.innerHTML = `
     <div id="editor"></div>
     <div id="preview"><div id="preview-content" class="container-fluid"></div></div>
-    <div id="app-about"><span id="app-version"></span></div>
-    <div id="app-settings"></div>
-    <input id="autoindent-setting" />
-    <input id="darkmode-setting" />
-    <input id="wordwrap-setting" />
-    <input id="whitespace-setting" />
-    <input id="minimap-setting" />
-    <input id="systemtheme-setting" />
-    <input id="scrollsync-setting" />
-    <select id="locale-setting" /></select>
-    <p id="app-settings-file-info"></p>
-    <label id="darkmode-icon"></label>
-    <span id="app-build-id"></span>
   `;
   ({ EditorManager } = await import('../src/browser/core/EditorManager'));
   ({ EditorDispatcher } = await import(
