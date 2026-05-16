@@ -4,7 +4,7 @@
 
 // react-resizable-panels v4 Group elements default to display:flex but
 // leave sizing to the host. Force both axes to fill so the editor +
-// preview panes occupy the available space inside #react-root.
+// preview panes occupy the available space inside their parent.
 [data-group] {
   width: 100%;
   height: 100%;
@@ -19,6 +19,15 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+// The outer Group sits below <Navbar> + <TabBar> in #react-root's flex
+// column. Override the default height:100% so it flex-grows to remaining
+// space instead of overflowing past the navbar/tabs.
+#mkeditor-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
 }
 
 #editor {

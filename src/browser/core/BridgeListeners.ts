@@ -117,57 +117,30 @@ export function registerBridgeListeners(
   bridge.receive('from:file:opened', ({ content, filename, file }: File) => {
     const path = file || `untitled-${files.untitledCounter++}`;
     const name = filename || `Untitled ${files.untitledCounter - 1}`;
-    let mdl = files.models.get(path);
 
-    if (
-      !mdl &&
-      !files.openingFile &&
-      files.activeFile &&
-      files.activeFile.startsWith('untitled') &&
-      file
-    ) {
-      mdl = files.models.get(files.activeFile);
-      const tab = files.tabs.get(files.activeFile);
-      if (mdl && tab) {
-        files.models.delete(files.activeFile);
-        files.tabs.delete(files.activeFile);
-        files.originals.delete(files.activeFile);
-
-        tab.textContent = name;
-        const newTab = tab.cloneNode(true) as HTMLAnchorElement;
-        newTab.textContent = name;
-        newTab.addEventListener('click', (e) => {
-          e.preventDefault();
-          files.activateFile(path);
-        });
-        tab.replaceWith(newTab);
-
-        files.models.set(path, mdl);
-        files.tabs.set(path, newTab);
-        files.originals.set(path, content);
-
-        mdl.setValue(content);
-
-        const closeBtn = newTab.nextElementSibling as HTMLButtonElement | null;
-        if (closeBtn) {
-          const newBtn = closeBtn.cloneNode(true) as HTMLButtonElement;
-          newBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            await files.closeTab(path);
-          });
-          closeBtn.replaceWith(newBtn);
-        }
-      }
+    if (files.models.has(path)) {
+      // Already open — just activate.
+      tree.addFileToTree(path);
+      files.activateFile(path, name);
+      files.openingFile = false;
+      return;
     }
 
-    // Fallback
-    if (!mdl) {
-      mdl = editor.createModel(content, 'markdown');
-      files.models.set(path, mdl);
-      files.originals.set(path, content);
-      files.addTab(name, path);
+    // If the active tab is an untitled scratch buffer and we have a real
+    // file path, replace the untitled in place (preserves the typed
+    // content's model identity and tab position).
+    if (file && files.replaceUntitled(path, name, content)) {
+      tree.addFileToTree(path);
+      files.activateFile(path, name);
+      files.openingFile = false;
+      return;
     }
+
+    // Fallback: create a fresh model + tab.
+    const mdl = editor.createModel(content, 'markdown');
+    files.models.set(path, mdl);
+    files.originals.set(path, content);
+    files.addTab(name, path);
 
     tree.addFileToTree(path);
     files.activateFile(path, name);
@@ -178,47 +151,7 @@ export function registerBridgeListeners(
   bridge.receive(
     'from:path:renamed',
     ({ oldPath, newPath, name }: RenamedPath) => {
-      const mdl = files.models.get(oldPath);
-      if (!mdl) return;
-
-      const original = files.originals.get(oldPath);
-      if (original !== undefined) {
-        files.originals.delete(oldPath);
-        files.originals.set(newPath, original);
-      }
-
-      files.models.delete(oldPath);
-      files.models.set(newPath, mdl);
-
-      const tab = files.tabs.get(oldPath);
-      if (tab) {
-        const newTab = tab.cloneNode(true) as HTMLAnchorElement;
-        newTab.textContent = name;
-        newTab.addEventListener('click', (e) => {
-          e.preventDefault();
-          files.activateFile(newPath);
-        });
-        const li = tab.parentElement as HTMLLIElement | null;
-        if (li) li.dataset.path = newPath;
-        tab.replaceWith(newTab);
-        files.tabs.delete(oldPath);
-        files.tabs.set(newPath, newTab);
-
-        const closeBtn = newTab.nextElementSibling as HTMLButtonElement | null;
-        if (closeBtn) {
-          const newBtn = closeBtn.cloneNode(true) as HTMLButtonElement;
-          newBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            await files.closeTab(newPath);
-          });
-          closeBtn.replaceWith(newBtn);
-        }
-      }
-
-      if (files.activeFile === oldPath) {
-        files.activateFile(newPath, name);
-      }
+      files.renameTab(oldPath, newPath, name);
     },
   );
 

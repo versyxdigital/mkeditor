@@ -111,14 +111,10 @@ export const dom = {
       return document.querySelector('#preview-content') as HTMLDivElement;
     },
   },
-  tabs: <HTMLUListElement>document.querySelector('#editor-tabs'),
   get filetree(): HTMLUListElement {
     return document.querySelector('#file-tree') as HTMLUListElement;
   },
   meta: {
-    file: {
-      active: <HTMLSpanElement>document.querySelector('#active-file'),
-    },
     scroll: {
       line: {
         class: 'has-line-data',

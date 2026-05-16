@@ -1,7 +1,6 @@
 import { editor, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
-import { CharacterCount, WordCount } from '../extensions/editor/WordCount';
 import { ScrollSync } from '../extensions/editor/ScrollSync';
 import { registerUIToolbarListeners } from './ToolbarListeners';
 import { APP_VERSION } from '../version';
@@ -53,13 +52,9 @@ export class EditorManager {
     dom.about.version.innerHTML = APP_VERSION;
     dom.build.innerHTML = `v${APP_VERSION}`;
 
-    this.dispatcher.addEventListener('editor:render', () => {
-      const value = this.mkeditor?.getValue() ?? '';
-      WordCount(value);
-      CharacterCount(value);
-      // PreviewPane (React) handles the innerHTML write; we only update
-      // the legacy navbar counters here.
-    });
+    // editor:render is handled by <PreviewPane> (innerHTML write) and
+    // <Counts> via useCounts (word/character counts). EditorManager
+    // no longer subscribes here.
 
     if (opts.init) {
       this.create({ watch: opts.watch });
@@ -154,14 +149,9 @@ export class EditorManager {
       window.onload = () => this.mkeditor?.layout();
       window.onresize = () => this.mkeditor?.layout();
 
-      // Initialize word count and character count values
-      const value = this.mkeditor.getValue();
-      WordCount(value);
-      CharacterCount(value);
-
-      // Trigger initial preview render. PreviewPane subscribes to
-      // editor:render and writes innerHTML; the constructor listener
-      // refreshes WordCount/CharacterCount.
+      // Trigger initial preview render. <PreviewPane> subscribes to
+      // editor:render and writes innerHTML; <Counts> recomputes the
+      // word/character counts via useCounts.
       this.dispatcher.render();
 
       if (watch) {

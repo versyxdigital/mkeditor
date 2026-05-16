@@ -8,54 +8,75 @@ import {
 
 import { ManagersProvider, type Managers } from './contexts/ManagersContext';
 import { UIStateProvider, useUIState } from './contexts/UIStateContext';
+import { FilesProvider } from './contexts/FilesContext';
 import { LegacyShell } from './components/LegacyShell';
+import { Navbar } from './components/Navbar';
+import { TabBar } from './components/TabBar';
 import { Sidebar } from './components/Sidebar';
 import { Workspace } from './components/Workspace';
 
 import './styles/tailwind.css';
 
 export interface AppProps {
-  managers: Managers;
+  initialManagers: Managers;
   initialSidebarOpen: boolean;
   /** Fires once after Monaco is created (forwarded from <EditorHost>). */
   onEditorReady?: () => void;
+  /**
+   * Composition root receives this on first render and uses it to push an
+   * updated managers object after `BridgeManager` (and therefore
+   * `FileManager` / `FileTreeManager`) are constructed inside
+   * `onEditorReady`. Without this, `FilesContext` would never see a
+   * non-null fileManager.
+   */
+  registerSetManagers?: (
+    setter: React.Dispatch<React.SetStateAction<Managers>>,
+  ) => void;
 }
 
 export const App: React.FC<AppProps> = ({
-  managers,
+  initialManagers,
   initialSidebarOpen,
   onEditorReady,
-}) => (
-  <ManagersProvider value={managers}>
-    <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
-      <LegacyShell />
-      <Shell onEditorReady={onEditorReady} />
-    </UIStateProvider>
-  </ManagersProvider>
-);
+  registerSetManagers,
+}) => {
+  const [managers, setManagers] = React.useState<Managers>(initialManagers);
+
+  // Hand the setter to the composition root during the first render — i.e.
+  // before any child effect runs (in particular <EditorHost>'s useEffect,
+  // which triggers onEditorReady and thus setReactManagers). Child effects
+  // fire before parent effects, so a useEffect here would be too late.
+  // useRef + a one-shot guard is the React-canonical pattern for "run
+  // exactly once during the initial render".
+  const registeredRef = React.useRef(false);
+  if (!registeredRef.current) {
+    registeredRef.current = true;
+    registerSetManagers?.(setManagers);
+  }
+
+  return (
+    <ManagersProvider value={managers}>
+      <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
+        <FilesProvider>
+          <LegacyShell />
+          <Navbar />
+          <TabBar />
+          <Shell onEditorReady={onEditorReady} />
+        </FilesProvider>
+      </UIStateProvider>
+    </ManagersProvider>
+  );
+};
 
 /**
- * Outer two-panel layout: collapsible sidebar | workspace. The sidebar
- * Panel is driven imperatively from `useUIState().sidebarOpen` so the
- * legacy `#sidebar-toggle` button (still rendered by the static HTML
- * shell until Phase 4 owns the navbar) toggles a context value rather
- * than mutating classes directly.
+ * Sidebar | Workspace split. The outer Group sits below the Navbar +
+ * TabBar in #react-root's flex column and flex-grows to fill the
+ * remaining vertical space (`#mkeditor-layout { flex: 1 }`).
  */
 const Shell: React.FC<{ onEditorReady?: () => void }> = ({ onEditorReady }) => {
-  const { sidebarOpen, toggleSidebar } = useUIState();
+  const { sidebarOpen } = useUIState();
   const sidebarPanelRef = React.useRef<PanelImperativeHandle>(null);
 
-  // Bridge legacy #sidebar-toggle (Phase 4 will own the navbar in React).
-  React.useEffect(() => {
-    const btn = document.getElementById('sidebar-toggle');
-    if (!btn) return;
-    btn.addEventListener('click', toggleSidebar);
-    return () => btn.removeEventListener('click', toggleSidebar);
-  }, [toggleSidebar]);
-
-  // Mirror UIStateContext.sidebarOpen into the panel's collapsed/expanded
-  // state. Runs on every change AND once on mount, so an `initialSidebarOpen
-  // === false` (web mode) collapses the sidebar before the user sees it.
   React.useEffect(() => {
     const panel = sidebarPanelRef.current;
     if (!panel) return;

@@ -2,29 +2,26 @@
  * Count written words.
  *
  * @param value - the editor model content
+ * @returns the number of words (markdown stripped)
  */
-const WordCount = (value: string) => {
+export function countWords(value: string): number {
   const text = stripMarkdown(value);
-  let count = countWords(text);
-  if (count && count < 0) count = 0;
-
-  const wc = document.querySelector('#word-count');
-  if (wc) wc.innerHTML = count?.toString() ?? '0';
-};
+  const words = text.match(/\S+/g);
+  const count = words && words.length ? words.length : 0;
+  return count < 0 ? 0 : count;
+}
 
 /**
  * Count written characters.
  *
  * @param value - the editor model content
+ * @returns the number of characters (markdown stripped)
  */
-const CharacterCount = (value: string) => {
+export function countCharacters(value: string): number {
   const text = stripMarkdown(value);
-  let count = countCharacters(text);
-  if (count && count < 0) count = 0;
-
-  const cc = document.querySelector('#character-count');
-  if (cc) cc.innerHTML = count?.toString() ?? '0';
-};
+  const count = text.length;
+  return count < 0 ? 0 : count;
+}
 
 /**
  * Strip markdown from the editor model content.
@@ -32,7 +29,7 @@ const CharacterCount = (value: string) => {
  * @param value - the editor model content
  * @returns the stripped content
  */
-function stripMarkdown(value: string) {
+function stripMarkdown(value: string): string {
   return (
     value
       // Remove fenced code blocks (``` or ~~~)
@@ -82,14 +79,3 @@ function stripMarkdown(value: string) {
       .trim()
   );
 }
-
-function countCharacters(str: string) {
-  return str.length;
-}
-
-function countWords(str: string) {
-  const words = str.match(/\S+/g);
-  return words && words.length ? words.length : 0;
-}
-
-export { WordCount, CharacterCount };

@@ -43,7 +43,7 @@ if (api === 'web') {
 const dispatcher = new EditorDispatcher();
 const editorManager = new EditorManager({ mode, dispatcher });
 
-const managers: Managers = {
+const initialManagers: Managers = {
   mode,
   editorManager,
   dispatcher,
@@ -52,6 +52,12 @@ const managers: Managers = {
   bridgeManager: null,
   providers: editorManager.providers,
 };
+
+// Setter handed to us by <App> on first render; we call it from
+// onEditorReady once BridgeManager (and therefore FileManager +
+// FileTreeManager) have been constructed, so React contexts see them.
+let setReactManagers: React.Dispatch<React.SetStateAction<Managers>> | null =
+  null;
 
 /**
  * Runs once after <EditorHost> has called editorManager.create(). Wires
@@ -92,7 +98,6 @@ function onEditorReady() {
     );
     bridgeManager.provide('commands', editorManager.providers.commands);
     editorManager.provide('bridge', bridgeManager);
-    managers.bridgeManager = bridgeManager;
 
     new MkedLinkProvider(mkeditor);
 
@@ -101,6 +106,15 @@ function onEditorReady() {
     window.setLanguage = (lng: string) => {
       bridgeManager.setLanguage(lng);
     };
+
+    // Push the new managers into React state so FilesContext can subscribe
+    // to fileManager. FileTreeContext (Phase 5) will use fileTreeManager.
+    setReactManagers?.((prev) => ({
+      ...prev,
+      bridgeManager,
+      fileManager: bridgeManager.fileManager,
+      fileTreeManager: bridgeManager.fileTreeManager,
+    }));
   }
 
   // Splits, sidebar visibility, and split-reset are now owned by the
@@ -118,7 +132,14 @@ const initialSidebarOpen = api !== 'web';
 const reactRoot = document.getElementById('react-root');
 if (reactRoot) {
   createRoot(reactRoot).render(
-    React.createElement(App, { managers, onEditorReady, initialSidebarOpen }),
+    React.createElement(App, {
+      initialManagers,
+      onEditorReady,
+      initialSidebarOpen,
+      registerSetManagers: (setter) => {
+        setReactManagers = setter;
+      },
+    }),
   );
 } else {
   logger?.error(
