@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
 
-You review a React migration phase against the plan. Your concern is *scope and exit criteria*, not architecture-wide rules (that's the architecture auditor) or test health (that's the test auditor).
+You review a React migration phase against the plan. Your concern is _scope and exit criteria_, not architecture-wide rules (that's the architecture auditor) or test health (that's the test auditor).
 
 ## Read first
 

@@ -5,6 +5,7 @@ description: Show React migration phase status and next-up phase
 Read `docs/REACT_MIGRATION.md` and locate the **Phase Index** table.
 
 Report:
+
 1. The full phase index as a compact table (number, name, status emoji).
 2. The next phase to execute (lowest 🔵 row).
 3. Any blockers noted in the doc since the last status check.

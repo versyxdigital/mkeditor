@@ -57,7 +57,9 @@ This document describes how MKEditor is put together internally: how the two exe
 ## 2. Process Boundaries
 
 ### Main process (`src/app/`)
+
 Runs Node. Owns:
+
 - `BrowserWindow` lifecycle, single-instance lock, OS file associations (`.md`), tray, app menu.
 - `~/.mkeditor/settings.json` (read/write/merge).
 - File system access for the editor: open/save dialogs, open path, directory tree, create/rename/delete file or folder, properties.
@@ -67,14 +69,18 @@ Runs Node. Owns:
 - `electron-log` to `~/.mkeditor/main.log` (truncated each launch).
 
 ### Renderer process (`src/browser/`)
+
 Runs in Chromium with `contextIsolation: true` and `nodeIntegration: false`. Owns:
+
 - Monaco editor + markdown-it preview.
 - All UI state (tabs, file tree, settings UI, modals, splits, themes).
 - i18n via i18next (loaded over `fetch`).
-- Communicates with main *only* through whitelisted IPC channels via `window.executionBridge`.
+- Communicates with main _only_ through whitelisted IPC channels via `window.executionBridge`.
 
 ### Preload (`src/app/preload.ts`)
+
 Runs in an isolated world. Exposes three objects on `window`:
+
 - `executionBridge` — `{ send, receive }` with whitelists for `to:*` (renderer → main) and `from:*` (main → renderer).
 - `mked` — synchronous and invoke-style helpers used by the link provider, locale lookup, and path resolution.
 - `logger` — forwards renderer logs to `electron-log` via `ipcRenderer.send('log', …)`.
@@ -144,11 +150,12 @@ There are two "manager" classes, each with a generic `provide<T>(key, instance)`
 //   settings, commands, completion, exportSettings
 ```
 
-This is the only DI surface — there's no container. Order in [index.ts](../src/browser/index.ts) matters: providers are constructed, attached to the editor, then (desktop) the bridge is constructed and the *same* provider instances are re-attached to it.
+This is the only DI surface — there's no container. Order in [index.ts](../src/browser/index.ts) matters: providers are constructed, attached to the editor, then (desktop) the bridge is constructed and the _same_ provider instances are re-attached to it.
 
 ### Custom event bus
 
 [EditorDispatcher](../src/browser/events/EditorDispatcher.ts) is a tiny `EventTarget`-like that other modules use to decouple the editor watch loop from settings persistence and re-renders:
+
 - `editor:render` — fired by `FileManager.activateFile`; handled in `EditorManager` to recompute counts + preview.
 - `editor:track:content` — used to update the "originalValue" baseline that drives the "unsaved changes" star in the title bar.
 - `editor:bridge:settings` — `SettingsProvider`/`ExportSettingsProvider` emit this on a user change; `BridgeManager` listens and forwards as `to:settings:save`.
@@ -197,6 +204,7 @@ Renderer (index.ts)
 ### 4.2 Boot (web)
 
 Same as above minus:
+
 - No `executionBridge`, so `mode === 'web'`.
 - Sidebar (`#sidebar`) hidden, delete-content button shown.
 - `SettingsProvider`/`ExportSettingsProvider` read from `localStorage` instead of receiving via `from:settings:set`.
@@ -209,7 +217,7 @@ Same as above minus:
 2. `onDidChangeModelContent` fires in [EditorManager.watch](../src/browser/core/EditorManager.ts:187).
 3. Debounced `updateBridgedContent()` runs (~250ms) → desktop sends `to:editor:state` with `hasChanged` boolean; web writes content to `localStorage`.
 4. `CompletionProvider.autoContinueListMarkers` runs synchronously if Enter was the last key.
-5. `CompletionProvider.suggestOnValidInput` updates active proposal regex if user just typed `:::` or ```` ``` ````.
+5. `CompletionProvider.suggestOnValidInput` updates active proposal regex if user just typed `:::` or ` ``` `.
 6. `setTimeout(..., 150)` updates word/character counts and calls `EditorManager.render`.
 7. `render()` calls `Markdown.render(value)` and assigns to `dom.preview.dom.innerHTML`, then `refreshLines()` invalidates the ScrollSync line cache.
 8. `LineNumber` extension stamped `class="has-line-data" data-line-start data-line-end` on rendered tokens so ScrollSync can find them.
@@ -217,6 +225,7 @@ Same as above minus:
 ### 4.4 Scroll sync
 
 When `settings.scrollsync` is true and the editor scrolls:
+
 1. `EditorManager.watch` reads `getVisibleRanges()[0].startLineNumber`.
 2. Calls `ScrollSync(line, dom.preview.wrapper)`.
 3. ScrollSync looks up the cached line elements (rebuilt on demand after a render), interpolates between two adjacent ones, and adjusts `preview.scrollTop`.
@@ -224,6 +233,7 @@ When `settings.scrollsync` is true and the editor scrolls:
 ### 4.5 Save (desktop)
 
 `Ctrl/Cmd+S` → AppMenu sends `from:file:save` with payload `'to:file:save'`.
+
 - [BridgeListeners](../src/browser/core/BridgeListeners.ts:70) receives this, reads the current model + active file path, and replies on `to:file:save` with `{ content, file }`.
 - `AppBridge` ipc handler calls `AppStorage.saveFile`, which writes the file synchronously and pushes `from:notification:display` (success/error key).
 - The saved path is set as the active file → `from:file:opened` fires → renderer updates tab name + original tracker.
@@ -249,22 +259,26 @@ Same chain but with `to:file:saveas` (no path). The user picks a path in the OS 
 ### 4.9 Export to HTML / PDF
 
 Both go through [HTMLExporter.generateHTML](../src/browser/core/HTMLExporter.ts:110) which:
+
 - Parses the preview's outerHTML via `DOMParser`.
 - Strips internal line-tracking attributes (`data-line-start`, `data-line-end`, `has-line-data`).
 - If `withStyles`, injects CDN `<link>`/`<script>` tags for Bootstrap, FontAwesome, highlight.js, KaTeX, plus inline overrides.
 - Applies `fontSize`, `lineHeight`, `backgroundColor`, `color` from `ExportSettings`.
 
 Desktop:
+
 - HTML: `to:html:export` → `AppStorage.saveFile` (auto-detects HTML by the `<!DOCTYPE html>` prefix and changes filters/i18n keys).
 - PDF: `to:pdf:export` → an offscreen `BrowserWindow` loads the HTML as a data URL, waits for fonts + images, calls `printToPDF`, then a save dialog.
 
 Web:
+
 - HTML: `HTMLExporter.webExport(html, 'text/html', '.html')` → `showSaveFilePicker` (File System Access API).
 - PDF: opens a new window, writes HTML, waits for stylesheets to load, calls `print()`.
 
 ### 4.10 Settings change
 
 DOM toggles in `#app-settings` are listened to by [SettingsProvider](../src/browser/core/providers/SettingsProvider.ts) — each handler updates Monaco options (or `<body data-theme>` for darkmode), then calls `persist()`:
+
 - Web: writes the whole `EditorSettings` to `localStorage`.
 - Desktop: emits `editor:bridge:settings` → [BridgeManager](../src/browser/core/BridgeManager.ts:72) sends `to:settings:save` → [AppSettings.saveSettingsToFile](../src/app/lib/AppSettings.ts:161) merges with the existing file, writes, and sends a success toast.
 
@@ -290,7 +304,7 @@ interface EditorSettings {
   minimap: boolean;
   systemtheme: boolean;
   scrollsync: boolean;
-  locale: string;       // 'en','de','es','fr','it','nl','pt','ru','uk','tr','zh','ja','ko'
+  locale: string; // 'en','de','es','fr','it','nl','pt','ru','uk','tr','zh','ja','ko'
 }
 
 interface ExportSettings {
@@ -298,8 +312,8 @@ interface ExportSettings {
   container: 'container' | 'container-fluid';
   fontSize: number;
   lineSpacing: number;
-  background: string;   // hex
-  fontColor: string;    // hex
+  background: string; // hex
+  fontColor: string; // hex
 }
 
 interface SettingsFile extends EditorSettings {
@@ -313,16 +327,16 @@ The defaults live in [AppSettings.settings](../src/app/lib/AppSettings.ts:31) (m
 
 [Markdown](../src/browser/core/Markdown.ts) is a single shared markdown-it instance configured at import time:
 
-| Order | Plugin                                    | Effect                                                                          |
-|-------|-------------------------------------------|---------------------------------------------------------------------------------|
-| init  | `MarkdownIt({ html, breaks, linkify })`   | Base parsing. `linkify` is locked down to require explicit protocols.            |
-| 1     | [AlertBlock](../src/browser/extensions/renderer/AlertBlock.ts) | Registers 8 markdown-it-container types (`primary`, `success`, etc.) rendering Bootstrap alerts. Also tags `<a>` inside alerts with `alert-link`. |
+| Order | Plugin                                                         | Effect                                                                                                                                                                    |
+| ----- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| init  | `MarkdownIt({ html, breaks, linkify })`                        | Base parsing. `linkify` is locked down to require explicit protocols.                                                                                                     |
+| 1     | [AlertBlock](../src/browser/extensions/renderer/AlertBlock.ts) | Registers 8 markdown-it-container types (`primary`, `success`, etc.) rendering Bootstrap alerts. Also tags `<a>` inside alerts with `alert-link`.                         |
 | 2     | [LineNumber](../src/browser/extensions/renderer/LineNumber.ts) | Pushes `class="has-line-data"`, `data-line-start`, `data-line-end` on selected tokens (paragraph_open, image, code_block, fence, list_item_open). Required by ScrollSync. |
-| 3     | [LinkTarget](../src/browser/extensions/renderer/LinkTarget.ts) | Adds `target="_blank"` to all `<a>`.                                              |
-| 4     | [ImageStyle](../src/browser/extensions/renderer/ImageStyle.ts) | Adds `img-fluid` to `<img>`.                                                      |
-| 5     | [TableStyle](../src/browser/extensions/renderer/TableStyle.ts) | Adds `table table-sm table-bordered table-striped` to `<table>`.                  |
-| 6     | `@vscode/markdown-it-katex`               | LaTeX math, both inline (`$…$`) and block (`$$…$$`).                              |
-| —     | `hljs.highlight` callback                 | Highlight.js for fenced code blocks (languages registered eagerly).               |
+| 3     | [LinkTarget](../src/browser/extensions/renderer/LinkTarget.ts) | Adds `target="_blank"` to all `<a>`.                                                                                                                                      |
+| 4     | [ImageStyle](../src/browser/extensions/renderer/ImageStyle.ts) | Adds `img-fluid` to `<img>`.                                                                                                                                              |
+| 5     | [TableStyle](../src/browser/extensions/renderer/TableStyle.ts) | Adds `table table-sm table-bordered table-striped` to `<table>`.                                                                                                          |
+| 6     | `@vscode/markdown-it-katex`                                    | LaTeX math, both inline (`$…$`) and block (`$$…$$`).                                                                                                                      |
+| —     | `hljs.highlight` callback                                      | Highlight.js for fenced code blocks (languages registered eagerly).                                                                                                       |
 
 Custom extension protocol is described in [src/browser/extensions/README.md](../src/browser/extensions/README.md).
 
@@ -343,6 +357,7 @@ package.json scripts
 ```
 
 Webpack config ([webpack.config.js](../webpack.config.js)):
+
 - Single entry: `[src/browser/index.ts, scss/index.scss]`.
 - Monaco bundled via `MonacoWebpackPlugin` with explicit `languages: ['markdown']` and a fixed feature allowlist (no full Monaco footprint).
 - CopyWebpackPlugin pulls in icon assets, the HTML view, the `locale/` tree, and KaTeX fonts.
@@ -352,15 +367,15 @@ Webpack config ([webpack.config.js](../webpack.config.js)):
 
 Lightweight Jest + jsdom suite under [tests/](../tests/):
 
-| File                    | Covers                                                                         |
-|-------------------------|--------------------------------------------------------------------------------|
-| `app.test.ts`           | Asserts `BrowserWindow` is constructed on `app.ready`.                          |
-| `bridge.test.ts`        | `BridgeManager` registers all expected `from:*` listeners and forwards correctly.|
-| `editor.test.ts`        | `EditorManager` calls `monaco.editor.create` with the right options.           |
-| `markdown.test.ts`      | `Markdown` produces alerts, target="_blank", responsive images, line markers, LaTeX, and resists fuzzy linkification. |
-| `providers.test.ts`     | Providers attach to both `EditorManager` and `BridgeManager` correctly.        |
+| File                | Covers                                                                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `app.test.ts`       | Asserts `BrowserWindow` is constructed on `app.ready`.                                                                 |
+| `bridge.test.ts`    | `BridgeManager` registers all expected `from:*` listeners and forwards correctly.                                      |
+| `editor.test.ts`    | `EditorManager` calls `monaco.editor.create` with the right options.                                                   |
+| `markdown.test.ts`  | `Markdown` produces alerts, target="\_blank", responsive images, line markers, LaTeX, and resists fuzzy linkification. |
+| `providers.test.ts` | Providers attach to both `EditorManager` and `BridgeManager` correctly.                                                |
 
-Mocks in [tests/__mocks__/](../tests/__mocks__/) stand in for `electron`, `monaco-editor`, and `sweetalert2`.
+Mocks in [tests/**mocks**/](../tests/__mocks__/) stand in for `electron`, `monaco-editor`, and `sweetalert2`.
 
 ## 9. Notable Conventions and Gotchas
 

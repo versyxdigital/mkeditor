@@ -9,13 +9,14 @@ For deeper details see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). For planned
 - [src/app/](src/app/) — Electron main process (Node). Compiled by `tsc` via [scripts/compile-app.mjs](scripts/compile-app.mjs) to `dist/app/`.
 - [src/browser/](src/browser/) — Renderer (DOM + Monaco). Bundled by webpack to `dist/mkeditor.bundle.js` + `dist/mkeditor.bundle.css`.
 - [locale/](locale/) — i18next JSON resources, one folder per language. Build step combines per-language JSON into `all.json` via [scripts/combine-locales.mjs](scripts/combine-locales.mjs).
-- [tests/](tests/) — Jest + jsdom. Mocks for `electron`, `monaco-editor`, `sweetalert2` under [tests/__mocks__/](tests/__mocks__/).
+- [tests/](tests/) — Jest + jsdom. Mocks for `electron`, `monaco-editor`, `sweetalert2` under [tests/**mocks**/](tests/__mocks__/).
 - [@types/index.d.ts](@types/index.d.ts) — Global window augmentations (`window.executionBridge`, `window.mked`, `window.logger`, `window.setLanguage`).
 - [build/](build/) — Installer resources (icons, license).
 
 ## Two Runtime Modes
 
 The same renderer bundle detects which mode it's running in via [getExecutionBridge()](src/browser/util.ts#L101):
+
 - **Desktop**: `window.executionBridge` is injected by the Electron preload ([src/app/preload.ts](src/app/preload.ts)). Settings persist to `~/.mkeditor/settings.json`. File tree sidebar visible. Files open through IPC.
 - **Web**: no bridge. Settings + last-edited content go to `localStorage` (`mkeditor-settings`, `mkeditor-export-settings`, `mkeditor-content`). Sidebar hidden, "delete content" button shown. Exports use the File System Access API or `window.open` + `print()` for PDF.
 
@@ -24,6 +25,7 @@ Mode branching lives mostly in [index.ts](src/browser/index.ts), [EditorManager]
 ## IPC Bridge Model
 
 Channels are whitelisted in [preload.ts](src/app/preload.ts:15-53):
+
 - **Renderer → Main** (`to:*`): `to:title:set`, `to:editor:state`, `to:settings:save`, `to:html:export`, `to:pdf:export`, `to:file:*`, `to:folder:*`, `to:i18n:set`.
 - **Main → Renderer** (`from:*`): `from:theme:set`, `from:settings:set`, `from:file:*`, `from:folder:*`, `from:modal:open`, `from:command:palette`, `from:notification:display`, `from:path:*`, `from:i18n:set`.
 

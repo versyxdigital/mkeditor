@@ -6,21 +6,21 @@ Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Decisions
 
-| Area               | Decision                                                                                         |
-|--------------------|--------------------------------------------------------------------------------------------------|
-| UI framework       | React 19, TypeScript, function components only                                                   |
-| Component library  | [shadcn/ui](https://ui.shadcn.com) (copy-in pattern, built on Radix primitives + Tailwind CSS)   |
-| Styling            | Tailwind CSS (v4)                                                                                |
-| Bundler            | Stay on Webpack — `monaco-editor-webpack-plugin` is load-bearing for Monaco's bundle size         |
-| Pane splits        | `react-resizable-panels` (shadcn-friendly), replacing split.js                                    |
-| Toasts             | `sonner` (shadcn integration), replacing SweetAlert2 toasts                                       |
-| Dialogs / prompts  | shadcn `Dialog` / `AlertDialog`, replacing SweetAlert2 modals                                     |
-| Drag & drop (tabs/tree) | Native HTML5 DnD for now (already works); revisit `@dnd-kit` after migration                 |
-| Icons              | Keep FontAwesome behind a thin `<Icon>` wrapper for now; evaluate `lucide-react` post-migration   |
-| State              | React `useState`/`useReducer` + context. **No Redux/Zustand.** Managers stay as data/IPC owners.  |
-| i18n               | Keep i18next instance; thin `useTranslation` hook subscribes to `languageChanged`                 |
-| Tests              | Add `@testing-library/react` + `@testing-library/user-event` alongside existing jest suite        |
-| Wiring             | Constructor injection (no DI container); managers passed via `ManagersContext`                    |
+| Area                    | Decision                                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| UI framework            | React 19, TypeScript, function components only                                                   |
+| Component library       | [shadcn/ui](https://ui.shadcn.com) (copy-in pattern, built on Radix primitives + Tailwind CSS)   |
+| Styling                 | Tailwind CSS (v4)                                                                                |
+| Bundler                 | Stay on Webpack — `monaco-editor-webpack-plugin` is load-bearing for Monaco's bundle size        |
+| Pane splits             | `react-resizable-panels` (shadcn-friendly), replacing split.js                                   |
+| Toasts                  | `sonner` (shadcn integration), replacing SweetAlert2 toasts                                      |
+| Dialogs / prompts       | shadcn `Dialog` / `AlertDialog`, replacing SweetAlert2 modals                                    |
+| Drag & drop (tabs/tree) | Native HTML5 DnD for now (already works); revisit `@dnd-kit` after migration                     |
+| Icons                   | Keep FontAwesome behind a thin `<Icon>` wrapper for now; evaluate `lucide-react` post-migration  |
+| State                   | React `useState`/`useReducer` + context. **No Redux/Zustand.** Managers stay as data/IPC owners. |
+| i18n                    | Keep i18next instance; thin `useTranslation` hook subscribes to `languageChanged`                |
+| Tests                   | Add `@testing-library/react` + `@testing-library/user-event` alongside existing jest suite       |
+| Wiring                  | Constructor injection (no DI container); managers passed via `ManagersContext`                   |
 
 ### State ownership rule
 
@@ -83,20 +83,20 @@ src/browser/
 
 ## Phase Index
 
-| #  | Phase                                | Status |
-|----|--------------------------------------|--------|
-| 1  | Foundation: deps, build, shadcn init | 🔵     |
-| 2  | Composition root + Monaco host       | 🔵     |
-| 3  | Preview pane + resizable workspace   | 🔵     |
-| 4  | Top chrome: navbar + tabs            | 🔵     |
-| 5  | Sidebar + file tree                  | 🔵     |
-| 6  | Editor toolbar + dropdowns           | 🔵     |
-| 7  | Modals + Settings/Export refactor    | 🔵     |
-| 8  | Toasts + prompts (drop SweetAlert2)  | 🔵     |
-| 9  | Cleanup (drop Bootstrap, dispatcher fold, dom.ts prune) | 🔵 |
-| 10 | Test pass + docs update              | 🔵     |
+| #   | Phase                                                   | Status        |
+| --- | ------------------------------------------------------- | ------------- |
+| 1   | Foundation: deps, build, shadcn init                    | 🟢 2026-05-16 |
+| 2   | Composition root + Monaco host                          | 🟢 2026-05-16 |
+| 3   | Preview pane + resizable workspace                      | 🔵            |
+| 4   | Top chrome: navbar + tabs                               | 🔵            |
+| 5   | Sidebar + file tree                                     | 🔵            |
+| 6   | Editor toolbar + dropdowns                              | 🔵            |
+| 7   | Modals + Settings/Export refactor                       | 🔵            |
+| 8   | Toasts + prompts (drop SweetAlert2)                     | 🔵            |
+| 9   | Cleanup (drop Bootstrap, dispatcher fold, dom.ts prune) | 🔵            |
+| 10  | Test pass + docs update                                 | 🔵            |
 
-A phase is **complete** only when its exit criteria are met *and* `npm test`, `npm run lint`, and a manual smoke (desktop + web) pass. **Each phase ends with a focused commit (or small commit series) on a `feature/react-phase-N-<slug>` branch.**
+A phase is **complete** only when its exit criteria are met _and_ `npm test`, `npm run lint`, and a manual smoke (desktop + web) pass. **Each phase ends with a focused commit (or small commit series) on a `feature/react-phase-N-<slug>` branch.**
 
 ---
 
@@ -105,6 +105,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 **Goal**: React 19, Tailwind, and shadcn can render into the existing HTML shell without changing app behaviour. Nothing in the prod render path uses them yet.
 
 **Tasks**:
+
 1. Add runtime deps: `react`, `react-dom`, `class-variance-authority`, `clsx`, `tailwind-merge`, `react-resizable-panels`, `sonner`.
 2. Add dev deps: `@types/react`, `@types/react-dom`, `tailwindcss@4`, `@tailwindcss/postcss`, `postcss`, `postcss-loader`, `autoprefixer`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`.
 3. Update [tsconfig.json](../tsconfig.json): `"jsx": "react-jsx"`; verify `"moduleResolution"` works with React 19 types.
@@ -120,6 +121,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 7. Update [jest.config.js](../jest.config.js): jsdom transform for `.tsx`, jest-dom matchers, `transform` for tailwind imports as stubs.
 
 **Exit criteria**:
+
 - `npm run build-editor` produces a bundle that still boots both modes with no visible change.
 - `npm test` passes (no React tests yet, but config doesn't break existing tests).
 - Tailwind classes resolve in a throwaway component (verified manually by importing it temporarily into `index.ts`).
@@ -133,11 +135,12 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 **Goal**: React owns the page mount. Monaco is created by `EditorManager` and mounted into a React-rendered `<div>`. Everything else is still legacy DOM, untouched.
 
 **Tasks**:
+
 1. Refactor [EditorManager.create()](../src/browser/core/EditorManager.ts:80) to accept a `HTMLElement` mount target rather than reading [dom.editor.dom](../src/browser/dom.ts:101). Keep the dom.ts fallback for the brief window where legacy code still constructs it.
 2. Refactor [index.ts](../src/browser/index.ts):
    - Construct managers/providers as before, but **do not** call `EditorManager.create()` directly.
    - Instead, mount `<App managers={...} mode={mode} />` into a new `#react-root` div added to [views/index.html](../src/browser/views/index.html).
-   - `<App>` provides `ManagersContext` and renders the legacy DOM via a small placeholder component (`<LegacyShell />`) that renders nothing structural yet, *and* a `<EditorHost />` that swaps with the current `#editor` div.
+   - `<App>` provides `ManagersContext` and renders the legacy DOM via a small placeholder component (`<LegacyShell />`) that renders nothing structural yet, _and_ a `<EditorHost />` that swaps with the current `#editor` div.
 3. Create [src/browser/react/contexts/ManagersContext.tsx](../src/browser/react/contexts/ManagersContext.tsx) exposing `{ mode, editorManager, fileManager, fileTreeManager, bridgeManager?, providers }` (with non-null assertions guarded by the composition root).
 4. Create [src/browser/react/components/EditorHost.tsx](../src/browser/react/components/EditorHost.tsx):
    - `useEffect(() => { editorManager.create({ mount: ref.current, watch: true }); return () => editorManager.dispose(); }, [])`.
@@ -146,6 +149,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 5. Keep `#editor` as a legacy ID temporarily; remove it once `EditorHost` is mounted. The rest of the page still uses the existing HTML.
 
 **Exit criteria**:
+
 - App boots; user can type and see preview; tabs/toolbar/etc work via legacy DOM.
 - Monaco is created exactly once even on React re-renders (verified by logging in `create()`).
 - Window resize and split drag both trigger `editor.layout()`.
@@ -159,6 +163,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 **Goal**: Preview and the editor/preview split become React-rendered. Sidebar/wrapper split also goes React-managed.
 
 **Tasks**:
+
 1. Create [src/browser/react/components/PreviewPane.tsx](../src/browser/react/components/PreviewPane.tsx):
    - Renders `<div ref={previewRef} />` with classes equivalent to today's `#preview-content`.
    - Subscribes to `editor:render` from `EditorDispatcher`; on event, runs `Markdown.render(editorManager.getValue())` and assigns to `previewRef.current.innerHTML`. (Preview content is HTML produced by markdown-it; this is intentional and is not replaced by JSX. See note on [HTMLExporter](../src/browser/core/HTMLExporter.ts) in §"Risks".)
@@ -169,6 +174,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 5. Move the "split reset" button (currently `#split-reset`) into the React tree; reset by calling the panel group's `setLayout([50, 50])`.
 
 **Exit criteria**:
+
 - Drag-resize works smoothly in both modes.
 - Scroll sync still works (relies on `refreshLines()` after render, which the new PreviewPane preserves).
 - `dom.preview` references in [HTMLExporter](../src/browser/core/HTMLExporter.ts) still resolve (we keep the same data-id surface on the React-rendered preview).
@@ -182,6 +188,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 **Goal**: The `<nav>` and the file-tabs row are React components.
 
 **Tasks**:
+
 1. Create [src/browser/react/components/Navbar.tsx](../src/browser/react/components/Navbar.tsx) covering:
    - Sidebar toggle button (calls `setSidebarOpen` from context).
    - App logo + active file name (`<ActiveFileLabel>` subscribes to `FilesContext`).
@@ -202,9 +209,10 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 5. Update [BridgeListeners.ts](../src/browser/core/BridgeListeners.ts) to call the new FileManager API instead of DOM-mutating cloneNode hacks at lines 117-162 and 178-223.
 
 **Exit criteria**:
+
 - Tabs render, activate, close, drag-reorder.
 - Renaming a file via the explorer updates the tab name without DOM stitching.
-- Unsaved-change "*" suffix still appears in the window title.
+- Unsaved-change "\*" suffix still appears in the window title.
 
 **Out of scope**: explorer tree, modals, toolbar.
 
@@ -215,6 +223,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 **Goal**: Sidebar and file tree become React components.
 
 **Tasks**:
+
 1. Refactor [FileTreeManager](../src/browser/core/FileTreeManager.ts):
    - Keep `treeRoot`, `directoryMap`, and the build logic, **but** store the tree as plain data (a `TreeNode[]` shape), not DOM nodes.
    - Expose `on('change', listener)` like FileManager.
@@ -229,6 +238,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 5. SweetAlert2 prompts inside the context menu remain temporarily; replaced in Phase 8.
 
 **Exit criteria**:
+
 - Open folder, expand directories, open file from tree all work.
 - Right-click menu shows correct items per node type, including for empty tree.
 - Lazy directory load (`hasChildren=true` not yet loaded) still issues `to:file:openpath`.
@@ -242,6 +252,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 **Goal**: The `#editor-functions` toolbar and the alert/code/tables dropdowns are React.
 
 **Tasks**:
+
 1. Create [src/browser/react/components/EditorToolbar.tsx](../src/browser/react/components/EditorToolbar.tsx) with one button per `commands` entry in [mappings/editorCommands.ts](../src/browser/core/mappings/editorCommands.ts).
 2. Convert the alert/code/tables dropdowns to shadcn `DropdownMenu`. Items are still driven by `alertblocks` and `codeblocks` arrays in the same mapping module.
 3. CommandProvider keybindings stay untouched. Only the DOM-button binding in [CommandProvider.register()](../src/browser/core/providers/CommandProvider.ts:125-148) is removed; the React buttons call into the same private methods, exposed by promoting them to a public `executeCommand(key)` (or by exporting individual functions).
@@ -249,6 +260,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 5. Save/Export buttons inside the toolbar move into the navbar or stay in the toolbar — keep current layout; only the rendering layer changes.
 
 **Exit criteria**:
+
 - All toolbar actions work; keyboard shortcuts (including chord keys `Ctrl+L → X` for alerts, `Ctrl+K → X` for codeblocks, `Ctrl+T` for tables) still work.
 - Dropdowns close after selection.
 - Bootstrap `Dropdown` JS is no longer constructed in CommandProvider.
@@ -262,6 +274,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 **Goal**: All modals are shadcn `Dialog`s. SettingsProvider and ExportSettingsProvider lose their DOM-binding responsibilities.
 
 **Tasks**:
+
 1. **SettingsProvider refactor** ([SettingsProvider.ts](../src/browser/core/providers/SettingsProvider.ts)):
    - Keep: `getSettings`, `getSetting`, `setSetting`, `setSettings`, `setTheme`, `setAudoIndent` (sic), `setMinimap`, `setWordWrap`, `setWhitespace`, `setSystemThemeOverride`, persistence to localStorage/bridge.
    - Remove: `registerDOMListeners`, `populateLocaleOptions`, `register…ChangeListener`, `setUIState`. (React owns these.)
@@ -277,6 +290,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 10. Live preview style updates (`syncPreviewToExportSettings`) continue, just driven by SettingsContext change rather than direct DOM listener.
 
 **Exit criteria**:
+
 - All four (or five) modals open, function, and persist as before.
 - Locale change applies and persists.
 - Toggling system-theme correctly disables the darkmode toggle (preserve current behaviour for desktop).
@@ -291,6 +305,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 **Goal**: SweetAlert2 is gone.
 
 **Tasks**:
+
 1. Add `<Toaster />` from `sonner` at the root of `<App>`.
 2. Replace [notify.send](../src/browser/util.ts:182) with a `useNotify()` hook that calls `sonner.toast.<level>()`. Update [BridgeListeners.notification handler](../src/browser/core/BridgeListeners.ts:238) to use the new emitter (or expose `notify` outside React as `sonnerToast` for non-component callers).
 3. Replace SweetAlert2 prompts in [explorerContextMenu.ts](../src/browser/core/mappings/explorerContextMenu.ts) with a `useConfirm()` / `usePrompt()` hook that opens a shadcn `AlertDialog`/`Dialog`. The context-menu items become React handlers that call hooks.
@@ -299,6 +314,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 6. Remove `sweetalert2` from package.json.
 
 **Exit criteria**:
+
 - No `import Swal` left in the codebase.
 - All previously SweetAlert2-driven flows work: unsaved-change prompt on close tab, new/rename/delete prompts in explorer, file properties popup, notification toasts (success/error/info).
 
@@ -311,6 +327,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 **Goal**: Strip every dependency made redundant by the migration.
 
 **Tasks**:
+
 1. Remove `bootstrap` import from [scss/index.scss](../src/browser/assets/scss/index.scss). Audit remaining usage:
    - Any utility classes (`d-none`, `text-muted`, `gap-2`, etc) in the React tree are replaced by Tailwind equivalents.
    - Components (modal, dropdown, tooltip) are already gone after Phases 6–8.
@@ -330,6 +347,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 8. Remove `data-i18n-*` walker bits if no non-React DOM remains. (Likely all gone after Phase 4–7.)
 
 **Exit criteria**:
+
 - `package.json` no longer references `bootstrap`, `@popperjs/core`, `split.js`, `sweetalert2`.
 - `dom.ts` is empty or removed.
 - Bundle size measurably smaller (record before/after in commit).
@@ -342,6 +360,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 **Goal**: React testing infrastructure in place; key components covered; docs reflect reality.
 
 **Tasks**:
+
 1. React Testing Library tests for:
    - `<TabBar>` — render, activate, close (with mocked FileManager).
    - `<FileTreePanel>` — render tree, expand/collapse, click open.
@@ -358,6 +377,7 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 6. Update [ROADMAP.md](ROADMAP.md): mark React migration 🟢 with date; open §4 (post-React opportunities).
 
 **Exit criteria**:
+
 - `npm test` shows non-trivial React coverage (>= the 5 component suites above).
 - Docs match code.
 
@@ -365,17 +385,17 @@ A phase is **complete** only when its exit criteria are met *and* `npm test`, `n
 
 ## Risks & Mitigations
 
-| Risk                                                                 | Mitigation                                                                                  |
-|----------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| Monaco re-mount on parent re-render (large perf hit, lost state)     | `<EditorHost>` uses `useEffect(..., [])`; never re-renders body. Verified by mount counter. |
-| Scroll sync stops working after preview-render                        | Preserve `refreshLines()` call after every `innerHTML` assignment in `<PreviewPane>`.       |
-| HTMLExporter reads `dom.preview.dom.outerHTML`                        | Keep a stable id (`#preview-content`) on the React-rendered preview element.                |
-| i18n DOM walker stops finding bindings as nodes become React          | Walker is naturally bounded to remaining `data-i18n-*` attrs; safe during migration.        |
-| Bootstrap utility class usage in copied-in HTML strings (e.g. modal HTML in [dom.ts:266](../src/browser/dom.ts#L266)) | Phase 8 converts these to React + Tailwind together with their owning flow.            |
-| Webpack + Tailwind v4 + Monaco interaction (slow rebuilds)            | Profile in Phase 1; if too slow, consider a separate dev-only css watcher.                  |
-| SweetAlert2 prompts return promises consumed by non-React code (FileManager.closeTab) | Expose hook-registered handlers on the managers; React installs them at mount.       |
-| `webContents.send` from main → renderer before React has mounted     | Composition root mounts React synchronously before `BridgeManager` registers listeners. Order in [index.ts](../src/browser/index.ts) is already correct; preserve it. |
-| Tab DnD with React's reconciliation                                   | Use `useRef` for drag-state; reorder via FileManager method that emits a single `change`.   |
+| Risk                                                                                                                  | Mitigation                                                                                                                                                            |
+| --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Monaco re-mount on parent re-render (large perf hit, lost state)                                                      | `<EditorHost>` uses `useEffect(..., [])`; never re-renders body. Verified by mount counter.                                                                           |
+| Scroll sync stops working after preview-render                                                                        | Preserve `refreshLines()` call after every `innerHTML` assignment in `<PreviewPane>`.                                                                                 |
+| HTMLExporter reads `dom.preview.dom.outerHTML`                                                                        | Keep a stable id (`#preview-content`) on the React-rendered preview element.                                                                                          |
+| i18n DOM walker stops finding bindings as nodes become React                                                          | Walker is naturally bounded to remaining `data-i18n-*` attrs; safe during migration.                                                                                  |
+| Bootstrap utility class usage in copied-in HTML strings (e.g. modal HTML in [dom.ts:266](../src/browser/dom.ts#L266)) | Phase 8 converts these to React + Tailwind together with their owning flow.                                                                                           |
+| Webpack + Tailwind v4 + Monaco interaction (slow rebuilds)                                                            | Profile in Phase 1; if too slow, consider a separate dev-only css watcher.                                                                                            |
+| SweetAlert2 prompts return promises consumed by non-React code (FileManager.closeTab)                                 | Expose hook-registered handlers on the managers; React installs them at mount.                                                                                        |
+| `webContents.send` from main → renderer before React has mounted                                                      | Composition root mounts React synchronously before `BridgeManager` registers listeners. Order in [index.ts](../src/browser/index.ts) is already correct; preserve it. |
+| Tab DnD with React's reconciliation                                                                                   | Use `useRef` for drag-state; reorder via FileManager method that emits a single `change`.                                                                             |
 
 ## Out of Scope (for this migration)
 
@@ -394,20 +414,20 @@ This migration is executed via project-scoped slash commands backed by custom ag
 
 ### Commands
 
-| Command                  | Purpose                                                                                          |
-|--------------------------|--------------------------------------------------------------------------------------------------|
-| `/migrate-status`        | Show the Phase Index, identify the next phase to execute, surface any blockers.                  |
-| `/migrate-phase <N>`     | Execute phase N end-to-end: plan tasks via TodoWrite → implement (with parallel sub-agents where independent) → auto-run all three reviewers in parallel → synthesise → request commit approval. Never commits or updates status without explicit user approval. |
-| `/migrate-review <N>`    | Standalone parallel review of phase N's diff. Use for mid-phase checkpoints, after manual edits, or to re-check after fixes. Read-only. |
+| Command               | Purpose                                                                                                                                                                                                                                                          |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/migrate-status`     | Show the Phase Index, identify the next phase to execute, surface any blockers.                                                                                                                                                                                  |
+| `/migrate-phase <N>`  | Execute phase N end-to-end: plan tasks via TodoWrite → implement (with parallel sub-agents where independent) → auto-run all three reviewers in parallel → synthesise → request commit approval. Never commits or updates status without explicit user approval. |
+| `/migrate-review <N>` | Standalone parallel review of phase N's diff. Use for mid-phase checkpoints, after manual edits, or to re-check after fixes. Read-only.                                                                                                                          |
 
 ### Agents
 
-| Agent                          | Type       | Role                                                                                          |
-|--------------------------------|------------|-----------------------------------------------------------------------------------------------|
-| `react-phase-executor`         | read+write | Implements one parallelisable slice of a phase. Used only when sub-tasks have strictly non-overlapping file ownership. Sequential work and shared infra (tsconfig, webpack, package.json, composition root) stay in the main session. |
-| `react-phase-reviewer`         | read-only  | Verifies exit criteria, task completeness, out-of-scope adherence, scope creep.               |
-| `react-architecture-auditor`   | read-only  | Verifies architectural rules: manager/React separation, no rogue DOM queries, no reintroduced legacy deps, no extra state libs, single Monaco instance, i18n discipline, stack discipline. |
-| `react-test-auditor`           | read-only  | Verifies test coverage for new components/hooks, runs lint + tsc + jest, reports gaps.        |
+| Agent                        | Type       | Role                                                                                                                                                                                                                                  |
+| ---------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `react-phase-executor`       | read+write | Implements one parallelisable slice of a phase. Used only when sub-tasks have strictly non-overlapping file ownership. Sequential work and shared infra (tsconfig, webpack, package.json, composition root) stay in the main session. |
+| `react-phase-reviewer`       | read-only  | Verifies exit criteria, task completeness, out-of-scope adherence, scope creep.                                                                                                                                                       |
+| `react-architecture-auditor` | read-only  | Verifies architectural rules: manager/React separation, no rogue DOM queries, no reintroduced legacy deps, no extra state libs, single Monaco instance, i18n discipline, stack discipline.                                            |
+| `react-test-auditor`         | read-only  | Verifies test coverage for new components/hooks, runs lint + tsc + jest, reports gaps.                                                                                                                                                |
 
 The three reviewers always run **in parallel** (a single message with three `Agent` tool calls) — they each have an independent cold context, so they don't share findings and don't waste tokens re-reading the same diff sequentially.
 

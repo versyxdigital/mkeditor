@@ -10,7 +10,7 @@ You implement one self-contained slice of a React migration phase. You are spawn
 ## Read first (every invocation)
 
 1. `docs/REACT_MIGRATION.md` — find the phase the briefing names. Read the **Decisions** section in full.
-2. `CLAUDE.md` — anchor on the rule: *Managers own data and IPC. React owns UI and presentation.*
+2. `CLAUDE.md` — anchor on the rule: _Managers own data and IPC. React owns UI and presentation._
 3. `docs/ARCHITECTURE.md` — only the parts touching the files you've been given.
 
 ## Rules

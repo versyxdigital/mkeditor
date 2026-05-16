@@ -13,11 +13,11 @@ Living document. Tracks planned work, open architectural questions, and recently
 
 ## Recently Landed
 
-- 🟢 **Context & architecture docs** *(2026-05-16)* — Added [CLAUDE.md](../CLAUDE.md) and [docs/ARCHITECTURE.md](ARCHITECTURE.md) covering process boundaries, IPC contract, renderer composition, data flows, build pipeline, conventions.
+- 🟢 **Context & architecture docs** _(2026-05-16)_ — Added [CLAUDE.md](../CLAUDE.md) and [docs/ARCHITECTURE.md](ARCHITECTURE.md) covering process boundaries, IPC contract, renderer composition, data flows, build pipeline, conventions.
 
 ---
 
-## 1. React Migration *(planned — top priority)*
+## 1. React Migration _(planned — top priority)_
 
 🟡 Replace the renderer's direct-DOM/Bootstrap UI layer with React. Monaco itself stays as-is — React owns the chrome around it (toolbar, sidebar, file tree, tabs, modals, settings, splash, splits), not the editor surface.
 
@@ -43,7 +43,7 @@ Decision needed before significant new feature work touches provider wiring.
 
 ---
 
-## 3. Bring Up to Date *(catch-all)*
+## 3. Bring Up to Date _(catch-all)_
 
 🔵 Generic "modernise" bucket. Concrete items to be added as they're identified — placeholders below.
 
@@ -55,7 +55,7 @@ Decision needed before significant new feature work touches provider wiring.
 
 ---
 
-## 4. Post-React Opportunities *(speculative)*
+## 4. Post-React Opportunities _(speculative)_
 
 Don't pursue these until React migration lands.
 
