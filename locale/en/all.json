@@ -183,7 +183,9 @@
     "settings_tooltip": "Configure editor settings",
     "shortcuts_tooltip": "View editor shortcuts",
     "theme_switch_notice": "This switch is disabled on desktop if you are using your system theme.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "copy_path_tooltip": "Copy path to clipboard",
+    "path_copied": "Path copied to clipboard"
   },
   "notifications": {
     "unable_export_preview": "Unable to export preview",

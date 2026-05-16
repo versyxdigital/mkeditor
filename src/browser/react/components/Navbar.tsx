@@ -3,6 +3,7 @@ import * as React from 'react';
 import { useFiles } from '../contexts/FilesContext';
 import { useModals } from '../contexts/ModalsContext';
 import { useUIState } from '../contexts/UIStateContext';
+import { sonnerToast } from '../../notify';
 import { useCounts } from '../hooks/useCounts';
 import { useTranslation } from '../hooks/useTranslation';
 import { Icon } from './Icon';
@@ -28,13 +29,24 @@ export const Navbar: React.FC = () => {
   // shows just the filename via tab.name). For untitled scratch
   // buffers the path is a synthetic `untitled-N` id — fall back to
   // the tab's name so the label reads "Untitled 1" instead.
+  const isUntitled = !activeFile || activeFile.startsWith('untitled');
   const activeFileLabel = React.useMemo(() => {
     if (!activeFile) return null;
-    if (activeFile.startsWith('untitled')) {
+    if (isUntitled) {
       return tabs.find((tab) => tab.path === activeFile)?.name ?? null;
     }
     return activeFile;
-  }, [activeFile, tabs]);
+  }, [activeFile, tabs, isUntitled]);
+
+  // Copy the active file's path to the clipboard. Only wired up when
+  // there's a real on-disk path (untitled scratch buffers don't have
+  // one worth copying).
+  const handleCopyPath = React.useCallback(() => {
+    if (!activeFile || isUntitled) return;
+    void navigator.clipboard
+      .writeText(activeFile)
+      .then(() => sonnerToast('success', t('navbar:path_copied')));
+  }, [activeFile, isUntitled, t]);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -59,6 +71,23 @@ export const Navbar: React.FC = () => {
           >
             {activeFileLabel ?? t('app:brand_name')}
           </span>
+          {!isUntitled && activeFile && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleCopyPath}
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                  aria-label={t('navbar:copy_path_tooltip')}
+                >
+                  <Icon name="copy" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('navbar:copy_path_tooltip')}</TooltipContent>
+            </Tooltip>
+          )}
         </div>
         <div className="flex items-center gap-3 pr-3">
           <div className="text-xs text-muted-foreground">
