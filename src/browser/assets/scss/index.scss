@@ -1,11 +1,11 @@
 @use 'sass:meta';
 
-@import '_base.scss';
-@import '_editor.scss';
-@import '_preview.scss';
-@import '_darkmode.scss';
-@import '_sidebar.scss';
-@import '_tabs.scss';
+@use '_base';
+@use '_editor';
+@use '_preview';
+@use '_darkmode';
+@use '_sidebar';
+@use '_tabs';
 
 @include meta.load-css('katex/dist/katex.min.css');
 

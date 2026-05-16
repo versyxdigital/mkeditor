@@ -1,4 +1,4 @@
-import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
+import { editor } from 'monaco-editor';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { openPromptExternal } from '../react/contexts/PromptsContext';

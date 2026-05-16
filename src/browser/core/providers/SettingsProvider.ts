@@ -1,4 +1,4 @@
-import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
+import { editor } from 'monaco-editor';
 import type { EditorSettings, SettingsFile } from '../../interfaces/Editor';
 import { settings } from '../../config';
 

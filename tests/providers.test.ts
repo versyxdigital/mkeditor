@@ -14,15 +14,12 @@ beforeEach(async () => {
     <div id="preview"><div id="preview-content" class="container-fluid"></div></div>
   `;
   ({ EditorManager } = await import('../src/browser/core/EditorManager'));
-  ({ EditorDispatcher } = await import(
-    '../src/browser/events/EditorDispatcher'
-  ));
-  ({ SettingsProvider } = await import(
-    '../src/browser/core/providers/SettingsProvider'
-  ));
-  ({ CompletionProvider } = await import(
-    '../src/browser/core/providers/CompletionProvider'
-  ));
+  ({ EditorDispatcher } =
+    await import('../src/browser/events/EditorDispatcher'));
+  ({ SettingsProvider } =
+    await import('../src/browser/core/providers/SettingsProvider'));
+  ({ CompletionProvider } =
+    await import('../src/browser/core/providers/CompletionProvider'));
   ({ BridgeManager } = await import('../src/browser/core/BridgeManager'));
 });
 

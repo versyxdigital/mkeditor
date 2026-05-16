@@ -1,4 +1,4 @@
-import type { Selection, editor } from 'monaco-editor/esm/vs/editor/editor.api';
+import type { Selection, editor } from 'monaco-editor';
 
 export interface EditorSettings {
   autoindent: boolean;

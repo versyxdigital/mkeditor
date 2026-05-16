@@ -22,20 +22,7 @@ export function execTask(command) {
 }
 
 export function compileApp() {
-  const appFiles = fs
-    .readdirSync(path.join(__dirname, 'src/app'))
-    .filter((file) => file.endsWith('.ts'))
-    .map((file) => path.join('src/app', file))
-    .join(' ');
-
-  if (appFiles) {
-    execTask(
-      `npx tsc ${appFiles} --outDir ${path.join(__dirname, 'dist', 'app')}`,
-    );
-  } else {
-    console.error('No build files found in src/app.');
-    process.exit(1);
-  }
+  execTask('npx tsc -p src/app/tsconfig.json');
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

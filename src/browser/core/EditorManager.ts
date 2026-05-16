@@ -1,4 +1,4 @@
-import { editor, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api';
+import { editor, KeyCode } from 'monaco-editor';
 import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { ScrollSync } from '../extensions/editor/ScrollSync';

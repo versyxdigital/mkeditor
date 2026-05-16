@@ -1,4 +1,4 @@
-import { KeyMod, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api';
+import { KeyMod, KeyCode } from 'monaco-editor';
 import type { EditorCommand } from '../../interfaces/Editor';
 
 /**

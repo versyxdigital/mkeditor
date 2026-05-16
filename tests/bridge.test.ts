@@ -8,9 +8,8 @@ describe('Bridge communication', () => {
       <div id="preview"></div>
     `;
     ({ BridgeManager } = await import('../src/browser/core/BridgeManager'));
-    ({ EditorDispatcher } = await import(
-      '../src/browser/events/EditorDispatcher'
-    ));
+    ({ EditorDispatcher } =
+      await import('../src/browser/events/EditorDispatcher'));
   });
 
   it('registers and communicates over bridge', () => {

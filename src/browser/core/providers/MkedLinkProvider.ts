@@ -1,4 +1,4 @@
-import { type editor, languages } from 'monaco-editor/esm/vs/editor/editor.api';
+import { type editor, languages } from 'monaco-editor';
 
 /** Predicate that returns true if `path` matches an open file in the tree. */
 export type PathExistsPredicate = (path: string) => boolean;

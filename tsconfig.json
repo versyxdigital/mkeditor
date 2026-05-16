@@ -17,7 +17,10 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "baseUrl": "."
+    "rootDir": "./src",
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "noUncheckedSideEffectImports": false
   },
   "files": ["./@types/index.d.ts"],
   "include": ["src"]

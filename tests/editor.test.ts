@@ -1,7 +1,7 @@
 jest.mock('../src/browser/assets/intro', () => ({
   welcomeMarkdown: '# Welcome',
 }));
-import { editor as monacoEditor } from 'monaco-editor/esm/vs/editor/editor.api';
+import { editor as monacoEditor } from 'monaco-editor';
 
 let EditorManager: any;
 let EditorDispatcher: any;
@@ -13,9 +13,8 @@ describe('Editor', () => {
       <div id="preview"><div id="preview-content" class="container-fluid"></div></div>
     `;
     ({ EditorManager } = await import('../src/browser/core/EditorManager'));
-    ({ EditorDispatcher } = await import(
-      '../src/browser/events/EditorDispatcher'
-    ));
+    ({ EditorDispatcher } =
+      await import('../src/browser/events/EditorDispatcher'));
   });
 
   it('creates editor with correct parameters', () => {

@@ -1,4 +1,4 @@
-import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
+import { editor } from 'monaco-editor';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { File, FileProperties, RenamedPath } from '../interfaces/File';
 import type { BridgeProviders } from '../interfaces/Providers';

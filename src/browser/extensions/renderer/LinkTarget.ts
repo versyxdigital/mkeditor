@@ -10,12 +10,11 @@ const LinkTarget = (md: MarkdownIt) => {
     if (index < 0) {
       tokens[idx].attrPush(['target', '_blank']);
     } else {
+      // Override any existing target value with `_blank` so every link
+      // opens in a new tab. The previous code reassigned a local
+      // variable and never reached the actual attribute.
       const attrs = tokens[idx].attrs;
-      if (attrs) {
-        // Fenced
-        let attr = attrs[index][1];
-        if (attr) attr = '_blank';
-      }
+      if (attrs) attrs[index][1] = '_blank';
     }
 
     return render(tokens, idx, options, env, self);

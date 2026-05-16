@@ -1,8 +1,4 @@
-import {
-  type editor,
-  KeyCode,
-  KeyMod,
-} from 'monaco-editor/esm/vs/editor/editor.api';
+import { type editor, KeyCode, KeyMod } from 'monaco-editor';
 import type { ValidCommand } from '../../interfaces/Providers';
 import { commands, alertblocks, codeblocks } from '../mappings/editorCommands';
 import { openModalExternal } from '../../react/contexts/ModalsContext';
@@ -158,7 +154,7 @@ export class CommandProvider {
    */
   public editInline(syntax: string) {
     const selected = this.getModel();
-    let edit = '';
+    let edit: string;
     // Handle inline links
     if (syntax === '[]()') {
       const text = selected && selected.trim().length > 0 ? selected : 'link';

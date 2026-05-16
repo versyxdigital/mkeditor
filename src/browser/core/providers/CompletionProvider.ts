@@ -4,7 +4,7 @@ import {
   type Position,
   type editor,
   languages,
-} from 'monaco-editor/esm/vs/editor/editor.api';
+} from 'monaco-editor';
 import { CircularBuffer } from 'circle-buffer';
 import type { CompletionItem, Matcher } from '../../interfaces/Completion';
 import { autoCompleteFencedConfig } from '../completion/fencedBlocks';
