@@ -16,7 +16,6 @@ module.exports = {
     '^monaco-editor/esm/vs/editor/editor.api$':
       '<rootDir>/tests/__mocks__/monaco-editor.js',
     '^electron$': '<rootDir>/tests/__mocks__/electron.js',
-    '^sweetalert2$': '<rootDir>/tests/__mocks__/sweetalert2.js',
     '\\.(css|scss|sass)$': '<rootDir>/tests/__mocks__/style.js',
   },
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],

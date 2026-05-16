@@ -69,7 +69,6 @@
     "sass-loader": "^16.0.5",
     "split.js": "^1.6.5",
     "style-loader": "^4.0.0",
-    "sweetalert2": "^11.22.5",
     "tailwindcss": "^4.3.0",
     "terser-webpack-plugin": "^5.3.14",
     "ts-jest": "^29.4.1",

@@ -10,8 +10,8 @@ import {
   openModalExternal,
   type ModalKey,
 } from '../react/contexts/ModalsContext';
-import { showFilePropertiesWindow } from '../dom';
-import { notify } from '../util';
+import { sonnerToast } from '../notify';
+import { showPropertiesExternal } from '../react/contexts/PropertiesContext';
 import { t } from '../i18n';
 
 /**
@@ -186,11 +186,11 @@ export function registerBridgeListeners(
         ? message
         : '';
 
-    if (text) notify.send(status || 'info', text);
+    if (text) sonnerToast(status || 'info', text);
   });
 
   // Trigger the file properties window from the context menu.
   bridge.receive('from:path:properties', (info: FileProperties) => {
-    showFilePropertiesWindow(info);
+    showPropertiesExternal(info);
   });
 }

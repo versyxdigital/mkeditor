@@ -1,8 +1,5 @@
 import { Tooltip } from 'bootstrap';
-import Swal from 'sweetalert2';
-import type { FileProperties } from './interfaces/File';
 import { getOSPlatform } from './util';
-import { t } from './i18n';
 
 let activeTooltips: Tooltip[] = [];
 
@@ -133,41 +130,5 @@ export function showSplashScreen({ duration }: { duration: number }) {
     document
       .querySelectorAll<HTMLElement>('body > nav')
       .forEach((nav) => fade(nav, 'in', duration));
-  });
-}
-
-export function showFilePropertiesWindow(info: FileProperties) {
-  const pathType = info.isDirectory
-    ? t('modals-properties:type_directory')
-    : t('modals-properties:type_file');
-
-  const html = `
-    <dl class="mb-0 small text-start">
-      <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_path')}</dt>
-      <dd class="col-auto me-4">${info.path}</dd>
-
-      <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_type')}</dt>
-      <dd class="col-auto me-4">${pathType}</dd>
-
-      <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_size')}</dt>
-      <dd class="col-auto me-4">${info.size}</dd>
-
-      <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_created')}</dt>
-      <dd class="col-auto me-4">${new Date(info.created).toLocaleString()}</dd>
-
-      <dt class="col-auto fw-semibold me-2">${t('modals-properties:label_modified')}</dt>
-      <dd class="col-auto">${new Date(info.modified).toLocaleString()}</dd>
-    </dl>
-  `;
-
-  Swal.fire({
-    html,
-    draggable: true,
-    customClass: {
-      actions: 'mt-0',
-      popup: ['shadow', 'rounded'],
-    },
-    width: 325,
-    confirmButtonText: t('modals-properties:close_button'),
   });
 }

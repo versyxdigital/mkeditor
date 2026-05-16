@@ -6,6 +6,7 @@ import {
   type GroupImperativeHandle,
   type PanelImperativeHandle,
 } from 'react-resizable-panels';
+import { Toaster } from 'sonner';
 
 import { ManagersProvider, type Managers } from './contexts/ManagersContext';
 import { UIStateProvider, useUIState } from './contexts/UIStateContext';
@@ -16,6 +17,16 @@ import {
   registerOpenModal,
   useModals,
 } from './contexts/ModalsContext';
+import {
+  PromptsProvider,
+  registerPromptOpener,
+  usePrompts,
+} from './contexts/PromptsContext';
+import {
+  PropertiesProvider,
+  registerPropertiesShower,
+  useProperties,
+} from './contexts/PropertiesContext';
 import { SettingsContextProvider } from './contexts/SettingsContext';
 import { ExportSettingsContextProvider } from './contexts/ExportSettingsContext';
 import { LegacyShell } from './components/LegacyShell';
@@ -29,6 +40,7 @@ import { SettingsModal } from './components/modals/SettingsModal';
 import { ExportSettingsModal } from './components/modals/ExportSettingsModal';
 import { AboutModal } from './components/modals/AboutModal';
 import { ShortcutsModal } from './components/modals/ShortcutsModal';
+import { PropertiesModal } from './components/modals/PropertiesModal';
 
 import './styles/tailwind.css';
 
@@ -78,26 +90,44 @@ export const App: React.FC<AppProps> = ({
       <SettingsContextProvider>
         <ExportSettingsContextProvider>
           <ModalsProvider>
-            <ModalsBridge />
-            <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
-              <FilesProvider>
-                <FileTreeProvider>
-                  <LegacyShell />
-                  <Navbar />
-                  <TabBar />
-                  <Shell
-                    onEditorReady={onEditorReady}
-                    workspaceGroupRef={workspaceGroupRef}
-                  />
-                  <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
-                  <BottomToolbarRight />
-                  <SettingsModal />
-                  <ExportSettingsModal />
-                  <AboutModal />
-                  <ShortcutsModal />
-                </FileTreeProvider>
-              </FilesProvider>
-            </UIStateProvider>
+            <PromptsProvider>
+              <PropertiesProvider>
+                <ModalsBridge />
+                <PromptsBridge />
+                <PropertiesBridge />
+                <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
+                  <FilesProvider>
+                    <FileTreeProvider>
+                      <LegacyShell />
+                      <Navbar />
+                      <TabBar />
+                      <Shell
+                        onEditorReady={onEditorReady}
+                        workspaceGroupRef={workspaceGroupRef}
+                      />
+                      <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
+                      <BottomToolbarRight />
+                      <SettingsModal />
+                      <ExportSettingsModal />
+                      <AboutModal />
+                      <ShortcutsModal />
+                      <PropertiesModal />
+                      {/* Sonner toaster — Phase 8 replaces SweetAlert2
+                          toasts. `position` matches the legacy bottom-end
+                          placement; `richColors` gives the success/error
+                          variants the coloured background SweetAlert2
+                          used to. */}
+                      <Toaster
+                        position="bottom-right"
+                        richColors
+                        closeButton
+                        theme="system"
+                      />
+                    </FileTreeProvider>
+                  </FilesProvider>
+                </UIStateProvider>
+              </PropertiesProvider>
+            </PromptsProvider>
           </ModalsProvider>
         </ExportSettingsContextProvider>
       </SettingsContextProvider>
@@ -115,6 +145,33 @@ const ModalsBridge: React.FC = () => {
   React.useEffect(() => {
     registerOpenModal(openModal);
   }, [openModal]);
+  return null;
+};
+
+/**
+ * Hands the `usePrompts().open` function to the module-level
+ * `openPromptExternal` so non-React callers (FileManager.closeTab and
+ * the explorer context-menu actions) can open a prompt and await the
+ * user's response.
+ */
+const PromptsBridge: React.FC = () => {
+  const { open } = usePrompts();
+  React.useEffect(() => {
+    registerPromptOpener(open);
+  }, [open]);
+  return null;
+};
+
+/**
+ * Hands the `useProperties().show` function to the module-level
+ * `showPropertiesExternal` so BridgeListeners' `from:path:properties`
+ * handler can pop the modal.
+ */
+const PropertiesBridge: React.FC = () => {
+  const { show } = useProperties();
+  React.useEffect(() => {
+    registerPropertiesShower(show);
+  }, [show]);
   return null;
 };
 

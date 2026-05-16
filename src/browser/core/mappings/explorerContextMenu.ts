@@ -1,6 +1,9 @@
-import Swal from 'sweetalert2';
 import type { ContextBridgeAPI } from '../../interfaces/Bridge';
 import type { TreeNode } from '../FileTreeManager';
+import {
+  confirmExternal,
+  promptExternal,
+} from '../../react/contexts/PromptsContext';
 import { withMdExtension } from '../../util';
 import { t } from '../../i18n';
 
@@ -14,7 +17,7 @@ export interface ContextMenuCallbacks {
   openFile: (path: string) => void;
   /** Called by the "Collapse explorer" / "Expand folder" items. */
   toggleSidebar: () => void;
-  /** Called by the "Open settings" item; triggers the (still-Bootstrap) modal. */
+  /** Called by the "Open settings" item; opens the React Settings modal. */
   openSettings: () => void;
   /** Called by the "Expand folder" item to flip a directory's local expand state. */
   expandFolder?: (path: string) => void;
@@ -26,8 +29,9 @@ export interface ContextMenuCallbacks {
  * `{ label, action, divider }` — `<ExplorerContextMenu>` renders them
  * via shadcn's ContextMenu primitives.
  *
- * SweetAlert2 prompts inside the file/folder rename/new/delete actions
- * stay here until Phase 8 swaps SweetAlert2 for shadcn AlertDialog.
+ * Phase 8 swapped the SweetAlert2 prompts for shadcn Dialog-backed
+ * `promptExternal` / `confirmExternal` calls. The functions are
+ * module-level seams registered by `<PromptsBridge>` inside `<App>`.
  */
 export function getContextMenuItems(
   bridge: ContextBridgeAPI,
@@ -38,54 +42,75 @@ export function getContextMenuItems(
   const items: ContextMenuItem[] = [];
   const { openFile, toggleSidebar, openSettings, expandFolder } = callbacks;
 
+  const promptNewFile = async (parent: string) => {
+    const name = await promptExternal({
+      title: t('menus-explorer:prompt_new_file_title'),
+      placeholder: t('menus-explorer:prompt_new_file_placeholder'),
+      confirmLabel: t('menus-explorer:prompt_save'),
+      cancelLabel: t('menus-explorer:prompt_cancel'),
+    });
+    if (name) {
+      bridge.send('to:file:create', {
+        parent,
+        name: withMdExtension(name),
+      });
+    }
+  };
+
+  const promptNewFolder = async (parent: string) => {
+    const name = await promptExternal({
+      title: t('menus-explorer:prompt_new_folder_title'),
+      confirmLabel: t('menus-explorer:prompt_save'),
+      cancelLabel: t('menus-explorer:prompt_cancel'),
+    });
+    if (name) {
+      bridge.send('to:folder:create', { parent, name });
+    }
+  };
+
+  const promptRename = async (
+    path: string,
+    titleKey: string,
+    mdExtension: boolean,
+  ) => {
+    const current = path.split(/[/\\]/).pop() ?? '';
+    const name = await promptExternal({
+      title: t(titleKey),
+      defaultValue: current,
+      confirmLabel: t('menus-explorer:prompt_save'),
+      cancelLabel: t('menus-explorer:prompt_cancel'),
+    });
+    if (name) {
+      bridge.send('to:file:rename', {
+        path,
+        name: mdExtension ? withMdExtension(name) : name,
+      });
+    }
+  };
+
+  const confirmDelete = async (path: string, titleKey: string) => {
+    const ok = await confirmExternal({
+      title: t(titleKey),
+      confirmLabel: t('menus-explorer:confirm_delete_button'),
+      cancelLabel: t('menus-explorer:prompt_cancel'),
+      destructive: true,
+    });
+    if (ok) {
+      bridge.send('to:file:delete', { path });
+    }
+  };
+
   if (!node) {
     // Empty-tree / background area.
     if (treeRoot) {
       items.push(
         {
           label: t('menus-explorer:new_file'),
-          action: async () => {
-            const result = await Swal.fire({
-              title: t('menus-explorer:prompt_new_file_title'),
-              input: 'text',
-              inputPlaceholder: t('menus-explorer:prompt_new_file_placeholder'),
-              showCancelButton: true,
-              draggable: true,
-              customClass: {
-                popup: ['rounded', 'shadow'],
-                actions: 'mt-2',
-                input: 'small',
-              },
-            });
-            if (result.isConfirmed && result.value) {
-              bridge.send('to:file:create', {
-                parent: treeRoot,
-                name: withMdExtension(result.value),
-              });
-            }
-          },
+          action: () => void promptNewFile(treeRoot),
         },
         {
           label: t('menus-explorer:new_folder'),
-          action: async () => {
-            const result = await Swal.fire({
-              title: t('menus-explorer:prompt_new_folder_title'),
-              input: 'text',
-              showCancelButton: true,
-              draggable: true,
-              customClass: {
-                popup: ['rounded', 'shadow'],
-                actions: 'mt-2',
-                input: 'small',
-              },
-            });
-            if (result.isConfirmed && result.value) {
-              bridge.send('to:folder:create', {
-                parent: treeRoot,
-                name: result.value,
-              });
-            }
-          },
+          action: () => void promptNewFolder(treeRoot),
         },
         { divider: true, label: '', action: () => {} },
       );
@@ -123,45 +148,17 @@ export function getContextMenuItems(
       { divider: true, label: '', action: () => {} },
       {
         label: t('menus-explorer:rename_file'),
-        action: async () => {
-          const result = await Swal.fire({
-            title: t('menus-explorer:prompt_rename_file_title'),
-            input: 'text',
-            inputValue: path.split(/[/\\]/).pop(),
-            showCancelButton: true,
-            draggable: true,
-            customClass: {
-              popup: ['rounded', 'shadow'],
-              actions: 'mt-2',
-              input: 'small',
-            },
-          });
-          if (result.isConfirmed && result.value) {
-            bridge.send('to:file:rename', {
-              path,
-              name: withMdExtension(result.value),
-            });
-          }
-        },
+        action: () =>
+          void promptRename(
+            path,
+            'menus-explorer:prompt_rename_file_title',
+            true,
+          ),
       },
       {
         label: t('menus-explorer:delete_file'),
-        action: async () => {
-          const confirm = await Swal.fire({
-            title: t('menus-explorer:confirm_delete_file_title'),
-            icon: 'warning',
-            showCancelButton: true,
-            draggable: true,
-            confirmButtonText: t('menus-explorer:confirm_delete_button'),
-            customClass: {
-              popup: ['rounded', 'shadow'],
-              actions: 'mt-2',
-            },
-          });
-          if (confirm.isConfirmed) {
-            bridge.send('to:file:delete', { path });
-          }
-        },
+        action: () =>
+          void confirmDelete(path, 'menus-explorer:confirm_delete_file_title'),
       },
       { divider: true, label: '', action: () => {} },
       {
@@ -193,89 +190,26 @@ export function getContextMenuItems(
     { divider: true, label: '', action: () => {} },
     {
       label: t('menus-explorer:new_file'),
-      action: async () => {
-        const result = await Swal.fire({
-          title: t('menus-explorer:prompt_new_file_title'),
-          input: 'text',
-          inputPlaceholder: t('menus-explorer:prompt_new_file_placeholder'),
-          showCancelButton: true,
-          draggable: true,
-          customClass: {
-            popup: ['rounded', 'shadow'],
-            actions: 'mt-2',
-            input: 'small',
-          },
-        });
-        if (result.isConfirmed && result.value) {
-          bridge.send('to:file:create', {
-            parent: path,
-            name: withMdExtension(result.value),
-          });
-        }
-      },
+      action: () => void promptNewFile(path),
     },
     {
       label: t('menus-explorer:new_folder'),
-      action: async () => {
-        const result = await Swal.fire({
-          title: t('menus-explorer:prompt_new_folder_title'),
-          input: 'text',
-          showCancelButton: true,
-          draggable: true,
-          customClass: {
-            popup: ['rounded', 'shadow'],
-            actions: 'mt-2',
-            input: 'small',
-          },
-        });
-        if (result.isConfirmed && result.value) {
-          bridge.send('to:folder:create', {
-            parent: path,
-            name: result.value,
-          });
-        }
-      },
+      action: () => void promptNewFolder(path),
     },
     { divider: true, label: '', action: () => {} },
     {
       label: t('menus-explorer:rename_folder'),
-      action: async () => {
-        const result = await Swal.fire({
-          title: t('menus-explorer:prompt_rename_folder_title'),
-          input: 'text',
-          inputValue: path.split(/[/\\]/).pop(),
-          showCancelButton: true,
-          draggable: true,
-          customClass: {
-            popup: ['rounded', 'shadow'],
-            actions: 'mt-2',
-            input: 'small',
-          },
-        });
-        if (result.isConfirmed && result.value) {
-          bridge.send('to:file:rename', { path, name: result.value });
-        }
-      },
+      action: () =>
+        void promptRename(
+          path,
+          'menus-explorer:prompt_rename_folder_title',
+          false,
+        ),
     },
     {
       label: t('menus-explorer:delete_folder'),
-      action: async () => {
-        const confirm = await Swal.fire({
-          title: t('menus-explorer:confirm_delete_folder_title'),
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: t('menus-explorer:confirm_delete_button'),
-          draggable: true,
-          customClass: {
-            popup: ['rounded', 'shadow'],
-            actions: 'mt-2',
-            input: 'small',
-          },
-        });
-        if (confirm.isConfirmed) {
-          bridge.send('to:file:delete', { path });
-        }
-      },
+      action: () =>
+        void confirmDelete(path, 'menus-explorer:confirm_delete_folder_title'),
     },
     { divider: true, label: '', action: () => {} },
     {

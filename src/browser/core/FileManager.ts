@@ -1,7 +1,7 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import Swal from 'sweetalert2';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
+import { openPromptExternal } from '../react/contexts/PromptsContext';
 import { t } from '../i18n';
 
 export interface TabInfo {
@@ -126,8 +126,10 @@ export class FileManager {
   }
 
   /**
-   * Close a tab (prompting for unsaved changes via SweetAlert until
-   * Phase 8 swaps SweetAlert out for a shadcn AlertDialog).
+   * Close a tab. If the buffer is dirty, opens a three-button prompt
+   * (Save & close / Close without saving / Cancel) via the
+   * shadcn-Dialog-backed `openPromptExternal`. Phase 8 replaced the
+   * legacy SweetAlert2 prompt with the React-rendered equivalent.
    */
   public async closeTab(path: string) {
     const mdl = this.models.get(path);
@@ -137,18 +139,29 @@ export class FileManager {
     const current = mdl.getValue();
 
     if (original !== current && !this.isLogFile) {
-      const result = await Swal.fire({
-        customClass: { container: 'unsaved-changes-popup' },
+      const result = await openPromptExternal({
         title: t('modals-unsaved:title'),
-        text: t('modals-unsaved:text'),
-        showCancelButton: true,
-        showDenyButton: true,
-        confirmButtonText: t('modals-unsaved:confirm'),
-        denyButtonText: t('modals-unsaved:deny'),
-        cancelButtonText: t('modals-unsaved:cancel'),
+        description: t('modals-unsaved:text'),
+        buttons: [
+          {
+            id: 'cancel',
+            label: t('modals-unsaved:cancel'),
+            variant: 'secondary',
+          },
+          {
+            id: 'deny',
+            label: t('modals-unsaved:deny'),
+            variant: 'secondary',
+          },
+          {
+            id: 'confirm',
+            label: t('modals-unsaved:confirm'),
+            variant: 'primary',
+          },
+        ],
       });
 
-      if (result.isConfirmed) {
+      if (result.button === 'confirm') {
         if (path.startsWith('untitled')) {
           this.bridge.send('to:file:saveas', current);
         } else {
@@ -158,7 +171,8 @@ export class FileManager {
             openFile: false,
           });
         }
-      } else if (!result.isDenied) {
+      } else if (result.button !== 'deny') {
+        // null (Esc/overlay) or 'cancel' — abort the close.
         return;
       }
     }
