@@ -74,7 +74,7 @@ const DialogHeader = ({
     {children}
     <DialogPrimitive.Close
       aria-label="Close"
-      className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-sm opacity-60 hover:opacity-100 focus:outline-none"
+      className="ml-2 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm opacity-60 hover:opacity-100 focus:outline-none"
       type="button"
     >
       <svg

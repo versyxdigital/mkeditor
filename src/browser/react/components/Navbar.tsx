@@ -43,7 +43,7 @@ export const Navbar: React.FC = () => {
             type="button"
             title={t('navbar:toggle_sidebar')}
             onClick={toggleSidebar}
-            className="h-8 w-8"
+            className="h-7 w-7"
           >
             <Icon name="bars" />
           </Button>

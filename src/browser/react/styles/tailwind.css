@@ -3,12 +3,12 @@
 @custom-variant dark (&:is([data-theme='dark'] *, [data-theme='dark']));
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.28 0 0);
+  --card: oklch(0.985 0 0);
+  --card-foreground: oklch(0.28 0 0);
+  --popover: oklch(0.985 0 0);
+  --popover-foreground: oklch(0.28 0 0);
   /* MKEditor brand teal (#519088) — was Bootstrap `.btn-primary` /
      `.form-check-input:checked` background. */
   --primary: oklch(0.578 0.0532 178.5);
@@ -28,11 +28,11 @@
 }
 
 [data-theme='dark'] {
-  /* Align `--background` with `--card` / `--popover` so the navbar,
-     bottom toolbar, modals, and Monaco's `vs-dark` editor all share
-     the same #1e1e1e-ish surface (matches the legacy `.bg-light`
-     darkmode override). */
-  --background: oklch(0.205 0 0);
+  /* Slightly lighter than Monaco's `vs-dark` (#1e1e1e) so the navbar
+     and bottom toolbar read as distinct chrome layers on top of the
+     editor pane. `--card` / `--popover` stay at 0.205 so modals
+     match the editor surface. */
+  --background: oklch(0.24 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -84,5 +84,8 @@
 @layer base {
   * {
     @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }

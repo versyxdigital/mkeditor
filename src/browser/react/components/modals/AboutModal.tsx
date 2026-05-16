@@ -29,7 +29,7 @@ export const AboutModal: React.FC = () => {
             <span>{t('modals-about:built_with_love_by')}</span>{' '}
             <a
               className="font-bold text-primary no-underline"
-              href="https://versyxdigital.github.io/"
+              href="https://chris.rowles.info/"
               target="_blank"
               rel="noreferrer"
             >

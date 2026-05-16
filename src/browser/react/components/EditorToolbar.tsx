@@ -192,7 +192,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             size="sm"
             variant="outline"
             title={t('toolbar:table_menu_tooltip')}
-            className="h-8 w-8 p-0"
+            className="h-7 w-7 p-0"
           >
             <Icon name="table" />
           </Button>
@@ -254,7 +254,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             size="sm"
             variant="outline"
             title={t('toolbar:codeblock_menu_tooltip')}
-            className="h-8 w-8 p-0"
+            className="h-7 w-7 p-0"
           >
             <Icon name="code" />
           </Button>
@@ -292,7 +292,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             size="sm"
             variant="outline"
             title={t('toolbar:alert_menu_tooltip')}
-            className="h-8 w-8 p-0"
+            className="h-7 w-7 p-0"
           >
             <Icon name="exclamation-circle" />
           </Button>
@@ -345,7 +345,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         variant="outline"
         title={t('toolbar:export_html_tooltip')}
         onClick={handleExport('html')}
-        className="h-8 gap-1"
+        className="h-7 gap-1"
       >
         <Icon name="file-export" />
         <span className="text-xs">
@@ -362,7 +362,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         variant="outline"
         title={t('toolbar:export_pdf_tooltip')}
         onClick={handleExport('pdf')}
-        className="h-8 gap-1"
+        className="h-7 gap-1"
       >
         <Icon name="file-pdf" />
         <span className="text-xs">
@@ -393,7 +393,7 @@ const ToolbarButton: React.FC<{
     variant="outline"
     title={title}
     onClick={onClick}
-    className="h-8 w-8 p-0"
+    className="h-7 w-7 p-0"
   >
     {children}
   </Button>
@@ -409,7 +409,7 @@ const MenuItem: React.FC<{
 }> = ({ onClick, children }) => (
   <button
     type="button"
-    className="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+    className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground"
     onClick={onClick}
   >
     {children}
