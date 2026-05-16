@@ -3,29 +3,33 @@ import {
   KeyCode,
   KeyMod,
 } from 'monaco-editor/esm/vs/editor/editor.api';
-import { Modal, Dropdown } from 'bootstrap';
+import { Modal } from 'bootstrap';
 import type {
   ModalProviders,
   ValidModal,
   ValidCommand,
-  DropdownProviders,
 } from '../../interfaces/Providers';
 import { commands, alertblocks, codeblocks } from '../mappings/editorCommands';
 import { getOSPlatform } from '../../util';
 import { dom } from '../../dom';
 
+export type ToolbarDropdownKey = 'alertblocks' | 'codeblocks' | 'tables';
+
 export class CommandProvider {
   /** Editor instance */
   private mkeditor: editor.IStandaloneCodeEditor;
 
-  /** Editor command dropdown triggers */
-  private dropdowns: DropdownProviders;
-
-  /** Editor command modal triggers */
+  /** Editor command modal triggers (Phase 7 will replace these). */
   private modals: ModalProviders;
 
-  /** Editor command toolbar */
-  private toolbar = dom.commands.toolbar;
+  /**
+   * Bridge to <EditorToolbar>'s dropdown open state. Registered by the
+   * toolbar component on mount; lets Monaco keybindings and chord
+   * actions open/close the React-managed shadcn dropdowns without
+   * reaching for the DOM.
+   */
+  private openDropdown: ((key: ToolbarDropdownKey | null) => void) | null =
+    null;
 
   /**
    * Create a new mkeditor command handler.
@@ -43,13 +47,17 @@ export class CommandProvider {
       shortcuts: new Modal(dom.shortcuts.modal),
     };
 
-    this.dropdowns = {
-      alertblocks: new Dropdown(dom.commands.dropdowns.alertblocks),
-      codeblocks: new Dropdown(dom.commands.dropdowns.codeblocks),
-      tables: new Dropdown(dom.commands.dropdowns.tables),
-    };
-
     this.register();
+  }
+
+  /**
+   * Register the dropdown-open callback supplied by <EditorToolbar>.
+   * Pass null to clear (e.g., on unmount).
+   */
+  public setOpenDropdown(
+    handler: ((key: ToolbarDropdownKey | null) => void) | null,
+  ) {
+    this.openDropdown = handler;
   }
 
   /**
@@ -80,20 +88,20 @@ export class CommandProvider {
       run: () => this.modals.about.toggle(),
     });
 
-    // Register separate keybindings for displaying alertblocks and codeblocks dropdowns.
-    // The reason for this is because alertblocks and codeblocks are "2-stage" commands.
-    // For example, the user presses Ctrl+K, to display the codeblocks dropdown, and then
-    // presses J to insert a Javascript codeblock.
+    // Two-stage chord shortcuts: a bare Ctrl+L / Ctrl+K / Ctrl+T opens
+    // the corresponding shadcn dropdown so the user can either click an
+    // item or press the second chord key. The dropdown open state lives
+    // in <EditorToolbar>; we call into it via the registered callback.
     this.mkeditor.onKeyDown((e) => {
       const holdKey = getOSPlatform() !== 'MacOS' ? e.ctrlKey : e.metaKey;
       if (holdKey && e.keyCode === 42 /* L */) {
-        this.dropdowns.alertblocks.toggle();
+        this.openDropdown?.('alertblocks');
       }
       if (holdKey && e.keyCode === 41 /* K */) {
-        this.dropdowns.codeblocks.toggle();
+        this.openDropdown?.('codeblocks');
       }
       if (holdKey && e.keyCode === 50 /* T */) {
-        this.dropdowns.tables.toggle();
+        this.openDropdown?.('tables');
       }
       this.mkeditor.focus();
     });
@@ -121,32 +129,9 @@ export class CommandProvider {
       this.mkeditor.addAction(<editor.IActionDescriptor>commands[cmd]);
     }
 
-    // Map editor commands to editor UI buttons
-    const toolbarButtons = this.toolbar.querySelectorAll('button');
-    if (toolbarButtons) {
-      for (const btn of toolbarButtons) {
-        btn.addEventListener('click', (event) => {
-          const target = event.currentTarget || event.target;
-          if (target && target instanceof HTMLElement && target.dataset.cmd) {
-            const { cmd, syntax } = target.dataset;
-            if (commands[cmd] && commands[cmd].isInline && syntax) {
-              // Same inline edit functionality explained in the loop above.
-              this.editInline(syntax);
-            } else {
-              // Same fenced block edit functionality explained in the loop above.
-              (this[cmd as ValidCommand] as (t: HTMLElement) => any)(target);
-            }
-            this.mkeditor.focus();
-          }
-        });
-      }
-    }
-
-    // Add handler for the insert markdown table form button
-    const mdTableBtn = dom.commands.forms.tables.submit;
-    mdTableBtn.addEventListener('click', () => this.table());
-
-    // Add event listener for build info click
+    // The legacy `dom.build` element (the build-version chip in the
+    // bottom-toolbar right-side <ul>) stays legacy until Phase 7. Its
+    // click handler also stays: clicking it opens the About modal.
     dom.build.addEventListener('click', () => this.modals.about.toggle());
 
     for (const block of alertblocks) {
@@ -160,7 +145,7 @@ export class CommandProvider {
         ],
         run: () => {
           this.alert(block.type.toLowerCase());
-          this.dropdowns.alertblocks.hide();
+          this.openDropdown?.(null);
         },
       });
     }
@@ -178,7 +163,7 @@ export class CommandProvider {
         ],
         run: () => {
           this.codeblock(block.type.toLowerCase());
-          this.dropdowns.codeblocks.hide();
+          this.openDropdown?.(null);
         },
       });
     }
@@ -195,11 +180,11 @@ export class CommandProvider {
   }
 
   /**
-   * Execute an inline edit command on the model.
-   *
-   * @param syntax - the markdown syntax (i.e. ** or __)
+   * Execute an inline edit command on the model. Public so the React
+   * <EditorToolbar> can invoke it directly for bold/italic/strikethrough/
+   * link buttons.
    */
-  private editInline(syntax: string) {
+  public editInline(syntax: string) {
     const selected = this.getModel();
     let edit = '';
     // Handle inline links
@@ -257,38 +242,31 @@ export class CommandProvider {
   }
 
   /**
-   * Insert an alert.
-   *
-   * @param params - alert parameters
-   * @param content - the content to insert
+   * Insert an alert. Public so <EditorToolbar>'s alertblocks DropdownMenu
+   * can call it directly. Accepts a Monaco keybinding string (used by
+   * chord actions) or undefined (uses currently-selected text).
    */
-  private alert(params: HTMLElement | string, content?: string) {
-    const alert = params instanceof HTMLElement ? params.dataset.type : params;
+  public alert(alertType: string, content?: string) {
     content = content || this.getModel();
-    this.executeEdit('::: ' + alert + '\n' + content + '\n:::');
+    this.executeEdit('::: ' + alertType + '\n' + content + '\n:::');
   }
 
   /**
-   * Insert a codeblock.
-   *
-   * @param params - codeblock parameters
-   * @param content - the content to insert
+   * Insert a codeblock. Public so <EditorToolbar>'s codeblocks
+   * DropdownMenu can call it directly.
    */
-  private codeblock(params: HTMLElement | string, content?: string) {
-    const language =
-      params instanceof HTMLElement ? params.dataset.language : params;
+  public codeblock(language: string, content?: string) {
     content = content || this.getModel();
     this.executeEdit('```' + language + '\n' + content + '\n```');
   }
 
   /**
-   * Insert a table.
+   * Insert a markdown table with the given dimensions. Public so
+   * <EditorToolbar>'s tables Popover can pass the form values directly.
+   * Previously read `dom.commands.forms.tables.{rows,cols}.value`;
+   * Phase 6 routes the form values through React state instead.
    */
-  private table() {
-    const { cols, rows } = dom.commands.forms.tables;
-    const numCols = parseInt(cols.value);
-    const numRows = parseInt(rows.value);
-
+  public table(numCols: number, numRows: number) {
     const makeRow = (cells: string[]) => `| ${cells.join(' | ')} |`;
 
     const header = makeRow(Array(numCols).fill('Header'));
@@ -301,18 +279,18 @@ export class CommandProvider {
   }
 
   /**
-   * Create an unordered list.
+   * Create an unordered list. Public so <EditorToolbar> can call it.
    */
-  private unorderedList() {
+  public unorderedList() {
     this.executeEdit(
       this.getModel().replace(/^[a-zA-Z]+?/gm, (match) => `- ${match}`),
     );
   }
 
   /**
-   * Create an ordered list.
+   * Create an ordered list. Public so <EditorToolbar> can call it.
    */
-  private orderedList() {
+  public orderedList() {
     let i = 0;
     this.executeEdit(
       this.getModel().replace(/^[a-zA-Z]+?/gm, (match) => `${++i}. ${match}`),

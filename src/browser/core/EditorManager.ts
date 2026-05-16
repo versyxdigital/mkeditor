@@ -104,15 +104,12 @@ export class EditorManager {
 
     try {
       let editorContent = welcomeMarkdown;
-      // For web mode, fetch stored content from localStorage
+      // For web mode, fetch stored content from localStorage.
+      // Web-mode delete-button click is wired by <EditorToolbar> via
+      // editorManager.resetContent() (Phase 6 onwards).
       if (this.mode === 'web') {
         const webStoredContent = localStorage.getItem('mkeditor-content');
         if (webStoredContent) editorContent = webStoredContent;
-
-        dom.buttons.delete.addEventListener('click', () => {
-          localStorage.removeItem('mkeditor-content');
-          this.mkeditor?.setValue(welcomeMarkdown);
-        });
       }
 
       // Create the underlying monaco editor.
@@ -180,6 +177,18 @@ export class EditorManager {
    */
   public getValue(): string {
     return this.mkeditor?.getValue() ?? '';
+  }
+
+  /**
+   * Web-mode "Delete content" handler — clears persisted markdown from
+   * `localStorage` and reloads the welcome page. Called by
+   * <EditorToolbar>'s trash button (visible only in web mode).
+   */
+  public resetContent() {
+    if (this.mode === 'web') {
+      localStorage.removeItem('mkeditor-content');
+    }
+    this.mkeditor?.setValue(welcomeMarkdown);
   }
 
   /**

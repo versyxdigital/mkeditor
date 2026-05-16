@@ -1,15 +1,20 @@
 import type { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import type { EditorProviders } from '../interfaces/Providers';
-import { HTMLExporter } from './HTMLExporter';
-import { exportSettings } from '../config';
 import { logger } from '../util';
 import { dom } from '../dom';
 
 /**
- * Register listeners for cross-context events.
+ * Register click handlers for buttons that still live in legacy DOM
+ * (Bootstrap modals). Phase 6 moved the bottom-toolbar buttons
+ * (save markdown, export-to-HTML, export-to-PDF, delete content) into
+ * the React `<EditorToolbar>`. The three handlers below — save settings,
+ * save export settings, and reset export settings — target buttons
+ * inside the still-Bootstrap `#app-settings` / `#export-settings`
+ * modals and stay here until Phase 7 replaces those modals with
+ * shadcn dialogs.
  */
 export function registerUIToolbarListeners(
-  mkeditor: editor.IStandaloneCodeEditor | null,
+  _mkeditor: editor.IStandaloneCodeEditor | null,
   providers: EditorProviders,
 ) {
   const logError = (id: string) => {
@@ -68,68 +73,5 @@ export function registerUIToolbarListeners(
     });
   } else {
     logError('Reset export settings');
-  }
-
-  if (dom.buttons.save.markdown) {
-    dom.buttons.save.markdown.addEventListener('click', (event) => {
-      event.preventDefault();
-      if (mkeditor) {
-        if (providers.bridge) {
-          providers.bridge.saveContentToFile();
-        } else {
-          HTMLExporter.webExport(mkeditor.getValue(), 'text/plain', '.md');
-        }
-      }
-    });
-  } else {
-    logError('Save markdown');
-  }
-
-  /**
-   * Get the rendered HTML for export.
-   * @returns - the rendered HTML
-   */
-  const generateHTMLForExport = () => {
-    const settings = providers.exportSettings?.getSettings() ?? exportSettings;
-
-    return HTMLExporter.generateHTML(dom.preview.dom.outerHTML, settings);
-  };
-
-  // Register the event listener for the editor UI export HTML button.
-  if (dom.buttons.save.html) {
-    dom.buttons.save.html.addEventListener('click', (event) => {
-      event.preventDefault();
-      const html = generateHTMLForExport();
-
-      if (providers.bridge) {
-        providers.bridge.exportToDifferentFormat({
-          content: html,
-          type: 'html',
-        });
-      } else {
-        HTMLExporter.webExport(html, 'text/html', '.html');
-      }
-    });
-  } else {
-    logError('Export to HTML');
-  }
-
-  // Register the event listener for the editor UI export PDF button.
-  if (dom.buttons.save.pdf) {
-    dom.buttons.save.pdf.addEventListener('click', (event) => {
-      event.preventDefault();
-      const html = generateHTMLForExport();
-
-      if (providers.bridge) {
-        providers.bridge.exportToDifferentFormat({
-          content: html,
-          type: 'pdf',
-        });
-      } else {
-        HTMLExporter.webExport(html, 'text/html', '.pdf');
-      }
-    });
-  } else {
-    logError('Export to PDF');
   }
 }

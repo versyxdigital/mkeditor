@@ -11,6 +11,9 @@ import { EditorHost } from './EditorHost';
 import { PreviewPane } from './PreviewPane';
 
 interface WorkspaceProps {
+  /** Shared ref owned by <App>; <EditorToolbar>'s split-reset button calls
+   * `groupRef.current.setLayout({...})` directly via the same ref. */
+  groupRef: React.Ref<GroupImperativeHandle | null>;
   onEditorReady?: () => void;
 }
 
@@ -19,25 +22,16 @@ interface WorkspaceProps {
  * `react-resizable-panels` v4 (Group + Panel + Separator). Panel.onResize
  * fires `editorManager.layout()` so Monaco reflows on every drag tick.
  *
- * A `useEffect` bridges the legacy `#split-reset` toolbar button: clicks
- * call `group.setLayout({ editor: 50, preview: 50 })`. Phase 6 will move
- * the button itself into React when the toolbar is refactored.
+ * Phase 6 retired the Phase 3 `#split-reset` DOM-bridge useEffect — the
+ * React `<EditorToolbar>` now owns the split-reset button and calls
+ * `groupRef.current.setLayout(...)` directly through the ref that <App>
+ * passes here.
  */
-export const Workspace: React.FC<WorkspaceProps> = ({ onEditorReady }) => {
+export const Workspace: React.FC<WorkspaceProps> = ({
+  groupRef,
+  onEditorReady,
+}) => {
   const { editorManager } = useManagers();
-  const groupRef = React.useRef<GroupImperativeHandle>(null);
-
-  React.useEffect(() => {
-    const btn = document.getElementById('split-reset');
-    if (!btn) return;
-    const reset = () =>
-      groupRef.current?.setLayout({
-        'editor-pane': 50,
-        'preview-pane': 50,
-      });
-    btn.addEventListener('click', reset);
-    return () => btn.removeEventListener('click', reset);
-  }, []);
 
   return (
     <Group orientation="horizontal" id="editor-preview" groupRef={groupRef}>

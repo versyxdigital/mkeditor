@@ -63,38 +63,19 @@ export const dom = {
     darkmode: <HTMLLabelElement>document.querySelector('#darkmode-icon'),
   },
   buttons: {
+    // Save handlers inside the still-Bootstrap settings + export-settings
+    // modals (Phase 7 will retire them). The Phase 6 toolbar buttons
+    // (save markdown / export HTML / export PDF / delete content /
+    // export-with-styles toggle / split-reset) are owned by React.
     save: {
       settings: <HTMLButtonElement>document.querySelector('#app-settings-save'),
       exportSettings: <HTMLButtonElement>(
         document.querySelector('#export-settings-save')
       ),
-      markdown: <HTMLButtonElement>document.querySelector('#app-markdown-save'),
-      html: <HTMLButtonElement>document.querySelector('#export-to-html'),
-      pdf: <HTMLButtonElement>document.querySelector('#export-to-pdf'),
-      styled: <HTMLButtonElement>document.querySelector('#export-with-styles'),
     },
-    delete: <HTMLButtonElement>document.querySelector('#app-markdown-delete'),
-    resetSplit: <HTMLButtonElement>document.querySelector('#split-reset'),
     resetExportSettings: <HTMLButtonElement>(
       document.querySelector('#export-settings-reset')
     ),
-  },
-  commands: {
-    toolbar: <HTMLDivElement>document.querySelector('#editor-functions'),
-    dropdowns: {
-      alertblocks: <HTMLDivElement>document.querySelector('#alertblocks'),
-      codeblocks: <HTMLDivElement>document.querySelector('#codeblocks'),
-      tables: <HTMLDivElement>document.querySelector('#markdown-tables'),
-    },
-    forms: {
-      tables: {
-        cols: <HTMLInputElement>document.querySelector('#markdown-table-cols'),
-        rows: <HTMLInputElement>document.querySelector('#markdown-table-rows'),
-        submit: <HTMLButtonElement>(
-          document.querySelector('#insert-markdown-table-btn')
-        ),
-      },
-    },
   },
   editor: {
     dom: <HTMLDivElement>document.querySelector('#editor'),

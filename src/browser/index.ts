@@ -12,7 +12,7 @@ import { ExportSettingsProvider } from './core/providers/ExportSettingsProvider'
 import { BridgeManager } from './core/BridgeManager';
 import { initI18n, changeLanguage } from './i18n';
 import { getExecutionBridge, logger } from './util';
-import { dom, showSplashScreen } from './dom';
+import { showSplashScreen } from './dom';
 
 import { App } from './react/App';
 import type { Managers } from './react/contexts/ManagersContext';
@@ -28,11 +28,10 @@ const mode: 'web' | 'desktop' = api !== 'web' ? 'desktop' : 'web';
 initI18n(mode);
 
 if (api === 'web') {
-  // Show the "delete content" button (legacy DOM in the toolbar). The
-  // sidebar is hidden via UIStateContext (initialSidebarOpen=false below).
-  dom.buttons.delete.classList.remove('d-none');
-
   // Expose a language setter for web mode.
+  // (Phase 6: the legacy `dom.buttons.delete.classList.remove('d-none')`
+  // is gone — <EditorToolbar> renders the delete button conditionally
+  // on `mode === 'web'`.)
   window.setLanguage = (lng: string) => {
     changeLanguage(lng);
   };

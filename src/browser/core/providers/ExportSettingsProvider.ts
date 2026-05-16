@@ -77,7 +77,7 @@ export class ExportSettingsProvider {
   public registerDOMListeners() {
     if (this.registered) return;
     this.registered = true;
-    const { exports: ex, buttons } = dom;
+    const { exports: ex } = dom;
 
     const persist = () => {
       this.setUIState();
@@ -88,8 +88,6 @@ export class ExportSettingsProvider {
       if (this.isApplying) return;
       const target = e.target as HTMLInputElement;
       this.settings.withStyles = target.checked;
-      const toolbar = buttons.save.styled as HTMLInputElement;
-      if (toolbar) toolbar.checked = target.checked;
       persist();
     });
 
@@ -129,16 +127,9 @@ export class ExportSettingsProvider {
       persist();
     });
 
-    const toolbar = buttons.save.styled as HTMLInputElement;
-    if (toolbar) {
-      toolbar.addEventListener('change', (e) => {
-        if (this.isApplying) return;
-        const target = e.target as HTMLInputElement;
-        this.settings.withStyles = target.checked;
-        ex.withStyles.checked = target.checked;
-        persist();
-      });
-    }
+    // Phase 6 removed the redundant "toolbar styled" listener — it
+    // querySelector'd the same `#export-with-styles` element as
+    // `ex.withStyles`, so the two listeners synced a checkbox to itself.
   }
 
   public updateSettingsInLocalStorage() {

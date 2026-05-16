@@ -3,6 +3,7 @@ import {
   Group,
   Panel,
   Separator,
+  type GroupImperativeHandle,
   type PanelImperativeHandle,
 } from 'react-resizable-panels';
 
@@ -15,6 +16,7 @@ import { Navbar } from './components/Navbar';
 import { TabBar } from './components/TabBar';
 import { Sidebar } from './components/Sidebar';
 import { Workspace } from './components/Workspace';
+import { EditorToolbar } from './components/EditorToolbar';
 
 import './styles/tailwind.css';
 
@@ -55,6 +57,10 @@ export const App: React.FC<AppProps> = ({
     registerSetManagers?.(setManagers);
   }
 
+  // Shared ref to the editor/preview Group so <EditorToolbar>'s
+  // split-reset button can call setLayout directly (no legacy DOM bridge).
+  const workspaceGroupRef = React.useRef<GroupImperativeHandle>(null);
+
   return (
     <ManagersProvider value={managers}>
       <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
@@ -63,7 +69,11 @@ export const App: React.FC<AppProps> = ({
             <LegacyShell />
             <Navbar />
             <TabBar />
-            <Shell onEditorReady={onEditorReady} />
+            <Shell
+              onEditorReady={onEditorReady}
+              workspaceGroupRef={workspaceGroupRef}
+            />
+            <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
           </FileTreeProvider>
         </FilesProvider>
       </UIStateProvider>
@@ -76,7 +86,10 @@ export const App: React.FC<AppProps> = ({
  * TabBar in #react-root's flex column and flex-grows to fill the
  * remaining vertical space (`#mkeditor-layout { flex: 1 }`).
  */
-const Shell: React.FC<{ onEditorReady?: () => void }> = ({ onEditorReady }) => {
+const Shell: React.FC<{
+  onEditorReady?: () => void;
+  workspaceGroupRef: React.RefObject<GroupImperativeHandle | null>;
+}> = ({ onEditorReady, workspaceGroupRef }) => {
   const { sidebarOpen } = useUIState();
   const sidebarPanelRef = React.useRef<PanelImperativeHandle>(null);
 
@@ -100,7 +113,7 @@ const Shell: React.FC<{ onEditorReady?: () => void }> = ({ onEditorReady }) => {
       </Panel>
       <Separator className="gutter sidebar-gutter-horizontal" />
       <Panel id="workspace-pane">
-        <Workspace onEditorReady={onEditorReady} />
+        <Workspace groupRef={workspaceGroupRef} onEditorReady={onEditorReady} />
       </Panel>
     </Group>
   );

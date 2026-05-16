@@ -26,7 +26,11 @@ const ContextMenuContent = React.forwardRef<
     <ContextMenuPrimitive.Content
       ref={ref}
       className={cn(
-        'z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md',
+        // z-[1060] sits above Bootstrap's `fixed-bottom` toolbar (z:1030)
+        // and below modal-backdrop (1040). Matches Bootstrap's "popover"
+        // level so context menus coexist sanely with the still-legacy
+        // modals.
+        'z-[1060] min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         className,
