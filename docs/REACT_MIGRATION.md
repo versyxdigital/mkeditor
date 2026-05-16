@@ -94,7 +94,7 @@ src/browser/
 | 7   | Modals + Settings/Export refactor                       | 🟢 2026-05-16 |
 | 8   | Toasts + prompts (drop SweetAlert2)                     | 🟢 2026-05-16 |
 | 9   | Cleanup (drop Bootstrap, dispatcher fold, dom.ts prune) | 🟢 2026-05-16 |
-| 10  | Test pass + docs update                                 | 🔵            |
+| 10  | Test pass + docs update                                 | 🟢 2026-05-16 |
 
 A phase is **complete** only when its exit criteria are met _and_ `npm test`, `npm run lint`, and a manual smoke (desktop + web) pass. **Each phase ends with a focused commit (or small commit series) on a `feature/react-phase-N-<slug>` branch.**
 
