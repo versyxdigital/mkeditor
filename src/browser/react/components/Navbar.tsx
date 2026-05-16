@@ -24,9 +24,16 @@ export const Navbar: React.FC = () => {
   const { activeFile, tabs } = useFiles();
   const counts = useCounts();
 
-  const activeTabName = React.useMemo(() => {
+  // Navbar shows the full path of the active file (the tab itself
+  // shows just the filename via tab.name). For untitled scratch
+  // buffers the path is a synthetic `untitled-N` id — fall back to
+  // the tab's name so the label reads "Untitled 1" instead.
+  const activeFileLabel = React.useMemo(() => {
     if (!activeFile) return null;
-    return tabs.find((tab) => tab.path === activeFile)?.name ?? null;
+    if (activeFile.startsWith('untitled')) {
+      return tabs.find((tab) => tab.path === activeFile)?.name ?? null;
+    }
+    return activeFile;
   }, [activeFile, tabs]);
 
   return (
@@ -45,8 +52,12 @@ export const Navbar: React.FC = () => {
             <Icon name="bars" />
           </Button>
           <img src="./icon.png" className="ml-1 h-6 w-6" />
-          <span id="active-file" className="text-sm text-muted-foreground">
-            {activeTabName ?? t('app:brand_name')}
+          <span
+            id="active-file"
+            className="truncate text-sm text-muted-foreground"
+            title={activeFileLabel ?? undefined}
+          >
+            {activeFileLabel ?? t('app:brand_name')}
           </span>
         </div>
         <div className="flex items-center gap-3 pr-3">

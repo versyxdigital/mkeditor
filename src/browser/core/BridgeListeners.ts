@@ -12,6 +12,7 @@ import {
 } from '../react/contexts/ModalsContext';
 import { sonnerToast } from '../notify';
 import { showPropertiesExternal } from '../react/contexts/PropertiesContext';
+import { basename } from '../util';
 import { t, whenLanguageReady } from '../i18n';
 
 /**
@@ -118,10 +119,18 @@ export function registerBridgeListeners(
     bridge.send(channel, true);
   });
 
-  // Handle post-file open events
-  bridge.receive('from:file:opened', ({ content, filename, file }: File) => {
+  // Handle post-file open events. We ignore the `filename` field in
+  // the payload and derive the tab label from the path's basename
+  // (POSIX `/` or Win `\`). Main's setActiveFile used to split only
+  // on `\`, so on Linux/macOS the renderer was receiving the full
+  // path as `filename` and rendering it in the tab. The Navbar reads
+  // the active file's PATH for the title bar — the tab itself only
+  // shows the filename.
+  bridge.receive('from:file:opened', ({ content, file }: File) => {
     const path = file || `untitled-${files.untitledCounter++}`;
-    const name = filename || `Untitled ${files.untitledCounter - 1}`;
+    const name = file
+      ? basename(file)
+      : `Untitled ${files.untitledCounter - 1}`;
 
     if (files.models.has(path)) {
       // Already open — just activate.
@@ -152,13 +161,11 @@ export function registerBridgeListeners(
     files.openingFile = false;
   });
 
-  // Enable renaming of files and folders
-  bridge.receive(
-    'from:path:renamed',
-    ({ oldPath, newPath, name }: RenamedPath) => {
-      files.renameTab(oldPath, newPath, name);
-    },
-  );
+  // Enable renaming of files and folders. Same basename derivation as
+  // from:file:opened so the tab label stays consistent across OSes.
+  bridge.receive('from:path:renamed', ({ oldPath, newPath }: RenamedPath) => {
+    files.renameTab(oldPath, newPath, basename(newPath));
+  });
 
   // Enable access to the monaco editor command palette.
   bridge.receive('from:command:palette', (command: string) => {

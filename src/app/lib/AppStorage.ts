@@ -26,7 +26,10 @@ export class AppStorage {
    * @returns
    */
   static setActiveFile(context: BrowserWindow, file: string | null = null) {
-    const filename = file ? file.split('\\').slice(-1).pop() : '';
+    // Split on both separators so this works on Linux/macOS (`/`) and
+    // Windows (`\`). The pre-existing version split only on `\` and
+    // shipped the full path as `filename` on POSIX systems.
+    const filename = file ? (file.split(/[\\/]/).pop() ?? '') : '';
     const content = file ? readFileSync(file, { encoding: 'utf-8' }) : '';
 
     AppStorage.activeFilePath = file;

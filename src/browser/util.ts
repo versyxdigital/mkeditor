@@ -128,6 +128,16 @@ export function selfRender(
  * @param name - the file name
  * @returns
  */
+/**
+ * Cross-platform basename helper. Splits on both POSIX (`/`) and
+ * Windows (`\`) separators so paths from either OS reduce to just the
+ * file (or last directory) name. Returns the input unchanged when no
+ * separator is present (e.g. `untitled-1`).
+ */
+export function basename(path: string): string {
+  return path.split(/[\\/]/).pop() ?? path;
+}
+
 export function withMdExtension(name: string) {
   let filename = name.trim();
   if (!filename.toLowerCase().endsWith('.md')) {
