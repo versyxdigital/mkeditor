@@ -49,7 +49,7 @@ export class EditorManager {
 
     // editor:render is handled by <PreviewPane> (innerHTML write) and
     // <Counts> via useCounts (word/character counts). EditorManager
-    // no longer subscribes here. The "v3.6.0" build chip and About
+    // no longer subscribes here. The version build chip and About
     // modal version label both source APP_VERSION directly from
     // <BottomToolbarRight> / <AboutModal>.
 
