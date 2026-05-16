@@ -92,7 +92,7 @@ src/browser/
 | 5   | Sidebar + file tree                                     | 🟢 2026-05-16 |
 | 6   | Editor toolbar + dropdowns                              | 🟢 2026-05-16 |
 | 7   | Modals + Settings/Export refactor                       | 🟢 2026-05-16 |
-| 8   | Toasts + prompts (drop SweetAlert2)                     | 🔵            |
+| 8   | Toasts + prompts (drop SweetAlert2)                     | 🟢 2026-05-16 |
 | 9   | Cleanup (drop Bootstrap, dispatcher fold, dom.ts prune) | 🔵            |
 | 10  | Test pass + docs update                                 | 🔵            |
 
