@@ -87,11 +87,11 @@ src/browser/
 | --- | ------------------------------------------------------- | ------------- |
 | 1   | Foundation: deps, build, shadcn init                    | 🟢 2026-05-16 |
 | 2   | Composition root + Monaco host                          | 🟢 2026-05-16 |
-| 3   | Preview pane + resizable workspace                      | 🔵            |
-| 4   | Top chrome: navbar + tabs                               | 🔵            |
-| 5   | Sidebar + file tree                                     | 🔵            |
-| 6   | Editor toolbar + dropdowns                              | 🔵            |
-| 7   | Modals + Settings/Export refactor                       | 🔵            |
+| 3   | Preview pane + resizable workspace                      | 🟢 2026-05-16 |
+| 4   | Top chrome: navbar + tabs                               | 🟢 2026-05-16 |
+| 5   | Sidebar + file tree                                     | 🟢 2026-05-16 |
+| 6   | Editor toolbar + dropdowns                              | 🟢 2026-05-16 |
+| 7   | Modals + Settings/Export refactor                       | 🟢 2026-05-16 |
 | 8   | Toasts + prompts (drop SweetAlert2)                     | 🔵            |
 | 9   | Cleanup (drop Bootstrap, dispatcher fold, dom.ts prune) | 🔵            |
 | 10  | Test pass + docs update                                 | 🔵            |
