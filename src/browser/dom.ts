@@ -1,19 +1,22 @@
-import type { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { Tooltip } from 'bootstrap';
-import Split from 'split.js';
 import Swal from 'sweetalert2';
 import type { FileProperties } from './interfaces/File';
 import { getOSPlatform } from './util';
 import { t } from './i18n';
 
-let editorPreviewSplit: Split.Instance | null = null;
 let activeTooltips: Tooltip[] = [];
 
 export const dom = {
   splash: <HTMLDivElement>document.querySelector('#splashscreen'),
-  app: <HTMLDivElement>document.querySelector('#app'),
+  // The splash fade-in target. `#app` was the legacy wrapper that React
+  // now replaces; the splash overlay fades into `#react-root` instead.
+  get app(): HTMLDivElement {
+    return document.querySelector('#react-root') as HTMLDivElement;
+  },
   build: <HTMLSpanElement>document.querySelector('#app-build-id'),
-  sidebar: <HTMLDivElement>document.querySelector('#sidebar'),
+  get sidebar(): HTMLDivElement {
+    return document.querySelector('#sidebar') as HTMLDivElement;
+  },
   about: {
     modal: <HTMLDivElement>document.querySelector('#app-about'),
     version: <HTMLSpanElement>document.querySelector('#app-version'),
@@ -101,11 +104,17 @@ export const dom = {
     dom: <HTMLDivElement>document.querySelector('#editor'),
   },
   preview: {
-    wrapper: <HTMLDivElement>document.querySelector('#preview'),
-    dom: <HTMLDivElement>document.querySelector('#preview-content'),
+    get wrapper(): HTMLDivElement {
+      return document.querySelector('#preview') as HTMLDivElement;
+    },
+    get dom(): HTMLDivElement {
+      return document.querySelector('#preview-content') as HTMLDivElement;
+    },
   },
   tabs: <HTMLUListElement>document.querySelector('#editor-tabs'),
-  filetree: <HTMLUListElement>document.querySelector('#file-tree'),
+  get filetree(): HTMLUListElement {
+    return document.querySelector('#file-tree') as HTMLUListElement;
+  },
   meta: {
     file: {
       active: <HTMLSpanElement>document.querySelector('#active-file'),
@@ -207,54 +216,14 @@ export function fadeIn(
 export function showSplashScreen({ duration }: { duration: number }) {
   fade(dom.splash, 'out', duration, () => {
     fade(dom.app, 'in', duration);
-  });
-}
-
-export function createDraggableSplitPanels(
-  mkeditor: editor.IStandaloneCodeEditor,
-) {
-  editorPreviewSplit = Split(['#editor-split', '#preview-split'], {
-    minSize: 0,
-    onDrag() {
-      mkeditor.layout();
-    },
-  });
-
-  Split(['#sidebar', '#wrapper'], {
-    sizes: [15, 85],
-    gutter(index, direction) {
-      const gutter = document.createElement('div');
-      gutter.className = `gutter sidebar-gutter-${direction}`;
-      return gutter;
-    },
-    gutterStyle: () => ({
-      width: '3px',
-    }),
-    onDrag() {
-      mkeditor.layout();
-    },
-  });
-}
-
-export function resetEditorPreviewSplit(
-  mkeditor: editor.IStandaloneCodeEditor,
-) {
-  editorPreviewSplit?.setSizes([50, 50]);
-  mkeditor.layout();
-}
-
-// Toggle sidebar visibility.
-export function createSidebarToggle(mkeditor: editor.IStandaloneCodeEditor) {
-  const sidebarGutter = document.querySelector(
-    '.gutter.sidebar-gutter-horizontal',
-  ) as HTMLDivElement | null;
-
-  dom.buttons.sidebar?.addEventListener('click', () => {
-    const isHidden = dom.sidebar.classList.toggle('d-none');
-    dom.sidebar.classList.toggle('d-flex', !isHidden);
-    if (sidebarGutter) sidebarGutter.hidden = isHidden;
-
-    mkeditor.layout();
+    // Reveal the navbars (top + fixed-bottom toolbar) together with the
+    // editor. They are siblings of <#splashscreen> in the static HTML, so
+    // without this they'd be visible *through* the fading splash and the
+    // navbar's left-aligned brand makes the splash content look like it's
+    // drifting left during the transition.
+    document
+      .querySelectorAll<HTMLElement>('body > nav')
+      .forEach((nav) => fade(nav, 'in', duration));
   });
 }
 

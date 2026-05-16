@@ -12,13 +12,7 @@ import { ExportSettingsProvider } from './core/providers/ExportSettingsProvider'
 import { BridgeManager } from './core/BridgeManager';
 import { initI18n, changeLanguage } from './i18n';
 import { getExecutionBridge, logger } from './util';
-import {
-  dom,
-  showSplashScreen,
-  createDraggableSplitPanels,
-  createSidebarToggle,
-  resetEditorPreviewSplit,
-} from './dom';
+import { dom, showSplashScreen } from './dom';
 
 import { App } from './react/App';
 import type { Managers } from './react/contexts/ManagersContext';
@@ -34,9 +28,8 @@ const mode: 'web' | 'desktop' = api !== 'web' ? 'desktop' : 'web';
 initI18n(mode);
 
 if (api === 'web') {
-  // If the app is in web mode hide the filetree sidebar,
-  // show the markdown content delete button.
-  dom.sidebar.classList.add('d-none');
+  // Show the "delete content" button (legacy DOM in the toolbar). The
+  // sidebar is hidden via UIStateContext (initialSidebarOpen=false below).
   dom.buttons.delete.classList.remove('d-none');
 
   // Expose a language setter for web mode.
@@ -110,19 +103,22 @@ function onEditorReady() {
     };
   }
 
-  createDraggableSplitPanels(mkeditor);
-  dom.buttons.resetSplit?.addEventListener('click', () => {
-    resetEditorPreviewSplit(mkeditor);
-  });
-  createSidebarToggle(mkeditor);
+  // Splits, sidebar visibility, and split-reset are now owned by the
+  // React tree (<Shell> + <Workspace> in App.tsx). The legacy
+  // #sidebar-toggle and #split-reset buttons are bridged via useEffect
+  // listeners inside those components.
 
   showSplashScreen({ duration: 750 });
 }
 
+// Sidebar starts open in desktop mode (legacy behaviour) and collapsed
+// in web mode (legacy had `dom.sidebar.classList.add('d-none')` on boot).
+const initialSidebarOpen = api !== 'web';
+
 const reactRoot = document.getElementById('react-root');
 if (reactRoot) {
   createRoot(reactRoot).render(
-    React.createElement(App, { managers, onEditorReady }),
+    React.createElement(App, { managers, onEditorReady, initialSidebarOpen }),
   );
 } else {
   logger?.error(

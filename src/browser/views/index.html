@@ -127,29 +127,7 @@
     <!-- main content -->
     <div id="main" class="border-top d-flex flex-column h-100">
       <ul id="editor-tabs" class="tab-bar"></ul>
-      <div id="app" class="d-flex flex-row h-100">
-        <!-- sidebar -->
-        <div id="sidebar" class="p-3 d-flex flex-column">
-          <div class="explorer-title" data-i18n-text="sidebar:explorer">
-            Explorer
-          </div>
-          <ul id="file-tree" class="list-unstyled mb-0 flex-fill"></ul>
-        </div>
-
-        <div id="wrapper" class="d-flex flex-row flex-grow-1 mw-100">
-          <!-- editor pane -->
-          <div id="editor-split">
-            <div id="react-root" class="flex-column split-editor"></div>
-          </div>
-
-          <!-- preview pane -->
-          <div id="preview-split">
-            <div id="preview" class="flex-column split-preview p-3">
-              <div id="preview-content" class="container-fluid"></div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div id="react-root" class="d-flex flex-row h-100"></div>
     </div>
 
     <!-- bottom editor toolbar -->

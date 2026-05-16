@@ -43,7 +43,10 @@ body[data-theme='dark'] {
   background: #aaaaaa;
 }
 
-#app {
+// Hidden at boot; showSplashScreen() fades these in together once Monaco
+// is ready, so nothing peeks through the fading splash overlay.
+#react-root,
+body > nav {
   opacity: 0;
 }
 
@@ -60,6 +63,8 @@ body[data-theme='dark'] {
   background: #222222;
   color: #ffffff;
   display: flex;
+  align-items: center;
+  justify-content: center;
   h1 {
     font-size: 3.5em;
     letter-spacing: 10px;
@@ -126,6 +131,11 @@ body[data-theme='dark'] {
 }
 
 .gutter.gutter-horizontal {
+  // split.js used to inject an inline `width: 10px` on the gutter div.
+  // react-resizable-panels v4 Separator brings no width of its own —
+  // set it explicitly so the resize handle is visible (the library's
+  // hit-target padding is what makes the cursor change on hover).
+  width: 10px;
   background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
   cursor: col-resize;
 }

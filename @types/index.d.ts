@@ -1,4 +1,10 @@
 export {};
+
+// Side-effect CSS imports (Tailwind entry, etc.) need an ambient module
+// declaration under moduleResolution: "bundler". Webpack handles loading
+// via style-loader + postcss-loader at build time.
+declare module '*.css';
+
 declare global {
   interface Window {
     api?: any;
