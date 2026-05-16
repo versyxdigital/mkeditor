@@ -37,7 +37,7 @@ describe('Providers', () => {
     const model = mkeditor.getMkEditor();
     expect(model).not.toBeNull();
 
-    const settings = new SettingsProvider('web', model!, dispatcher);
+    const settings = new SettingsProvider('web', model!);
     const completion = new CompletionProvider(model!, dispatcher);
     mkeditor.provide('settings', settings);
     mkeditor.provide('completion', completion);

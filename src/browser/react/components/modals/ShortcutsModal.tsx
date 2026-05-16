@@ -20,36 +20,40 @@ export const ShortcutsModal: React.FC = () => {
       onOpenChange={(o) => !o && closeModal()}
     >
       <DialogContent
-        className="small !max-w-[75vw]"
+        className="text-xs !max-w-[75vw]"
         aria-describedby={undefined}
       >
         <DialogHeader>
           <DialogTitle>{t('modals-shortcuts:title')}</DialogTitle>
         </DialogHeader>
-        <div className="modal-body px-4 py-0 text-muted">
-          <div className="row">
-            <div className="col-6">
-              <h6>{t('modals-shortcuts:basic_editing')}</h6>
+        <div className="px-4 pb-4 text-muted-foreground">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <h6 className="mb-2 font-semibold text-foreground">
+                {t('modals-shortcuts:basic_editing')}
+              </h6>
               <ShortcutTable t={t} rows={basicEditing} />
             </div>
-            <div className="col-6">
-              <div className="row">
-                <div className="col-12">
-                  <h6>{t('modals-shortcuts:text_formatting')}</h6>
-                  <ShortcutTable t={t} rows={textFormatting} />
-                </div>
-                <div className="col-12 mt-3">
-                  <h6>{t('modals-shortcuts:search_and_replace')}</h6>
-                  <ShortcutTable t={t} rows={searchAndReplace} />
-                </div>
+            <div className="flex flex-col gap-4">
+              <div>
+                <h6 className="mb-2 font-semibold text-foreground">
+                  {t('modals-shortcuts:text_formatting')}
+                </h6>
+                <ShortcutTable t={t} rows={textFormatting} />
+              </div>
+              <div>
+                <h6 className="mb-2 font-semibold text-foreground">
+                  {t('modals-shortcuts:search_and_replace')}
+                </h6>
+                <ShortcutTable t={t} rows={searchAndReplace} />
               </div>
             </div>
           </div>
-          <div className="row">
-            <div className="col-12">
-              <h6>{t('modals-shortcuts:multi_cursor_and_selection')}</h6>
-              <ShortcutTable t={t} rows={multiCursor} />
-            </div>
+          <div className="mt-4">
+            <h6 className="mb-2 font-semibold text-foreground">
+              {t('modals-shortcuts:multi_cursor_and_selection')}
+            </h6>
+            <ShortcutTable t={t} rows={multiCursor} />
           </div>
         </div>
       </DialogContent>
@@ -66,20 +70,24 @@ const ShortcutTable: React.FC<{
   t: (key: string) => string;
   rows: ShortcutRow[];
 }> = ({ t, rows }) => (
-  <table className="table table-sm table-striped small">
+  <table className="w-full border-collapse text-xs">
     <thead>
-      <tr>
-        <th scope="col">{t('modals-shortcuts:table_header_shortcut')}</th>
-        <th scope="col">{t('modals-shortcuts:table_header_description')}</th>
+      <tr className="border-b border-border text-left">
+        <th scope="col" className="py-1 pr-2 font-medium text-foreground">
+          {t('modals-shortcuts:table_header_shortcut')}
+        </th>
+        <th scope="col" className="py-1 font-medium text-foreground">
+          {t('modals-shortcuts:table_header_description')}
+        </th>
       </tr>
     </thead>
     <tbody>
-      {rows.map((row) => (
-        <tr key={row.i18nKey}>
-          <td>
-            <strong>{row.keys}</strong>
+      {rows.map((row, idx) => (
+        <tr key={row.i18nKey + idx} className="odd:bg-muted/40">
+          <td className="py-1 pr-2 align-top">
+            <strong className="text-foreground">{row.keys}</strong>
           </td>
-          <td>{t(row.i18nKey)}</td>
+          <td className="py-1 align-top">{t(row.i18nKey)}</td>
         </tr>
       ))}
     </tbody>

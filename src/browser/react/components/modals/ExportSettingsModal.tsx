@@ -6,7 +6,18 @@ import { useModals } from '../../contexts/ModalsContext';
 import { useExportSettings } from '../../contexts/ExportSettingsContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { Icon } from '../Icon';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 
 /**
  * HTML/PDF export settings dialog. ExportSettingsContext drives every
@@ -54,108 +65,104 @@ export const ExportSettingsModal: React.FC = () => {
         <DialogHeader>
           <DialogTitle>{t('modals-export:title')}</DialogTitle>
         </DialogHeader>
-        <div className="modal-body small pt-0">
-          <p className="text-muted">{t('modals-export:intro')}</p>
+        <div className="px-4 pb-4 text-sm">
+          <p className="text-muted-foreground">{t('modals-export:intro')}</p>
           {mode === 'desktop' && (
-            <p className="text-muted">
+            <p className="mt-1 text-muted-foreground">
               {t('modals-export:settings_file_info')}
             </p>
           )}
 
-          <hr />
-          <div className="form-check">
-            <input
-              type="checkbox"
-              className="form-check-input"
+          <hr className="my-4 border-border" />
+          <div className="flex items-start gap-2">
+            <Checkbox
               id="export-with-styles"
               checked={settings.withStyles}
-              onChange={(e) => updateSetting('withStyles', e.target.checked)}
+              onCheckedChange={(v) => updateSetting('withStyles', v === true)}
+              className="mt-0.5"
             />
-            <label
-              className="form-check-label d-flex flex-column"
+            <Label
               htmlFor="export-with-styles"
+              className="flex flex-col gap-0.5"
             >
               <span>{t('modals-export:export_with_styles_label')}</span>
-              <small className="text-muted">
+              <small className="text-muted-foreground">
                 {t('modals-export:export_with_styles_help')}
               </small>
-            </label>
+            </Label>
           </div>
 
-          <hr />
-          <div className="form-group mt-3">
-            <label htmlFor="export-setting-container" className="form-label">
-              {t('modals-export:set_container_label')}
-            </label>
-            <select
+          <hr className="my-4 border-border" />
+          <div className="flex flex-col gap-3">
+            <Field
               id="export-setting-container"
-              className="form-select form-select-sm"
-              value={settings.container}
-              onChange={(e) =>
-                updateSetting(
-                  'container',
-                  e.target.value as ExportSettings['container'],
-                )
-              }
+              label={t('modals-export:set_container_label')}
+              help={t('modals-export:set_container_help')}
             >
-              <option value="container">
-                {t('modals-export:set_container_option_container')}
-              </option>
-              <option value="container-fluid">
-                {t('modals-export:set_container_option_container_fluid')}
-              </option>
-            </select>
-            <small className="text-muted">
-              {t('modals-export:set_container_help')}
-            </small>
-          </div>
+              <Select
+                value={settings.container}
+                onValueChange={(v) =>
+                  updateSetting('container', v as ExportSettings['container'])
+                }
+              >
+                <SelectTrigger id="export-setting-container">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="container">
+                    {t('modals-export:set_container_option_container')}
+                  </SelectItem>
+                  <SelectItem value="container-fluid">
+                    {t('modals-export:set_container_option_container_fluid')}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
 
-          <div className="form-group mt-3">
-            <label htmlFor="export-setting-fontsize" className="form-label">
-              {t('modals-export:set_font_size_label')}
-            </label>
-            <input
-              type="number"
+            <Field
               id="export-setting-fontsize"
-              className="form-control form-control-sm"
-              min={6}
-              max={72}
-              value={settings.fontSize}
-              onChange={(e) =>
-                updateSetting(
-                  'fontSize',
-                  Math.max(6, parseInt(e.target.value, 10) || 16),
-                )
-              }
-            />
-            <small className="text-muted">
-              {t('modals-export:set_font_size_help')}
-            </small>
-          </div>
+              label={t('modals-export:set_font_size_label')}
+              help={t('modals-export:set_font_size_help')}
+            >
+              <Input
+                id="export-setting-fontsize"
+                type="number"
+                min={6}
+                max={72}
+                value={settings.fontSize}
+                onChange={(e) =>
+                  updateSetting(
+                    'fontSize',
+                    Math.max(6, parseInt(e.target.value, 10) || 16),
+                  )
+                }
+              />
+            </Field>
 
-          <div className="form-group mt-3">
-            <label htmlFor="export-setting-linespacing" className="form-label">
-              {t('modals-export:set_line_spacing_label')}
-            </label>
-            <input
-              type="range"
+            <Field
               id="export-setting-linespacing"
-              className="form-range mb-0"
-              min={1}
-              max={3}
-              step={0.1}
-              value={settings.lineSpacing}
-              onChange={(e) =>
-                updateSetting('lineSpacing', parseFloat(e.target.value))
-              }
-            />
-            <small className="text-muted">
-              {t('modals-export:set_line_spacing_help')}
-            </small>
+              label={t('modals-export:set_line_spacing_label')}
+              help={t('modals-export:set_line_spacing_help')}
+            >
+              {/* Native range — Radix has no slider primitive in our stack.
+                  Styled via `accent-color` to pick up the brand teal. */}
+              <input
+                id="export-setting-linespacing"
+                type="range"
+                min={1}
+                max={3}
+                step={0.1}
+                value={settings.lineSpacing}
+                onChange={(e) =>
+                  updateSetting('lineSpacing', parseFloat(e.target.value))
+                }
+                className="h-2 w-full cursor-pointer accent-primary"
+              />
+            </Field>
           </div>
 
-          <hr />
-          <div className="d-flex flex-wrap align-items-center gap-5 mt-3">
+          <hr className="my-4 border-border" />
+          <div className="flex flex-wrap items-start gap-6">
             <ColorField
               id="export-setting-background"
               label={t('modals-export:set_background_colour_label')}
@@ -172,31 +179,39 @@ export const ExportSettingsModal: React.FC = () => {
             />
           </div>
 
-          <div className="form-group d-flex align-items-center gap-3 mt-4 mb-3">
-            <button
-              type="button"
-              className="btn btn-sm btn-primary rounded-1"
-              onClick={handleSave}
-            >
+          <div className="mt-6 flex items-center gap-3">
+            <Button type="button" size="sm" onClick={handleSave}>
               <Icon name="save" />
-              <span className="ms-1">{t('modals-export:save_settings')}</span>
-            </button>
-            <button
+              <span>{t('modals-export:save_settings')}</span>
+            </Button>
+            <Button
               type="button"
-              className="btn btn-sm btn-secondary rounded-1"
+              size="sm"
+              variant="secondary"
               onClick={handleReset}
             >
               <Icon name="refresh" />
-              <span className="ms-1">
-                {t('modals-export:reset_to_default')}
-              </span>
-            </button>
+              <span>{t('modals-export:reset_to_default')}</span>
+            </Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 };
+
+const Field: React.FC<{
+  id: string;
+  label: string;
+  help: string;
+  children: React.ReactNode;
+}> = ({ id, label, help, children }) => (
+  <div>
+    <Label htmlFor={id}>{label}</Label>
+    <div className="mt-1">{children}</div>
+    <p className="mt-1 text-xs text-muted-foreground">{help}</p>
+  </div>
+);
 
 interface ColorFieldProps {
   id: string;
@@ -213,20 +228,20 @@ const ColorField: React.FC<ColorFieldProps> = ({
   value,
   onChange,
 }) => (
-  <div className="form-group">
-    <label htmlFor={id} className="form-label">
-      {label}
-    </label>
-    <div className="d-flex align-items-center gap-2 mb-2">
+  <div>
+    <Label htmlFor={id}>{label}</Label>
+    <div className="mt-1 flex items-center gap-2">
       <input
-        type="color"
         id={id}
-        className="form-control form-control-sm form-control-color"
+        type="color"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        className="h-7 w-10 cursor-pointer rounded border border-input bg-background p-0"
       />
-      <span className="small text-muted">{value.toUpperCase()}</span>
+      <span className="text-xs text-muted-foreground">
+        {value.toUpperCase()}
+      </span>
     </div>
-    <small className="text-muted">{help}</small>
+    <p className="mt-1 text-xs text-muted-foreground">{help}</p>
   </div>
 );

@@ -12,7 +12,7 @@ import { ExportSettingsProvider } from './core/providers/ExportSettingsProvider'
 import { BridgeManager } from './core/BridgeManager';
 import { initI18n, changeLanguage } from './i18n';
 import { getExecutionBridge, logger } from './util';
-import { showSplashScreen } from './dom';
+import { showSplashScreen } from './splash';
 
 import { App } from './react/App';
 import type { Managers } from './react/contexts/ManagersContext';
@@ -73,14 +73,8 @@ function onEditorReady() {
     return;
   }
 
-  editorManager.provide(
-    'settings',
-    new SettingsProvider(mode, mkeditor, dispatcher),
-  );
-  editorManager.provide(
-    'exportSettings',
-    new ExportSettingsProvider(mode, dispatcher),
-  );
+  editorManager.provide('settings', new SettingsProvider(mode, mkeditor));
+  editorManager.provide('exportSettings', new ExportSettingsProvider(mode));
   editorManager.provide('commands', new CommandProvider(mkeditor));
   editorManager.provide('completion', new CompletionProvider(mkeditor));
 
@@ -98,6 +92,16 @@ function onEditorReady() {
     );
     bridgeManager.provide('commands', editorManager.providers.commands);
     editorManager.provide('bridge', bridgeManager);
+
+    // Phase 9: wire each provider's persist callback directly into the
+    // bridge instead of routing through an `editor:bridge:settings`
+    // dispatcher event.
+    editorManager.providers.settings?.setPersistHandler((s) =>
+      bridgeManager.saveSettingsToFile(s),
+    );
+    editorManager.providers.exportSettings?.setPersistHandler((s) =>
+      bridgeManager.saveSettingsToFile(s),
+    );
 
     new MkedLinkProvider(mkeditor, (path) =>
       bridgeManager.fileTreeManager.hasFile(path),

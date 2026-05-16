@@ -35,7 +35,7 @@ export const EditorHost: React.FC<EditorHostProps> = ({ onReady }) => {
     <div
       ref={mountRef}
       id="editor"
-      className="flex-column split-editor"
+      className="flex flex-col split-editor"
       data-testid="editor-host"
     />
   );

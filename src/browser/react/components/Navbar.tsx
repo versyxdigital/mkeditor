@@ -5,12 +5,20 @@ import { useModals } from '../contexts/ModalsContext';
 import { useUIState } from '../contexts/UIStateContext';
 import { useCounts } from '../hooks/useCounts';
 import { useTranslation } from '../hooks/useTranslation';
+import { Icon } from './Icon';
+import { Button } from './ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './ui/tooltip';
 
 /**
  * Top chrome. Replaces the legacy `<nav class="navbar navbar-expand">`
- * that used to live in views/index.html. The settings cog and shortcuts
- * icon dispatch through ModalsContext (Phase 7) — the legacy modal HTML
- * + `data-bs-toggle="modal"` triggers were dropped in this phase.
+ * that used to live in views/index.html. Phase 9 swapped Bootstrap
+ * utility classes for Tailwind and the Bootstrap-driven tooltips
+ * (`data-bs-toggle="tooltip"`) for the shadcn `<Tooltip>` primitive.
  */
 export const Navbar: React.FC = () => {
   const { toggleSidebar } = useUIState();
@@ -25,71 +33,65 @@ export const Navbar: React.FC = () => {
   }, [activeFile, tabs]);
 
   return (
-    <nav className="navbar navbar-expand navbar-light bg-light">
-      <ul className="navbar-nav mr-auto">
-        <li className="nav-item d-flex align-items-center gap-2">
-          <button
+    <TooltipProvider delayDuration={200}>
+      <nav className="flex items-center justify-between border-b border-border bg-background px-2 py-1">
+        <div className="flex items-center gap-2">
+          <Button
             id="sidebar-toggle"
-            className="btn btn-sm btn-outline-secondary border-0 ms-2"
+            size="icon"
+            variant="ghost"
             type="button"
             title={t('navbar:toggle_sidebar')}
             onClick={toggleSidebar}
+            className="h-8 w-8"
           >
-            <i className="fas fa-bars" />
-          </button>
-          <img src="./icon.png" className="img-fluid app-logo-tiny ms-2" />
-          <span id="active-file" className="text-muted">
+            <Icon name="bars" />
+          </Button>
+          <img src="./icon.png" className="ml-1 h-6 w-6" />
+          <span id="active-file" className="text-sm text-muted-foreground">
             {activeTabName ?? t('app:brand_name')}
           </span>
-        </li>
-      </ul>
-      <ul className="navbar-nav ms-auto">
-        <li className="nav-item text-muted">
-          <small>
+        </div>
+        <div className="flex items-center gap-3 pr-3">
+          <div className="text-xs text-muted-foreground">
             <span>{t('navbar:character_count')}</span>{' '}
             <span id="character-count">{counts.characters}</span>
-          </small>
-          <span className="mx-1 font-weight-lighter">|</span>
-          <small>
+            <span className="mx-1 opacity-50">|</span>
             <span>{t('navbar:word_count')}</span>{' '}
             <span id="word-count">{counts.words}</span>
-          </small>
-        </li>
-        <li
-          className="nav-item"
-          data-bs-toggle="tooltip"
-          data-bs-placement="top"
-          title={t('navbar:settings_tooltip')}
-        >
-          <a
-            className="text-muted hover-fade ms-3"
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              openModal('settings');
-            }}
-          >
-            <i className="fas fa-cogs hover-fade" />
-          </a>
-        </li>
-        <li
-          className="nav-item"
-          data-bs-toggle="tooltip"
-          data-bs-placement="top"
-          title={t('navbar:shortcuts_tooltip')}
-        >
-          <a
-            className="text-muted hover-fade mx-3"
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              openModal('shortcuts');
-            }}
-          >
-            <i className="fa fa-question-circle hover-fade" />
-          </a>
-        </li>
-      </ul>
-    </nav>
+          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <a
+                className="text-muted-foreground hover:text-foreground"
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openModal('settings');
+                }}
+              >
+                <Icon name="cogs" />
+              </a>
+            </TooltipTrigger>
+            <TooltipContent>{t('navbar:settings_tooltip')}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <a
+                className="text-muted-foreground hover:text-foreground"
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openModal('shortcuts');
+                }}
+              >
+                <Icon name="question-circle" />
+              </a>
+            </TooltipTrigger>
+            <TooltipContent>{t('navbar:shortcuts_tooltip')}</TooltipContent>
+          </Tooltip>
+        </div>
+      </nav>
+    </TooltipProvider>
   );
 };

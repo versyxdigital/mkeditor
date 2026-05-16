@@ -1,6 +1,11 @@
-import type { SettingsFile } from '../interfaces/Editor';
 import { BaseDispatcher } from './Dispatcher';
 
+/**
+ * Phase 9 folded out `bridgeSettings` — settings/export-settings persist
+ * through a registered handler on each provider now, not an event.
+ * `editor:render` and `editor:track:content` remain because they have
+ * cross-cutting React + manager consumers.
+ */
 export class EditorDispatcher extends BaseDispatcher {
   message({ detail }: { detail: string }) {
     this.dispatchEvent({
@@ -13,13 +18,6 @@ export class EditorDispatcher extends BaseDispatcher {
     this.dispatchEvent({
       type: 'editor:track:content',
       detail: content,
-    });
-  }
-
-  bridgeSettings({ settings }: { settings: Partial<SettingsFile> }) {
-    this.dispatchEvent({
-      type: 'editor:bridge:settings',
-      detail: settings,
     });
   }
 

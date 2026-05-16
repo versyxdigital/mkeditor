@@ -1,22 +1,13 @@
 @use 'sass:meta';
-@import '_variables.scss';
-@import '~bootstrap/scss/bootstrap';
 
 @import '_base.scss';
 @import '_editor.scss';
 @import '_preview.scss';
-@import '_notify.scss';
 @import '_darkmode.scss';
 @import '_sidebar.scss';
 @import '_tabs.scss';
 
 @include meta.load-css('katex/dist/katex.min.css');
-
-:root {
-  --form-range-track-bg: #eeeeee;
-  --form-range-thumb-bg: #519088;
-  --form-range-thumb-active-bg: #519088;
-}
 
 html {
   overflow-y: hidden !important;
@@ -50,14 +41,6 @@ body > nav {
   opacity: 0;
 }
 
-#app-build-id {
-  font-size: 0.7rem;
-  cursor: pointer;
-  &:hover {
-    color: #222222 !important;
-  }
-}
-
 #splashscreen {
   z-index: 9999;
   background: #222222;
@@ -72,58 +55,9 @@ body > nav {
   }
 }
 
-.app-logo {
-  width: 200px;
-}
-
-.app-logo-tiny {
-  width: 25px;
-}
-
-.form-check-input:checked {
-  background-color: #519088;
-  border-color: #519088;
-}
-
-.dropdown-item.active,
-.dropdown-item:active {
-  background-color: #eeeeee;
-  color: #222222;
-}
-
-.btn-sm {
-  font-size: 0.75rem;
-}
-
-.btn-primary {
-  background: #519088;
-  border-color: #519088;
-  border-radius: 0;
-  color: #ffffff;
-}
-
-.btn-primary:hover {
-  background: #457b74;
-  border-color: #457b74;
-}
-
-.btn-primary:active {
-  background: #457b74 !important;
-  border-color: #457b74 !important;
-}
-
-.btn-danger {
-  border-radius: 0;
-}
-
-.alert p {
-  margin-bottom: 0;
-}
-
-.extra-small {
-  font-size: 0.8em;
-}
-
+// react-resizable-panels Separator. Phase 3 replaced split.js; the
+// width is set explicitly because the library brings no own width
+// on the resize handle.
 .gutter {
   background-color: #eeeeee;
   background-repeat: no-repeat;
@@ -131,10 +65,6 @@ body > nav {
 }
 
 .gutter.gutter-horizontal {
-  // split.js used to inject an inline `width: 10px` on the gutter div.
-  // react-resizable-panels v4 Separator brings no width of its own —
-  // set it explicitly so the resize handle is visible (the library's
-  // hit-target padding is what makes the cursor change on hover).
   width: 10px;
   background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
   cursor: col-resize;

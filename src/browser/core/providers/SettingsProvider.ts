@@ -1,7 +1,8 @@
 import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
-import type { EditorSettings } from '../../interfaces/Editor';
-import type { EditorDispatcher } from '../../events/EditorDispatcher';
+import type { EditorSettings, SettingsFile } from '../../interfaces/Editor';
 import { settings } from '../../config';
+
+type PersistHandler = (next: Partial<SettingsFile>) => void;
 
 /**
  * Settings data + IPC owner. Phase 7 stripped this of all DOM
@@ -20,9 +21,6 @@ export class SettingsProvider {
   /** Editor instance */
   private mkeditor: editor.IStandaloneCodeEditor;
 
-  /** Editor event dispatcher (used for desktop persist over the bridge) */
-  private dispatcher: EditorDispatcher;
-
   /** Editor settings */
   private currentSettings: EditorSettings = { ...settings };
 
@@ -33,16 +31,21 @@ export class SettingsProvider {
   private listeners = new Set<() => void>();
 
   /**
+   * Desktop persist handler — registered by the composition root once
+   * BridgeManager exists. Phase 9 replaced the dispatcher's
+   * `editor:bridge:settings` event with a direct call here.
+   */
+  private persistHandler: PersistHandler | null = null;
+
+  /**
    * Create a new editor settings handler.
    */
   public constructor(
     mode: 'web' | 'desktop' = 'web',
     mkeditor: editor.IStandaloneCodeEditor,
-    dispatcher: EditorDispatcher,
   ) {
     this.mode = mode;
     this.mkeditor = mkeditor;
-    this.dispatcher = dispatcher;
 
     this.loadSettings();
   }
@@ -198,12 +201,16 @@ export class SettingsProvider {
     );
   }
 
+  public setPersistHandler(fn: PersistHandler | null) {
+    this.persistHandler = fn;
+  }
+
   /** Persist via localStorage (web) or the IPC bridge (desktop). */
   private persist() {
     if (this.mode === 'web') {
       this.updateSettingsInLocalStorage();
     } else {
-      this.dispatcher.bridgeSettings({ settings: this.currentSettings });
+      this.persistHandler?.(this.currentSettings);
     }
   }
 

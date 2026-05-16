@@ -45,33 +45,32 @@
   <body data-theme="light">
     <div
       id="splashscreen"
-      class="position-absolute top-0 bottom-0 h-100 w-100 align-items-center text-center"
+      class="absolute inset-0 flex items-center justify-center text-center"
     >
-      <div class="w-100">
-        <img src="./icon.png" class="img-fluid app-logo mb-3" />
+      <div class="w-full">
+        <img src="./icon.png" class="mx-auto mb-3 w-[200px]" />
         <h1 data-i18n-text="app:app_name">mkeditor</h1>
       </div>
     </div>
 
     <!-- React mount point. <App> renders the navbar, tab bar and the
          sidebar/workspace split inside this container. -->
-    <div id="react-root" class="d-flex flex-column h-100"></div>
+    <div id="react-root" class="flex h-full flex-col"></div>
 
-    <!-- bottom editor toolbar.
-         The `#editor-functions` container is rendered by React's
-         <EditorToolbar> via createPortal. `#bottom-toolbar-right` is the
-         portal host for <BottomToolbarRight> (darkmode toggle + build
-         chip). The <nav> shell itself stays static so Bootstrap's
-         `fixed-bottom` positioning continues to apply. -->
-    <nav class="navbar navbar-light bg-light fixed-bottom border-top p-2">
+    <!-- Bottom editor toolbar shell.
+         `#editor-functions` is the createPortal host for React's
+         <EditorToolbar>; `#bottom-toolbar-right` is the createPortal
+         host for <BottomToolbarRight> (darkmode toggle + build chip).
+         The shell is fixed-bottom-positioned so it stays visible while
+         the editor pane scrolls. -->
+    <nav
+      class="fixed bottom-0 left-0 right-0 z-10 flex items-center justify-between border-t border-border bg-background p-2"
+    >
+      <div class="flex items-center justify-start" id="editor-functions"></div>
       <div
-        class="d-flex justify-content-start align-items-center"
-        id="editor-functions"
-      ></div>
-      <ul
-        class="navbar-nav ms-auto d-none d-md-flex flex-row align-items-center"
+        class="hidden flex-row items-center md:flex"
         id="bottom-toolbar-right"
-      ></ul>
+      ></div>
     </nav>
 
     <script type="text/javascript" src="./mkeditor.bundle.js"></script>

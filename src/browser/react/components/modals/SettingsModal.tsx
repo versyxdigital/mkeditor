@@ -10,7 +10,18 @@ import { useModals } from '../../contexts/ModalsContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { Icon } from '../Icon';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Label } from '../ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
+import { Switch } from '../ui/switch';
 
 /**
  * Editor settings dialog. Drives SettingsContext directly — every input
@@ -67,117 +78,102 @@ export const SettingsModal: React.FC = () => {
         <DialogHeader>
           <DialogTitle>{t('modals-settings:title')}</DialogTitle>
         </DialogHeader>
-        <div className="modal-body small pt-0">
-          <p className="text-muted">{t('modals-settings:intro')}</p>
+        <div className="px-4 pb-4 text-sm">
+          <p className="text-muted-foreground">{t('modals-settings:intro')}</p>
           {mode === 'desktop' && (
-            <p className="text-muted">
+            <p className="mt-1 text-muted-foreground">
               <span>{t('modals-settings:settings_file_info')}</span>{' '}
-              <span className="font-monospace small">
+              <span className="font-mono text-xs">
                 ~/.mkeditor/settings.json
               </span>
               .
             </p>
           )}
 
-          <hr />
-          <p className="text-muted">
-            <strong>{t('modals-settings:formatting')}</strong>
-          </p>
-          <ToggleRow
-            id="autoindent-setting"
-            label={t('modals-settings:autoindent_label')}
-            help={t('modals-settings:autoindent_help')}
-            checked={settings.autoindent}
-            onChange={(v) => updateSetting('autoindent', v)}
-          />
-          <ToggleRow
-            id="wordwrap-setting"
-            label={t('modals-settings:wordwrap_label')}
-            help={t('modals-settings:wordwrap_help')}
-            checked={settings.wordwrap}
-            onChange={(v) => updateSetting('wordwrap', v)}
-            className="mt-3"
-          />
-
-          <hr />
-          <p className="text-muted">
-            <strong>{t('modals-settings:editing')}</strong>
-          </p>
-          <ToggleRow
-            id="whitespace-setting"
-            label={t('modals-settings:whitespace_label')}
-            help={t('modals-settings:whitespace_help')}
-            checked={settings.whitespace}
-            onChange={(v) => updateSetting('whitespace', v)}
-            className="mt-3"
-          />
-
-          <hr />
-          <p className="text-muted">
-            <strong>{t('modals-settings:miscellaneous')}</strong>
-          </p>
-          <ToggleRow
-            id="minimap-setting"
-            label={t('modals-settings:minimap_label')}
-            help={t('modals-settings:minimap_help')}
-            checked={settings.minimap}
-            onChange={(v) => updateSetting('minimap', v)}
-            className="mt-3"
-          />
-          <ToggleRow
-            id="scrollsync-setting"
-            label={t('modals-settings:scrollsync_label')}
-            help={t('modals-settings:scrollsync_help')}
-            checked={settings.scrollsync}
-            onChange={(v) => updateSetting('scrollsync', v)}
-            className="mt-3"
-          />
-
-          <hr />
-          <p className="text-muted">
-            <strong>{t('modals-settings:appearance')}</strong>
-          </p>
-          {mode === 'desktop' && (
-            <ToggleRow
-              id="systemtheme-setting"
-              label={t('modals-settings:systemtheme_label')}
-              help={t('modals-settings:systemtheme_help')}
-              checked={settings.systemtheme}
-              onChange={(v) => updateSetting('systemtheme', v)}
-              className="mt-3"
+          <Section label={t('modals-settings:formatting')}>
+            <CheckboxRow
+              id="autoindent-setting"
+              label={t('modals-settings:autoindent_label')}
+              help={t('modals-settings:autoindent_help')}
+              checked={settings.autoindent}
+              onChange={(v) => updateSetting('autoindent', v)}
             />
-          )}
-          <div className="form-group mt-3">
-            <label htmlFor="locale-setting" className="form-label">
-              {t('modals-settings:language_label')}
-            </label>
-            <select
-              id="locale-setting"
-              className="form-select form-select-sm"
-              value={normalizeLanguage(settings.locale || 'en')}
-              onChange={(e) => updateSetting('locale', e.target.value)}
-            >
-              {locales.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.native} ({l.name})
-                </option>
-              ))}
-            </select>
-            <small className="text-muted">
-              {t('modals-settings:language_help')}
-            </small>
-          </div>
+            <CheckboxRow
+              id="wordwrap-setting"
+              label={t('modals-settings:wordwrap_label')}
+              help={t('modals-settings:wordwrap_help')}
+              checked={settings.wordwrap}
+              onChange={(v) => updateSetting('wordwrap', v)}
+            />
+          </Section>
 
-          <hr />
-          <div className="form-group d-flex align-items-center gap-3 mt-4 mb-3">
-            <button
-              type="button"
-              className="btn btn-sm btn-primary rounded-1"
-              onClick={handleSave}
-            >
+          <Section label={t('modals-settings:editing')}>
+            <CheckboxRow
+              id="whitespace-setting"
+              label={t('modals-settings:whitespace_label')}
+              help={t('modals-settings:whitespace_help')}
+              checked={settings.whitespace}
+              onChange={(v) => updateSetting('whitespace', v)}
+            />
+          </Section>
+
+          <Section label={t('modals-settings:miscellaneous')}>
+            <CheckboxRow
+              id="minimap-setting"
+              label={t('modals-settings:minimap_label')}
+              help={t('modals-settings:minimap_help')}
+              checked={settings.minimap}
+              onChange={(v) => updateSetting('minimap', v)}
+            />
+            <CheckboxRow
+              id="scrollsync-setting"
+              label={t('modals-settings:scrollsync_label')}
+              help={t('modals-settings:scrollsync_help')}
+              checked={settings.scrollsync}
+              onChange={(v) => updateSetting('scrollsync', v)}
+            />
+          </Section>
+
+          <Section label={t('modals-settings:appearance')}>
+            {mode === 'desktop' && (
+              <SwitchRow
+                id="systemtheme-setting"
+                label={t('modals-settings:systemtheme_label')}
+                help={t('modals-settings:systemtheme_help')}
+                checked={settings.systemtheme}
+                onChange={(v) => updateSetting('systemtheme', v)}
+              />
+            )}
+            <div className="mt-3">
+              <Label htmlFor="locale-setting">
+                {t('modals-settings:language_label')}
+              </Label>
+              <Select
+                value={normalizeLanguage(settings.locale || 'en')}
+                onValueChange={(v) => updateSetting('locale', v)}
+              >
+                <SelectTrigger id="locale-setting" className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {locales.map((l) => (
+                    <SelectItem key={l.code} value={l.code}>
+                      {l.native} ({l.name})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('modals-settings:language_help')}
+              </p>
+            </div>
+          </Section>
+
+          <div className="mt-6 flex items-center gap-3">
+            <Button type="button" size="sm" onClick={handleSave}>
               <Icon name="save" />
-              <span className="ms-1">{t('modals-settings:save_settings')}</span>
-            </button>
+              <span>{t('modals-settings:save_settings')}</span>
+            </Button>
           </div>
         </div>
       </DialogContent>
@@ -185,34 +181,67 @@ export const SettingsModal: React.FC = () => {
   );
 };
 
-interface ToggleRowProps {
+/* -------------------------------------------------------------------- */
+/*  Helpers                                                              */
+/* -------------------------------------------------------------------- */
+
+const Section: React.FC<{
+  label: string;
+  children: React.ReactNode;
+}> = ({ label, children }) => (
+  <>
+    <hr className="my-4 border-border" />
+    <p className="mb-2 font-semibold text-muted-foreground">{label}</p>
+    <div className="flex flex-col gap-3">{children}</div>
+  </>
+);
+
+interface RowProps {
   id: string;
   label: string;
   help: string;
   checked: boolean;
   onChange: (next: boolean) => void;
-  className?: string;
 }
 
-const ToggleRow: React.FC<ToggleRowProps> = ({
+const CheckboxRow: React.FC<RowProps> = ({
   id,
   label,
   help,
   checked,
   onChange,
-  className,
 }) => (
-  <div className={`form-check ${className ?? ''}`.trim()}>
-    <input
-      type="checkbox"
-      className="form-check-input setting"
+  <div className="flex items-start gap-2">
+    <Checkbox
       id={id}
       checked={checked}
-      onChange={(e) => onChange(e.target.checked)}
+      onCheckedChange={(v) => onChange(v === true)}
+      className="mt-0.5"
     />
-    <label className="form-check-label d-flex flex-column" htmlFor={id}>
+    <Label htmlFor={id} className="flex flex-col gap-0.5">
       <span>{label}</span>
-      <small className="text-muted">{help}</small>
-    </label>
+      <small className="text-muted-foreground">{help}</small>
+    </Label>
+  </div>
+);
+
+const SwitchRow: React.FC<RowProps> = ({
+  id,
+  label,
+  help,
+  checked,
+  onChange,
+}) => (
+  <div className="flex items-start gap-3">
+    <Switch
+      id={id}
+      checked={checked}
+      onCheckedChange={onChange}
+      className="mt-0.5"
+    />
+    <Label htmlFor={id} className="flex flex-col gap-0.5">
+      <span>{label}</span>
+      <small className="text-muted-foreground">{help}</small>
+    </Label>
   </div>
 );

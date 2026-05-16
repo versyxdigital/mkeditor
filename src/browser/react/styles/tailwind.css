@@ -9,7 +9,9 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  /* MKEditor brand teal (#519088) — was Bootstrap `.btn-primary` /
+     `.form-check-input:checked` background. */
+  --primary: oklch(0.578 0.0532 178.5);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -26,14 +28,20 @@
 }
 
 [data-theme='dark'] {
-  --background: oklch(0.145 0 0);
+  /* Align `--background` with `--card` / `--popover` so the navbar,
+     bottom toolbar, modals, and Monaco's `vs-dark` editor all share
+     the same #1e1e1e-ish surface (matches the legacy `.bg-light`
+     darkmode override). */
+  --background: oklch(0.205 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  /* Brand teal stays the same in dark mode — keeps the MKEditor accent
+     consistent. Foreground stays light for contrast on the teal fill. */
+  --primary: oklch(0.578 0.0532 178.5);
+  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);

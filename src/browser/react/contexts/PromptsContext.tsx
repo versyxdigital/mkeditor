@@ -1,11 +1,13 @@
 import * as React from 'react';
 
+import { Button } from '../components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
+import { Input } from '../components/ui/input';
 
 export interface PromptButton {
   id: string;
@@ -99,15 +101,17 @@ export function usePrompts(): PromptsContextValue {
 /*  PromptDialog                                                        */
 /* -------------------------------------------------------------------- */
 
-const buttonClassFor = (variant: PromptButton['variant']): string => {
+const buttonVariantFor = (
+  variant: PromptButton['variant'],
+): React.ComponentProps<typeof Button>['variant'] => {
   switch (variant) {
     case 'danger':
-      return 'btn btn-sm btn-danger rounded-1';
+      return 'destructive';
     case 'secondary':
-      return 'btn btn-sm btn-secondary rounded-1';
+      return 'secondary';
     case 'primary':
     default:
-      return 'btn btn-sm btn-primary rounded-1';
+      return 'default';
   }
 };
 
@@ -152,15 +156,17 @@ const PromptDialog: React.FC<{
             <DialogHeader>
               <DialogTitle>{request.title}</DialogTitle>
             </DialogHeader>
-            <div className="px-4 pb-4 small">
+            <div className="px-4 pb-4 text-sm">
               {request.description && (
-                <p className="text-muted mb-3">{request.description}</p>
+                <p className="mb-3 text-muted-foreground">
+                  {request.description}
+                </p>
               )}
               {request.input && (
-                <input
+                <Input
                   ref={inputRef}
                   type="text"
-                  className="form-control form-control-sm mb-3"
+                  className="mb-3"
                   placeholder={request.input.placeholder}
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
@@ -179,12 +185,13 @@ const PromptDialog: React.FC<{
                   }}
                 />
               )}
-              <div className="d-flex justify-content-end gap-2">
+              <div className="flex justify-end gap-2">
                 {request.buttons.map((btn) => (
-                  <button
+                  <Button
                     key={btn.id}
                     type="button"
-                    className={buttonClassFor(btn.variant)}
+                    size="sm"
+                    variant={buttonVariantFor(btn.variant)}
                     onClick={() =>
                       onResolve({
                         button: btn.id,
@@ -193,7 +200,7 @@ const PromptDialog: React.FC<{
                     }
                   >
                     {btn.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>

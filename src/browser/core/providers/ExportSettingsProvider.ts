@@ -1,8 +1,9 @@
-import type { EditorDispatcher } from '../../events/EditorDispatcher';
-import type { ExportSettings } from '../../interfaces/Editor';
+import type { ExportSettings, SettingsFile } from '../../interfaces/Editor';
 import { exportSettings as defaults } from '../../config';
 import { syncPreviewToExportSettings } from '../../util';
 import { dom } from '../../dom';
+
+type PersistHandler = (next: Partial<SettingsFile>) => void;
 
 /**
  * Export-settings data + IPC owner. Phase 7 strips this of DOM
@@ -20,7 +21,6 @@ import { dom } from '../../dom';
  */
 export class ExportSettingsProvider {
   private mode: 'web' | 'desktop' = 'web';
-  private dispatcher: EditorDispatcher;
   private currentSettings: ExportSettings = { ...defaults };
 
   /** Stable snapshot for useSyncExternalStore consumers. */
@@ -31,10 +31,20 @@ export class ExportSettingsProvider {
   private debounceMs = 250;
   private lastPersistedJSON = '';
 
-  constructor(mode: 'web' | 'desktop', dispatcher: EditorDispatcher) {
+  /**
+   * Desktop persist handler — registered by the composition root once
+   * BridgeManager exists. Phase 9 replaced the dispatcher's
+   * `editor:bridge:settings` event with a direct call here.
+   */
+  private persistHandler: PersistHandler | null = null;
+
+  constructor(mode: 'web' | 'desktop') {
     this.mode = mode;
-    this.dispatcher = dispatcher;
     this.loadSettings();
+  }
+
+  public setPersistHandler(fn: PersistHandler | null) {
+    this.persistHandler = fn;
   }
 
   // ---------------------------------------------------------------------
@@ -155,9 +165,7 @@ export class ExportSettingsProvider {
     if (this.mode === 'web') {
       this.updateSettingsInLocalStorage();
     } else {
-      this.dispatcher.bridgeSettings({
-        settings: { exportSettings: this.currentSettings },
-      });
+      this.persistHandler?.({ exportSettings: this.currentSettings });
     }
 
     this.lastPersistedJSON = nextJSON;

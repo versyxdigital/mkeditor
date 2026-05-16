@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { useProperties } from '../../contexts/PropertiesContext';
 import { useTranslation } from '../../hooks/useTranslation';
+import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 
 /**
@@ -24,16 +25,12 @@ export const PropertiesModal: React.FC = () => {
         <DialogHeader>
           <DialogTitle>{t('modals-properties:title')}</DialogTitle>
         </DialogHeader>
-        <div className="px-4 pb-4 small">
+        <div className="px-4 pb-4 text-sm">
           {info && <PropertiesBody info={info} t={t} />}
-          <div className="d-flex justify-content-end mt-3">
-            <button
-              type="button"
-              className="btn btn-sm btn-primary rounded-1"
-              onClick={close}
-            >
+          <div className="mt-4 flex justify-end">
+            <Button type="button" size="sm" onClick={close}>
               {t('modals-properties:close_button')}
-            </button>
+            </Button>
           </div>
         </div>
       </DialogContent>
@@ -50,7 +47,7 @@ const PropertiesBody: React.FC<{
     : t('modals-properties:type_file');
 
   return (
-    <dl className="mb-0 small text-start">
+    <dl className="m-0 text-left text-xs">
       <Row label={t('modals-properties:label_path')} value={info.path} />
       <Row label={t('modals-properties:label_type')} value={pathType} />
       <Row
@@ -70,8 +67,8 @@ const PropertiesBody: React.FC<{
 };
 
 const Row: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <>
-    <dt className="col-auto fw-semibold me-2">{label}</dt>
-    <dd className="col-auto me-4 text-break">{value}</dd>
-  </>
+  <div className="mb-2 flex gap-2">
+    <dt className="font-semibold text-foreground shrink-0">{label}</dt>
+    <dd className="m-0 break-all">{value}</dd>
+  </div>
 );

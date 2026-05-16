@@ -1,5 +1,4 @@
 import i18next from 'i18next';
-import { refreshTooltips } from './dom';
 import { logger } from './util';
 
 export type LocaleInfo = { code: string; name: string; native: string };
@@ -353,7 +352,6 @@ export async function changeLanguage(lng: string) {
 
   await i18next.changeLanguage(base);
   applyTranslations();
-  refreshTooltips();
 }
 
 /**

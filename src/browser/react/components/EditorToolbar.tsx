@@ -11,6 +11,9 @@ import { useManagers } from '../contexts/ManagersContext';
 import { useModals } from '../contexts/ModalsContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { Icon } from './Icon';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
 interface EditorToolbarProps {
@@ -19,14 +22,12 @@ interface EditorToolbarProps {
 }
 
 /**
- * The `#editor-functions` toolbar. Phase 6 replaces the legacy static
- * markup (with Bootstrap dropdowns/popover and DOM-bound click handlers)
- * with this React component.
+ * The `#editor-functions` toolbar. Phase 9 swapped Bootstrap btn classes
+ * for the shadcn `<Button>` primitive and Bootstrap utility classes for
+ * Tailwind equivalents.
  *
- * Rendered via `createPortal` into the legacy `<div id="editor-functions">`
- * that remains in views/index.html. The bottom `<nav>` shell and its
- * right-side `<ul>` (darkmode toggle + build chip) stay legacy until a
- * later phase per the doc's Phase 6 scope.
+ * Rendered via `createPortal` into the static `<div id="editor-functions">`
+ * host inside the bottom `<nav>` shell in views/index.html.
  */
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   workspaceGroupRef,
@@ -116,12 +117,10 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   };
 
   const openExportSettingsModal = () => openModal('exportSettings');
-
   const handleDelete = () => editorManager.resetContent();
 
-  // Find the host once; we render via createPortal into the legacy
-  // `<div id="editor-functions">` so the bottom <nav> shell (with the
-  // right-side legacy <ul>) stays as-is.
+  // Find the host once; we render via createPortal into the static
+  // `<div id="editor-functions">`.
   const [host, setHost] = React.useState<HTMLElement | null>(null);
   React.useEffect(() => {
     setHost(document.getElementById('editor-functions'));
@@ -129,80 +128,58 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   if (!host) return null;
 
   const content = (
-    <>
-      <div className="btn-group btn-group-sm me-2">
-        <button
-          type="button"
-          className="btn btn-outline-secondary shortcut"
-          title={t('toolbar:reset_split')}
-          onClick={handleResetSplit}
-        >
-          <Icon name="table-columns" />
-        </button>
-      </div>
+    <div className="flex items-center gap-1">
+      <ToolbarButton
+        title={t('toolbar:reset_split')}
+        onClick={handleResetSplit}
+      >
+        <Icon name="table-columns" />
+      </ToolbarButton>
 
-      <div className="btn-group btn-group-sm me-2">
-        <button
-          type="button"
-          className="btn btn-outline-secondary shortcut"
-          title={t('toolbar:bold_tooltip')}
-          onClick={inline('**')}
-        >
-          <Icon name="bold" />
-        </button>
-        <button
-          type="button"
-          className="btn btn-outline-secondary shortcut"
-          title={t('toolbar:italic_tooltip')}
-          onClick={inline('_')}
-        >
-          <Icon name="italic" />
-        </button>
-        <button
-          type="button"
-          className="btn btn-outline-secondary shortcut"
-          title={t('toolbar:strikethrough_tooltip')}
-          onClick={inline('~~')}
-        >
-          <Icon name="strikethrough" />
-        </button>
-      </div>
+      <Separator />
 
-      <div className="btn-group btn-group-sm me-2">
-        <button
-          type="button"
-          className="btn btn-outline-secondary shortcut"
-          title={t('toolbar:unordered_list_tooltip')}
-          onClick={() => {
-            providers.commands?.unorderedList();
-            editorManager.getMkEditor()?.focus();
-          }}
-        >
-          <Icon name="list-ul" />
-        </button>
-        <button
-          type="button"
-          className="btn btn-outline-secondary shortcut"
-          title={t('toolbar:ordered_list_tooltip')}
-          onClick={() => {
-            providers.commands?.orderedList();
-            editorManager.getMkEditor()?.focus();
-          }}
-        >
-          <Icon name="list-ol" />
-        </button>
-      </div>
+      <ToolbarButton title={t('toolbar:bold_tooltip')} onClick={inline('**')}>
+        <Icon name="bold" />
+      </ToolbarButton>
+      <ToolbarButton title={t('toolbar:italic_tooltip')} onClick={inline('_')}>
+        <Icon name="italic" />
+      </ToolbarButton>
+      <ToolbarButton
+        title={t('toolbar:strikethrough_tooltip')}
+        onClick={inline('~~')}
+      >
+        <Icon name="strikethrough" />
+      </ToolbarButton>
 
-      <div className="btn-group btn-group-sm me-2">
-        <button
-          type="button"
-          className="btn btn-outline-secondary shortcut"
-          title={t('toolbar:insert_link_tooltip')}
-          onClick={inline('[]()')}
-        >
-          <Icon name="link" />
-        </button>
-      </div>
+      <Separator />
+
+      <ToolbarButton
+        title={t('toolbar:unordered_list_tooltip')}
+        onClick={() => {
+          providers.commands?.unorderedList();
+          editorManager.getMkEditor()?.focus();
+        }}
+      >
+        <Icon name="list-ul" />
+      </ToolbarButton>
+      <ToolbarButton
+        title={t('toolbar:ordered_list_tooltip')}
+        onClick={() => {
+          providers.commands?.orderedList();
+          editorManager.getMkEditor()?.focus();
+        }}
+      >
+        <Icon name="list-ol" />
+      </ToolbarButton>
+
+      <Separator />
+
+      <ToolbarButton
+        title={t('toolbar:insert_link_tooltip')}
+        onClick={inline('[]()')}
+      >
+        <Icon name="link" />
+      </ToolbarButton>
 
       {/* Tables Popover */}
       <Popover
@@ -210,20 +187,24 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         onOpenChange={(open) => setOpenDropdown(open ? 'tables' : null)}
       >
         <PopoverTrigger asChild>
-          <button
+          <Button
             type="button"
-            className="btn btn-sm btn-outline-secondary shortcut me-2"
+            size="sm"
+            variant="outline"
             title={t('toolbar:table_menu_tooltip')}
+            className="h-8 w-8 p-0"
           >
             <Icon name="table" />
-          </button>
+          </Button>
         </PopoverTrigger>
         <PopoverContent side="top">
           <div className="mb-3">
-            <label className="mb-2 small">{t('menus-tables:rows_label')}</label>
-            <input
+            <Label htmlFor="table-rows" className="mb-1 block">
+              {t('menus-tables:rows_label')}
+            </Label>
+            <Input
+              id="table-rows"
               type="number"
-              className="form-control form-control-sm"
               min={1}
               value={tableRows}
               onChange={(e) =>
@@ -232,12 +213,12 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             />
           </div>
           <div className="mb-3">
-            <label className="mb-2 small">
+            <Label htmlFor="table-cols" className="mb-1 block">
               {t('menus-tables:columns_label')}
-            </label>
-            <input
+            </Label>
+            <Input
+              id="table-cols"
               type="number"
-              className="form-control form-control-sm"
               min={1}
               value={tableCols}
               onChange={(e) =>
@@ -245,13 +226,14 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
               }
             />
           </div>
-          <button
+          <Button
             type="button"
-            className="btn btn-sm btn-outline-secondary"
+            size="sm"
+            variant="outline"
             onClick={insertTable}
           >
             {t('menus-tables:insert_table')}
-          </button>
+          </Button>
         </PopoverContent>
       </Popover>
 
@@ -261,20 +243,21 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           `MenuRootContentTypeProps` omits the focus-private impl props.
           We need Radix to NOT steal focus when the menu opens so the
           second chord key (e.g. Ctrl+K → J) keeps flowing to Monaco's
-          chord registration. Popover exposes `onOpenAutoFocus`. We
-          lose `role="menu"` semantics; the menu is click-driven anyway. */}
+          chord registration. */}
       <Popover
         open={openDropdown === 'codeblocks'}
         onOpenChange={(open) => setOpenDropdown(open ? 'codeblocks' : null)}
       >
         <PopoverTrigger asChild>
-          <button
+          <Button
             type="button"
-            className="btn btn-sm btn-outline-secondary shortcut me-2"
+            size="sm"
+            variant="outline"
             title={t('toolbar:codeblock_menu_tooltip')}
+            className="h-8 w-8 p-0"
           >
             <Icon name="code" />
-          </button>
+          </Button>
         </PopoverTrigger>
         <PopoverContent
           side="top"
@@ -284,36 +267,35 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         >
           {codeblocks.map((block, idx) => (
             <React.Fragment key={block.type}>
-              <button
-                type="button"
-                className="dropdown-item md-editor-btn"
-                onClick={insertCodeblock(block.type.toLowerCase())}
-              >
-                <Icon name={block.type === 'Sh' ? 'terminal' : 'code'} />{' '}
-                {highlightChord(block.label ?? block.type, block.key)}
-              </button>
+              <MenuItem onClick={insertCodeblock(block.type.toLowerCase())}>
+                <Icon name={block.type === 'Sh' ? 'terminal' : 'code'} />
+                <span>
+                  {highlightChord(block.label ?? block.type, block.key)}
+                </span>
+              </MenuItem>
               {(idx === 0 || idx === 6 || idx === 8) && (
-                <div className="dropdown-divider" />
+                <div className="my-1 border-t border-border" />
               )}
             </React.Fragment>
           ))}
         </PopoverContent>
       </Popover>
 
-      {/* Alertblocks menu — see codeblocks above for the Popover
-          rationale (chord Ctrl+L → X). */}
+      {/* Alertblocks menu — see codeblocks above for the Popover rationale. */}
       <Popover
         open={openDropdown === 'alertblocks'}
         onOpenChange={(open) => setOpenDropdown(open ? 'alertblocks' : null)}
       >
         <PopoverTrigger asChild>
-          <button
+          <Button
             type="button"
-            className="btn btn-sm btn-outline-secondary shortcut me-2"
+            size="sm"
+            variant="outline"
             title={t('toolbar:alert_menu_tooltip')}
+            className="h-8 w-8 p-0"
           >
             <Icon name="exclamation-circle" />
-          </button>
+          </Button>
         </PopoverTrigger>
         <PopoverContent
           side="top"
@@ -322,91 +304,117 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           {alertblocks.map((block) => (
-            <button
+            <MenuItem
               key={block.type}
-              type="button"
-              className="dropdown-item md-editor-btn"
               onClick={insertAlert(block.type.toLowerCase())}
             >
               {highlightChord(block.label ?? block.type, block.key)}
-            </button>
+            </MenuItem>
           ))}
         </PopoverContent>
       </Popover>
 
-      <div className="btn-group btn-group-sm me-2">
-        <button
-          type="button"
-          className="btn btn-outline-secondary"
-          title={t('toolbar:save_markdown_file')}
-          onClick={handleSave}
-        >
-          <Icon name="save" />
-        </button>
-      </div>
+      <Separator />
+
+      <ToolbarButton
+        title={t('toolbar:save_markdown_file')}
+        onClick={handleSave}
+      >
+        <Icon name="save" />
+      </ToolbarButton>
 
       {mode === 'web' && (
-        <div className="btn-group btn-group-sm me-2">
-          <button
-            type="button"
-            className="btn btn-outline-secondary"
-            title={t('toolbar:delete_markdown_file')}
-            onClick={handleDelete}
-          >
-            <Icon name="trash" />
-          </button>
-        </div>
+        <ToolbarButton
+          title={t('toolbar:delete_markdown_file')}
+          onClick={handleDelete}
+        >
+          <Icon name="trash" />
+        </ToolbarButton>
       )}
 
-      <div className="btn-group btn-group-sm me-2">
-        <button
-          type="button"
-          className="btn btn-outline-secondary"
-          title={t('toolbar:configure_export_settings')}
-          onClick={openExportSettingsModal}
-        >
-          <Icon name="sliders" />
-        </button>
-      </div>
+      <ToolbarButton
+        title={t('toolbar:configure_export_settings')}
+        onClick={openExportSettingsModal}
+      >
+        <Icon name="sliders" />
+      </ToolbarButton>
 
-      <div className="btn-group btn-group-sm me-2">
-        <button
-          type="button"
-          className="btn btn-outline-secondary"
-          title={t('toolbar:export_html_tooltip')}
-          onClick={handleExport('html')}
-        >
-          <Icon name="file-export" className="me-1" />
-          <small>
-            <span className="d-none d-md-inline">
-              {t('toolbar:export_to_prefix')}
-            </span>
-            {t('toolbar:export_html_label')}
-          </small>
-        </button>
-      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        title={t('toolbar:export_html_tooltip')}
+        onClick={handleExport('html')}
+        className="h-8 gap-1"
+      >
+        <Icon name="file-export" />
+        <span className="text-xs">
+          <span className="hidden md:inline">
+            {t('toolbar:export_to_prefix')}
+          </span>
+          {t('toolbar:export_html_label')}
+        </span>
+      </Button>
 
-      <div className="btn-group btn-group-sm me-2">
-        <button
-          type="button"
-          className="btn btn-outline-secondary"
-          title={t('toolbar:export_pdf_tooltip')}
-          onClick={handleExport('pdf')}
-        >
-          <Icon name="file-pdf" className="me-1" />
-          <small>
-            <span className="d-none d-md-inline">
-              {t('toolbar:export_to_prefix')}
-            </span>
-            {t('toolbar:export_pdf_label')}
-          </small>
-        </button>
-      </div>
-    </>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        title={t('toolbar:export_pdf_tooltip')}
+        onClick={handleExport('pdf')}
+        className="h-8 gap-1"
+      >
+        <Icon name="file-pdf" />
+        <span className="text-xs">
+          <span className="hidden md:inline">
+            {t('toolbar:export_to_prefix')}
+          </span>
+          {t('toolbar:export_pdf_label')}
+        </span>
+      </Button>
+    </div>
   );
 
   return createPortal(content, host);
 };
+
+/* -------------------------------------------------------------------- */
+/*  Local helpers                                                        */
+/* -------------------------------------------------------------------- */
+
+const ToolbarButton: React.FC<{
+  title: string;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  children: React.ReactNode;
+}> = ({ title, onClick, children }) => (
+  <Button
+    type="button"
+    size="sm"
+    variant="outline"
+    title={title}
+    onClick={onClick}
+    className="h-8 w-8 p-0"
+  >
+    {children}
+  </Button>
+);
+
+const Separator: React.FC = () => (
+  <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+);
+
+const MenuItem: React.FC<{
+  onClick: React.MouseEventHandler<HTMLButtonElement>;
+  children: React.ReactNode;
+}> = ({ onClick, children }) => (
+  <button
+    type="button"
+    className="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+    onClick={onClick}
+  >
+    {children}
+  </button>
+);
 
 /**
  * Underline the first character in `text` that case-insensitively

@@ -175,7 +175,7 @@ export const FileTreePanel: React.FC = () => {
       <ContextMenuTrigger asChild>
         <ul
           id="file-tree"
-          className="list-unstyled mb-0 flex-fill"
+          className="list-none m-0 p-0 flex-1"
           onContextMenu={handleContextMenu}
         >
           {nodes.map((node) => (
@@ -244,12 +244,11 @@ const NodeRow: React.FC<NodeRowProps> = ({
     >
       <span className={`file-name ${isActiveFile ? 'active' : ''}`}>
         <span
-          className={`me-1${hasChevron ? '' : ' invisible'}`}
-          style={{ display: 'inline-block', fontSize: '0.7em' }}
+          className={`mr-1 inline-block text-[0.7em] ${hasChevron ? '' : 'invisible'}`}
         >
           <Icon name={expanded ? 'chevron-down' : 'chevron-right'} />
         </span>
-        <span className="me-1">
+        <span className="mr-1">
           <Icon
             name={
               node.type === 'directory'
@@ -263,7 +262,7 @@ const NodeRow: React.FC<NodeRowProps> = ({
         {node.name}
       </span>
       {node.type === 'directory' && expanded && node.children && (
-        <ul className="list-unstyled ps-3">
+        <ul className="list-none m-0 pl-3">
           {node.children.map((child) => (
             <NodeRow
               key={child.path}

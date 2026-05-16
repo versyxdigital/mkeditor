@@ -20,15 +20,15 @@ export const AboutModal: React.FC = () => {
         <DialogTitle className="sr-only">
           {t('modals-about:version_label')} {APP_VERSION}
         </DialogTitle>
-        <div className="text-muted modal-body small">
-          <img src="./icon.png" className="img-fluid app-logo mb-3" />
+        <div className="px-6 pb-6 pt-6 text-sm text-muted-foreground">
+          <img src="./icon.png" className="mx-auto mb-3 w-32" />
           <p>
             <span>{t('modals-about:version_label')}</span> {APP_VERSION}
           </p>
           <p>
             <span>{t('modals-about:built_with_love_by')}</span>{' '}
             <a
-              className="fw-bold text-primary text-decoration-none"
+              className="font-bold text-primary no-underline"
               href="https://versyxdigital.github.io/"
               target="_blank"
               rel="noreferrer"
@@ -37,16 +37,16 @@ export const AboutModal: React.FC = () => {
             </a>
             .
           </p>
-          <p className="mb-1">
+          <p className="mb-1 mt-3">
             <span>{t('modals-about:libraries_intro')}</span>
           </p>
           <p>
             <span>{t('modals-about:libraries_list')}</span>
           </p>
-          <p className="mb-0">
+          <p className="mb-0 mt-3">
             <span>{t('modals-about:view_source_prefix')}</span>{' '}
             <a
-              className="fw-bold text-primary text-decoration-none"
+              className="font-bold text-primary no-underline"
               href="https://github.com/versyxdigital/mkeditor"
               target="_blank"
               rel="noreferrer"

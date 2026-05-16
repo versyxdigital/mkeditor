@@ -36,7 +36,7 @@ export const PreviewPane: React.FC = () => {
   }, [dispatcher, editorManager]);
 
   return (
-    <div id="preview" className="flex-column split-preview p-3">
+    <div id="preview" className="flex flex-col split-preview p-3">
       <div ref={contentRef} id="preview-content" className="container-fluid" />
     </div>
   );
