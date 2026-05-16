@@ -1,8 +1,13 @@
 import { type editor, languages } from 'monaco-editor/esm/vs/editor/editor.api';
-import { dom } from '../../dom';
+
+/** Predicate that returns true if `path` matches an open file in the tree. */
+export type PathExistsPredicate = (path: string) => boolean;
 
 export class MkedLinkProvider {
-  constructor(_: editor.IStandaloneCodeEditor) {
+  constructor(
+    _: editor.IStandaloneCodeEditor,
+    pathExists: PathExistsPredicate,
+  ) {
     languages.registerLinkProvider('markdown', {
       provideLinks: async (m) => {
         const mked = window.mked;
@@ -24,13 +29,7 @@ export class MkedLinkProvider {
 
           const resolved = await mked.resolvePath(baseDir, url);
 
-          let exists = false;
-          if (dom.filetree) {
-            exists = Array.from(dom.filetree.querySelectorAll('li.file')).some(
-              (el) => (el as HTMLElement).dataset.path === resolved,
-            );
-          }
-          if (!exists) continue;
+          if (!pathExists(resolved)) continue;
 
           const startOffset = match.index + match[0].indexOf(url);
           const endOffset = startOffset + url.length;

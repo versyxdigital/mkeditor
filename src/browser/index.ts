@@ -99,7 +99,9 @@ function onEditorReady() {
     bridgeManager.provide('commands', editorManager.providers.commands);
     editorManager.provide('bridge', bridgeManager);
 
-    new MkedLinkProvider(mkeditor);
+    new MkedLinkProvider(mkeditor, (path) =>
+      bridgeManager.fileTreeManager.hasFile(path),
+    );
 
     editorManager.updateBridgedContent({ init: true });
 

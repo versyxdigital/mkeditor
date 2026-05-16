@@ -2,7 +2,6 @@ import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import Swal from 'sweetalert2';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
-import { dom } from '../dom';
 import { t } from '../i18n';
 
 export interface TabInfo {
@@ -329,17 +328,8 @@ export class FileManager {
       this.contentHasChanged = false;
     }
 
-    // File-tree active-state highlight still lives in legacy DOM (Phase 5
-    // owns the file tree). Tab + active-file highlight in the navbar is
-    // owned by React via FilesContext.
-    if (dom.filetree) {
-      dom.filetree.querySelectorAll('li.file .file-name').forEach((el) => {
-        const li = (el as HTMLElement).parentElement as HTMLElement;
-        if (li.dataset.path === path)
-          (el as HTMLElement).classList.add('active');
-        else (el as HTMLElement).classList.remove('active');
-      });
-    }
+    // Active-file highlight in both the tab bar and the file tree is now
+    // owned by React (FilesContext + FileTreePanel).
 
     this.dispatcher.render();
     this.mkeditor.focus();

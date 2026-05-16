@@ -9,6 +9,7 @@ import {
 import { ManagersProvider, type Managers } from './contexts/ManagersContext';
 import { UIStateProvider, useUIState } from './contexts/UIStateContext';
 import { FilesProvider } from './contexts/FilesContext';
+import { FileTreeProvider } from './contexts/FileTreeContext';
 import { LegacyShell } from './components/LegacyShell';
 import { Navbar } from './components/Navbar';
 import { TabBar } from './components/TabBar';
@@ -58,10 +59,12 @@ export const App: React.FC<AppProps> = ({
     <ManagersProvider value={managers}>
       <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
         <FilesProvider>
-          <LegacyShell />
-          <Navbar />
-          <TabBar />
-          <Shell onEditorReady={onEditorReady} />
+          <FileTreeProvider>
+            <LegacyShell />
+            <Navbar />
+            <TabBar />
+            <Shell onEditorReady={onEditorReady} />
+          </FileTreeProvider>
         </FilesProvider>
       </UIStateProvider>
     </ManagersProvider>

@@ -63,10 +63,6 @@ export const dom = {
     darkmode: <HTMLLabelElement>document.querySelector('#darkmode-icon'),
   },
   buttons: {
-    sidebar: <HTMLButtonElement>document.querySelector('#sidebar-toggle'),
-    settings: <HTMLElement>(
-      document.querySelector('[data-bs-target="#app-settings"]')
-    ),
     save: {
       settings: <HTMLButtonElement>document.querySelector('#app-settings-save'),
       exportSettings: <HTMLButtonElement>(
@@ -110,9 +106,6 @@ export const dom = {
     get dom(): HTMLDivElement {
       return document.querySelector('#preview-content') as HTMLDivElement;
     },
-  },
-  get filetree(): HTMLUListElement {
-    return document.querySelector('#file-tree') as HTMLUListElement;
   },
   meta: {
     scroll: {
