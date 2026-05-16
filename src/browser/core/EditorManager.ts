@@ -17,6 +17,11 @@ interface EditorConstructOptions {
   watch?: boolean | undefined;
 }
 
+interface EditorCreateOptions {
+  mount?: HTMLElement | null;
+  watch?: boolean;
+}
+
 export class EditorManager {
   /** App mode */
   private mode: 'web' | 'desktop';
@@ -74,10 +79,34 @@ export class EditorManager {
   /**
    * Create a new editor instance.
    *
+   * @param mount - DOM element to host Monaco. Production callers (the
+   *   React <EditorHost>) always supply this. The `dom.editor.dom`
+   *   fallback exists only for tests, which seed a `<div id="editor">`
+   *   before importing this module; production HTML no longer contains
+   *   that id.
    * @param watch - flag to watch the editor for changes
    * @returns
    */
-  public create({ watch = false }) {
+  public create({ mount, watch = false }: EditorCreateOptions = {}) {
+    if (this.mkeditor) {
+      // Idempotency: React effects may re-fire under strict-mode or hot
+      // reload. Phase 2 exit criterion: Monaco is created exactly once.
+      logger?.warn(
+        'EditorManager.create',
+        'Editor already created; ignoring duplicate invocation.',
+      );
+      return this;
+    }
+
+    const target: HTMLElement | null = mount ?? dom.editor.dom ?? null;
+    if (!target) {
+      logger?.error(
+        'EditorManager.create',
+        'No mount target available (mount param and dom.editor.dom both null).',
+      );
+      return this;
+    }
+
     try {
       let editorContent = welcomeMarkdown;
       // For web mode, fetch stored content from localStorage
@@ -93,7 +122,7 @@ export class EditorManager {
 
       // Create the underlying monaco editor.
       // See https://microsoft.github.io/monaco-editor/
-      this.mkeditor = editor.create(dom.editor.dom, {
+      this.mkeditor = editor.create(target, {
         value: editorContent,
         language: 'markdown',
         wordBasedSuggestions: 'off',
@@ -105,6 +134,10 @@ export class EditorManager {
         roundedSelection: false,
         accessibilityPageSize: 1000,
       });
+      // console.info (not logger.info) so the breadcrumb is visible in the
+      // renderer devtools in both web and desktop modes — needed for the
+      // Phase 2 exit-criterion smoke check.
+      console.info('mkeditor: Monaco editor instance created.');
 
       // Set loadedInitialEditorValue for tracking file changes.
       this.loadedInitialEditorValue = this.mkeditor.getValue();
@@ -146,6 +179,24 @@ export class EditorManager {
    */
   public getMkEditor() {
     return this.mkeditor;
+  }
+
+  /**
+   * Relayout Monaco. Called by EditorHost's ResizeObserver and by
+   * split-pane drag handlers.
+   */
+  public layout() {
+    this.mkeditor?.layout();
+  }
+
+  /**
+   * Tear down the Monaco instance. Allows the React host to clean up on
+   * unmount so a subsequent mount can call create() again.
+   */
+  public dispose() {
+    if (!this.mkeditor) return;
+    this.mkeditor.dispose();
+    this.mkeditor = null;
   }
 
   /**

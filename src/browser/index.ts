@@ -1,6 +1,7 @@
 import './icons';
-// Phase 1 sanity probe — verifies React/Tailwind/shadcn build path. Removed at end of Phase 2.
-import './react/__sanity__';
+import * as React from 'react';
+import { createRoot } from 'react-dom/client';
+
 import { EditorDispatcher } from './events/EditorDispatcher';
 import { EditorManager } from './core/EditorManager';
 import { CompletionProvider } from './core/providers/CompletionProvider';
@@ -10,7 +11,7 @@ import { SettingsProvider } from './core/providers/SettingsProvider';
 import { ExportSettingsProvider } from './core/providers/ExportSettingsProvider';
 import { BridgeManager } from './core/BridgeManager';
 import { initI18n, changeLanguage } from './i18n';
-import { getExecutionBridge } from './util';
+import { getExecutionBridge, logger } from './util';
 import {
   dom,
   showSplashScreen,
@@ -19,12 +20,15 @@ import {
   resetEditorPreviewSplit,
 } from './dom';
 
+import { App } from './react/App';
+import type { Managers } from './react/contexts/ManagersContext';
+
 // The bi-directional synchronous bridge to the main execution context.
 // Exposed on the window object through the preloader.
 const api = getExecutionBridge();
 
 // App mode (desktop or web).
-const mode = api !== 'web' ? 'desktop' : 'web';
+const mode: 'web' | 'desktop' = api !== 'web' ? 'desktop' : 'web';
 
 // Precompute bindings, warm language bundle fetch and initialize i18n.
 initI18n(mode);
@@ -41,23 +45,36 @@ if (api === 'web') {
   };
 }
 
-// Create new editor event dispatcher.
+// Construct the dispatcher and editor manager up-front; Monaco itself is
+// created later, by <EditorHost> inside the React tree.
 const dispatcher = new EditorDispatcher();
+const editorManager = new EditorManager({ mode, dispatcher });
 
-// Create a new editor manager.
-const editorManager = new EditorManager({
+const managers: Managers = {
   mode,
+  editorManager,
   dispatcher,
-  init: true,
-  watch: true,
-});
+  fileManager: null,
+  fileTreeManager: null,
+  bridgeManager: null,
+  providers: editorManager.providers,
+};
 
-// Get the editor instance.
-const mkeditor = editorManager.getMkEditor();
+/**
+ * Runs once after <EditorHost> has called editorManager.create(). Wires
+ * the providers, the IPC bridge (desktop), and the legacy split/sidebar/
+ * splash chrome that depend on a live Monaco instance.
+ */
+function onEditorReady() {
+  const mkeditor = editorManager.getMkEditor();
+  if (!mkeditor) {
+    logger?.error(
+      'index.onEditorReady',
+      'EditorHost fired onReady but EditorManager has no Monaco instance.',
+    );
+    return;
+  }
 
-if (mkeditor) {
-  // Register new settings handlers for the editor to provide settings and to
-  // persist settings either to localStorage or file depending on context.
   editorManager.provide(
     'settings',
     new SettingsProvider(mode, mkeditor, dispatcher),
@@ -66,26 +83,15 @@ if (mkeditor) {
     'exportSettings',
     new ExportSettingsProvider(mode, dispatcher),
   );
-
-  // Register new command handler for the editor to provide and handle editor
-  // commands and actions (e.g. bold, alertblock etc.)
   editorManager.provide('commands', new CommandProvider(mkeditor));
-
-  // Register a new completion provider for the editor auto-completion
   editorManager.provide('completion', new CompletionProvider(mkeditor));
 
-  // If running within electron app, register IPC handler for communication
-  // between main and renderer execution contexts.
   if (api !== 'web') {
-    // Register localization handler immediately.
     api.receive('from:i18n:set', (lng: string) => {
       changeLanguage(lng);
     });
 
-    // Create a new bridge communication handler.
     const bridgeManager = new BridgeManager(api, mkeditor, dispatcher);
-
-    // Attach providers.
     bridgeManager.provide('settings', editorManager.providers.settings);
     bridgeManager.provide(
       'exportSettings',
@@ -93,30 +99,34 @@ if (mkeditor) {
     );
     bridgeManager.provide('commands', editorManager.providers.commands);
     editorManager.provide('bridge', bridgeManager);
+    managers.bridgeManager = bridgeManager;
 
-    // Register link provider for mked:// navigation for linked documents.
     new MkedLinkProvider(mkeditor);
 
-    // Initialize content tracker for the execution bridge.
     editorManager.updateBridgedContent({ init: true });
 
-    // Expose a language setter for desktop via the bridge
     window.setLanguage = (lng: string) => {
       bridgeManager.setLanguage(lng);
     };
   }
 
-  // Implement draggable split.
   createDraggableSplitPanels(mkeditor);
   dom.buttons.resetSplit?.addEventListener('click', () => {
     resetEditorPreviewSplit(mkeditor);
   });
-
-  // Implement sidebar toggle.
   createSidebarToggle(mkeditor);
 
-  // Display splash screen
-  showSplashScreen({
-    duration: 750,
-  });
+  showSplashScreen({ duration: 750 });
+}
+
+const reactRoot = document.getElementById('react-root');
+if (reactRoot) {
+  createRoot(reactRoot).render(
+    React.createElement(App, { managers, onEditorReady }),
+  );
+} else {
+  logger?.error(
+    'index',
+    '#react-root not found in DOM; aborting Monaco mount.',
+  );
 }

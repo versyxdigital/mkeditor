@@ -1,4 +1,5 @@
-import type { Options, Token } from 'markdown-it';
+import type { Options } from 'markdown-it';
+import type Token from 'markdown-it/lib/token.mjs';
 import type Renderer from 'markdown-it/lib/renderer.mjs';
 import Swal, { type SweetAlertIcon } from 'sweetalert2';
 import type { ContextBridgeAPI } from './interfaces/Bridge';
