@@ -3,7 +3,7 @@
   "intro": "Aquí puedes configurar los ajustes para las exportaciones HTML y PDF; los ajustes se guardan automáticamente al actualizarlos.",
   "settings_file_info": "Tu archivo de configuración se encuentra en ~/.mkeditor/settings.json.",
   "export_with_styles_label": "Exportar con estilos",
-  "export_with_styles_help": "Activa esto para exportar con Bootstrap, FontAwesome y KaTeX, proporcionados desde CDNs oficiales con comprobaciones de integridad y crossorigin.",
+  "export_with_styles_help": "Activa esto para exportar con Highlight.js y KaTeX, proporcionados desde CDNs oficiales con comprobaciones de integridad y crossorigin.",
   "set_container_label": "Establecer contenedor",
   "set_container_option_container": "container",
   "set_container_option_container_fluid": "container-fluid",

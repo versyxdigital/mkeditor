@@ -3,7 +3,7 @@
   "intro": "Burada HTML ve PDF dışa aktarma ayarlarını yapılandırabilirsiniz; ayarlar güncellendikçe otomatik olarak kaydedilir.",
   "settings_file_info": "Ayar dosyanız ~/.mkeditor/settings.json konumundadır.",
   "export_with_styles_label": "Stillerle dışa aktar",
-  "export_with_styles_help": "Bootstrap, FontAwesome ve KaTeX stilleriyle dışa aktarmayı etkinleştirir; bu stiller resmi CDN’lerden bütünlük ve çapraz kaynak kontrolleriyle sağlanır.",
+  "export_with_styles_help": "Highlight.js ve KaTeX stilleriyle dışa aktarmayı etkinleştirir; bu stiller resmi CDN’lerden bütünlük ve çapraz kaynak kontrolleriyle sağlanır.",
   "set_container_label": "Kapsayıcıyı ayarla",
   "set_container_option_container": "container",
   "set_container_option_container_fluid": "container-fluid",
