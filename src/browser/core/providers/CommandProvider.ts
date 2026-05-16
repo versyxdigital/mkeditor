@@ -26,10 +26,6 @@ export class CommandProvider {
   /**
    * Create a new mkeditor command handler.
    *
-   * Responsible for creating a command handler and handling editor commands.
-   * Phase 7 dropped the Bootstrap `Modal` instances — modals are now
-   * React state-driven via `openModalExternal` from ModalsContext.
-   *
    * @param mkeditor - the editor instance
    */
   public constructor(mkeditor: editor.IStandaloneCodeEditor) {

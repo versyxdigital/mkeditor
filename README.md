@@ -32,14 +32,6 @@ If you have any issues or questions, please feel free to submit an [issue](https
 
 MKEditor fully supports the [CommonMark](https://commonmark.org/) spec and comes with additional goodies.
 
-## Great support for _custom_ styling
-
-MKEditor comes with full support for styling your documents with:
-
-- Bootstrap
-- Fontawesome
-- Highlight.js
-
 ## Create alerts
 
 ```sh

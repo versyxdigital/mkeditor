@@ -6,10 +6,6 @@ import { cn } from '../../lib/utils';
 /**
  * Minimal shadcn-style wrapper around Radix Dialog. Phase 7 uses this
  * for all four modals (Settings / ExportSettings / About / Shortcuts).
- *
- * z-[1060] on Content/Overlay sits above Bootstrap's fixed-bottom
- * toolbar (z:1030) and matches the popover/context-menu z-index used by
- * the other shadcn primitives in this codebase.
  */
 
 const Dialog = DialogPrimitive.Root;
@@ -44,11 +40,6 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         'fixed left-1/2 top-1/2 z-[1060] w-full max-w-[500px] -translate-x-1/2 -translate-y-1/2',
-        // Theme tokens defined in styles/tailwind.css — auto-flip on
-        // `[data-theme="dark"]`. We don't use Bootstrap's `.modal-content`
-        // here because it depends on `--bs-modal-*` CSS variables that
-        // are only defined inside a `.modal` parent, leaving standalone
-        // `.modal-content` with a transparent background.
         'rounded-lg border border-border bg-popover text-popover-foreground shadow-lg',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',

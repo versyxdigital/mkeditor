@@ -12,11 +12,6 @@ import { Input } from '../components/ui/input';
 export interface PromptButton {
   id: string;
   label: string;
-  /**
-   * Visual treatment. Maps to Bootstrap button classes inside the dialog
-   * — `primary` is the default confirm, `danger` for destructive
-   * confirms, `secondary` for the cancel/deny actions.
-   */
   variant?: 'primary' | 'secondary' | 'danger';
 }
 

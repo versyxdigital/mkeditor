@@ -14,12 +14,6 @@ You can also view a cheatsheet [here](https://versyxdigital.github.io/mkeditor/s
 
 MKEditor fully supports the [CommonMark](https://commonmark.org/) spec and comes with a few additional goodies.
 
-**Great** support for _custom_ styling with:
-
-- Bootstrap
-- Fontawesome
-- Highlight.js
-
 ::: primary
 ✨ Create alerts
 :::

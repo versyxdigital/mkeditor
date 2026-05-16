@@ -12,9 +12,7 @@ const ModalsContext = React.createContext<ModalsState | null>(null);
 
 /**
  * Centralised React state for which modal (Settings / Export settings /
- * About / Shortcuts) is currently open. Replaces the Bootstrap `Modal`
- * instances that lived in `CommandProvider` and the `data-bs-toggle`
- * attributes scattered through the legacy markup.
+ * About / Shortcuts) is currently open.
  *
  * BridgeListeners' `from:modal:open` handler dispatches into this
  * context via the registered setter (see `registerOpenModal`).

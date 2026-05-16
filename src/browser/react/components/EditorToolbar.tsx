@@ -22,12 +22,7 @@ interface EditorToolbarProps {
 }
 
 /**
- * The `#editor-functions` toolbar. Phase 9 swapped Bootstrap btn classes
- * for the shadcn `<Button>` primitive and Bootstrap utility classes for
- * Tailwind equivalents.
- *
- * Rendered via `createPortal` into the static `<div id="editor-functions">`
- * host inside the bottom `<nav>` shell in views/index.html.
+ * The `#editor-functions` toolbar.
  */
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   workspaceGroupRef,

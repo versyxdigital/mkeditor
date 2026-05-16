@@ -11,14 +11,7 @@ import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 
 /**
- * Right-side of the bottom toolbar. Phase 9 swapped the legacy
- * native-checkbox + Bootstrap form-switch for shadcn `Switch` so the
- * darkmode toggle no longer depends on Bootstrap CSS.
- *
- * Rendered via `createPortal` into a stable host (`#bottom-toolbar-right`)
- * inside the bottom `<nav>` shell. The `<nav>` itself stays in static
- * HTML so the `fixed-bottom` positioning continues to work (will be
- * pure-Tailwind in a future cleanup).
+ * Right-side of the bottom toolbar.
  */
 export const BottomToolbarRight: React.FC = () => {
   const { mode } = useManagers();

@@ -11,6 +11,7 @@ import { SettingsProvider } from './core/providers/SettingsProvider';
 import { ExportSettingsProvider } from './core/providers/ExportSettingsProvider';
 import { BridgeManager } from './core/BridgeManager';
 import { initI18n, changeLanguage } from './i18n';
+import { markdownStylesheet } from './markdownStyles';
 import { getExecutionBridge, logger } from './util';
 import { showSplashScreen } from './splash';
 
@@ -23,6 +24,14 @@ const api = getExecutionBridge();
 
 // App mode (desktop or web).
 const mode: 'web' | 'desktop' = api !== 'web' ? 'desktop' : 'web';
+
+// Inject the markdown stylesheet into <head> so the live preview pane
+// is styled the moment React mounts. The same string is inlined into
+// exported HTML by HTMLExporter — single source of truth.
+const markdownStyleEl = document.createElement('style');
+markdownStyleEl.id = 'md-styles';
+markdownStyleEl.textContent = markdownStylesheet;
+document.head.appendChild(markdownStyleEl);
 
 // Precompute bindings, warm language bundle fetch and initialize i18n.
 initI18n(mode);

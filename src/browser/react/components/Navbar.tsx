@@ -15,10 +15,7 @@ import {
 } from './ui/tooltip';
 
 /**
- * Top chrome. Replaces the legacy `<nav class="navbar navbar-expand">`
- * that used to live in views/index.html. Phase 9 swapped Bootstrap
- * utility classes for Tailwind and the Bootstrap-driven tooltips
- * (`data-bs-toggle="tooltip"`) for the shadcn `<Tooltip>` primitive.
+ * Top navbar.
  */
 export const Navbar: React.FC = () => {
   const { toggleSidebar } = useUIState();

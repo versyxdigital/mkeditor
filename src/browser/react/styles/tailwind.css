@@ -9,8 +9,6 @@
   --card-foreground: oklch(0.28 0 0);
   --popover: oklch(0.985 0 0);
   --popover-foreground: oklch(0.28 0 0);
-  /* MKEditor brand teal (#519088) — was Bootstrap `.btn-primary` /
-     `.form-check-input:checked` background. */
   --primary: oklch(0.578 0.0532 178.5);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);

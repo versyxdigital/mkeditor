@@ -167,8 +167,7 @@ export function registerBridgeListeners(
   });
 
   // Opens a React shadcn-Dialog modal triggered from the main process
-  // (e.g., a tray/menu item). Phase 7 routed this through ModalsContext
-  // instead of the legacy Bootstrap `Modal.toggle()`.
+  // (e.g., a tray/menu item).
   bridge.receive('from:modal:open', (modal: ModalKey) => {
     openModalExternal(modal);
   });

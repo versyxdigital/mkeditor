@@ -1,6 +1,4 @@
-// Dark theme. App-specific selectors only; the Bootstrap-class +
-// SweetAlert2 overrides that lived here pre-Phase-9 were dropped along
-// with the dependencies they targeted.
+// Dark theme. App-specific selectors only.
 [data-theme='dark'] {
   background-color: #222222;
   color: #e1e1e1;

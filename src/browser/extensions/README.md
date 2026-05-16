@@ -7,7 +7,7 @@ This folder contains extensions for markdown-it and editor functionality used in
 The following extensions rely on markdown-it's rendering capabilities:
 
 ### AlertBlock
-[`AlertBlock.ts`](./renderer/AlertBlock.ts) - Adds support for Bootstrap-styled alert blocks using container syntax:
+[`AlertBlock.ts`](./renderer/AlertBlock.ts) - Adds support for custom alert blocks using container syntax:
 
 ```markdown
 ::: info
@@ -16,14 +16,10 @@ This is an info alert
 ```
 
 ### ImageStyle
-[`ImageStyle.ts`](./renderer/ImageStyle.ts) - Adds Bootstrap classes to images for responsive behavior. By default adds `img-fluid` class to all images.
+[`ImageStyle.ts`](./renderer/ImageStyle.ts) - Adds classes to images for responsive behavior.
 
 ### TableStyle
-[`TableStyle.ts`](./renderer/TableStyle.ts) - Adds Bootstrap classes to tables for styling. Default classes:
-- `table`
-- `table-sm` 
-- `table-bordered`
-- `table-striped`
+[`TableStyle.ts`](./renderer/TableStyle.ts) - Adds classes to tables for styling.
 
 ### LinkTarget 
 [`LinkTarget.ts`](./renderer/LinkTarget.ts) - Modifies external links to open in new tabs by adding `target="_blank"` attribute.
