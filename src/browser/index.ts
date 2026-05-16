@@ -1,4 +1,6 @@
 import './icons';
+// Phase 1 sanity probe — verifies React/Tailwind/shadcn build path. Removed at end of Phase 2.
+import './react/__sanity__';
 import { EditorDispatcher } from './events/EditorDispatcher';
 import { EditorManager } from './core/EditorManager';
 import { CompletionProvider } from './core/providers/CompletionProvider';

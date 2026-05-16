@@ -2,11 +2,12 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
   transform: {
-    '^.+\\.ts$': [
+    '^.+\\.tsx?$': [
       'ts-jest',
       {
         tsconfig: {
           module: 'commonjs',
+          jsx: 'react-jsx',
         },
       },
     ],
@@ -16,6 +17,8 @@ module.exports = {
       '<rootDir>/tests/__mocks__/monaco-editor.js',
     '^electron$': '<rootDir>/tests/__mocks__/electron.js',
     '^sweetalert2$': '<rootDir>/tests/__mocks__/sweetalert2.js',
+    '\\.(css|scss|sass)$': '<rootDir>/tests/__mocks__/style.js',
   },
-  testMatch: ['<rootDir>/tests/**/*.test.ts'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  testMatch: ['<rootDir>/tests/**/*.test.ts', '<rootDir>/tests/**/*.test.tsx'],
 };

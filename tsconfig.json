@@ -4,6 +4,7 @@
     "outDir": "./dist",
     "target": "esnext",
     "lib": ["dom", "dom.iterable", "esnext"],
+    "jsx": "react-jsx",
     "allowJs": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
