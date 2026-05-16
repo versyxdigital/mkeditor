@@ -71,16 +71,27 @@ export class CommandProvider {
     // the corresponding shadcn dropdown so the user can either click an
     // item or press the second chord key. The dropdown open state lives
     // in <EditorToolbar>; we call into it via the registered callback.
+    //
+    // We must NOT call `mkeditor.focus()` after opening a dropdown:
+    // Radix's dismissable layer (under Popover) listens for focusin
+    // events outside the popover content and fires `onOpenChange(false)`
+    // when it sees one. Re-focusing Monaco in the same tick that the
+    // popover renders causes the popover to flash open and immediately
+    // close. Early-return after opening to skip the refocus.
     this.mkeditor.onKeyDown((e) => {
       const holdKey = getOSPlatform() !== 'MacOS' ? e.ctrlKey : e.metaKey;
-      if (holdKey && e.keyCode === 42 /* L */) {
+      if (!holdKey) return;
+      if (e.keyCode === KeyCode.KeyL) {
         this.openDropdown?.('alertblocks');
+        return;
       }
-      if (holdKey && e.keyCode === 41 /* K */) {
+      if (e.keyCode === KeyCode.KeyK) {
         this.openDropdown?.('codeblocks');
+        return;
       }
-      if (holdKey && e.keyCode === 50 /* T */) {
+      if (e.keyCode === KeyCode.KeyT) {
         this.openDropdown?.('tables');
+        return;
       }
       this.mkeditor.focus();
     });

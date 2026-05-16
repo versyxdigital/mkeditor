@@ -339,19 +339,44 @@ export async function prepareI18n(
 }
 
 /**
+ * Tracks whether the i18next instance is ready to translate. While a
+ * `changeLanguage()` call is in flight (bundle fetching + i18next swap)
+ * this holds the pending promise so callers that need correct
+ * translations can await it. Toast notifications arriving from the
+ * main process during a locale change use `whenLanguageReady()` to
+ * avoid resolving against the previous language's bundle.
+ */
+let languageReady: Promise<void> | null = null;
+
+/**
+ * Resolves once any in-flight `changeLanguage()` has finished applying.
+ * Returns an already-resolved promise when no change is pending.
+ */
+export function whenLanguageReady(): Promise<void> {
+  return languageReady ?? Promise.resolve();
+}
+
+/**
  * Change the language.
  *
  * @param lng - the language to load
  */
 export async function changeLanguage(lng: string) {
-  const base = normalizeLanguage(lng);
-  const ok = await loadCombinedBundle(base);
-  if (!ok) {
-    await loadFallbackBundles(base);
-  }
+  const run = async () => {
+    const base = normalizeLanguage(lng);
+    const ok = await loadCombinedBundle(base);
+    if (!ok) {
+      await loadFallbackBundles(base);
+    }
 
-  await i18next.changeLanguage(base);
-  applyTranslations();
+    await i18next.changeLanguage(base);
+    applyTranslations();
+  };
+
+  languageReady = run().finally(() => {
+    languageReady = null;
+  });
+  return languageReady;
 }
 
 /**

@@ -12,7 +12,7 @@ import {
 } from '../react/contexts/ModalsContext';
 import { sonnerToast } from '../notify';
 import { showPropertiesExternal } from '../react/contexts/PropertiesContext';
-import { t } from '../i18n';
+import { t, whenLanguageReady } from '../i18n';
 
 /**
  * Register bridge channel listeners.
@@ -172,20 +172,32 @@ export function registerBridgeListeners(
     openModalExternal(modal);
   });
 
-  // Enable notifications from the main context.
+  // Enable notifications from the main context. Translation is deferred
+  // behind `whenLanguageReady()` so a "settings saved" toast that
+  // arrives during a locale switch is rendered in the *new* language —
+  // the locale-change IPC and the settings-save IPC race back from the
+  // main process, and without this guard the toast would resolve
+  // against the previous language's bundle.
   bridge.receive('from:notification:display', (event: any) => {
     const { status } = event || {};
     const key: string | undefined = event?.key;
     const values: Record<string, unknown> | undefined = event?.values;
     const message: string | undefined = event?.message;
 
-    const text = key
-      ? t(key, values)
-      : typeof message === 'string'
-        ? message
-        : '';
+    const show = () => {
+      const text = key
+        ? t(key, values)
+        : typeof message === 'string'
+          ? message
+          : '';
+      if (text) sonnerToast(status || 'info', text);
+    };
 
-    if (text) sonnerToast(status || 'info', text);
+    if (key) {
+      void whenLanguageReady().then(show);
+    } else {
+      show();
+    }
   });
 
   // Trigger the file properties window from the context menu.

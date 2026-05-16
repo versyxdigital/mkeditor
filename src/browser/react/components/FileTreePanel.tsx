@@ -10,6 +10,7 @@ import { useFileTree } from '../contexts/FileTreeContext';
 import { useManagers } from '../contexts/ManagersContext';
 import { useModals } from '../contexts/ModalsContext';
 import { useUIState } from '../contexts/UIStateContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { Icon } from './Icon';
 import {
   ContextMenu,
@@ -44,6 +45,11 @@ export const FileTreePanel: React.FC = () => {
   const { activeFile } = useFiles();
   const { openModal } = useModals();
   const { toggleSidebar } = useUIState();
+  // `getContextMenuItems` calls `t(...)` and bakes the resolved strings
+  // into the items array. We need the memo to invalidate when i18next
+  // finishes loading (its first init resolves AFTER React mounts) and
+  // whenever the user picks a new language.
+  const { language } = useTranslation();
 
   const [expandedPaths, setExpandedPaths] = React.useState<Set<string>>(
     () => new Set(),
@@ -152,7 +158,9 @@ export const FileTreePanel: React.FC = () => {
       contextNode,
       callbacks,
     );
-  }, [bridgeManager, treeRoot, contextNode, callbacks]);
+    // `language` is in the deps so the menu rebuilds when i18next
+    // finishes its async init or when the user switches locale.
+  }, [bridgeManager, treeRoot, contextNode, callbacks, language]);
 
   const handleContextMenu = (event: React.MouseEvent<HTMLUListElement>) => {
     const target = event.target as HTMLElement;
