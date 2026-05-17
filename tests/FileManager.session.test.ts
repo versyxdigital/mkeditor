@@ -427,6 +427,111 @@ describe('FileManager.scheduleSessionSave', () => {
   });
 });
 
+describe('FileManager.activateFile re-activation', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('does not restoreViewState when activating the already-active tab', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const mk = makeMkeditor();
+    const fm = new FileManager(
+      bridge as never,
+      mk as never,
+      new EditorDispatcher(),
+    );
+
+    // Inject a stale view state directly so the bug's preconditions
+    // hold without needing to drive a real switch-away.
+    fm.seedUntitled('hello');
+    (fm as unknown as { viewStates: Map<string, unknown> }).viewStates.set(
+      'untitled-1',
+      { marker: 'stale' },
+    );
+
+    // Snapshot the call count after seedUntitled (which itself runs
+    // through activateFile).
+    const callsBefore = mk.restoreViewState.mock.calls.length;
+
+    // Re-activate the already-active tab.
+    fm.activateFile('untitled-1');
+
+    expect(mk.restoreViewState.mock.calls.length).toBe(callsBefore);
+  });
+
+  it('still refreshes title + emits change on re-activation (rename use case)', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge, sent } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.seedUntitled('hello');
+    const titlesBefore = sent.filter(
+      (s) => s.channel === 'to:title:set',
+    ).length;
+
+    // Re-activate with a different display name.
+    fm.activateFile('untitled-1', 'Renamed');
+
+    const titlesAfter = sent.filter((s) => s.channel === 'to:title:set');
+    expect(titlesAfter.length).toBe(titlesBefore + 1);
+    expect(titlesAfter[titlesAfter.length - 1].data).toBe('Renamed');
+  });
+
+  it('renameTab on the active tab does not roll the cursor back', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const mk = makeMkeditor();
+    const fm = new FileManager(
+      bridge as never,
+      mk as never,
+      new EditorDispatcher(),
+    );
+
+    // Pre-seed a saved viewState for /abs/old.md (as if the user had
+    // switched away from it once). The renameTab path will migrate
+    // this entry to /abs/new.md and call activateFile(/abs/new.md).
+    // We must not see a restoreViewState call against that stale state.
+    fm.seedUntitled('placeholder'); // gives us untitled-1; not the target
+    // Manually wire up a tab + viewState for /abs/old.md so we can
+    // rename it without going through the bridge.
+    const editorMock = jest.requireMock('monaco-editor') as {
+      editor: { createModel: jest.Mock };
+    };
+    const model = editorMock.editor.createModel('body', 'markdown');
+    (fm as unknown as { models: Map<string, unknown> }).models.set(
+      '/abs/old.md',
+      model,
+    );
+    (fm as unknown as { originals: Map<string, string> }).originals.set(
+      '/abs/old.md',
+      'body',
+    );
+    (fm as unknown as { viewStates: Map<string, unknown> }).viewStates.set(
+      '/abs/old.md',
+      { marker: 'stale-from-prior-switch-away' },
+    );
+    fm.addTab('old.md', '/abs/old.md');
+    fm.activateFile('/abs/old.md'); // switching from untitled-1 — viewState restored here is fine
+
+    const restoreCallsBefore = mk.restoreViewState.mock.calls.length;
+
+    // Rename the active tab. renameTab mutates activeFile then calls
+    // activateFile(newPath) — without the fix this would re-apply the
+    // migrated stale viewState.
+    fm.renameTab('/abs/old.md', '/abs/new.md', 'new.md');
+
+    expect(mk.restoreViewState.mock.calls.length).toBe(restoreCallsBefore);
+  });
+});
+
 describe('FileManager serialize ↔ restore round-trip', () => {
   beforeEach(() => {
     jest.useFakeTimers();

@@ -418,23 +418,30 @@ export class FileManager {
     const mdl = this.models.get(path);
     if (!mdl) return;
 
-    // Capture the outgoing tab's cursor/selection/scroll/folding so we
-    // can restore it when the user comes back.
     const previousPath = this.activeFile;
-    if (previousPath && previousPath !== path) {
-      const state = this.mkeditor.saveViewState();
-      if (state) this.viewStates.set(previousPath, state);
+    const switching = previousPath !== path;
+
+    if (switching) {
+      // Capture the outgoing tab's cursor/selection/scroll/folding so
+      // we can restore it when the user comes back.
+      if (previousPath) {
+        const state = this.mkeditor.saveViewState();
+        if (state) this.viewStates.set(previousPath, state);
+      }
+
+      this.activeFile = path;
+      this.mkeditor.setModel(mdl);
+
+      // Restore the incoming tab's view state. First activations have
+      // no saved entry and stay at top-of-file (Monaco's default).
+      const incoming = this.viewStates.get(path);
+      if (incoming) this.mkeditor.restoreViewState(incoming);
+    } else {
+      // Re-activation: keep Monaco's current view state intact. Still
+      // refresh the title and re-emit below so rename / no-op
+      // activations behave consistently.
+      this.activeFile = path;
     }
-
-    this.activeFile = path;
-    this.mkeditor.setModel(mdl);
-
-    // Restore the incoming tab's view state. First activations have
-    // no saved entry and stay at top-of-file (Monaco's default).
-    // Note: Monaco's folding controller cancels its in-flight compute
-    // here, which rejects an internal promise with "Canceled".
-    const incoming = this.viewStates.get(path);
-    if (incoming) this.mkeditor.restoreViewState(incoming);
 
     const filename = name || path.split(/[\\/]/).pop() || '';
 
