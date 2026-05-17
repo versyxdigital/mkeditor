@@ -34,7 +34,17 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
   return (
     <Group orientation="horizontal" id="editor-preview" groupRef={groupRef}>
-      <Panel id="editor-pane" onResize={() => editorManager?.layout()}>
+      <Panel
+        id="editor-pane"
+        onResize={() => editorManager?.layout()}
+        // `react-resizable-panels` v4 puts an inner `<div>` with inline
+        // `overflow: auto` around the panel children. Monaco owns its own
+        // scrollbars, so leaving that div scrollable lets the two compete:
+        // on smaller viewports the pane jumps as both fight to keep the
+        // cursor in view. Forcing `overflow: hidden` cedes scrolling to
+        // Monaco entirely.
+        style={{ overflow: 'hidden' }}
+      >
         <EditorHost onReady={onEditorReady} />
       </Panel>
       <Separator className="gutter gutter-horizontal" />

@@ -1,5 +1,14 @@
 # CHANGELOG
 
+### 2026-05-17 - v3.8.1
+
+#### Fixed
+
+- Fixed issue with react-resizable-panels fighting monaco editor and causing overflow issues.
+- Fixed issue with splash screen hanging on web due to electron logger no-op
+
+---
+
 ### 2026-05-17 - v3.8.0
 
 #### Added
