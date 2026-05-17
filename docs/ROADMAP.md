@@ -13,6 +13,9 @@ Living document. Tracks planned work, open architectural questions, and recently
 
 ## Recently Landed
 
+- 🟢 **Session restore** _(2026-05-17)_ — Open tabs, the active tab, the workspace folder, and per-tab cursor/scroll/folding state survive quit/relaunch on both desktop and web. Three-phase delivery covered in [SESSION_RESTORE.md](SESSION_RESTORE.md); end-to-end surface documented in [ARCHITECTURE.md §4.12](ARCHITECTURE.md).
+- 🟢 **Web file explorer** _(2026-05-17)_ — Sidebar can open, browse, and edit local folders in Chromium-based browsers via the File System Access API. Workspace handle persists across refresh via IndexedDB.
+- 🟢 **Dependency bumps + CI + pre-commit hook** _(2026-05-17)_ — Electron `^37.4.0` → `^42.1.0`, Monaco `^0.52.2` → `^0.55.1`, TS + ESLint upgraded. CI workflow extended with `prettier-check` and `build-editor`/`build-app` verification. Husky pre-commit hook runs `prettier-check` + `lint` + `test` on every commit (`npm install` wires it via `prepare`).
 - 🟢 **React migration** _(2026-05-16)_ — Renderer rewritten as React 19 + shadcn/ui + Tailwind v4 on top of the existing managers and IPC bridge. Bootstrap, SweetAlert2, split.js, and `@popperjs/core` removed. CSS bundle shrunk ~229 KB. See [REACT_MIGRATION.md](REACT_MIGRATION.md) for the full ten-phase history; current state described in [ARCHITECTURE.md](ARCHITECTURE.md) and [../CLAUDE.md](../CLAUDE.md).
 - 🟢 **Context & architecture docs** _(2026-05-16)_ — Added [CLAUDE.md](../CLAUDE.md) and [docs/ARCHITECTURE.md](ARCHITECTURE.md) covering process boundaries, IPC contract, renderer composition, data flows, build pipeline, conventions.
 
@@ -42,7 +45,8 @@ Decision needed before significant new feature work touches provider wiring.
 🟡 In progress. Concrete items below.
 
 - 🟢 **Dependency bumps** _(2026-05-17)_ — Electron `^37.4.0` → `^42.1.0`, Monaco `^0.52.2` → `^0.55.1`, TypeScript and ESLint upgraded alongside (see `package.json` for current versions). markdown-it stays on `^14.1.0` (current major).
-- 🟢 **CI coverage** _(2026-05-17)_ — `.github/workflows/tests.yml` (renamed to `CI`) now runs lint, jest, `build-editor`, and `build-app` on every PR/push to `main`/`develop`. Build steps catch webpack/tsc errors that the unit suite misses.
+- 🟢 **CI coverage** _(2026-05-17)_ — `.github/workflows/tests.yml` (renamed to `CI`) now runs `prettier-check`, `lint`, `test`, `build-editor`, and `build-app` on every PR/push to `main`/`develop`. Build steps catch webpack/tsc errors that the unit suite misses.
+- 🟢 **Pre-commit hook** _(2026-05-17)_ — Husky 9 installed via the `prepare` script; `.husky/pre-commit` runs `prettier-check` + `lint` + `test` before every commit. `git commit --no-verify` bypasses in emergencies.
 - ⚪ **Logging levels as a setting** — TODO at [main.ts:34](../src/app/main.ts#L34).
 - ⚪ **Recent documents** — TODO at [main.ts:224](../src/app/main.ts#L224) ("get recent documents working or remove").
 - ⚪ **Auto-update on macOS** — currently disabled pending code signing.
@@ -53,7 +57,7 @@ Decision needed before significant new feature work touches provider wiring.
 
 Now that the React migration is in.
 
-- 🔵 **Session restore (open tabs + view state).** Today `FileManager.viewStates` keeps per-tab cursor/selection/scroll/folding in memory, so switching tabs within a session restores exactly where you were — but a fresh launch starts every tab at top-of-file and the open-tab list itself is lost. Goal: tabs reopen on launch, each at the last cursor/scroll position. Full plan in [SESSION_RESTORE.md](SESSION_RESTORE.md) — three phases, agents (`session-phase-executor`, `session-phase-reviewer`, `session-architecture-auditor`, `session-test-auditor`), and slash commands (`/session-phase`, `/session-status`, `/session-review`) live alongside the React-migration equivalents.
+- 🟢 **Session restore** _(2026-05-17)_ — Tabs, active tab, workspace folder, and per-tab cursor/scroll/folding persist across launches on both desktop and web. Three-phase delivery is documented in [SESSION_RESTORE.md](SESSION_RESTORE.md); end-to-end architecture in [ARCHITECTURE.md §4.12](ARCHITECTURE.md).
 - 🔵 **Markdown-extension styling for the live preview.** The markdown-it extensions still emit Bootstrap class names (`alert alert-*`, `img-fluid`, `table table-sm table-bordered table-striped`) so the exported HTML (which CDN-loads Bootstrap) renders correctly. The live preview only has minimal fallback styling in `_preview.scss` — alert blocks and tables show as unstyled blocks today. Add Tailwind-aware rules (or rewrite the extensions to emit Tailwind classes + keep Bootstrap classes for export only) so the live preview matches the export.
 - 🔵 **Expanded component test coverage.** Phase 10 landed the 5 spec'd RTL suites (`TabBar`, `FileTreePanel`, `SettingsModal`, `EditorToolbar`, `PreviewPane`). Next layer: the rest of `react/components/modals/*`, `BottomToolbarRight`, `Navbar`, the `PromptDialog` flow, hooks (`useCounts`, `useNotify`).
 - ⚪ **Theming customisation.** Dark/light is hardwired today; explore exposing the brand `--primary` and a couple of secondary tokens as user settings.
