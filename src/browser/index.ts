@@ -163,6 +163,16 @@ let pendingFactories: {
  * the providers, the IPC bridge (desktop), and the splash dismissal.
  */
 function onEditorReady() {
+  try {
+    onEditorReadyInner();
+  } catch (err) {
+    logger?.error('index.onEditorReady', JSON.stringify(err));
+  } finally {
+    showSplashScreen({ duration: 750 });
+  }
+}
+
+function onEditorReadyInner() {
   if (!pendingFactories) {
     logger?.error(
       'index.onEditorReady',
@@ -271,6 +281,4 @@ function onEditorReady() {
     fileManager: bridgeManager.fileManager,
     fileTreeManager: bridgeManager.fileTreeManager,
   }));
-
-  showSplashScreen({ duration: 750 });
 }
