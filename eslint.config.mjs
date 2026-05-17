@@ -46,7 +46,10 @@ export default [
     },
 
     rules: {
-      indent: ['error', 2],
+      // SwitchCase: 1 aligns with Prettier's default (case indented one
+      // level under switch). Without it ESLint and Prettier disagree on
+      // switch bodies and trade reformats back and forth.
+      indent: ['error', 2, { SwitchCase: 1 }],
       quotes: ['error', 'single', { avoidEscape: true }],
       semi: ['error', 'always'],
       'no-constant-condition': 'off',
