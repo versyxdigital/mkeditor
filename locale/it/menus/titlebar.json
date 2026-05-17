@@ -1,0 +1,28 @@
+{
+  "file": "File",
+  "edit": "Modifica",
+  "view": "Visualizza",
+  "help": "Aiuto",
+
+  "file.new": "Nuovo file...",
+  "file.open": "Apri file...",
+  "folder.open": "Apri cartella...",
+  "file.save": "Salva",
+  "file.saveas": "Salva con nome...",
+  "file.settings": "Impostazioni...",
+  "file.openlog": "Apri log...",
+  "file.quit": "Esci",
+
+  "edit.undo": "Annulla",
+  "edit.redo": "Ripeti",
+  "edit.cut": "Taglia",
+  "edit.copy": "Copia",
+  "edit.paste": "Incolla",
+
+  "view.palette": "Apri palette dei comandi",
+  "view.fullscreen": "Attiva/Disattiva schermo intero",
+  "view.devtools": "Attiva/Disattiva strumenti di sviluppo",
+
+  "help.about": "Informazioni su MKEditor",
+  "help.shortcuts": "Scorciatoie dell'editor"
+}

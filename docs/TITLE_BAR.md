@@ -133,7 +133,7 @@ type MenuModel = MenuGroup[];
 | --- | --------------------------------------------------------------- | ------------- |
 | 1   | Main-process infrastructure (frameless window + IPC + AppMenu)  | 🟢 2026-05-17 |
 | 2   | Renderer `<TitleBar>` (menu bar + window controls + drag)       | 🟢 2026-05-17 |
-| 3   | Polish (maximize sync, keyboard nav, macOS verify, tests, i18n) | 🔵            |
+| 3   | Polish (maximize sync, keyboard nav, macOS verify, tests, i18n) | 🟢 2026-05-17 |
 
 ---
 

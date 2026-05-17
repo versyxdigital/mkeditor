@@ -106,6 +106,9 @@ src/browser/
 ├── notify.ts                      sonnerToast(level, msg) — neutral seam shared by React +
 │                                  non-React callers (BridgeListeners)
 ├── splash.ts                      showSplashScreen + fade helpers (boot-time)
+├── menuDispatch.ts                dispatchMenuActionExternal / registerMenuActionDispatcher
+│                                  — module-level seam from <TitleBar> into App.tsx's
+│                                  resolver (mirrors openModalExternal pattern)
 ├── util.ts                        debounce, getExecutionBridge, syncPreviewToExportSettings
 ├── config.ts                      default EditorSettings + ExportSettings
 ├── version.ts                     generated at build from package.json
@@ -172,10 +175,21 @@ src/browser/
     │   ├── PromptsContext.tsx     Dialog-driven prompt/confirm; openPromptExternal /
     │   │                          confirmExternal / promptExternal seams used by
     │   │                          FileManager.closeTab + explorerContextMenu
-    │   └── PropertiesContext.tsx  FileProperties modal state + showPropertiesExternal
+    │   ├── PropertiesContext.tsx  FileProperties modal state + showPropertiesExternal
+    │   └── WindowContext.tsx      useWindowControls() over BridgeManager's isMaximized
+    │                              observable + minimize/maximize/close/toggleFullscreen
+    │                              methods. NOOP fallback on web + pre-bridge boot.
     ├── components/
-    │   ├── Navbar.tsx             top chrome (sidebar toggle, file name, counts, cog,
-    │   │                          help) — shadcn Tooltip for icon hints
+    │   ├── TitleBar.tsx          VSCode-style top strip: logo + File/Edit/View/Help
+    │   │                          dropdowns + min/max/close on Windows/Linux desktop.
+    │   │                          CSS drag region with `WebkitAppRegion: drag` on the
+    │   │                          shell and `no-drag` on every interactive child.
+    │   │                          Hidden on macOS (native menu owns that surface);
+    │   │                          web renders logo + menus only.
+    │   ├── TitleBar.menu.tsx      one Radix DropdownMenu per MenuGroup; items dispatch
+    │   │                          through `dispatchMenuActionExternal` (menuDispatch.ts).
+    │   ├── Navbar.tsx             second-row chrome (sidebar toggle, file name, counts,
+    │   │                          cog, help) — shadcn Tooltip for icon hints
     │   ├── TabBar.tsx             native HTML5 DnD reorder; close button → FileManager
     │   ├── Sidebar.tsx, FileTreePanel.tsx     file explorer
     │   ├── Workspace.tsx          react-resizable-panels editor/preview split
@@ -432,6 +446,43 @@ A legacy `mkeditor-content` localStorage entry (left by pre-session-restore buil
 | `to:session:clear`           | renderer → main | none                     | Wipe the persisted session file   |
 | `from:session:restore`       | main → renderer | `SessionRestoreEnvelope` | Boot-time replay payload          |
 | `from:session:flush-request` | main → renderer | none                     | "Send me your final session, now" |
+
+### 4.13 Custom title bar
+
+The renderer draws its own title strip on Windows + Linux desktop and (with reduced surface) on web. macOS keeps the native menu bar and traffic lights — the renderer suppresses `<TitleBar>` entirely on `platform === 'darwin'`.
+
+**Window chrome.** [main.ts](../src/app/main.ts) branches in `BrowserWindow` construction: `frame: false` on Windows + Linux removes the native title strip; `titleBarStyle: 'hiddenInset'` + `trafficLightPosition: { x: 12, y: 12 }` on macOS keeps the traffic lights and aligns them with the title row.
+
+**Menu model.** [src/app/lib/menuModel.ts](../src/app/lib/menuModel.ts) is plain TS with no Electron imports and is consumed by both [AppMenu](../src/app/lib/AppMenu.ts) (builds the macOS native menu) and `<TitleBar>` (the in-window menu on Windows/Linux/web). It lives under `src/app/` because `src/app/tsconfig.json` excludes `../browser`; the renderer reaches it via webpack at `../../app/lib/menuModel`.
+
+Each `MenuItem` carries `{ id, label, accelerator?, darwinAccelerator?, action }`. Accelerators use Electron's `CmdOrCtrl+` modifier (resolved at runtime); `darwinAccelerator` is set only when the platforms genuinely diverge (e.g. DevTools — `Alt+Cmd+I` on macOS vs `Ctrl+Shift+I` elsewhere). `MenuAction` is one of `{ kind: 'channel', channel, payload? }`, `{ kind: 'role', role }`, or `{ kind: 'command', commandId }`.
+
+**Action dispatch.** [src/browser/menuDispatch.ts](../src/browser/menuDispatch.ts) is the module-level seam — `dispatchMenuActionExternal(action)` is called by `<TitleBar.menu>`'s item-select handler. `<App>` registers the real resolver (`MenuActionBridge` sentinel) at mount time. The resolver:
+
+- `channel` actions either open a React modal (`from:modal:open`) or call one of `BridgeManager`'s `menu*` helpers (`menuFileNew`, `menuFileSave`, `menuFolderOpen`, …). Those helpers are also what [BridgeListeners](../src/browser/core/BridgeListeners.ts) delegates to from the equivalent `from:*` receiver, so the macOS native menu and the in-window menu share one implementation.
+- `role` actions fire Monaco's `editor.trigger(...)` for undo/redo/cut/copy/paste, or `to:window:fullscreen` / `to:window:close` for togglefullscreen / quit.
+- `command` actions ship `to:command:run` with the commandId; main's [AppMenu.runCommand](../src/app/lib/AppMenu.ts) handles the same dispatch table the native menu uses.
+
+**Window controls.** [AppWindow.ts](../src/app/lib/AppWindow.ts) owns the window-control IPC surface. The `to:window:*` channels drive `BrowserWindow.minimize() / maximize() / unmaximize() / close() / setFullScreen(...)`. The class also listens for the window's own `maximize` / `unmaximize` events and emits `from:window:state` (`{ isMaximized: boolean }`); it sends an initial state on `did-finish-load` so the renderer's icon hydrates correctly on reload.
+
+**React surface.** [`<TitleBar>`](../src/browser/react/components/TitleBar.tsx) lays out logo · menu buttons · spacer · window-control trio. The root element gets `-webkit-app-region: drag` on desktop; every interactive child (logo, menu nav, window controls) opts into `no-drag`. Double-clicking the drag region toggles maximize/restore (matches every OS's native gesture). Alt focuses the first menu trigger (unless the user is typing in an input or Monaco); Left/Right/Home/End cycle focus between triggers; Esc closes any open dropdown (Radix-native). The active menu shows a highlight via Radix's `data-state="open"`.
+
+[`WindowContext`](../src/browser/react/contexts/WindowContext.tsx) wraps `BridgeManager.subscribeWindowState` + `getWindowState` via `useSyncExternalStore`. Web mode and the pre-bridge initial mount fall back to no-op handlers so consumers never need a null check.
+
+**Platform branching.** The renderer reads `platform: 'web' | 'darwin' | 'win32' | 'linux'` from `Managers`, populated at boot from `window.mked.platform` (pinned by the preload from `process.platform`). React components never sniff `navigator.userAgent` or `process.platform` themselves.
+
+**i18n.** Menu labels resolve through `t('menus-titlebar:<id>')` with the model's English `label` as the `defaultValue` fallback. The `menus-titlebar` namespace ships translations for all 13 supported locales.
+
+**IPC channels** (whitelisted in [preload.ts](../src/app/preload.ts)):
+
+| Channel                | Direction       | Payload             | Purpose                            |
+| ---------------------- | --------------- | ------------------- | ---------------------------------- |
+| `to:window:minimize`   | renderer → main | none                | Minimize the BrowserWindow         |
+| `to:window:maximize`   | renderer → main | none                | Toggle maximize / restore          |
+| `to:window:close`      | renderer → main | none                | Close the BrowserWindow            |
+| `to:window:fullscreen` | renderer → main | none                | Toggle full-screen                 |
+| `to:command:run`       | renderer → main | `commandId: string` | Run an AppMenu.runCommand handler  |
+| `from:window:state`    | main → renderer | `{ isMaximized }`   | Maximize-state sync (boot + event) |
 
 ## 5. Settings Schema
 

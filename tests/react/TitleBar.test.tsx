@@ -16,6 +16,14 @@ jest.mock('../../src/browser/menuDispatch', () => ({
   registerMenuActionDispatcher: jest.fn(),
 }));
 
+// i18next isn't initialised in tests — return the `defaultValue` (i.e.
+// the model's English label) so accessible-name queries see real text.
+jest.mock('../../src/browser/i18n', () => ({
+  t: (_key: string, opts?: { defaultValue?: string }) =>
+    opts?.defaultValue ?? _key,
+  normalizeLanguage: (lng: string) => lng,
+}));
+
 // jsdom doesn't implement these — Radix dropdown shims around them when
 // absent but logs noisy errors. Stubbing keeps the test output clean.
 beforeAll(() => {
@@ -217,5 +225,119 @@ describe('<TitleBar>', () => {
     await user.click(screen.getByRole('button', { name: 'File' }));
     const newItem = await screen.findByRole('menuitem', { name: /New File/ });
     expect(within(newItem).getByText(/Ctrl\+N/)).toBeInTheDocument();
+  });
+
+  describe('keyboard navigation', () => {
+    it('Alt focuses the first menu trigger', () => {
+      renderTitleBar();
+      // Dispatch on window directly — fireEvent.keyDown wraps an
+      // Element dispatcher and the handler we're exercising is bound
+      // to window.
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt' }));
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'File' }),
+      );
+    });
+
+    it('ArrowRight on a focused trigger moves focus to the next trigger', () => {
+      renderTitleBar();
+      const file = screen.getByRole('button', { name: 'File' });
+      const edit = screen.getByRole('button', { name: 'Edit' });
+      file.focus();
+      fireEvent.keyDown(file, { key: 'ArrowRight' });
+      expect(document.activeElement).toBe(edit);
+    });
+
+    it('ArrowLeft wraps to the last trigger from the first', () => {
+      renderTitleBar();
+      const file = screen.getByRole('button', { name: 'File' });
+      const help = screen.getByRole('button', { name: 'Help' });
+      file.focus();
+      fireEvent.keyDown(file, { key: 'ArrowLeft' });
+      expect(document.activeElement).toBe(help);
+    });
+
+    it('End jumps to the last trigger', () => {
+      renderTitleBar();
+      const file = screen.getByRole('button', { name: 'File' });
+      const help = screen.getByRole('button', { name: 'Help' });
+      file.focus();
+      fireEvent.keyDown(file, { key: 'End' });
+      expect(document.activeElement).toBe(help);
+    });
+
+    it('Home jumps to the first trigger', () => {
+      renderTitleBar();
+      const file = screen.getByRole('button', { name: 'File' });
+      const help = screen.getByRole('button', { name: 'Help' });
+      help.focus();
+      fireEvent.keyDown(help, { key: 'Home' });
+      expect(document.activeElement).toBe(file);
+    });
+
+    it('does not steal Alt while focus is in a contenteditable region', () => {
+      renderTitleBar();
+      const ce = document.createElement('div');
+      // setAttribute (not the contentEditable property) is what closest()
+      // attribute selectors actually inspect in jsdom — the property
+      // sometimes doesn't reflect back into the attribute.
+      ce.setAttribute('contenteditable', 'true');
+      ce.tabIndex = 0;
+      document.body.appendChild(ce);
+      ce.focus();
+      ce.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Alt', bubbles: true }),
+      );
+      expect(document.activeElement).toBe(ce);
+      ce.remove();
+    });
+
+    it('does not steal Alt while the user is typing in an input', () => {
+      renderTitleBar();
+      const input = document.createElement('input');
+      document.body.appendChild(input);
+      input.focus();
+      // Dispatch from the input so e.target is the input element.
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Alt', bubbles: true }),
+      );
+      // Focus did NOT jump to the File trigger.
+      expect(document.activeElement).toBe(input);
+      input.remove();
+    });
+
+    it('does not steal Alt on web (no menu nav)', () => {
+      renderTitleBar({ mode: 'web', platform: 'web' });
+      const file = screen.queryByRole('button', { name: 'File' });
+      // No focus snap on web — verify by firing Alt and asserting the
+      // active element didn't change.
+      const before = document.activeElement;
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt' }));
+      expect(document.activeElement).toBe(before);
+      expect(file).toBeInTheDocument(); // File menu still rendered on web
+    });
+  });
+
+  describe('double-click drag region', () => {
+    it('toggles maximize on the title bar background', () => {
+      const { bridge } = renderTitleBar();
+      const bar = screen.getByTestId('title-bar');
+      fireEvent.doubleClick(bar);
+      expect(bridge.windowMaximize).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores double-clicks that originated on a no-drag child', () => {
+      const { bridge } = renderTitleBar();
+      const closeBtn = screen.getByRole('button', { name: 'Close' });
+      fireEvent.doubleClick(closeBtn);
+      expect(bridge.windowMaximize).not.toHaveBeenCalled();
+    });
+
+    it('is inert on web (no maximize concept)', () => {
+      const { bridge } = renderTitleBar({ mode: 'web', platform: 'web' });
+      const bar = screen.getByTestId('title-bar');
+      fireEvent.doubleClick(bar);
+      expect(bridge.windowMaximize).not.toHaveBeenCalled();
+    });
   });
 });

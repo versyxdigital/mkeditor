@@ -21,6 +21,8 @@ import { TitleBarMenu } from './TitleBar.menu';
  */
 export const TitleBar: React.FC = () => {
   const { mode, platform } = useManagers();
+  const { maximize: toggleMaximize } = useWindowControls();
+  const navRef = React.useRef<HTMLElement | null>(null);
 
   // macOS: leave the strip empty so the native menu and traffic lights
   // stay the source of truth. `titleBarStyle: 'hiddenInset'` already
@@ -28,6 +30,51 @@ export const TitleBar: React.FC = () => {
   if (platform === 'darwin' && mode === 'desktop') return null;
 
   const isDesktop = mode === 'desktop';
+
+  // Alt opens the first menu (mirrors VSCode / native menu-bar UX).
+  // Left/Right cycling between open menus is handled by Radix once the
+  // user is inside the menu strip; this hook just gets them in.
+  React.useEffect(() => {
+    if (!isDesktop) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Alt' || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      // Don't grab Alt while the user is typing in an input/textarea or
+      // inside Monaco — the editor needs Alt for its own bindings.
+      const target = e.target instanceof Element ? e.target : null;
+      const inEditableField =
+        !!target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          (target as HTMLElement).isContentEditable ||
+          target.closest(
+            '[contenteditable=""], [contenteditable="true"], .monaco-editor',
+          ) !== null);
+      if (inEditableField) return;
+      const first = navRef.current?.querySelector<HTMLButtonElement>(
+        'button[data-titlebar-menu]',
+      );
+      if (first) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isDesktop]);
+
+  // Double-clicking the drag region toggles maximize/restore — same
+  // gesture every OS uses on its native title bar. Only fires on
+  // desktop; web's title bar has no concept of maximize.
+  const onDragRegionDoubleClick = isDesktop
+    ? (e: React.MouseEvent<HTMLDivElement>) => {
+        // Ignore double-clicks that originated on a `no-drag` child
+        // (menu buttons, window controls); those bubble up but aren't
+        // real drag-region interactions.
+        const target = e.target as HTMLElement;
+        if (target.closest('[data-titlebar-no-drag]')) return;
+        toggleMaximize();
+      }
+    : undefined;
 
   return (
     <div
@@ -38,16 +85,21 @@ export const TitleBar: React.FC = () => {
       style={
         isDesktop ? ({ WebkitAppRegion: 'drag' } as React.CSSProperties) : {}
       }
+      onDoubleClick={onDragRegionDoubleClick}
     >
       <img
         src="./icon.png"
         alt=""
         className="mr-1 h-4 w-4"
+        data-titlebar-no-drag
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       />
       <nav
+        ref={navRef}
         className="flex items-center gap-px"
+        data-titlebar-no-drag
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        onKeyDown={cycleMenuTriggers}
       >
         {menuModel.map((group) => (
           <TitleBarMenu key={group.id} group={group} />
@@ -59,12 +111,56 @@ export const TitleBar: React.FC = () => {
   );
 };
 
+/**
+ * ArrowLeft / ArrowRight cycle focus between menu-bar triggers while the
+ * dropdown is closed (matches the VSCode keyboard model). Home/End jump
+ * to the first / last. When a dropdown is *open*, Radix owns the keys
+ * — its built-in arrow handling moves through menu items vertically.
+ */
+function cycleMenuTriggers(e: React.KeyboardEvent<HTMLElement>): void {
+  if (
+    e.key !== 'ArrowLeft' &&
+    e.key !== 'ArrowRight' &&
+    e.key !== 'Home' &&
+    e.key !== 'End'
+  ) {
+    return;
+  }
+  const target = e.target as HTMLElement;
+  if (!target.matches('button[data-titlebar-menu]')) return;
+  const triggers = Array.from(
+    e.currentTarget.querySelectorAll<HTMLButtonElement>(
+      'button[data-titlebar-menu]',
+    ),
+  );
+  const idx = triggers.indexOf(target as HTMLButtonElement);
+  if (idx < 0) return;
+  let nextIdx = idx;
+  switch (e.key) {
+    case 'ArrowLeft':
+      nextIdx = (idx - 1 + triggers.length) % triggers.length;
+      break;
+    case 'ArrowRight':
+      nextIdx = (idx + 1) % triggers.length;
+      break;
+    case 'Home':
+      nextIdx = 0;
+      break;
+    case 'End':
+      nextIdx = triggers.length - 1;
+      break;
+  }
+  e.preventDefault();
+  triggers[nextIdx]?.focus();
+}
+
 const WindowControlButtons: React.FC = () => {
   const { isMaximized, minimize, maximize, close } = useWindowControls();
 
   return (
     <div
       className="flex h-full items-stretch"
+      data-titlebar-no-drag
       style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
     >
       <ControlButton ariaLabel="Minimize" onClick={minimize}>

@@ -1,0 +1,28 @@
+{
+  "file": "文件",
+  "edit": "编辑",
+  "view": "视图",
+  "help": "帮助",
+
+  "file.new": "新建文件...",
+  "file.open": "打开文件...",
+  "folder.open": "打开文件夹...",
+  "file.save": "保存",
+  "file.saveas": "另存为...",
+  "file.settings": "设置...",
+  "file.openlog": "打开日志...",
+  "file.quit": "退出",
+
+  "edit.undo": "撤消",
+  "edit.redo": "重做",
+  "edit.cut": "剪切",
+  "edit.copy": "复制",
+  "edit.paste": "粘贴",
+
+  "view.palette": "打开命令面板",
+  "view.fullscreen": "切换全屏",
+  "view.devtools": "切换开发人员工具",
+
+  "help.about": "关于 MKEditor",
+  "help.shortcuts": "编辑器快捷键"
+}

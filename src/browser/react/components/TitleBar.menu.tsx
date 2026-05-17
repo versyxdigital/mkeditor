@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import type { MenuGroup, MenuItem } from '../../../app/lib/menuModel';
 import { dispatchMenuActionExternal } from '../../menuDispatch';
+import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
 import {
   DropdownMenu,
@@ -15,6 +16,17 @@ interface TitleBarMenuProps {
   group: MenuGroup;
 }
 
+/** Look up `menus-titlebar:<id>` and fall back to the model's English
+ *  `label` (which is always set). Lets components stay readable without
+ *  threading a `t` everywhere. */
+function useMenuLabel(): (id: string, fallback: string) => string {
+  const { t } = useTranslation();
+  return React.useCallback(
+    (id, fallback) => t(`menus-titlebar:${id}`, { defaultValue: fallback }),
+    [t],
+  );
+}
+
 /**
  * One File / Edit / View / Help dropdown. The trigger renders the group
  * label as a small text button; the content lists items from the model
@@ -26,9 +38,12 @@ interface TitleBarMenuProps {
  * row is keyboard-navigable via Radix's built-in arrow-key handling.
  */
 export const TitleBarMenu: React.FC<TitleBarMenuProps> = ({ group }) => {
+  const label = useMenuLabel();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
+        data-titlebar-menu={group.id}
+        data-titlebar-no-drag
         className={cn(
           'rounded-sm px-2 py-1 text-xs text-foreground',
           'hover:bg-accent hover:text-accent-foreground',
@@ -37,7 +52,7 @@ export const TitleBarMenu: React.FC<TitleBarMenuProps> = ({ group }) => {
         )}
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
-        {group.label}
+        {label(group.id, group.label)}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[14rem]">
         {group.items.map((item, idx) => (
@@ -52,6 +67,7 @@ const MenuRow: React.FC<{ item: MenuItem; first: boolean }> = ({
   item,
   first,
 }) => {
+  const label = useMenuLabel();
   const accelerator = item.accelerator
     ? formatAccelerator(item.accelerator)
     : '';
@@ -65,7 +81,7 @@ const MenuRow: React.FC<{ item: MenuItem; first: boolean }> = ({
         }}
         className="flex items-center justify-between gap-6 text-xs"
       >
-        <span>{item.label}</span>
+        <span>{label(item.id, item.label)}</span>
         {accelerator && (
           <span className="text-[10px] text-muted-foreground">
             {accelerator}
