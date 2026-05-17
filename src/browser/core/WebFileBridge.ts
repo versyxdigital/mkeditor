@@ -60,48 +60,48 @@ export class WebFileBridge implements ContextBridgeAPI {
 
   send(channel: string, data: any): void {
     switch (channel) {
-    case 'to:folder:open':
-      void this.openFolder();
-      break;
-    case 'to:folder:create':
-      void this.createFolder(data.parent, data.name);
-      break;
-    case 'to:file:openpath':
-      void this.openPath(data.path);
-      break;
-    case 'to:file:save':
-      void this.saveFile(data.file, data.content);
-      break;
-    case 'to:file:saveas':
-      void this.saveAs(data);
-      break;
-    case 'to:file:create':
-      void this.createFile(data.parent, data.name);
-      break;
-    case 'to:file:rename':
-      void this.renamePath(data.path, data.name);
-      break;
-    case 'to:file:delete':
-      void this.deletePath(data.path);
-      break;
-    case 'to:file:properties':
-      void this.showProperties(data.path);
-      break;
-    case 'to:html:export':
-      HTMLExporter.webExport(data.content, 'text/html', '.html');
-      break;
-    case 'to:pdf:export':
-      HTMLExporter.pdfWebExport(data.content);
-      break;
-    case 'to:session:save':
-      this.persistSession(data as SessionPayload);
-      break;
-    case 'to:title:set':
-    case 'to:editor:state':
-    case 'to:settings:save':
-    case 'to:i18n:set':
-    case 'to:file:new':
-      break;
+      case 'to:folder:open':
+        void this.openFolder();
+        break;
+      case 'to:folder:create':
+        void this.createFolder(data.parent, data.name);
+        break;
+      case 'to:file:openpath':
+        void this.openPath(data.path);
+        break;
+      case 'to:file:save':
+        void this.saveFile(data.file, data.content);
+        break;
+      case 'to:file:saveas':
+        void this.saveAs(data);
+        break;
+      case 'to:file:create':
+        void this.createFile(data.parent, data.name);
+        break;
+      case 'to:file:rename':
+        void this.renamePath(data.path, data.name);
+        break;
+      case 'to:file:delete':
+        void this.deletePath(data.path);
+        break;
+      case 'to:file:properties':
+        void this.showProperties(data.path);
+        break;
+      case 'to:html:export':
+        HTMLExporter.webExport(data.content, 'text/html', '.html');
+        break;
+      case 'to:pdf:export':
+        HTMLExporter.pdfWebExport(data.content);
+        break;
+      case 'to:session:save':
+        this.persistSession(data as SessionPayload);
+        break;
+      case 'to:title:set':
+      case 'to:editor:state':
+      case 'to:settings:save':
+      case 'to:i18n:set':
+      case 'to:file:new':
+        break;
     }
   }
 
@@ -334,7 +334,8 @@ export class WebFileBridge implements ContextBridgeAPI {
         viewState: null,
         untitledContent: legacy,
       };
-      const existing = payload?.tabs.filter((t) => t.path !== 'untitled-1') ?? [];
+      const existing =
+        payload?.tabs.filter((t) => t.path !== 'untitled-1') ?? [];
       payload = {
         version: 1,
         tabs: [migrated, ...existing],
@@ -393,9 +394,7 @@ export class WebFileBridge implements ContextBridgeAPI {
     }
   }
 
-  private async activateRoot(
-    handle: FileSystemDirectoryHandle,
-  ): Promise<void> {
+  private async activateRoot(handle: FileSystemDirectoryHandle): Promise<void> {
     this.rootHandle = handle;
     this.rootName = handle.name;
     this.handles.clear();

@@ -221,9 +221,7 @@ const LazyModals: React.FC = () => {
 
   React.useEffect(() => {
     if (!propertiesInfo) return;
-    setSeen((prev) =>
-      prev.properties ? prev : { ...prev, properties: true },
-    );
+    setSeen((prev) => (prev.properties ? prev : { ...prev, properties: true }));
   }, [propertiesInfo]);
 
   return (

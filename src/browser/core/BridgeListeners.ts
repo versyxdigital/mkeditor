@@ -46,7 +46,7 @@ export function registerBridgeListeners(
   };
 
   // Set the theme according to the user's system theme. React
-  // subscribes to SettingsProvider's emitter so the navbar 
+  // subscribes to SettingsProvider's emitter so the navbar
   // darkmode toggle reflects the change.
   bridge.receive('from:theme:set', (shouldUseDarkMode: boolean) => {
     if (shouldUseDarkMode) {

@@ -91,7 +91,11 @@ const copyIconSvg =
  * when the user writes a fenced block without a language id — in that
  * case we still render the header but skip the language label.
  */
-function renderCodeblock(rawSource: string, highlightedHtml: string, lang: string) {
+function renderCodeblock(
+  rawSource: string,
+  highlightedHtml: string,
+  lang: string,
+) {
   const isTerminal = terminalLanguages.has(lang);
   const label = languageDisplayNames[lang] ?? (lang || '');
   const wrapperClasses = isTerminal

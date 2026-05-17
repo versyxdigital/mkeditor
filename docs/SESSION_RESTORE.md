@@ -6,17 +6,17 @@ Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Decisions
 
-| Area              | Decision                                                                                                                                                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Persistence file  | `~/.mkeditor/session.json` on desktop (sibling to `settings.json`), `mkeditor-session` localStorage key on web                                                                                                            |
-| Atomic write      | Write to `session.json.tmp` then `fs.rename` into place. Same pattern as `AppSettings.save()` if it doesn't already do it; introduce here if not.                                                                          |
-| Untitled tabs     | Persist with `content` inlined under the synthetic `untitled-N` id, but **only when the buffer is non-empty**. Empty scratch tabs are dropped on quit. Restored untitled tabs reuse the synthetic id; counter advances past the highest restored id. |
-| Missing files     | Skip the tab silently (don't open) **and** surface one toast naming the dropped paths via a new `notifications:session_file_missing` key (with `{{files}}` interpolation). Keep the rest of the session intact.            |
-| Save cadence      | Structural-event-driven. Writes fire on `addTab` / `closeTab` / `activateFile` / `reorderTabs` / `renameTab` / `replaceUntitled`, debounced ~300 ms. The active tab's current `saveViewState()` is captured at write time. |
-| Quit flush        | Electron `app.on('before-quit')` triggers a final synchronous flush (via `mainWindow.webContents.send('from:session:flush-request')` + a renderer ack — or a renderer-side `pagehide` write). Pick the simplest in P1.    |
-| Web save cadence  | Same triggers, but writes are synchronous (`localStorage.setItem`), so no debounce needed. A `beforeunload` listener handles the quit-flush equivalent.                                                                   |
-| Crash resilience  | Atomic write covers truncation. Worst-case loss after crash: cursor pos for the at-crash active tab (everything else was captured on switch-out).                                                                          |
-| State ownership   | `FileManager.serializeSession()` / `restoreSession(payload)` own the data shape; main-process `AppSession` owns disk I/O; web-mode equivalent in `WebFileBridge`. **No React file knows the session schema.**             |
+| Area             | Decision                                                                                                                                                                                                                                             |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Persistence file | `~/.mkeditor/session.json` on desktop (sibling to `settings.json`), `mkeditor-session` localStorage key on web                                                                                                                                       |
+| Atomic write     | Write to `session.json.tmp` then `fs.rename` into place. Same pattern as `AppSettings.save()` if it doesn't already do it; introduce here if not.                                                                                                    |
+| Untitled tabs    | Persist with `content` inlined under the synthetic `untitled-N` id, but **only when the buffer is non-empty**. Empty scratch tabs are dropped on quit. Restored untitled tabs reuse the synthetic id; counter advances past the highest restored id. |
+| Missing files    | Skip the tab silently (don't open) **and** surface one toast naming the dropped paths via a new `notifications:session_file_missing` key (with `{{files}}` interpolation). Keep the rest of the session intact.                                      |
+| Save cadence     | Structural-event-driven. Writes fire on `addTab` / `closeTab` / `activateFile` / `reorderTabs` / `renameTab` / `replaceUntitled`, debounced ~300 ms. The active tab's current `saveViewState()` is captured at write time.                           |
+| Quit flush       | Electron `app.on('before-quit')` triggers a final synchronous flush (via `mainWindow.webContents.send('from:session:flush-request')` + a renderer ack — or a renderer-side `pagehide` write). Pick the simplest in P1.                               |
+| Web save cadence | Same triggers, but writes are synchronous (`localStorage.setItem`), so no debounce needed. A `beforeunload` listener handles the quit-flush equivalent.                                                                                              |
+| Crash resilience | Atomic write covers truncation. Worst-case loss after crash: cursor pos for the at-crash active tab (everything else was captured on switch-out).                                                                                                    |
+| State ownership  | `FileManager.serializeSession()` / `restoreSession(payload)` own the data shape; main-process `AppSession` owns disk I/O; web-mode equivalent in `WebFileBridge`. **No React file knows the session schema.**                                        |
 
 ### State ownership rule
 
@@ -93,8 +93,8 @@ interface SessionTab {
 
 ## Phase Index
 
-| #   | Phase                                                       | Status        |
-| --- | ----------------------------------------------------------- | ------------- |
+| #   | Phase                                                         | Status        |
+| --- | ------------------------------------------------------------- | ------------- |
 | 1   | Main-process infrastructure (AppSession + IPC + atomic write) | 🟢 2026-05-17 |
 | 2   | Renderer integration (serialize/restore + debounce + toast)   | 🟢 2026-05-17 |
 | 3   | Web mode parity (localStorage + handle re-walk)               | 🟢 2026-05-17 |

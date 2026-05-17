@@ -18,8 +18,8 @@ interface WorkspaceProps {
 }
 
 /**
- * The editor/preview split. Using `react-resizable-panels` v4 
- * (Group + Panel + Separator). Panel.onResize fires 
+ * The editor/preview split. Using `react-resizable-panels` v4
+ * (Group + Panel + Separator). Panel.onResize fires
  * `editorManager.layout()` so Monaco reflows on every drag tick.
  *
  * React `<EditorToolbar>` owns the split-reset button and calls

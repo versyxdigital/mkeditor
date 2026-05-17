@@ -1,6 +1,6 @@
 # MKEditor — Project Context
 
-Electron-based markdown editor built around Monaco. The same TypeScript bundle ships as a desktop app (Electron wraps it) and as a pure web app (deployed to GitHub Pages). Current version: 3.7.0.
+Electron-based markdown editor built around Monaco. The same TypeScript bundle ships as a desktop app (Electron wraps it) and as a pure web app (deployed to GitHub Pages). Current version: 3.8.0.
 
 The renderer is React 19 + shadcn/ui + Tailwind v4 on top of a set of plain-TS managers (Monaco, files, settings, markdown, IPC bridge). Migration history: [docs/REACT_MIGRATION.md](docs/REACT_MIGRATION.md). Subsystem READMEs: [src/app/README.md](src/app/README.md), [src/browser/README.md](src/browser/README.md), [src/browser/extensions/README.md](src/browser/extensions/README.md). For deeper detail see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). For planned work see [docs/ROADMAP.md](docs/ROADMAP.md).
 

@@ -9,7 +9,7 @@ import { dom } from '../dom';
 /**
  * Several Monaco controllers cancel in-flight tokens when their model
  * changes or when `restoreViewState` is called. The cancel triggers a
- * rejection on an internal promise that has no error handler, so the 
+ * rejection on an internal promise that has no error handler, so the
  * browser logs an error. It's a benign Monaco design choice,
  *
  * We install one `unhandledrejection` listener at module load that

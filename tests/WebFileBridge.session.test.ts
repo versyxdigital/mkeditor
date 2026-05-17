@@ -48,9 +48,7 @@ function installIndexedDbStub() {
     close: () => {},
   };
 
-  (
-    window as unknown as { indexedDB: { open: () => unknown } }
-  ).indexedDB = {
+  (window as unknown as { indexedDB: { open: () => unknown } }).indexedDB = {
     open: () => {
       const req: {
         onsuccess?: () => void;
@@ -80,9 +78,7 @@ function makeFileHandle(content: string): FileSystemFileHandle {
 
 async function loadBridge() {
   jest.resetModules();
-  const { WebFileBridge } = await import(
-    '../src/browser/core/WebFileBridge'
-  );
+  const { WebFileBridge } = await import('../src/browser/core/WebFileBridge');
   return new WebFileBridge();
 }
 
@@ -109,7 +105,9 @@ describe('WebFileBridge.persistSession (to:session:save)', () => {
     };
     bridge.send('to:session:save', payload);
 
-    const stored = JSON.parse(localStorage.getItem('mkeditor-session') ?? 'null');
+    const stored = JSON.parse(
+      localStorage.getItem('mkeditor-session') ?? 'null',
+    );
     expect(stored).toEqual(payload);
   });
 });

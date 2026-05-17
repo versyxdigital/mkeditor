@@ -260,4 +260,3 @@ function onEditorReady() {
 
   showSplashScreen({ duration: 750 });
 }
-

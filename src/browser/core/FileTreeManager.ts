@@ -27,8 +27,8 @@ const EMPTY_SNAPSHOT: FileTreeSnapshot = { treeRoot: null, nodes: [] };
 /**
  * Handle the file explorer tree.
  *
- * Keeps `treeRoot`, builds and mutates a `TreeNode[]` snapshot, and 
- * exposes an observable surface (`on('change')` + `getSnapshot()`) 
+ * Keeps `treeRoot`, builds and mutates a `TreeNode[]` snapshot, and
+ * exposes an observable surface (`on('change')` + `getSnapshot()`)
  * for `<FileTreePanel>` to subscribe via `useSyncExternalStore`.
  */
 export class FileTreeManager {

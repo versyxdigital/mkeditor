@@ -55,11 +55,9 @@ function makeBridge() {
       send: jest.fn((channel: string, data: unknown) => {
         sent.push({ channel, data });
       }),
-      receive: jest.fn(
-        (channel: string, fn: (...args: unknown[]) => void) => {
-          handlers[channel] = fn;
-        },
-      ),
+      receive: jest.fn((channel: string, fn: (...args: unknown[]) => void) => {
+        handlers[channel] = fn;
+      }),
     },
   };
 }
@@ -89,9 +87,8 @@ function makeMkeditor() {
 
 async function loadFileManager() {
   const { FileManager } = await import('../src/browser/core/FileManager');
-  const { EditorDispatcher } = await import(
-    '../src/browser/events/EditorDispatcher'
-  );
+  const { EditorDispatcher } =
+    await import('../src/browser/events/EditorDispatcher');
   return { FileManager, EditorDispatcher };
 }
 
@@ -417,9 +414,7 @@ describe('FileManager.scheduleSessionSave', () => {
 
     // Within the debounce window — nothing yet.
     jest.advanceTimersByTime(100);
-    expect(
-      sent.filter((s) => s.channel === 'to:session:save'),
-    ).toHaveLength(0);
+    expect(sent.filter((s) => s.channel === 'to:session:save')).toHaveLength(0);
 
     // Past the window — one save.
     jest.advanceTimersByTime(400);

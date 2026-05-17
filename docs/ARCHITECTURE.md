@@ -382,16 +382,16 @@ Open tabs, the active tab, and per-tab Monaco view state (cursor, selection, scr
 ```ts
 interface SessionPayload {
   version: 1;
-  tabs: SessionTab[];              // insertion order = tab order
-  activeFile: string | null;       // must match a tabs[].path or be null
-  workspaceRoot: string | null;    // desktop only; re-walked on restore
+  tabs: SessionTab[]; // insertion order = tab order
+  activeFile: string | null; // must match a tabs[].path or be null
+  workspaceRoot: string | null; // desktop only; re-walked on restore
 }
 
 interface SessionTab {
-  path: string;                                  // real path or `untitled-N`
+  path: string; // real path or `untitled-N`
   name: string;
   viewState: editor.ICodeEditorViewState | null;
-  untitledContent?: string;                      // inlined for untitled only, non-empty
+  untitledContent?: string; // inlined for untitled only, non-empty
 }
 ```
 
@@ -406,8 +406,8 @@ interface SessionTab {
 ```ts
 interface SessionRestoreEnvelope {
   session: SessionPayload | null;
-  missing: string[];                  // real paths that no longer exist
-  contents: Record<string, string>;   // pre-loaded file contents for kept tabs
+  missing: string[]; // real paths that no longer exist
+  contents: Record<string, string>; // pre-loaded file contents for kept tabs
 }
 ```
 
@@ -422,11 +422,11 @@ A legacy `mkeditor-content` localStorage entry (left by pre-session-restore buil
 
 **IPC channels** (whitelisted in [preload.ts](../src/app/preload.ts)):
 
-| Channel                       | Direction         | Payload                     | Purpose                                |
-| ----------------------------- | ----------------- | --------------------------- | -------------------------------------- |
-| `to:session:save`             | renderer → main   | `SessionPayload`            | Debounced + final-flush persist        |
-| `from:session:restore`        | main → renderer   | `SessionRestoreEnvelope`    | Boot-time replay payload               |
-| `from:session:flush-request`  | main → renderer   | none                        | "Send me your final session, now"      |
+| Channel                      | Direction       | Payload                  | Purpose                           |
+| ---------------------------- | --------------- | ------------------------ | --------------------------------- |
+| `to:session:save`            | renderer → main | `SessionPayload`         | Debounced + final-flush persist   |
+| `from:session:restore`       | main → renderer | `SessionRestoreEnvelope` | Boot-time replay payload          |
+| `from:session:flush-request` | main → renderer | none                     | "Send me your final session, now" |
 
 ## 5. Settings Schema
 

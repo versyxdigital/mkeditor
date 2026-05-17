@@ -7,8 +7,8 @@ type PersistHandler = (next: Partial<SettingsFile>) => void;
 /**
  * Settings data + IPC owner. The provider exposes a stable
  * snapshot + `subscribe` pair that <SettingsContext> consumes
- * via `useSyncExternalStore`. React components drive every change 
- * through `updateSetting(key, value)`, which: (1) writes state, 
+ * via `useSyncExternalStore`. React components drive every change
+ * through `updateSetting(key, value)`, which: (1) writes state,
  * (2) applies the Monaco / theme side effect, (3) emits to subscribers,
  * and (4) persists to localStorage / bridge.
  */
@@ -253,9 +253,9 @@ export class SettingsProvider {
   }
 
   public setSystemThemeOverride() {
-    // No DOM mutation requiredm, the modal's React UI reads 
-    // `systemtheme` from SettingsContext and disables the darkmode 
-    // toggle conditionally. Kept as a no-op method so the public 
+    // No DOM mutation requiredm, the modal's React UI reads
+    // `systemtheme` from SettingsContext and disables the darkmode
+    // toggle conditionally. Kept as a no-op method so the public
     // surface listed in the migration doc still resolves.
     return this;
   }

@@ -7,9 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 
 /**
  * File/folder properties modal. Triggered by the explorer right-click
- * "Show properties" item, which sends `to:file:properties` over the 
- * bridge; the main process replies with `from:path:properties` carrying 
- * a FileProperties payload, which BridgeListeners routes here via 
+ * "Show properties" item, which sends `to:file:properties` over the
+ * bridge; the main process replies with `from:path:properties` carrying
+ * a FileProperties payload, which BridgeListeners routes here via
  * `showPropertiesExternal`.
  */
 export const PropertiesModal: React.FC = () => {

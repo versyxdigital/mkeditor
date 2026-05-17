@@ -180,9 +180,9 @@ describe('AppSession.save', () => {
       // rename replaces the directory entry with the tmp file's inode.
       const afterIno = lstatSync(finalPath).ino;
       expect(afterIno).not.toBe(beforeIno);
-      expect(JSON.parse(readFileSync(finalPath, { encoding: 'utf-8' }))).toEqual(
-        validPayload,
-      );
+      expect(
+        JSON.parse(readFileSync(finalPath, { encoding: 'utf-8' })),
+      ).toEqual(validPayload);
     });
   });
 
