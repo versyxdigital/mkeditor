@@ -219,37 +219,23 @@ const MenuActionBridge: React.FC = () => {
             case 'redo':
               editor?.trigger('keyboard', 'redo', null);
               return;
-            // Cut/Copy/Paste go through `document.execCommand` rather
-            // than Monaco's `editor.action.clipboard*Action` because
-            // the standalone bundle (via monaco-editor-webpack-plugin)
-            // ships without `productService`, which those actions
-            // internally `accessor.get(IProductService)`. Monaco's own
-            // textarea handles native clipboard events, so execCommand
-            // is the working fallback. Deferred so the editor has focus
-            // (see the setTimeout note on command palette above).
+            // Cut/Copy/Paste go through `webContents.cut/copy/paste()`
+            // in main (see `AppWindow.register`). Monaco's own
+            // `editor.action.clipboard*Action` throws — the standalone
+            // bundle (via monaco-editor-webpack-plugin) ships without
+            // `productService` those actions internally require.
+            // `document.execCommand` from the renderer also fails after
+            // Radix's deferred close consumes the transient user
+            // activation. The WebContents path dispatches the native
+            // clipboard events without that constraint.
             case 'cut':
-              if (editor) {
-                setTimeout(() => {
-                  editor.focus();
-                  document.execCommand('cut');
-                });
-              }
+              bridgeManager?.editCut();
               return;
             case 'copy':
-              if (editor) {
-                setTimeout(() => {
-                  editor.focus();
-                  document.execCommand('copy');
-                });
-              }
+              bridgeManager?.editCopy();
               return;
             case 'paste':
-              if (editor) {
-                setTimeout(() => {
-                  editor.focus();
-                  document.execCommand('paste');
-                });
-              }
+              bridgeManager?.editPaste();
               return;
             case 'togglefullscreen':
               bridgeManager?.windowToggleFullscreen();

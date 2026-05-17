@@ -199,6 +199,22 @@ export class BridgeManager {
     this.bridge.send('to:command:run', commandId);
   }
 
+  // Clipboard ops routed through main's `webContents.cut/copy/paste()`
+  // (see `AppWindow.register`). Renderer-side `document.execCommand`
+  // fails after Radix's deferred close because the user-activation
+  // gesture has been consumed — the WebContents path doesn't have that
+  // constraint. Monaco's textarea receives the synthetic events
+  // natively and acts accordingly.
+  public editCut(): void {
+    this.bridge.send('to:edit:cut', null);
+  }
+  public editCopy(): void {
+    this.bridge.send('to:edit:copy', null);
+  }
+  public editPaste(): void {
+    this.bridge.send('to:edit:paste', null);
+  }
+
   // Menu dispatch helpers (consumed by both BridgeListeners' anonymous
   // `from:*` handlers and the in-window menu's `dispatchMenuAction`) ------
   //

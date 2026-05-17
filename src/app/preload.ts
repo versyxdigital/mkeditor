@@ -37,6 +37,9 @@ const senderWhitelist = [
   'to:window:close',
   'to:window:fullscreen',
   'to:command:run',
+  'to:edit:cut',
+  'to:edit:copy',
+  'to:edit:paste',
 ];
 
 // Can be sent from the main process and received

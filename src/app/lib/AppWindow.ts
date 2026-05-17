@@ -51,6 +51,26 @@ export class AppWindow {
       this.context.setFullScreen(!this.context.isFullScreen());
     });
 
+    // Edit-menu clipboard actions. Native `role: 'cut'` etc. accelerators
+    // are also dead without the application menu mounted. Going through
+    // `document.execCommand` from the renderer fails because Radix's
+    // deferred close + setTimeout consumes the "transient user activation"
+    // gesture Chromium requires for clipboard ops. `webContents.cut()`
+    // etc. dispatch the events natively without that constraint —
+    // Monaco's textarea receives them and acts accordingly.
+    ipcMain.on('to:edit:cut', () => {
+      if (this.context.isDestroyed()) return;
+      this.context.webContents.cut();
+    });
+    ipcMain.on('to:edit:copy', () => {
+      if (this.context.isDestroyed()) return;
+      this.context.webContents.copy();
+    });
+    ipcMain.on('to:edit:paste', () => {
+      if (this.context.isDestroyed()) return;
+      this.context.webContents.paste();
+    });
+
     this.context.on('maximize', () => this.emitState(true));
     this.context.on('unmaximize', () => this.emitState(false));
 
