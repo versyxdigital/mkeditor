@@ -1,7 +1,13 @@
 import { editor } from 'monaco-editor';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
+import type {
+  SessionPayload,
+  SessionRestoreEnvelope,
+  SessionTab,
+} from '../interfaces/Session';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { openPromptExternal } from '../react/contexts/PromptsContext';
+import { debounce } from '../util';
 import { t } from '../i18n';
 
 export interface TabInfo {
@@ -65,6 +71,37 @@ export class FileManager {
   private listeners = new Set<() => void>();
 
   /**
+   * Set once `restoreSession` has run for this manager instance. Guards
+   * against double-replay if `from:session:restore` ever fires twice
+   * (e.g. window reload + cached IPC).
+   */
+  private restored = false;
+
+  /**
+   * True while `restoreSession` is replaying tabs. Suppresses the
+   * debounced save trigger so a freshly-restored session doesn't
+   * immediately persist itself (each replayed tab event would call
+   * scheduleSessionSave otherwise).
+   */
+  private restoring = false;
+
+  /**
+   * Debounced trigger that serialises the current state and ships it
+   * to main via `to:session:save`. Built lazily on first call so test
+   * environments without `window.setTimeout` can still construct a
+   * FileManager.
+   */
+  private debouncedSessionSave: (() => void) | null = null;
+
+  /**
+   * Optional callback that returns the currently-open workspace folder
+   * path (or null). Injected by the composition root so
+   * `serializeSession()` can include `workspaceRoot` without
+   * FileManager having to know about FileTreeManager directly.
+   */
+  private workspaceRootGetter: (() => string | null) | null = null;
+
+  /**
    * Create a new file manager instance.
    *
    * @param bridge - the execution bridge
@@ -126,6 +163,7 @@ export class FileManager {
   public addTab(name: string, path: string) {
     this.tabs.set(path, { path, name });
     this.emitChange();
+    this.scheduleSessionSave();
   }
 
   /**
@@ -200,6 +238,7 @@ export class FileManager {
         // disposed-then-reattach sequence.
         this.activateFile(nextPath, nextInfo?.name);
         mdl.dispose();
+        this.scheduleSessionSave();
         return;
       }
       // No tabs left — open a fresh untitled.
@@ -211,6 +250,7 @@ export class FileManager {
       this.tabs.set(newPath, { path: newPath, name: newName });
       this.activateFile(newPath, newName);
       mdl.dispose();
+      this.scheduleSessionSave();
       return;
     }
 
@@ -218,6 +258,7 @@ export class FileManager {
     // now is safe.
     mdl.dispose();
     this.emitChange();
+    this.scheduleSessionSave();
   }
 
   /**
@@ -236,6 +277,7 @@ export class FileManager {
     }
     this.tabs = next;
     this.emitChange();
+    this.scheduleSessionSave();
   }
 
   /**
@@ -286,6 +328,7 @@ export class FileManager {
     this.tabs = next;
     this.activeFile = newPath;
     this.emitChange();
+    this.scheduleSessionSave();
     return true;
   }
 
@@ -330,10 +373,12 @@ export class FileManager {
       // Re-emit through activateFile so the dispatcher fires editor:render
       // and the window title gets the new name.
       this.activateFile(newPath, newName);
+      this.scheduleSessionSave();
       return true;
     }
 
     this.emitChange();
+    this.scheduleSessionSave();
     return true;
   }
 
@@ -384,7 +429,10 @@ export class FileManager {
     this.activeFile = path;
     this.mkeditor.setModel(mdl);
 
-    // Restore the incoming tab's view state if we have one.
+    // Restore the incoming tab's view state. First activations have
+    // no saved entry and stay at top-of-file (Monaco's default).
+    // Note: Monaco's folding controller cancels its in-flight compute
+    // here, which rejects an internal promise with "Canceled".
     const incoming = this.viewStates.get(path);
     if (incoming) this.mkeditor.restoreViewState(incoming);
 
@@ -410,6 +458,7 @@ export class FileManager {
 
     this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
     this.emitChange();
+    this.scheduleSessionSave();
   }
 
   /**
@@ -485,5 +534,136 @@ export class FileManager {
    */
   public exportToPDF(content: string) {
     this.bridge.send('to:pdf:export', { content });
+  }
+
+  // ---------------------------------------------------------------------
+  // Session persistence (Phase 2)
+  // ---------------------------------------------------------------------
+
+  /**
+   * Inject a getter for the currently-open workspace folder path. The
+   * composition root wires this to `FileTreeManager.treeRoot` so
+   * `serializeSession()` can include `workspaceRoot` without FileManager
+   * holding a direct reference to FileTreeManager.
+   */
+  public setWorkspaceRootGetter(fn: () => string | null): void {
+    this.workspaceRootGetter = fn;
+  }
+
+  /**
+   * Snapshot the current tab/view state for persistence. The active
+   * tab's freshest cursor/scroll is captured here (rather than relying
+   * solely on the switch-out capture in `activateFile`) so a quit
+   * without a final tab switch still records where the user was.
+   */
+  public serializeSession(): SessionPayload {
+    if (this.activeFile) {
+      const state = this.mkeditor.saveViewState();
+      if (state) this.viewStates.set(this.activeFile, state);
+    }
+
+    const tabs: SessionTab[] = [];
+    for (const info of this.tabs.values()) {
+      const viewState = this.viewStates.get(info.path) ?? null;
+      const tab: SessionTab = {
+        path: info.path,
+        name: info.name,
+        viewState,
+      };
+      if (info.path.startsWith('untitled-')) {
+        // Persist scratch content only when non-empty; empty untitled
+        // tabs are noise and shouldn't survive a relaunch.
+        const content = this.models.get(info.path)?.getValue() ?? '';
+        if (content.length > 0) tab.untitledContent = content;
+      }
+      tabs.push(tab);
+    }
+
+    return {
+      version: 1,
+      tabs,
+      activeFile: this.activeFile,
+      workspaceRoot: this.workspaceRootGetter?.() ?? null,
+    };
+  }
+
+  /**
+   * Replay a persisted session. Untitled tabs are recreated in-place
+   * from `untitledContent`; real-file tabs use the pre-loaded contents
+   * shipped in the envelope (no per-file IPC round-trip needed).
+   * Idempotent — subsequent calls in the same FileManager lifetime
+   * are no-ops.
+   */
+  public restoreSession(envelope: SessionRestoreEnvelope): void {
+    if (this.restored) return;
+    this.restored = true;
+
+    const { session, contents } = envelope;
+    if (!session || session.tabs.length === 0) return;
+
+    this.restoring = true;
+    try {
+      // Advance the untitled counter past every restored synthetic id so
+      // a new "Untitled N" created later doesn't collide.
+      for (const tab of session.tabs) {
+        if (tab.path.startsWith('untitled-')) {
+          const n = parseInt(tab.path.slice('untitled-'.length), 10);
+          if (Number.isFinite(n) && n >= this.untitledCounter) {
+            this.untitledCounter = n + 1;
+          }
+        }
+      }
+
+      // Build models + tabs + view-state cache in one pass. No
+      // activation yet — that comes at the end.
+      for (const tab of session.tabs) {
+        if (this.models.has(tab.path)) continue; // defensive: don't double-add
+        const content = tab.path.startsWith('untitled-')
+          ? (tab.untitledContent ?? '')
+          : (contents[tab.path] ?? '');
+        const model = editor.createModel(content, 'markdown');
+        this.models.set(tab.path, model);
+        this.originals.set(tab.path, content);
+        if (tab.viewState) {
+          this.viewStates.set(
+            tab.path,
+            tab.viewState as editor.ICodeEditorViewState,
+          );
+        }
+        this.tabs.set(tab.path, { path: tab.path, name: tab.name });
+      }
+
+      // Pick what to activate. Prefer the persisted active file;
+      // fall back to the first tab if the persisted active is gone.
+      let toActivate: string | null = session.activeFile;
+      if (!toActivate || !this.tabs.has(toActivate)) {
+        toActivate = this.tabs.keys().next().value ?? null;
+      }
+      if (toActivate) {
+        const info = this.tabs.get(toActivate);
+        this.activateFile(toActivate, info?.name);
+      } else {
+        this.emitChange();
+      }
+    } finally {
+      this.restoring = false;
+    }
+  }
+
+  /**
+   * Debounced trigger that ships the current session to main. Wired
+   * into every mutating method (addTab/closeTab/activateFile/...) so
+   * structural changes persist within ~300 ms of the last edit. Skipped
+   * during `restoreSession` so a freshly-replayed session doesn't
+   * round-trip itself back to disk.
+   */
+  public scheduleSessionSave(): void {
+    if (this.restoring) return;
+    if (!this.debouncedSessionSave) {
+      this.debouncedSessionSave = debounce(() => {
+        this.bridge.send('to:session:save', this.serializeSession());
+      }, 300);
+    }
+    this.debouncedSessionSave();
   }
 }

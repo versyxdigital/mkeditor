@@ -371,6 +371,60 @@ Web:
 - Desktop: bound to `BridgeManager.setLanguage` → `to:i18n:set` → `AppBridge` re-broadcasts as `from:i18n:set` → renderer's bootstrap listener calls `changeLanguage(lng)`.
 - `changeLanguage` loads the combined bundle for that locale (falls back to per-namespace fetches), switches i18next, then `applyTranslations` walks the (now tiny) bindings table — only the splash `<h1>` still uses `data-i18n-text`. React components re-render through `useTranslation` (which subscribes to i18next's `languageChanged` event).
 
+### 4.12 Session restore
+
+Open tabs, the active tab, and per-tab Monaco view state (cursor, selection, scroll, folding) persist across app launches.
+
+**Persistence surface.** Desktop writes `~/.mkeditor/session.json` via [AppSession](../src/app/lib/AppSession.ts) (sibling to `AppSettings`). The write is **atomic**: payload goes to `session.json.tmp`, then `fs.renameSync` swaps it into place. A power loss during the write leaves either the prior file intact or the new one — never a truncated mix. Web is symmetric via `localStorage['mkeditor-session']` (Phase 3).
+
+**Payload shape** (renderer side, [Session.ts](../src/browser/interfaces/Session.ts)):
+
+```ts
+interface SessionPayload {
+  version: 1;
+  tabs: SessionTab[];              // insertion order = tab order
+  activeFile: string | null;       // must match a tabs[].path or be null
+  workspaceRoot: string | null;    // desktop only; re-walked on restore
+}
+
+interface SessionTab {
+  path: string;                                  // real path or `untitled-N`
+  name: string;
+  viewState: editor.ICodeEditorViewState | null;
+  untitledContent?: string;                      // inlined for untitled only, non-empty
+}
+```
+
+**Save cadence.** Structural-event-driven. [`FileManager.scheduleSessionSave()`](../src/browser/core/FileManager.ts) is a 300 ms debounced trigger called from `addTab`, `closeTab`, `activateFile`, `reorderTabs`, `renameTab`, `replaceUntitled`, and (from [BridgeListeners](../src/browser/core/BridgeListeners.ts)) the first `from:folder:opened` event for a new workspace root. It captures the active tab's current `saveViewState()` at write time (the prior tab's state is already cached on switch-out). No keystroke-level writes — the worst-case crash loss is the active-at-crash tab's cursor position; everything else was captured on the last tab switch.
+
+**Workspace root.** `serializeSession` reads `FileTreeManager.treeRoot` through a getter injected by `BridgeManager` (`fileManager.setWorkspaceRootGetter`) — FileManager doesn't take a direct dependency on FileTreeManager. On restore, after `restoreSession` replays tabs, `BridgeListeners` sends `to:file:openpath` for the persisted root; main's `AppStorage.openPath` reads the directory and dispatches the normal `from:folder:opened` which re-populates the tree. A folder that no longer exists is nulled out by `AppSession.buildRestoreEnvelope` before the envelope ships.
+
+**Quit flush.** `app.on('before-quit')` in [main.ts](../src/app/main.ts) sends `from:session:flush-request` to the renderer and waits up to 250 ms for a `to:session:save` ack. The renderer's listener in [BridgeListeners](../src/browser/core/BridgeListeners.ts) calls `serializeSession()` synchronously and ships the result; main hits `AppSession.save()` and lets quit proceed.
+
+**Restore.** At `did-finish-load`, main calls `AppSession.buildRestoreEnvelope(AppSession.load())` and sends `from:session:restore` with a [`SessionRestoreEnvelope`](../src/app/interfaces/Session.ts):
+
+```ts
+interface SessionRestoreEnvelope {
+  session: SessionPayload | null;
+  missing: string[];                  // real paths that no longer exist
+  contents: Record<string, string>;   // pre-loaded file contents for kept tabs
+}
+```
+
+Main pre-validates real-file paths against the filesystem, drops missing ones from `session.tabs`, lists them in `missing`, and reads contents for survivors. The renderer's [`FileManager.restoreSession`](../src/browser/core/FileManager.ts) replays everything synchronously — no per-file IPC round-trip — then activates the previously-active tab and `restoreViewState`s it. Untitled tabs are recreated from `untitledContent`. The `untitledCounter` advances past any restored synthetic id so newly-created scratch tabs don't collide.
+
+`restoreSession` is idempotent (one-shot per FileManager instance) and `restoring` is flag-suppressed during replay so the debounced save trigger doesn't immediately echo the session back to disk.
+
+**Missing-file toast.** `BridgeListeners` surfaces one consolidated sonner toast via `notifications:session_file_missing` (with `{{files}}` interpolation) when `envelope.missing.length > 0` — never per-file noise.
+
+**IPC channels** (whitelisted in [preload.ts](../src/app/preload.ts)):
+
+| Channel                       | Direction         | Payload                     | Purpose                                |
+| ----------------------------- | ----------------- | --------------------------- | -------------------------------------- |
+| `to:session:save`             | renderer → main   | `SessionPayload`            | Debounced + final-flush persist        |
+| `from:session:restore`        | main → renderer   | `SessionRestoreEnvelope`    | Boot-time replay payload               |
+| `from:session:flush-request`  | main → renderer   | none                        | "Send me your final session, now"      |
+
 ## 5. Settings Schema
 
 [`SettingsFile`](../src/app/interfaces/Settings.ts) (and the renderer mirror in [src/browser/interfaces/Editor.ts](../src/browser/interfaces/Editor.ts)):

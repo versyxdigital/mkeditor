@@ -20,6 +20,7 @@ import type { SessionPayload } from '../src/app/interfaces/Session';
 const validPayload: SessionPayload = {
   version: 1,
   activeFile: '/abs/path/foo.md',
+  workspaceRoot: null,
   tabs: [
     {
       path: '/abs/path/foo.md',
@@ -260,6 +261,155 @@ describe('AppSession.save', () => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { AppSession } = require('../src/app/lib/AppSession');
       expect(() => AppSession.save(validPayload)).not.toThrow();
+    });
+  });
+});
+
+describe('AppSession.buildRestoreEnvelope', () => {
+  it('returns an empty envelope when given null', () => {
+    withTempHome((tmpHome) => {
+      const AppSession = loadAppSession(tmpHome);
+      expect(AppSession.buildRestoreEnvelope(null)).toEqual({
+        session: null,
+        missing: [],
+        contents: {},
+      });
+    });
+  });
+
+  it('drops missing real-file tabs from the envelope and lists them under `missing`', () => {
+    withTempHome((tmpHome) => {
+      // requireActual sidesteps any lingering jest.doMock('fs', ...)
+      // installed by earlier tests in the file.
+      const fs = jest.requireActual('fs') as typeof import('fs');
+      const realFile = normalize(tmpHome + '/exists.md');
+      fs.writeFileSync(realFile, 'real body', 'utf-8');
+      const missingFile = normalize(tmpHome + '/gone.md');
+
+      const AppSession = loadAppSession(tmpHome);
+      const envelope = AppSession.buildRestoreEnvelope({
+        version: 1,
+        activeFile: missingFile,
+        workspaceRoot: null,
+        tabs: [
+          { path: realFile, name: 'exists.md', viewState: null },
+          { path: missingFile, name: 'gone.md', viewState: null },
+        ],
+      });
+
+      expect(envelope.missing).toEqual([missingFile]);
+      expect(envelope.session?.tabs.map((t) => t.path)).toEqual([realFile]);
+      expect(envelope.contents).toEqual({ [realFile]: 'real body' });
+    });
+  });
+
+  it('preserves untitled tabs unconditionally', () => {
+    withTempHome((tmpHome) => {
+      const AppSession = loadAppSession(tmpHome);
+      const envelope = AppSession.buildRestoreEnvelope({
+        version: 1,
+        activeFile: 'untitled-1',
+        workspaceRoot: null,
+        tabs: [
+          {
+            path: 'untitled-1',
+            name: 'Untitled 1',
+            viewState: null,
+            untitledContent: 'scratch',
+          },
+        ],
+      });
+
+      expect(envelope.missing).toEqual([]);
+      expect(envelope.session?.tabs).toHaveLength(1);
+      expect(envelope.session?.tabs[0].path).toBe('untitled-1');
+      expect(envelope.contents).toEqual({});
+    });
+  });
+
+  it('nulls activeFile when the persisted active path is missing', () => {
+    withTempHome((tmpHome) => {
+      const fs = jest.requireActual('fs') as typeof import('fs');
+      const keep = normalize(tmpHome + '/keep.md');
+      fs.writeFileSync(keep, 'kept', 'utf-8');
+      const gone = normalize(tmpHome + '/gone.md');
+
+      const AppSession = loadAppSession(tmpHome);
+      const envelope = AppSession.buildRestoreEnvelope({
+        version: 1,
+        activeFile: gone,
+        workspaceRoot: null,
+        tabs: [
+          { path: keep, name: 'keep.md', viewState: null },
+          { path: gone, name: 'gone.md', viewState: null },
+        ],
+      });
+
+      expect(envelope.session?.activeFile).toBeNull();
+    });
+  });
+
+  it('keeps workspaceRoot when the directory still exists', () => {
+    withTempHome((tmpHome) => {
+      const fs = jest.requireActual('fs') as typeof import('fs');
+      const wsDir = normalize(tmpHome + '/my-notes');
+      fs.mkdirSync(wsDir);
+
+      const AppSession = loadAppSession(tmpHome);
+      const envelope = AppSession.buildRestoreEnvelope({
+        version: 1,
+        activeFile: null,
+        workspaceRoot: wsDir,
+        tabs: [],
+      });
+
+      expect(envelope.session?.workspaceRoot).toBe(wsDir);
+    });
+  });
+
+  it('nulls workspaceRoot when the directory is gone', () => {
+    withTempHome((tmpHome) => {
+      const AppSession = loadAppSession(tmpHome);
+      const envelope = AppSession.buildRestoreEnvelope({
+        version: 1,
+        activeFile: null,
+        workspaceRoot: normalize(tmpHome + '/never-existed'),
+        tabs: [],
+      });
+
+      expect(envelope.session?.workspaceRoot).toBeNull();
+    });
+  });
+
+  it('treats unreadable files as missing', () => {
+    withTempHome((tmpHome) => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const realFs = jest.requireActual('fs');
+      const present = normalize(tmpHome + '/present.md');
+      realFs.writeFileSync(present, 'ok', 'utf-8');
+
+      jest.resetModules();
+      jest.doMock('os', () => ({
+        ...jest.requireActual('os'),
+        homedir: () => tmpHome,
+      }));
+      jest.doMock('fs', () => ({
+        ...realFs,
+        readFileSync: () => {
+          throw new Error('EACCES');
+        },
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { AppSession } = require('../src/app/lib/AppSession');
+      const envelope = AppSession.buildRestoreEnvelope({
+        version: 1,
+        activeFile: present,
+        workspaceRoot: null,
+        tabs: [{ path: present, name: 'present.md', viewState: null }],
+      });
+
+      expect(envelope.missing).toEqual([present]);
+      expect(envelope.session?.tabs).toEqual([]);
     });
   });
 });

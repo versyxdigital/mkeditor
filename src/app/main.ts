@@ -142,10 +142,15 @@ function main(file: string | null = null) {
         context.webContents.send('from:theme:set', settings.applied?.darkmode);
       }
       context.webContents.send('from:settings:set', settings.loadFile());
-      // Phase 1: ship the persisted session payload (or null) right
-      // after settings so the renderer can reopen tabs/cursor state.
-      // The renderer-side handler arrives in Phase 2.
-      context.webContents.send('from:session:restore', AppSession.load());
+      // Ship the restore envelope right after settings. Main pre-checks
+      // the filesystem and reads file contents so the renderer can
+      // hydrate tabs synchronously (no per-file IPC round-trip during
+      // restore). Missing paths are excluded from `session.tabs` and
+      // listed under `missing` for the renderer to toast.
+      context.webContents.send(
+        'from:session:restore',
+        AppSession.buildRestoreEnvelope(AppSession.load()),
+      );
       AppStorage.openActiveFile(context, file);
     }
   });

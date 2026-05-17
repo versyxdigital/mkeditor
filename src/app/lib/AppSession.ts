@@ -8,7 +8,11 @@ import {
   writeFileSync,
 } from 'fs';
 import { normalize } from 'path';
-import type { SessionPayload, SessionTab } from '../interfaces/Session';
+import type {
+  SessionPayload,
+  SessionRestoreEnvelope,
+  SessionTab,
+} from '../interfaces/Session';
 
 /**
  * AppSession
@@ -108,18 +112,90 @@ export class AppSession {
   }
 
   /**
+   * Build a restore envelope ready to ship over IPC. Validates real-file
+   * paths against the filesystem (untitled paths are left alone), drops
+   * missing entries from `tabs`, lists them in `missing`, and reads
+   * surviving file contents into `contents` so the renderer can hydrate
+   * tabs synchronously. If the session's `activeFile` points at a
+   * now-missing path, it's nulled out.
+   *
+   * Safe to call when `load()` returned null — produces an envelope
+   * with `session: null`, empty missing/contents.
+   */
+  static buildRestoreEnvelope(
+    payload: SessionPayload | null,
+  ): SessionRestoreEnvelope {
+    if (!payload) return { session: null, missing: [], contents: {} };
+
+    const missing: string[] = [];
+    const kept: SessionTab[] = [];
+    const contents: Record<string, string> = {};
+
+    for (const tab of payload.tabs) {
+      // Untitled tabs carry their content inline; nothing to check on disk.
+      if (tab.path.startsWith('untitled-')) {
+        kept.push(tab);
+        continue;
+      }
+      if (!existsSync(tab.path)) {
+        missing.push(tab.path);
+        continue;
+      }
+      try {
+        contents[tab.path] = readFileSync(tab.path, { encoding: 'utf-8' });
+        kept.push(tab);
+      } catch {
+        // Treat unreadable files (permissions, race) as missing.
+        missing.push(tab.path);
+      }
+    }
+
+    const activeStillPresent =
+      payload.activeFile !== null &&
+      kept.some((t) => t.path === payload.activeFile);
+
+    const keptRoot =
+      payload.workspaceRoot && existsSync(payload.workspaceRoot)
+        ? payload.workspaceRoot
+        : null;
+
+    return {
+      session: {
+        version: payload.version,
+        tabs: kept,
+        activeFile: activeStillPresent ? payload.activeFile : null,
+        workspaceRoot: keptRoot,
+      },
+      missing,
+      contents,
+    };
+  }
+
+  /**
    * Shape-check a parsed payload. Conservative: anything that doesn't
    * match exactly falls back to "no session". Better to start fresh
    * than to crash on a forward-incompatible file.
    */
   private static isValidPayload(value: unknown): value is SessionPayload {
     if (typeof value !== 'object' || value === null) return false;
-    const candidate = value as Partial<SessionPayload>;
+    const candidate = value as Partial<SessionPayload> & {
+      workspaceRoot?: unknown;
+    };
     if (candidate.version !== AppSession.SCHEMA_VERSION) return false;
     if (!Array.isArray(candidate.tabs)) return false;
     if (
       candidate.activeFile !== null &&
       typeof candidate.activeFile !== 'string'
+    ) {
+      return false;
+    }
+    // workspaceRoot was added after version 1 shipped. Accept missing
+    // (treat as null) for back-compat; otherwise require null-or-string.
+    if (
+      'workspaceRoot' in candidate &&
+      candidate.workspaceRoot !== null &&
+      candidate.workspaceRoot !== undefined &&
+      typeof candidate.workspaceRoot !== 'string'
     ) {
       return false;
     }

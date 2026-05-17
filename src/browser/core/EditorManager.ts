@@ -6,6 +6,31 @@ import { welcomeMarkdown } from '../assets/intro';
 import { debounce, logger } from '../util';
 import { dom } from '../dom';
 
+/**
+ * Several Monaco controllers cancel in-flight tokens when their model
+ * changes or when `restoreViewState` is called. The cancel triggers a
+ * rejection on an internal promise that has no error handler, so the 
+ * browser logs an error. It's a benign Monaco design choice,
+ *
+ * We install one `unhandledrejection` listener at module load that
+ * suppresses *only* this specific shape.
+ */
+let monacoCancelFilterInstalled = false;
+function installMonacoCancelFilter() {
+  if (monacoCancelFilterInstalled) return;
+  if (typeof window === 'undefined') return;
+  monacoCancelFilterInstalled = true;
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason as { name?: string; message?: string } | null;
+    if (
+      reason &&
+      (reason.name === 'Canceled' || reason.message === 'Canceled')
+    ) {
+      event.preventDefault();
+    }
+  });
+}
+
 interface EditorConstructOptions {
   mode: 'web' | 'desktop';
   dispatcher: EditorDispatcher;
@@ -98,6 +123,11 @@ export class EditorManager {
       );
       return this;
     }
+
+    // Suppress Monaco's benign "Canceled" promise rejections. Idempotent
+    // — safe to call on every create even though we only create one
+    // editor per session.
+    installMonacoCancelFilter();
 
     try {
       let editorContent = welcomeMarkdown;

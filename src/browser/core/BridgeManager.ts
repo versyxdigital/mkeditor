@@ -57,6 +57,11 @@ export class BridgeManager {
     this.fileTreeManager = new FileTreeManager(this.bridge, (path) =>
       this.fileManager.openFileFromPath(path),
     );
+    // Let FileManager.serializeSession read the workspace root without
+    // taking a direct dependency on FileTreeManager.
+    this.fileManager.setWorkspaceRootGetter(
+      () => this.fileTreeManager.treeRoot,
+    );
 
     // Register event listeners for events sent through IPC channels.
     registerBridgeListeners(

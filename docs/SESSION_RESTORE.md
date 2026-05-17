@@ -59,6 +59,13 @@ interface SessionPayload {
   tabs: SessionTab[];
   /** Path of the active tab, or null. Must match one of `tabs[].path` or be null. */
   activeFile: string | null;
+  /**
+   * Path of the currently-open workspace folder, or null. Captured from
+   * `FileTreeManager.treeRoot` at save time; main re-validates the path
+   * still exists at restore time. Desktop only; web mode persists its
+   * workspace root via the existing IndexedDB FS-Access handle (P3).
+   */
+  workspaceRoot: string | null;
 }
 
 interface SessionTab {
@@ -79,17 +86,18 @@ interface SessionTab {
 - **IPC discipline.** New channels (`to:session:save`, `from:session:restore`, optional `from:session:flush-request`) are whitelisted in [preload.ts](../src/app/preload.ts) — no `window.executionBridge` access elsewhere.
 - **Restore ordering.** `from:session:restore` fires _after_ `from:settings:set` and _before_ any `from:file:opened` triggered by command-line args. `FileManager.restoreSession` is a no-op if it's already been called (idempotent guard).
 - **Untitled IDs.** `FileManager.untitledCounter` is bumped past `max(restored untitled ids)` so subsequent untitled creation doesn't collide.
+- **Workspace root.** Captured via a getter injected into `FileManager` (`setWorkspaceRootGetter`) so `serializeSession()` stays inside its module while still reading `FileTreeManager.treeRoot`. On restore, `BridgeListeners` sends `to:file:openpath` for the workspace root after `restoreSession` — `AppStorage.openPath` re-walks the directory and triggers the normal `from:folder:opened` tree-populate flow. A folder open is itself a session-save trigger (`BridgeListeners.from:folder:opened` calls `files.scheduleSessionSave()`).
 - **Missing-file toast** uses the existing `from:notification:display` plumbing — `BridgeListeners` already translates and surfaces via sonner.
 - **Web mode** mirrors the same surface: `WebFileBridge.serializeSession()` / `restoreSession()` use localStorage. The FS-Access handle map is rebuilt on workspace restore (already wired), and session paths are validated against the rebuilt map.
 - **Performance**: the active tab's view state is captured at save time via `mkeditor.saveViewState()`. Inactive tabs' view states are already in `FileManager.viewStates` (captured on switch-out). Both go into the payload.
 
 ## Phase Index
 
-| #   | Phase                                                       | Status |
-| --- | ----------------------------------------------------------- | ------ |
-| 1   | Main-process infrastructure (AppSession + IPC + atomic write) | 🔵     |
-| 2   | Renderer integration (serialize/restore + debounce + toast)   | 🔵     |
-| 3   | Web mode parity (localStorage + handle re-walk)               | 🔵     |
+| #   | Phase                                                       | Status        |
+| --- | ----------------------------------------------------------- | ------------- |
+| 1   | Main-process infrastructure (AppSession + IPC + atomic write) | 🟢 2026-05-17 |
+| 2   | Renderer integration (serialize/restore + debounce + toast)   | 🔵            |
+| 3   | Web mode parity (localStorage + handle re-walk)               | 🔵            |
 
 A phase is **complete** only when its exit criteria are met _and_ `npm test`, `npm run lint`, and a manual smoke (desktop + web for P3) pass. **Each phase ends with a focused commit (or small commit series) on a `feature/session-phase-N-<slug>` branch.**
 
