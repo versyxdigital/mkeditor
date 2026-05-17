@@ -188,6 +188,19 @@ export class FileTreeManager {
   }
 
   /**
+   * Reset the tree state — empties the snapshot, clears the directory
+   * index, and emits change so `<FileTreePanel>` falls back to the
+   * empty-state UI. Used by the web "Disconnect folder" action.
+   */
+  public clearTree(): void {
+    this.treeRoot = null;
+    this.openingFolder = false;
+    this.directoryIndex = new Map();
+    this.snapshot = { treeRoot: null, nodes: [] };
+    this.listeners.forEach((l) => l());
+  }
+
+  /**
    * Return true if the given absolute path matches a file node anywhere
    * in the currently-loaded tree. Used by `MkedLinkProvider` to decide
    * whether an `mked://` link is openable.

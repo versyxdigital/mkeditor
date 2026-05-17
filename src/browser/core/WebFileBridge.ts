@@ -118,6 +118,24 @@ export class WebFileBridge implements ContextBridgeAPI {
   }
 
   /**
+   * Forget the current workspace. Drops the in-memory root reference,
+   * deletes the persisted handle from IndexedDB, and clears the path
+   * map. Currently-open tabs are intentionally left alone — they
+   * remain functional within this session via their cached handles,
+   * but the user can no longer browse or auto-restore the folder.
+   */
+  public async disconnectWorkspace(): Promise<void> {
+    this.rootHandle = null;
+    this.rootName = '';
+    this.handles.clear();
+    try {
+      await deleteRootHandle();
+    } catch (err) {
+      logger?.error('WebFileBridge.disconnect', JSON.stringify(err));
+    }
+  }
+
+  /**
    * Re-open the persisted workspace handle. Returns true on success.
    * `interactive: true` will call `requestPermission` (showing the
    * one-tap re-grant prompt) if needed; `interactive: false` only
@@ -533,6 +551,16 @@ async function saveRootHandle(
   } catch (err) {
     logger?.error('WebFileBridge.persist', JSON.stringify(err));
   }
+}
+
+async function deleteRootHandle(): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(ROOT_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
 async function loadRootHandle(): Promise<FileSystemDirectoryHandle | null> {

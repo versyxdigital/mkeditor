@@ -89,6 +89,16 @@ export const FileTreePanel: React.FC = () => {
     void webBridge.restoreWorkspace?.(true);
   }, [bridgeManager]);
 
+  const handleDisconnectFolder = React.useCallback(() => {
+    if (!bridgeManager || !fileTreeManager) return;
+    const webBridge = bridgeManager.bridge as WebFileBridge;
+    void webBridge.disconnectWorkspace?.();
+    fileTreeManager.clearTree();
+    // Reset the auto-open guard so a future folder open re-pops the
+    // sidebar even if the user has manually collapsed it.
+    sidebarPushedRef.current = null;
+  }, [bridgeManager, fileTreeManager]);
+
   const [expandedPaths, setExpandedPaths] = React.useState<Set<string>>(
     () => new Set(),
   );
@@ -222,6 +232,9 @@ export const FileTreePanel: React.FC = () => {
   // is persisted in IndexedDB but its permission grant has expired —
   // re-granting requires a user gesture.
   const showWebEmptyState = mode === 'web' && !treeRoot;
+  // Workspace header row (web only): shows the open folder's name
+  // and a button to disconnect it.
+  const showWorkspaceHeader = mode === 'web' && !!treeRoot;
 
   return (
     <ContextMenu>
@@ -231,6 +244,25 @@ export const FileTreePanel: React.FC = () => {
           className="list-none m-0 p-0 flex-1"
           onContextMenu={handleContextMenu}
         >
+          {showWorkspaceHeader && (
+            <li className="mb-1 flex items-center gap-1 border-b border-border px-2 py-1 text-xs text-muted-foreground">
+              <Icon name="folder-open" />
+              <span className="flex-1 truncate" title={treeRoot ?? undefined}>
+                {treeRoot}
+              </span>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={handleDisconnectFolder}
+                className="h-5 w-5 p-0 text-base leading-none text-muted-foreground hover:text-foreground"
+                aria-label={t('sidebar:disconnect_folder')}
+                title={t('sidebar:disconnect_folder')}
+              >
+                &times;
+              </Button>
+            </li>
+          )}
           {showWebEmptyState && (
             <li className="whitespace-normal! break-words px-2 py-3 text-xs text-muted-foreground">
               <div className="mb-2">{t('sidebar:no_workspace')}</div>
