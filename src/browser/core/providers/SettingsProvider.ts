@@ -178,14 +178,30 @@ export class SettingsProvider {
 
   private loadSettingsFromLocalStorage() {
     const storage = localStorage.getItem('mkeditor-settings');
-    if (storage) {
-      try {
-        this.currentSettings = JSON.parse(storage) as EditorSettings;
-      } catch {
+    if (!storage) {
+      this.setDefaultSettings();
+      this.updateSettingsInLocalStorage();
+      return;
+    }
+    try {
+      const parsed = JSON.parse(storage) as Partial<EditorSettings> | null;
+      if (typeof parsed !== 'object' || parsed === null) {
+        // Corrupted shape — reset to defaults + persist.
         this.setDefaultSettings();
         this.updateSettingsInLocalStorage();
+        return;
       }
-    } else {
+      // Merge stored values onto current defaults so any new fields added
+      // in later versions (e.g. `sessionRestore` in 3.8) inherit their
+      // default rather than landing as `undefined` and breaking React
+      // controls / the gate getter. Stored values still take precedence
+      // for every key the user has actually customised.
+      this.currentSettings = { ...settings, ...parsed };
+      // If the merge filled in any missing keys, persist the upgraded
+      // shape so future loads don't repeat the work.
+      const upgraded = Object.keys(settings).some((k) => !(k in parsed));
+      if (upgraded) this.updateSettingsInLocalStorage();
+    } catch {
       this.setDefaultSettings();
       this.updateSettingsInLocalStorage();
     }

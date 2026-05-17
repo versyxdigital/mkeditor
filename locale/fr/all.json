@@ -111,6 +111,15 @@
     "minimap_help": "Afficher la minicarte de l’éditeur.",
     "scrollsync_label": "Synchroniser le défilement",
     "scrollsync_help": "Activer la synchronisation du défilement entre l’éditeur et l’aperçu.",
+    "session": "Session",
+    "session_restore_label": "Restaurer la session au démarrage",
+    "session_restore_help": "Rouvrir les onglets précédents, le dossier de travail et les positions du curseur au démarrage de MKEditor.",
+    "clear_session_button": "Effacer la session sauvegardée",
+    "clear_session_help": "Supprime le fichier de session sauvegardé. Les onglets ouverts restent ouverts ; le prochain démarrage commencera à neuf.",
+    "clear_session_confirm_title": "Effacer la session sauvegardée ?",
+    "clear_session_confirm_text": "Cela supprime le fichier de session sauvegardé. Les onglets ouverts restent ouverts ; le prochain démarrage commencera à neuf.",
+    "clear_session_confirm_button": "Effacer",
+    "clear_session_cancel_button": "Annuler",
     "appearance": "Apparence",
     "systemtheme_label": "Utiliser le thème du système",
     "systemtheme_help": "Laisser le thème du système remplacer vos paramètres enregistrés.",
@@ -208,7 +217,8 @@
     "unable_save_settings_unknown_error": "Impossible d’enregistrer les paramètres : erreur inconnue.",
     "update_available": "Mise à jour {{version}} disponible, téléchargement en arrière-plan…",
     "update_downloaded": "Mise à jour {{version}} téléchargée, redémarrez pour mettre à jour.",
-    "session_file_missing": "Certains fichiers précédemment ouverts n'ont pas été trouvés et ont été ignorés : {{files}}"
+    "session_file_missing": "Certains fichiers précédemment ouverts n'ont pas été trouvés et ont été ignorés : {{files}}",
+    "session_cleared": "Session sauvegardée effacée."
   },
   "sidebar": {
     "explorer": "Explorateur",

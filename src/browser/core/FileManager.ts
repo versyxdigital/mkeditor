@@ -102,6 +102,17 @@ export class FileManager {
   private workspaceRootGetter: (() => string | null) | null = null;
 
   /**
+   * Optional callback returning whether the user has session restore
+   * enabled in their settings. Injected by the composition root so
+   * `scheduleSessionSave()` and `restoreSession()` can short-circuit
+   * without FileManager taking a direct dependency on SettingsProvider.
+   * Defaults to "enabled" when no getter is set (first-launch ordering
+   * has the bridge plumbing land before settings are pushed; failing
+   * open is safer than silently dropping the very first save).
+   */
+  private sessionEnabledGetter: (() => boolean) | null = null;
+
+  /**
    * Create a new file manager instance.
    *
    * @param bridge - the execution bridge
@@ -558,6 +569,26 @@ export class FileManager {
   }
 
   /**
+   * Inject a getter for the user's `sessionRestore` setting. Wired by
+   * the composition root to `SettingsProvider.getSetting('sessionRestore')`.
+   * When the getter returns `false`, `scheduleSessionSave` and
+   * `restoreSession` short-circuit and neither writes nor reads the
+   * persisted file.
+   */
+  public setSessionEnabledGetter(fn: () => boolean): void {
+    this.sessionEnabledGetter = fn;
+  }
+
+  /**
+   * Returns true if session persistence is currently active. Falls back
+   * to `true` when no getter is registered so first-boot writes (before
+   * settings land) aren't silently dropped.
+   */
+  private isSessionEnabled(): boolean {
+    return this.sessionEnabledGetter ? this.sessionEnabledGetter() : true;
+  }
+
+  /**
    * Snapshot the current tab/view state for persistence. The active
    * tab's freshest cursor/scroll is captured here (rather than relying
    * solely on the switch-out capture in `activateFile`) so a quit
@@ -604,6 +635,11 @@ export class FileManager {
   public restoreSession(envelope: SessionRestoreEnvelope): void {
     if (this.restored) return;
     this.restored = true;
+    // When session restore is disabled, the envelope is still received
+    // (main / WebFileBridge always emit one) but we drop it on the
+    // floor. Marking `restored = true` above ensures a later toggle
+    // doesn't retroactively replay the now-stale envelope.
+    if (!this.isSessionEnabled()) return;
 
     const { session, contents } = envelope;
     if (!session || session.tabs.length === 0) return;
@@ -686,8 +722,13 @@ export class FileManager {
    */
   public scheduleSessionSave(): void {
     if (this.restoring) return;
+    if (!this.isSessionEnabled()) return;
     if (!this.debouncedSessionSave) {
       this.debouncedSessionSave = debounce(() => {
+        // Re-check on flush: the user may have flipped the setting off
+        // during the debounce window. The persisted file is left
+        // untouched so a later flip back on resumes the prior state.
+        if (!this.isSessionEnabled()) return;
         this.bridge.send('to:session:save', this.serializeSession());
       }, 300);
     }

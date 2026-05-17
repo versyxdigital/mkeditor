@@ -420,11 +420,16 @@ Main pre-validates real-file paths against the filesystem, drops missing ones fr
 **Web mode parity.** [`WebFileBridge.bootstrap()`](../src/browser/core/WebFileBridge.ts) plays the role main process does on desktop: it runs `restoreWorkspace(false)` to silently re-attach the IDB-persisted FS-Access handle, then `shipSessionRestore()` reads `localStorage['mkeditor-session']`, walks each real-file path against the rebuilt `handles` map (reading contents via `handle.getFile()`), and emits `from:session:restore` with the same `SessionRestoreEnvelope` shape desktop uses. Saves go through `to:session:save` → `WebFileBridge.persistSession()` → `localStorage.setItem`. A `beforeunload` listener emits `from:session:flush-request` so BridgeListeners' synchronous handler ships one final save before the page tears down. `workspaceRoot` is null on the web envelope — the IDB handle owns the workspace identity, not the persisted path.
 A legacy `mkeditor-content` localStorage entry (left by pre-session-restore builds) is migrated into the first untitled tab of a freshly-written session on the first launch after Phase 3 lands, then the key is removed.
 
+**User opt-out.** `EditorSettings.sessionRestore` (default `true`) gates the whole surface. The composition root injects `FileManager.setSessionEnabledGetter(() => SettingsProvider.getSetting('sessionRestore'))`; when the getter returns `false`, both `scheduleSessionSave` and `restoreSession` short-circuit. The save check runs again at flush time so a toggle-off mid-debounce doesn't sneak a write through. Main process applies the same gate before calling `AppSession.buildRestoreEnvelope` — disabled means an empty envelope, no disk read. The persisted file is intentionally left untouched on disable so a later toggle-on resumes the prior state.
+
+**Clear saved session.** New IPC `to:session:clear` (whitelisted in `preload.ts`) wipes the persisted file. Desktop: `AppSession.clear()` unlinks `session.json` and any leftover `.tmp`. Web: `WebFileBridge.clearSession()` removes the `mkeditor-session` localStorage entry. Both fire `notifications:session_cleared` via the standard `from:notification:display` plumbing. Currently-open tabs are not touched; the next launch starts fresh. Driven by the "Clear saved session" button in the Settings modal, which guards it behind a `confirmExternal` dialog.
+
 **IPC channels** (whitelisted in [preload.ts](../src/app/preload.ts)):
 
 | Channel                      | Direction       | Payload                  | Purpose                           |
 | ---------------------------- | --------------- | ------------------------ | --------------------------------- |
 | `to:session:save`            | renderer → main | `SessionPayload`         | Debounced + final-flush persist   |
+| `to:session:clear`           | renderer → main | none                     | Wipe the persisted session file   |
 | `from:session:restore`       | main → renderer | `SessionRestoreEnvelope` | Boot-time replay payload          |
 | `from:session:flush-request` | main → renderer | none                     | "Send me your final session, now" |
 

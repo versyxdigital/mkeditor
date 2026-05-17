@@ -8,6 +8,8 @@ export interface EditorSettings {
   minimap: boolean;
   systemtheme: boolean;
   scrollsync: boolean;
+  /** Persist + restore tabs / cursor across launches. See SessionPayload. */
+  sessionRestore: boolean;
   locale: string;
 }
 

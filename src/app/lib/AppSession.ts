@@ -112,6 +112,24 @@ export class AppSession {
   }
 
   /**
+   * Remove the persisted session file (and any leftover tmp from a
+   * crashed write). Used by the renderer's "Clear saved session"
+   * action. Never throws — a missing file is a successful no-op.
+   */
+  static clear(): void {
+    try {
+      if (existsSync(AppSession.filePath)) unlinkSync(AppSession.filePath);
+    } catch {
+      // best-effort
+    }
+    try {
+      if (existsSync(AppSession.tmpPath)) unlinkSync(AppSession.tmpPath);
+    } catch {
+      // best-effort
+    }
+  }
+
+  /**
    * Build a restore envelope ready to ship over IPC. Validates real-file
    * paths against the filesystem (untitled paths are left alone), drops
    * missing entries from `tabs`, lists them in `missing`, and reads

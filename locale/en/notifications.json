@@ -30,5 +30,6 @@
   "update_available": "Update {{version}} is available, downloading in the background...",
   "update_downloaded": "Update {{version}} has been downloaded, restart to update.",
 
-  "session_file_missing": "Some previously open files were not found and have been skipped: {{files}}"
+  "session_file_missing": "Some previously open files were not found and have been skipped: {{files}}",
+  "session_cleared": "Saved session cleared."
 }

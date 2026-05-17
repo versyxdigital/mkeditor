@@ -425,6 +425,124 @@ describe('FileManager.scheduleSessionSave', () => {
     };
     expect(lastPayload.tabs.map((t) => t.path)).toEqual(['untitled-1']);
   });
+
+  it('does not fire a save when sessionEnabled getter returns false', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge, sent } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.setSessionEnabledGetter(() => false);
+    fm.seedUntitled('hello');
+
+    jest.advanceTimersByTime(1000);
+    expect(sent.filter((s) => s.channel === 'to:session:save')).toHaveLength(0);
+  });
+
+  it('re-checks the getter at flush time (toggle off during debounce)', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge, sent } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    let enabled = true;
+    fm.setSessionEnabledGetter(() => enabled);
+    fm.seedUntitled('hello');
+
+    // User flips the setting off inside the debounce window.
+    enabled = false;
+    jest.advanceTimersByTime(1000);
+
+    expect(sent.filter((s) => s.channel === 'to:session:save')).toHaveLength(0);
+  });
+});
+
+describe('FileManager.restoreSession gate', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('drops the envelope when sessionEnabled getter returns false', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.setSessionEnabledGetter(() => false);
+    fm.restoreSession({
+      session: {
+        version: 1,
+        tabs: [
+          {
+            path: 'untitled-1',
+            name: 'Untitled 1',
+            viewState: null,
+            untitledContent: 'should-be-ignored',
+          },
+        ],
+        activeFile: 'untitled-1',
+        workspaceRoot: null,
+      },
+      missing: [],
+      contents: {},
+    });
+
+    expect(fm.tabs.size).toBe(0);
+    expect(fm.activeFile).toBeNull();
+  });
+
+  it('marks restored=true even when disabled (no later silent replay)', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    let enabled = false;
+    fm.setSessionEnabledGetter(() => enabled);
+
+    const envelope = {
+      session: {
+        version: 1 as const,
+        tabs: [
+          {
+            path: 'untitled-1',
+            name: 'Untitled 1',
+            viewState: null,
+            untitledContent: 'body',
+          },
+        ],
+        activeFile: 'untitled-1',
+        workspaceRoot: null,
+      },
+      missing: [],
+      contents: {},
+    };
+
+    // First call: dropped because gate is closed.
+    fm.restoreSession(envelope);
+    expect(fm.tabs.size).toBe(0);
+
+    // User toggles on, then a second call (shouldn't fire in real life
+    // but the guard must hold). The idempotency flag keeps things clean.
+    enabled = true;
+    fm.restoreSession(envelope);
+    expect(fm.tabs.size).toBe(0);
+  });
 });
 
 describe('FileManager.activateFile re-activation', () => {

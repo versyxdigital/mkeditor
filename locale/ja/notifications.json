@@ -30,5 +30,6 @@
   "update_available": "更新 {{version}} が利用可能です。バックグラウンドでダウンロード中…",
   "update_downloaded": "更新 {{version}} がダウンロードされました。再起動して更新してください。",
 
-  "session_file_missing": "以前に開いていた一部のファイルが見つからず、スキップされました: {{files}}"
+  "session_file_missing": "以前に開いていた一部のファイルが見つからず、スキップされました: {{files}}",
+  "session_cleared": "保存されたセッションをクリアしました。"
 }
