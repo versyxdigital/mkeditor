@@ -6,18 +6,19 @@ Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Decisions
 
-| Area                 | Decision                                                                                                                                                                                                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Window chrome        | `frame: false` on Windows + Linux. `titleBarStyle: 'hiddenInset'` on macOS (native traffic lights stay; we draw the bar around them).                                                                                                                                     |
-| Menu surface         | Windows + Linux: custom in-window menu inside `<TitleBar>`. macOS: native menu bar (system top), unchanged. Web: same `<TitleBar>` component, no drag region, no window controls.                                                                                         |
-| Menu source-of-truth | A single `menuModel.ts` (plain TS, no Electron deps) declares each item as `{ id, label, accelerator?, action }`. `AppMenu` (macOS only) builds an Electron `Menu` from it; React `<TitleBar>` (Windows/Linux/web) renders Radix `<DropdownMenu>` from the same model.    |
-| Action dispatch      | Existing IPC channels stay (`from:file:*`, `from:folder:*`, `from:command:palette`, `from:modal:open`). The renderer menu calls a module-level seam (`dispatchMenuAction`) registered by `<App>` at mount time — same pattern as `openModalExternal` / `confirmExternal`. |
-| Window controls      | Drawn in HTML inside `<TitleBar>`. Three new IPC channels: `to:window:minimize`, `to:window:maximize`, `to:window:close`. Maximize button toggles between maximize/restore based on the latest `from:window:state` event.                                                 |
-| Maximize state       | Main listens for `BrowserWindow` `maximize`/`unmaximize` and emits `from:window:state` (boolean). Renderer holds the boolean in `<TitleBar>` state and flips the icon. Double-click on the drag region toggles the same action.                                           |
-| Drag region          | Whole `<TitleBar>` has `-webkit-app-region: drag`. Every interactive child (logo button, menu buttons, window controls) gets `-webkit-app-region: no-drag`. Web mode drops the drag CSS entirely.                                                                         |
-| Existing `<Navbar>`  | Stays. Its responsibilities (active file label, copy-path button, character/word counts, settings/help quick-links) are unchanged. The redundant inline logo moves to `<TitleBar>`. Sidebar toggle stays in `<Navbar>` (it sits beside the active file label).            |
-| Keyboard nav         | Alt opens the first menu; Left/Right cycles menus; Esc closes. Native menu on macOS handles its own — we only implement this for the custom bar.                                                                                                                          |
-| State ownership      | `AppMenu` owns the menu model on disk-side. `<TitleBar>` owns drag region + button state + dropdown open state. Menu actions resolve to the same IPC channels the native menu uses today; no React component knows the menu schema.                                       |
+| Area                 | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Window chrome        | `frame: false` on Windows + Linux. `titleBarStyle: 'hiddenInset'` on macOS (native traffic lights stay; we draw the bar around them).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Menu surface         | Windows + Linux: custom in-window menu inside `<TitleBar>`. macOS: native menu bar (system top), unchanged. Web: same `<TitleBar>` component, no drag region, no window controls.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Menu source-of-truth | A single `src/app/lib/menuModel.ts` (plain TS, no Electron deps) declares each item as `{ id, label, accelerator?, darwinAccelerator?, action }`. `AppMenu` (same dir) builds an Electron `Menu` from it on macOS; React `<TitleBar>` imports the same file via webpack (`../../app/lib/menuModel`). It lives under `src/app/` because `src/app/tsconfig.json` excludes `../browser` — the renderer is allowed to import across, the main process is not. The tray context menu is **out of scope** for the model: tray entries (Show Window / Open Recent / Quit) are tray-only and stay as an inline `Menu.buildFromTemplate` in `AppMenu.buildTrayContextMenu`. |
+| Accelerators         | Default to Electron's `CmdOrCtrl+` modifier so a single string covers both macOS and Windows/Linux (Electron resolves at runtime). For the rare case where the platforms genuinely differ (e.g. DevTools — `Alt+Cmd+I` on macOS vs `Ctrl+Shift+I` elsewhere), set `darwinAccelerator` and `AppMenu.resolveAccelerator` picks it on darwin. `menuModel.ts` itself contains **no `process.platform` checks** — webpack would otherwise bake the build-machine's platform into the renderer bundle.                                                                                                                                                                   |
+| Action dispatch      | Existing IPC channels stay (`from:file:*`, `from:folder:*`, `from:command:palette`, `from:modal:open`). The renderer menu calls a module-level seam (`dispatchMenuAction`) registered by `<App>` at mount time — same pattern as `openModalExternal` / `confirmExternal`.                                                                                                                                                                                                                                                                                                                                                                                          |
+| Window controls      | Drawn in HTML inside `<TitleBar>`. Three new IPC channels: `to:window:minimize`, `to:window:maximize`, `to:window:close`. Maximize button toggles between maximize/restore based on the latest `from:window:state` event.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Maximize state       | Main listens for `BrowserWindow` `maximize`/`unmaximize` and emits `from:window:state` (boolean). Renderer holds the boolean in `<TitleBar>` state and flips the icon. Double-click on the drag region toggles the same action.                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Drag region          | Whole `<TitleBar>` has `-webkit-app-region: drag`. Every interactive child (logo button, menu buttons, window controls) gets `-webkit-app-region: no-drag`. Web mode drops the drag CSS entirely.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Existing `<Navbar>`  | Stays. Its responsibilities (active file label, copy-path button, character/word counts, settings/help quick-links) are unchanged. The redundant inline logo moves to `<TitleBar>`. Sidebar toggle stays in `<Navbar>` (it sits beside the active file label).                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Keyboard nav         | Alt opens the first menu; Left/Right cycles menus; Esc closes. Native menu on macOS handles its own — we only implement this for the custom bar.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| State ownership      | `AppMenu` owns the menu model on disk-side. `<TitleBar>` owns drag region + button state + dropdown open state. Menu actions resolve to the same IPC channels the native menu uses today; no React component knows the menu schema.                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ### State ownership rule
 
@@ -31,14 +32,12 @@ Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 src/app/
 ├── lib/
 │   ├── AppMenu.ts                     MODIFIED — build Electron Menu from menuModel; install on macOS only
-│   └── AppWindow.ts                   NEW — window-control IPC handlers + maximize/unmaximize emitter
+│   ├── AppWindow.ts                   NEW — window-control IPC handlers + maximize/unmaximize emitter
+│   └── menuModel.ts                   NEW — plain TS, no Electron deps; types + File/Edit/View/Help groups
 ├── main.ts                            MODIFIED — frame: false (win/linux) / hiddenInset (mac); construct AppWindow
 └── preload.ts                         MODIFIED — whitelist to:window:* and from:window:state
 
 src/browser/
-├── interfaces/
-│   └── MenuModel.ts                   NEW — shape shared between AppMenu and <TitleBar>
-├── menuModel.ts                       NEW — plain TS, no Electron deps, declares File/Edit/View/Help entries
 ├── core/
 │   └── BridgeManager.ts               MODIFIED — windowMinimize() / windowMaximize() / windowClose(); subscribe/getSnapshot for isMaximized
 ├── react/
@@ -66,17 +65,36 @@ tests/
 ## Menu Schema
 
 ```ts
+/** Plain string union — avoids importing Electron types so the renderer can use the same file. */
+type MenuRole =
+  | 'undo'
+  | 'redo'
+  | 'cut'
+  | 'copy'
+  | 'paste'
+  | 'togglefullscreen'
+  | 'quit';
+
 type MenuAction =
   | { kind: 'channel'; channel: string; payload?: unknown }
-  | { kind: 'role'; role: Electron.MenuItemConstructorOptions['role'] }
+  | { kind: 'role'; role: MenuRole }
   | { kind: 'command'; commandId: string };
 
 interface MenuItem {
-  /** Stable id for tests + keyboard nav (`file.new`, `edit.copy`, …). */
+  /** Stable id for tests, keyboard nav, and the i18n key (`menu.<id>`). */
   id: string;
-  /** i18n key under `menu.<id>`. Untranslated string in non-en builds falls back to the key. */
-  labelKey: string;
+  /** English label. Renderer translates via `t(\`menu.\${id}\`)` once i18n
+   *  is wired in P2 and falls back to this string. `role`-action items
+   *  intentionally omit the label so Electron picks the OS default
+   *  ("Exit" on Windows for `quit`, etc.). */
+  label: string;
+  /** Default Electron accelerator. `CmdOrCtrl+` means Cmd on macOS and
+   *  Ctrl elsewhere — Electron resolves it at runtime, and the renderer
+   *  reads the same syntax in P2. */
   accelerator?: string;
+  /** macOS override for `accelerator`. Set only when the platforms can't
+   *  share a single `CmdOrCtrl+` expression (e.g. DevTools). */
+  darwinAccelerator?: string;
   action?: MenuAction;
   /** Visual separator above this item. */
   separatorBefore?: boolean;
@@ -84,7 +102,8 @@ interface MenuItem {
 
 interface MenuGroup {
   id: 'file' | 'edit' | 'view' | 'help';
-  labelKey: string;
+  /** English label shown on the menu-bar button. */
+  label: string;
   items: MenuItem[];
 }
 
@@ -119,7 +138,7 @@ type MenuModel = MenuGroup[];
 
 ### Tasks
 
-1. **Create [src/browser/menuModel.ts](../src/browser/menuModel.ts)** — declare File / Edit / View / Help groups with every item currently in `AppMenu.register()` (lines 49-170). Inputs taken from there verbatim, expressed as `MenuItem[]`. No Electron imports.
+1. **Create [src/app/lib/menuModel.ts](../src/app/lib/menuModel.ts)** — declare types (`MenuAction`, `MenuItem`, `MenuGroup`, `MenuModel`) and the data (File / Edit / View / Help groups) in a single file. Items copied verbatim from `AppMenu.register()` (lines 49-170). No Electron runtime imports; the `role` field is a plain string union. Webpack lets the renderer import this via `../../app/lib/menuModel`.
 2. **Refactor [src/app/lib/AppMenu.ts](../src/app/lib/AppMenu.ts)** — replace the inline `Menu.buildFromTemplate([…])` with a `buildFromModel(menuModel)` helper that maps each `MenuAction` to its Electron equivalent (channel send / `role` / `click` handler). `register()` only calls `app.applicationMenu = …` when `process.platform === 'darwin'`; otherwise sets `null` so the OS menu strip disappears on Windows/Linux.
 3. **Create [src/app/lib/AppWindow.ts](../src/app/lib/AppWindow.ts)** — owns `to:window:minimize | maximize | close` `ipcMain.on` handlers (delegate to `BrowserWindow.minimize() / maximize() / unmaximize() / close()`). Listens for the window's own `maximize` / `unmaximize` events and emits `from:window:state` (`{ isMaximized: boolean }`). Sends an initial state on `did-finish-load`.
 4. **Update [src/app/main.ts](../src/app/main.ts)** — pass `frame: false` (Windows/Linux) or `titleBarStyle: 'hiddenInset'` + `trafficLightPosition: { x: 12, y: 12 }` (macOS) to the `BrowserWindow` constructor. Construct `AppWindow` after the window opens.

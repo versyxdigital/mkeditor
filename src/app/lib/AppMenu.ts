@@ -1,9 +1,27 @@
-import { app, Menu, type BrowserWindow } from 'electron';
+import {
+  app,
+  Menu,
+  type BrowserWindow,
+  type MenuItemConstructorOptions,
+} from 'electron';
 import type { BridgeProviders } from '../interfaces/Providers';
 import { AppStorage } from './AppStorage';
+import {
+  menuModel,
+  type MenuGroup,
+  type MenuItem,
+  type MenuAction,
+} from './menuModel';
 
 /**
  * AppMenu
+ *
+ * Builds the Electron application menu from the shared `menuModel`.
+ *
+ * On macOS the menu lives on the system menu bar and stays in use; on
+ * Windows and Linux we set `Menu.setApplicationMenu(null)` so the OS
+ * strip disappears — the in-window `<TitleBar>` (added in P2) renders
+ * the same model in the renderer.
  */
 export class AppMenu {
   /** The browser window */
@@ -42,133 +60,103 @@ export class AppMenu {
   }
 
   /**
-   * Register all menu items.
-   * @returns
+   * Build the Electron menu template from `menuModel` and install it.
+   *
+   * On Windows + Linux we explicitly clear the application menu — the
+   * in-window `<TitleBar>` (P2) is the new home for those entries.
    */
   register() {
-    app.applicationMenu = Menu.buildFromTemplate([
-      {
-        label: 'File',
-        submenu: [
-          {
-            label: 'New File...',
-            click: () => {
-              this.context.webContents.send('from:file:new', 'to:file:new');
-            },
-            accelerator: process.platform === 'darwin' ? 'Cmd+N' : 'Ctrl+N',
-          },
-          {
-            label: 'Open File...',
-            click: () => {
-              this.context.webContents.send('from:file:open', 'to:file:open');
-            },
-            accelerator: process.platform === 'darwin' ? 'Cmd+O' : 'Ctrl+O',
-          },
-          {
-            label: 'Open Folder...',
-            click: () => {
-              this.context.webContents.send(
-                'from:folder:open',
-                'to:folder:open',
-              );
-            },
-            accelerator:
-              process.platform === 'darwin' ? 'Cmd+Shift+O' : 'Ctrl+Shift+O',
-          },
-          {
-            label: 'Save',
-            click: () => {
-              this.context.webContents.send('from:file:save', 'to:file:save');
-            },
-            accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S',
-          },
-          {
-            label: 'Save As...',
-            click: () => {
-              this.context.webContents.send(
-                'from:file:saveas',
-                'to:file:saveas',
-              );
-            },
-            accelerator:
-              process.platform === 'darwin' ? 'Cmd+Shift+S' : 'Ctrl+Shift+S',
-          },
-          { type: 'separator' },
-          {
-            label: 'Settings...',
-            click: () => {
-              this.context.webContents.send('from:modal:open', 'settings'); // channel / provider
-            },
-          },
-          {
-            label: 'Open Log...',
-            click: () => {
-              AppStorage.openPath(
-                this.context,
-                <string>this.providers.logger?.logpath,
-              );
-            },
-          },
-          { type: 'separator' },
-          { role: 'quit' },
-        ],
-      },
-      {
-        label: 'Edit',
-        submenu: [
-          { role: 'undo' },
-          { role: 'redo' },
-          { type: 'separator' },
-          { role: 'cut' },
-          { role: 'copy' },
-          { role: 'paste' },
-        ],
-      },
-      {
-        label: 'View',
-        submenu: [
-          {
-            label: 'Open Command Palette',
-            click: () => {
-              this.context.webContents.send('from:command:palette', 'open');
-            },
-            accelerator: 'F1',
-          },
-          { type: 'separator' },
-          { role: 'togglefullscreen' },
-          {
-            label: 'Toggle Developer Tools',
-            accelerator: (function () {
-              return process.platform === 'darwin'
-                ? 'Alt+Command+I'
-                : 'Ctrl+Shift+I';
-            })(),
-            click: () => {
-              this.context.webContents.toggleDevTools();
-            },
-          },
-        ],
-      },
-      {
-        label: 'Help',
-        submenu: [
-          {
-            label: 'About MKEditor',
-            click: () => {
-              this.context.webContents.send('from:modal:open', 'about'); // channel / provider
-            },
-            accelerator: process.platform === 'darwin' ? 'Cmd+/' : 'Ctrl+/',
-          },
-          {
-            label: 'Editor Shortcuts',
-            click: () => {
-              this.context.webContents.send('from:modal:open', 'shortcuts'); // channel / provider
-            },
-            accelerator: process.platform === 'darwin' ? 'Cmd+;' : 'Ctrl+;',
-          },
-        ],
-      },
-    ]);
+    if (process.platform !== 'darwin') {
+      Menu.setApplicationMenu(null);
+      return;
+    }
+
+    const template: MenuItemConstructorOptions[] = menuModel.map((group) =>
+      this.buildGroup(group),
+    );
+    app.applicationMenu = Menu.buildFromTemplate(template);
+  }
+
+  private buildGroup(group: MenuGroup): MenuItemConstructorOptions {
+    const submenu: MenuItemConstructorOptions[] = [];
+    for (const item of group.items) {
+      if (item.separatorBefore) {
+        submenu.push({ type: 'separator' });
+      }
+      submenu.push(this.buildItem(item));
+    }
+    return { label: group.label, submenu };
+  }
+
+  private buildItem(item: MenuItem): MenuItemConstructorOptions {
+    if (!item.action) {
+      return { label: item.label, accelerator: this.resolveAccelerator(item) };
+    }
+    return this.applyAction(item, item.action);
+  }
+
+  /** macOS takes the `darwinAccelerator` override when present; everything
+   *  else uses the default `accelerator`. Resolved here at runtime so the
+   *  model itself stays platform-agnostic — webpack would otherwise bake
+   *  the wrong platform into the renderer bundle. */
+  private resolveAccelerator(item: MenuItem): string | undefined {
+    if (process.platform === 'darwin' && item.darwinAccelerator) {
+      return item.darwinAccelerator;
+    }
+    return item.accelerator;
+  }
+
+  private applyAction(
+    item: MenuItem,
+    action: MenuAction,
+  ): MenuItemConstructorOptions {
+    const accelerator = this.resolveAccelerator(item);
+    switch (action.kind) {
+      case 'role':
+        // Intentionally omit `label` — Electron picks the OS default
+        // (e.g. "Exit" instead of "Quit" on Windows).
+        return {
+          role: action.role as MenuItemConstructorOptions['role'],
+          accelerator,
+        };
+      case 'channel': {
+        const { channel, payload } = action;
+        return {
+          label: item.label,
+          accelerator,
+          click: () => this.context.webContents.send(channel, payload),
+        };
+      }
+      case 'command':
+        return {
+          label: item.label,
+          accelerator,
+          click: () => this.runCommand(action.commandId),
+        };
+    }
+  }
+
+  /**
+   * Dispatch table for `{ kind: 'command' }` menu actions. Adding a new
+   * command means adding both an entry here and a case in the renderer
+   * dispatch surface (P2's `to:command:run`).
+   */
+  private runCommand(commandId: string): void {
+    switch (commandId) {
+      case 'open-log': {
+        const logpath = this.providers.logger?.logpath;
+        if (logpath) AppStorage.openPath(this.context, logpath);
+        return;
+      }
+      case 'toggle-devtools':
+        this.context.webContents.toggleDevTools();
+        return;
+      default:
+        // Unknown commandId — drop silently rather than throw; the model
+        // is the contract and an unknown id is a coding error caught in
+        // dev, not a user-visible failure.
+        return;
+    }
   }
 
   /**

@@ -14,6 +14,12 @@ jest.mock('../src/app/lib/AppMenu', () => ({
   })),
 }));
 
+jest.mock('../src/app/lib/AppWindow', () => ({
+  AppWindow: jest.fn().mockImplementation(() => ({
+    register: jest.fn(),
+  })),
+}));
+
 jest.mock('../src/app/lib/AppSettings', () => ({
   AppSettings: jest.fn().mockImplementation(() => ({
     applied: { systemtheme: false },

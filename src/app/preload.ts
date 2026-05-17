@@ -32,6 +32,9 @@ const senderWhitelist = [
   'to:file:delete',
   'to:file:properties',
   'to:i18n:set',
+  'to:window:minimize',
+  'to:window:maximize',
+  'to:window:close',
 ];
 
 // Can be sent from the main process and received
@@ -54,6 +57,7 @@ const receiverWhitelist = [
   'from:path:properties',
   'from:path:renamed',
   'from:i18n:set',
+  'from:window:state',
 ];
 
 /**

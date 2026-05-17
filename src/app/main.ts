@@ -18,6 +18,7 @@ import { AppMenu } from './lib/AppMenu';
 import { AppSession } from './lib/AppSession';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
+import { AppWindow } from './lib/AppWindow';
 import { iconBase64 } from './assets/icon';
 import type { LogConfig } from './interfaces/Logging';
 
@@ -74,10 +75,26 @@ let context: BrowserWindow | null;
  * @param file - present if we are opening the app from a file
  */
 function main(file: string | null = null) {
-  // Create a new browser window
+  // Pick the window chrome per platform. Windows + Linux become frameless
+  // so the renderer's `<TitleBar>` (added in P2) can draw the logo, menu
+  // bar, and window-control buttons. macOS keeps the native traffic lights
+  // via `titleBarStyle: 'hiddenInset'` and continues to use the system
+  // menu bar — `trafficLightPosition` nudges the buttons down so they
+  // align with the title row P3 will tune.
+  const isMac = process.platform === 'darwin';
+  let chrome: Electron.BrowserWindowConstructorOptions;
+  if (isMac) {
+    chrome = {
+      titleBarStyle: 'hiddenInset',
+      trafficLightPosition: { x: 12, y: 12 },
+    };
+  } else {
+    chrome = { frame: false };
+  }
   context = new BrowserWindow({
     show: false,
     icon: join(__dirname, 'assets/icon.ico'),
+    ...chrome,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -105,10 +122,19 @@ function main(file: string | null = null) {
   bridge.provide('logger', logconfig);
   bridge.register(); // Register all IPC event listeners
 
-  // Load the electron application menu
+  // Load the electron application menu. On Windows + Linux this calls
+  // `Menu.setApplicationMenu(null)` so the native strip disappears; on
+  // macOS it installs the model-driven application menu.
   const menu = new AppMenu(context);
   menu.provide('logger', logconfig);
   menu.register(); // Register all menu items
+
+  // Window-control IPC + maximize-state emitter. The renderer's title bar
+  // (P2) sends `to:window:minimize/maximize/close` here; `from:window:state`
+  // hydrates the renderer with the initial maximize state on did-finish-load
+  // and replays on every maximize/unmaximize.
+  const window = new AppWindow(context, true);
+  void window; // referenced to keep the instance alive alongside `context`
 
   // Configure the app's tray icon and context menu
   const tray = new Tray(nativeImage.createFromDataURL(iconBase64()));
