@@ -20,6 +20,9 @@ console.log('Compiling app from src/app...');
 compileApp();
 
 console.log('Building app installer...');
-execTask('electron-builder');
+// `--publish never` keeps electron-builder from auto-uploading under CI
+// (it detects GITHUB_ACTIONS and otherwise tries to use GH_TOKEN). The
+// release workflow publishes via softprops/action-gh-release instead.
+execTask('electron-builder --publish never');
 
 console.log('Build complete!');
