@@ -50,7 +50,7 @@ const ScrollSync = async (line: number, preview: HTMLElement) => {
       return;
     }
 
-    let scrollTo = 0;
+    let scrollTo: number;
     const rect = getElementBounds(previous);
     const previousTop = rect.top;
 

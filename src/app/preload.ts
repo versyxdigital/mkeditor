@@ -96,9 +96,8 @@ contextBridge.exposeInMainWorld('mked', {
   getAppLocale: () => ipcRenderer.sendSync('mked:get-locale'),
   openMkedUrl: (url: string) => ipcRenderer.send('mked:open-url', url),
   pathDirname: (p: string) => ipcRenderer.invoke('mked:path:dirname', p),
-  resolvePath: (base: string, rel: string) => {
-    ipcRenderer.invoke('mked:path:resolve', base, rel);
-  },
+  resolvePath: (base: string, rel: string) =>
+    ipcRenderer.invoke('mked:path:resolve', base, rel),
 });
 
 contextBridge.exposeInMainWorld('logger', {

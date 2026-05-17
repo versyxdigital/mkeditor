@@ -1,38 +1,16 @@
 import { dom } from '../dom';
 import { exportSettings as defaults } from '../config';
+import { markdownStylesheet } from '../markdownStyles';
 import type { ExportSettings } from '../interfaces/Editor';
 
+/**
+ * External resources still pulled in via CDN when `withStyles` is on:
+ *
+ *  - highlight.js theme — provides the syntax-colour rules for the
+ *    .hljs class names markdown-it stamps onto fenced code blocks.
+ *  - KaTeX — required font + CSS for math rendering.
+ */
 const cdn = {
-  bootstrap: {
-    css: {
-      rel: 'stylesheet',
-      href: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
-      integrity:
-        'sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH',
-      crossorigin: 'anonymous',
-    },
-    js: {
-      src: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js',
-      integrity:
-        'sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy',
-      crossorigin: 'anonymous',
-    },
-  },
-  fontawesome: {
-    css: {
-      rel: 'stylesheet',
-      href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css',
-      integrity:
-        'sha512-DxV+EoADOkOygM4IR9yXP8Sb2qwgidEmeqAEmDKIOfPRQZOWbXCzLC6vjbZyy0vPisbH2SyW27+ddLVCN+OMzQ==',
-      crossorigin: 'anonymous',
-    },
-    js: {
-      src: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/js/all.min.js',
-      integrity:
-        'sha512-gBYquPLlR76UWqCwD06/xwal4so02RjIR0oyG1TIhSGwmBTRrIkQbaPehPF8iwuY9jFikDHMGEelt0DtY7jtvQ==',
-      crossorigin: 'anonymous',
-    },
-  },
   highlightjs: {
     css: {
       rel: 'stylesheet',
@@ -59,52 +37,71 @@ const cdn = {
   },
 };
 
-const inlineCSS = `
-.alert p {
-    margin-bottom: 0;
-}
-
+/**
+ * Inline print-mode highlight.js overrides. The hljs github theme uses
+ * subtle background tints that don't print well; this forces readable
+ * colours on physical paper / PDF.
+ */
+const printOverrides = `
 @media print {
-.hljs-meta .hljs-string, .hljs-regexp, .hljs-string {
+  .hljs-meta .hljs-string, .hljs-regexp, .hljs-string {
     color: #f7a857;
-}
-
-.hljs-attr,
-.hljs-attribute,
-.hljs-literal,
-.hljs-meta,
-.hljs-number,
-.hljs-operator,
-.hljs-selector-attr,
-.hljs-selector-class,
-.hljs-selector-id,
-.hljs-variable {
+  }
+  .hljs-attr, .hljs-attribute, .hljs-literal, .hljs-meta, .hljs-number,
+  .hljs-operator, .hljs-selector-attr, .hljs-selector-class,
+  .hljs-selector-id, .hljs-variable {
     color: #78c9e8;
-}
-
-.hljs-title,
-.hljs-title.class_,
-.hljs-title.class_.inherited__,
-.hljs-title.function_ {
+  }
+  .hljs-title, .hljs-title.class_, .hljs-title.class_.inherited__,
+  .hljs-title.function_ {
     color: #ccda59;
+  }
 }
+`;
+
+/**
+ * Inline script baked into exported HTML so the per-codeblock copy
+ * buttons keep working in a standalone document (no React, no toast
+ * library). Decodes the base64 `data-source` attribute that Markdown.ts
+ * stamps on each `.md-codeblock` wrapper, writes the original source
+ * to the clipboard, and gives brief visual feedback by toggling a
+ * `.is-copied` class on the button for 1.2s.
+ */
+const codeblockCopyScript = `
+(function () {
+  if (typeof document === 'undefined') return;
+  document.addEventListener('click', function (event) {
+    var target = event.target;
+    if (!target || !target.closest) return;
+    var btn = target.closest('.md-codeblock-copy');
+    if (!btn) return;
+    var wrapper = btn.closest('.md-codeblock');
+    var encoded = wrapper && wrapper.getAttribute('data-source');
+    if (!encoded) return;
+    try {
+      var binary = atob(encoded);
+      var bytes = Uint8Array.from(binary, function (c) { return c.charCodeAt(0); });
+      var text = new TextDecoder().decode(bytes);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text);
+      }
+      btn.classList.add('is-copied');
+      setTimeout(function () { btn.classList.remove('is-copied'); }, 1200);
+    } catch (err) { /* noop */ }
+  });
+})();
 `;
 
 type ProviderKey = keyof typeof cdn;
 
-const providers: ProviderKey[] = [
-  'bootstrap',
-  'fontawesome',
-  'highlightjs',
-  'katex',
-];
+const providers: ProviderKey[] = ['highlightjs', 'katex'];
 
 export class HTMLExporter {
   /**
    * Generate HTML export.
    *
    * @param content - the editor content
-   * @param styled - flag to determine whether to style the HTML
+   * @param settings - export settings
    * @returns - the generated HTML
    */
   static generateHTML(content: string, settings: ExportSettings) {
@@ -118,42 +115,53 @@ export class HTMLExporter {
     );
 
     if (withStyles) {
-      // Apply styles/scripts based on selected provider(s)
+      // Pull in the external CSS/JS for syntax highlighting + math.
       for (const provides of providers) {
-        if (cdn[provides]) {
-          const { css, js } = cdn[provides];
+        const { css, js } = cdn[provides];
 
-          if (css) {
-            const stylesheet = document.createElement('link');
-            stylesheet.rel = css.rel;
-            stylesheet.href = css.href;
-            stylesheet.integrity = css.integrity;
-            stylesheet.crossOrigin = css.crossorigin;
-            document.head.appendChild(stylesheet);
-          }
+        if (css) {
+          const stylesheet = document.createElement('link');
+          stylesheet.rel = css.rel;
+          stylesheet.href = css.href;
+          stylesheet.integrity = css.integrity;
+          stylesheet.crossOrigin = css.crossorigin;
+          document.head.appendChild(stylesheet);
+        }
 
-          if (js) {
-            const script = document.createElement('script');
-            script.src = js.src;
-            script.integrity = js.integrity;
-            script.crossOrigin = js.crossorigin;
-            document.body.appendChild(script);
-          }
+        if (js) {
+          const script = document.createElement('script');
+          script.src = js.src;
+          script.integrity = js.integrity;
+          script.crossOrigin = js.crossorigin;
+          document.body.appendChild(script);
         }
       }
 
-      // Custom styling
+      // Markdown layout + alert + table + code styling, plus print
+      // overrides. Same string the live preview uses (see
+      // src/browser/markdownStyles.ts) so the export visually matches.
       const style = document.createElement('style');
-      style.appendChild(document.createTextNode(inlineCSS));
+      style.appendChild(
+        document.createTextNode(markdownStylesheet + printOverrides),
+      );
       document.head.appendChild(style);
 
-      // User settings
+      // Copy-button handler for the .md-codeblock wrappers Markdown.ts
+      // emits. Self-contained — no toast library in the export.
+      const copyScript = document.createElement('script');
+      copyScript.appendChild(document.createTextNode(codeblockCopyScript));
+      document.body.appendChild(copyScript);
+
+      // User-driven body styles. These cascade through to
+      // #preview-content via `color: inherit` / `font-size: inherit`
+      // in markdownStylesheet, so the user's chosen font, size, line
+      // height, and colours drive the rendered markdown.
       document.body.style.fontSize = `${fontSize}px`;
       document.body.style.lineHeight = lineSpacing.toString();
       document.body.style.backgroundColor = background;
       document.body.style.color = fontColor;
     } else {
-      // If not using styles then strip all classes
+      // No styles — strip every class so the export is plain HTML.
       const elems = document.querySelectorAll('*');
       for (const elem of elems) {
         elem.removeAttribute('class');

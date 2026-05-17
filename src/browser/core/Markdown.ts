@@ -50,6 +50,88 @@ hljs.registerLanguage('rust', rust);
 hljs.registerLanguage('cpp', cpp);
 hljs.registerLanguage('c', c);
 
+/** Languages that render as a "terminal" style (dark, traffic-light dots). */
+const terminalLanguages = new Set(['shell', 'sh', 'bash', 'zsh', 'powershell']);
+
+/** Friendly display names for known hljs identifiers. */
+const languageDisplayNames: Record<string, string> = {
+  javascript: 'JavaScript',
+  js: 'JavaScript',
+  typescript: 'TypeScript',
+  ts: 'TypeScript',
+  python: 'Python',
+  py: 'Python',
+  shell: 'Shell',
+  sh: 'Shell',
+  bash: 'Bash',
+  zsh: 'Zsh',
+  yaml: 'YAML',
+  yml: 'YAML',
+  json: 'JSON',
+  php: 'PHP',
+  sql: 'SQL',
+  xml: 'XML',
+  csharp: 'C#',
+  rust: 'Rust',
+  cpp: 'C++',
+  c: 'C',
+};
+
+/** SVG copy icon shared between preview + export. */
+const copyIconSvg =
+  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="5" y="5" width="8" height="9" rx="1.25"/>' +
+  '<path d="M3 10V3a1 1 0 0 1 1-1h7"/>' +
+  '</svg>';
+
+/**
+ * Render a code block with a header bar (language name + copy button)
+ * around the existing hljs-styled <pre><code>. `lang` may be empty
+ * when the user writes a fenced block without a language id — in that
+ * case we still render the header but skip the language label.
+ */
+function renderCodeblock(rawSource: string, highlightedHtml: string, lang: string) {
+  const isTerminal = terminalLanguages.has(lang);
+  const label = languageDisplayNames[lang] ?? (lang || '');
+  const wrapperClasses = isTerminal
+    ? 'md-codeblock md-codeblock--terminal'
+    : 'md-codeblock';
+  // The source is stored on the wrapper as a base64 data attribute so
+  // the copy button can read it without depending on DOM textContent
+  // (which would include syntax-highlight span fragments). Encoding
+  // as base64 also avoids HTML-attribute escaping headaches.
+  let sourceBase64: string;
+  if (typeof btoa === 'function') {
+    const bytes = new TextEncoder().encode(rawSource);
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    sourceBase64 = btoa(binary);
+  } else {
+    sourceBase64 = Buffer.from(rawSource, 'utf-8').toString('base64');
+  }
+
+  const dots = isTerminal
+    ? '<span class="md-codeblock-dots" aria-hidden="true">' +
+      '<i></i><i></i><i></i></span>'
+    : '';
+  const langLabel = label
+    ? `<span class="md-codeblock-lang">${label}</span>`
+    : '';
+
+  return (
+    `<div class="${wrapperClasses}" data-source="${sourceBase64}">` +
+    '<div class="md-codeblock-header">' +
+    `${dots}${langLabel}` +
+    '<button type="button" class="md-codeblock-copy" aria-label="Copy code">' +
+    copyIconSvg +
+    '</button>' +
+    '</div>' +
+    highlightedHtml +
+    '</div>'
+  );
+}
+
 /**
  * Create a new markdownIt instance.
  */
@@ -66,21 +148,47 @@ const Markdown = new MarkdownIt({
           ignoreIllegals: true,
         }).value;
 
-        return (
+        return renderCodeblock(
+          str,
           '<pre class="hljs"><code class="hljs language-' +
-          lang +
-          '">' +
-          code +
-          '</code></pre>'
+            lang +
+            '">' +
+            code +
+            '</code></pre>',
+          lang,
         );
       } catch (err) {
         logger?.error('Markdown.highlight', JSON.stringify(err));
       }
     }
 
-    return '<pre class="hljs"><code>' + escapeHtml(str) + '</code></pre>';
+    return renderCodeblock(
+      str,
+      '<pre class="hljs"><code>' + escapeHtml(str) + '</code></pre>',
+      lang,
+    );
   },
 });
+
+// Override the default fence renderer so the `highlight` callback's
+// HTML is used verbatim — without it, markdown-it only skips its
+// `<pre><code>` wrap when the returned string starts with `<pre`,
+// and our `renderCodeblock` wrapper starts with `<div>` so the body
+// would otherwise end up inside an extra outer <pre>.
+Markdown.renderer.rules.fence = (tokens, idx, options) => {
+  const token = tokens[idx];
+  const info = token.info ? Markdown.utils.unescapeAll(token.info).trim() : '';
+  const langName = info ? info.split(/\s+/g)[0] : '';
+
+  if (options.highlight) {
+    const out = options.highlight(token.content, langName, '');
+    if (out) return out + '\n';
+  }
+
+  return (
+    '<pre><code>' + Markdown.utils.escapeHtml(token.content) + '</code></pre>\n'
+  );
+};
 
 // Only autolink URLs that explicitly include a protocol
 Markdown.linkify.set({ fuzzyLink: false, fuzzyEmail: false, fuzzyIP: false });

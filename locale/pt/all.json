@@ -58,7 +58,7 @@
     "version_label": "Versão",
     "built_with_love_by": "Criado com amor por",
     "libraries_intro": "O MKEditor usa as seguintes bibliotecas de código aberto:",
-    "libraries_list": "monaco, bootstrap, fontawesome, markdown-it, highlight.js, split.js, sweetalert2, webpack e electron.",
+    "libraries_list": "monaco, react, tailwind, markdown-it, highlight.js, webpack e electron.",
     "view_source_prefix": "Ver o código-fonte",
     "view_source_here": "aqui"
   },
@@ -67,7 +67,7 @@
     "intro": "Aqui você pode configurar as opções para exportações HTML e PDF; as configurações são salvas automaticamente conforme você as atualiza.",
     "settings_file_info": "Seu arquivo de configurações está em ~/.mkeditor/settings.json.",
     "export_with_styles_label": "Exportar com estilos",
-    "export_with_styles_help": "Ative para exportar com os estilos do Bootstrap, FontAwesome e KaTeX fornecidos por CDNs oficiais com verificações de integridade e de crossorigin.",
+    "export_with_styles_help": "Ative para exportar com os estilos do Highlight.js e KaTeX fornecidos por CDNs oficiais com verificações de integridade e de crossorigin.",
     "set_container_label": "Definir contêiner",
     "set_container_option_container": "container",
     "set_container_option_container_fluid": "container-fluid",

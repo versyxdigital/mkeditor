@@ -1,11 +1,7 @@
-import { editor, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api';
+import { editor, KeyCode } from 'monaco-editor';
 import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
-import { CharacterCount, WordCount } from '../extensions/editor/WordCount';
-import { ScrollSync, refreshLines } from '../extensions/editor/ScrollSync';
-import { registerUIToolbarListeners } from './ToolbarListeners';
-import { Markdown } from './Markdown';
-import { APP_VERSION } from '../version';
+import { ScrollSync } from '../extensions/editor/ScrollSync';
 import { welcomeMarkdown } from '../assets/intro';
 import { debounce, logger } from '../util';
 import { dom } from '../dom';
@@ -15,6 +11,11 @@ interface EditorConstructOptions {
   dispatcher: EditorDispatcher;
   init?: boolean | undefined;
   watch?: boolean | undefined;
+}
+
+interface EditorCreateOptions {
+  mount?: HTMLElement | null;
+  watch?: boolean;
 }
 
 export class EditorManager {
@@ -46,15 +47,11 @@ export class EditorManager {
     this.mode = opts.mode;
     this.dispatcher = opts.dispatcher;
 
-    dom.about.version.innerHTML = APP_VERSION;
-    dom.build.innerHTML = `v${APP_VERSION}`;
-
-    this.dispatcher.addEventListener('editor:render', () => {
-      const value = this.mkeditor?.getValue() ?? '';
-      WordCount(value);
-      CharacterCount(value);
-      this.render(value);
-    });
+    // editor:render is handled by <PreviewPane> (innerHTML write) and
+    // <Counts> via useCounts (word/character counts). EditorManager
+    // no longer subscribes here. The version build chip and About
+    // modal version label both source APP_VERSION directly from
+    // <BottomToolbarRight> / <AboutModal>.
 
     if (opts.init) {
       this.create({ watch: opts.watch });
@@ -74,26 +71,47 @@ export class EditorManager {
   /**
    * Create a new editor instance.
    *
+   * @param mount - DOM element to host Monaco. Production callers (the
+   *   React <EditorHost>) always supply this. The `dom.editor.dom`
+   *   fallback exists only for tests, which seed a `<div id="editor">`
+   *   before importing this module; production HTML no longer contains
+   *   that id.
    * @param watch - flag to watch the editor for changes
    * @returns
    */
-  public create({ watch = false }) {
+  public create({ mount, watch = false }: EditorCreateOptions = {}) {
+    if (this.mkeditor) {
+      // Idempotency: React effects may re-fire under strict-mode or hot
+      // reload. Monaco is created exactly once.
+      logger?.warn(
+        'EditorManager.create',
+        'Editor already created; ignoring duplicate invocation.',
+      );
+      return this;
+    }
+
+    const target: HTMLElement | null = mount ?? dom.editor.dom ?? null;
+    if (!target) {
+      logger?.error(
+        'EditorManager.create',
+        'No mount target available (mount param and dom.editor.dom both null).',
+      );
+      return this;
+    }
+
     try {
       let editorContent = welcomeMarkdown;
-      // For web mode, fetch stored content from localStorage
+      // For web mode, fetch stored content from localStorage.
+      // Web-mode delete-button click is wired by <EditorToolbar> via
+      // editorManager.resetContent().
       if (this.mode === 'web') {
         const webStoredContent = localStorage.getItem('mkeditor-content');
         if (webStoredContent) editorContent = webStoredContent;
-
-        dom.buttons.delete.addEventListener('click', () => {
-          localStorage.removeItem('mkeditor-content');
-          this.mkeditor?.setValue(welcomeMarkdown);
-        });
       }
 
       // Create the underlying monaco editor.
       // See https://microsoft.github.io/monaco-editor/
-      this.mkeditor = editor.create(dom.editor.dom, {
+      this.mkeditor = editor.create(target, {
         value: editorContent,
         language: 'markdown',
         wordBasedSuggestions: 'off',
@@ -105,6 +123,7 @@ export class EditorManager {
         roundedSelection: false,
         accessibilityPageSize: 1000,
       });
+      console.info('mkeditor: Monaco editor instance created.');
 
       // Set loadedInitialEditorValue for tracking file changes.
       this.loadedInitialEditorValue = this.mkeditor.getValue();
@@ -112,21 +131,16 @@ export class EditorManager {
         this.loadedInitialEditorValue = event.detail;
       });
 
-      // Event listeners for the renderer context's UI toolbar.
-      registerUIToolbarListeners(this.mkeditor, this.providers);
-
-      // Resize listeners to resize the editor.
+      // Window resize relayouts Monaco. The editor-pane resize is now
+      // observed by <EditorHost>'s ResizeObserver, and the split-pane
+      // drag fires Panel.onResize from <Workspace>.
       window.onload = () => this.mkeditor?.layout();
       window.onresize = () => this.mkeditor?.layout();
-      dom.preview.dom.onresize = () => this.mkeditor?.layout();
 
-      // Initialize word count and character count values
-      const value = this.mkeditor.getValue();
-      WordCount(value);
-      CharacterCount(value);
-
-      // Render the editor content to preview.
-      this.render(value);
+      // Trigger initial preview render. <PreviewPane> subscribes to
+      // editor:render and writes innerHTML; <Counts> recomputes the
+      // word/character counts via useCounts.
+      this.dispatcher.render();
 
       if (watch) {
         // Watch the editor for changes and re-render if needed.
@@ -149,36 +163,62 @@ export class EditorManager {
   }
 
   /**
+   * Get the current editor value. Returns '' if Monaco isn't mounted yet.
+   * Consumed by <PreviewPane> to feed markdown-it on every editor:render.
+   */
+  public getValue(): string {
+    return this.mkeditor?.getValue() ?? '';
+  }
+
+  /**
+   * Web-mode "Delete content" handler — clears persisted markdown from
+   * `localStorage` and reloads the welcome page. Called by
+   * <EditorToolbar>'s trash button (visible only in web mode).
+   */
+  public resetContent() {
+    if (this.mode === 'web') {
+      localStorage.removeItem('mkeditor-content');
+    }
+    this.mkeditor?.setValue(welcomeMarkdown);
+  }
+
+  /**
+   * Relayout Monaco. Called by EditorHost's ResizeObserver and by
+   * split-pane drag handlers.
+   */
+  public layout() {
+    this.mkeditor?.layout();
+  }
+
+  /**
+   * Tear down the Monaco instance. Allows the React host to clean up on
+   * unmount so a subsequent mount can call create() again.
+   */
+  public dispose() {
+    if (!this.mkeditor) return;
+    this.mkeditor.dispose();
+    this.mkeditor = null;
+  }
+
+  /**
    * Track content over the execution bridge.
    */
   public updateBridgedContent({ init }: { init?: boolean } = {}) {
-    if (!this.providers.bridge) {
-      // For web mode, store changes in localStorage
-      if (this.mode === 'web' && this.mkeditor) {
-        localStorage.setItem('mkeditor-content', this.mkeditor.getValue());
-      }
-      return;
+    // In web mode, always mirror the buffer to localStorage so an
+    // untitled scratch tab survives a refresh. Workspace files don't
+    // need this — they're persisted via the WebFileBridge save path —
+    // but the cheap setItem keeps the fallback alive regardless.
+    if (this.mode === 'web' && this.mkeditor) {
+      localStorage.setItem('mkeditor-content', this.mkeditor.getValue());
     }
+
+    if (!this.providers.bridge) return;
 
     const hasChanged = init
       ? false
       : this.loadedInitialEditorValue !== this.mkeditor?.getValue();
 
     this.providers.bridge.sendFileContentHasChanged(hasChanged);
-  }
-
-  /**
-   * Render the editor.
-   */
-  public render(value?: string) {
-    if (!this.mkeditor) {
-      logger?.error('EditorManager.render', 'No editor instance.');
-      return;
-    }
-
-    const content = value ?? this.mkeditor.getValue();
-    dom.preview.dom.innerHTML = Markdown.render(content);
-    refreshLines();
   }
 
   /**
@@ -214,14 +254,11 @@ export class EditorManager {
       // Register dynamic completions provider to suggest items based on input.
       this.providers.completion?.suggestOnValidInput(event.changes[0].text);
 
-      // Add a small timeout for the render.
+      // Add a small timeout for the render. The dispatch fires the
+      // editor:render event — the constructor listener updates word/
+      // character counts and <PreviewPane> writes innerHTML.
       setTimeout(() => {
-        const value = this.mkeditor?.getValue() ?? '';
-        WordCount(value);
-        CharacterCount(value);
-
-        // Update the rendered content in the preview.
-        this.render(value);
+        this.dispatcher.render();
       }, 150);
     });
 

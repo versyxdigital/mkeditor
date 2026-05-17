@@ -47,7 +47,7 @@ export default [
 
     rules: {
       indent: ['error', 2],
-      quotes: ['error', 'single'],
+      quotes: ['error', 'single', { avoidEscape: true }],
       semi: ['error', 'always'],
       'no-constant-condition': 'off',
       '@typescript-eslint/ban-ts-comment': 'off',
@@ -61,6 +61,17 @@ export default [
           disallowTypeAnnotations: false,
         },
       ],
+    },
+  },
+  {
+    // ESLint's built-in `indent` rule has a known stack-overflow bug on
+    // deeply nested JSX with arrow callbacks (it explodes on
+    // EditorToolbar.tsx). Prettier already owns formatting via
+    // `npm run prettier` in the build pipeline, so the rule is
+    // redundant for .tsx files.
+    files: ['**/*.tsx'],
+    rules: {
+      indent: 'off',
     },
   },
 ];

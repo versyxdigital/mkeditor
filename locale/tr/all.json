@@ -58,7 +58,7 @@
     "version_label": "Sürüm",
     "built_with_love_by": "Sevgiyle geliştiren:",
     "libraries_intro": "MKEditor aşağıdaki açık kaynak kütüphaneleri kullanır:",
-    "libraries_list": "monaco, bootstrap, fontawesome, markdown-it, highlight.js, split.js, sweetalert2, webpack ve electron.",
+    "libraries_list": "monaco, react, tailwind, markdown-it, highlight.js, webpack ve electron.",
     "view_source_prefix": "Kaynak kodu görüntüle",
     "view_source_here": "burada"
   },
@@ -67,7 +67,7 @@
     "intro": "Burada HTML ve PDF dışa aktarma ayarlarını yapılandırabilirsiniz; ayarlar güncellendikçe otomatik olarak kaydedilir.",
     "settings_file_info": "Ayar dosyanız ~/.mkeditor/settings.json konumundadır.",
     "export_with_styles_label": "Stillerle dışa aktar",
-    "export_with_styles_help": "Bootstrap, FontAwesome ve KaTeX stilleriyle dışa aktarmayı etkinleştirir; bu stiller resmi CDN’lerden bütünlük ve çapraz kaynak kontrolleriyle sağlanır.",
+    "export_with_styles_help": "Highlight.js ve KaTeX stilleriyle dışa aktarmayı etkinleştirir; bu stiller resmi CDN’lerden bütünlük ve çapraz kaynak kontrolleriyle sağlanır.",
     "set_container_label": "Kapsayıcıyı ayarla",
     "set_container_option_container": "container",
     "set_container_option_container_fluid": "container-fluid",

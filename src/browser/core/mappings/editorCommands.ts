@@ -1,30 +1,13 @@
-import { KeyMod, KeyCode } from 'monaco-editor/esm/vs/editor/editor.api';
+import { KeyMod, KeyCode } from 'monaco-editor';
 import type { EditorCommand } from '../../interfaces/Editor';
 
-export const alertblocks = [
-  { type: 'Primary', key: 'P' },
-  { type: 'Secondary', key: 'E' },
-  { type: 'Info', key: 'I' },
-  { type: 'Success', key: 'S' },
-  { type: 'Warning', key: 'W' },
-  { type: 'Danger', key: 'D' },
-  { type: 'Light', key: 'L' },
-  { type: 'Dark', key: 'R' },
-];
-
-export const codeblocks = [
-  { type: 'Sh', key: 'S' },
-  { type: 'Javascript', key: 'J' },
-  { type: 'Typescript', key: 'T' },
-  { type: 'CSharp', key: 'C' },
-  { type: 'PHP', key: 'P' },
-  { type: 'Python', key: 'Y' },
-  { type: 'Rust', key: 'R' },
-  { type: 'JSON', key: 'O' },
-  { type: 'YAML', key: 'M' },
-  { type: 'SQL', key: 'Q' },
-  { type: 'XML', key: 'X' },
-];
+// Re-export the pure-data block mappings so existing CommandProvider
+// imports (`alertblocks`, `codeblocks` from this file) keep working.
+// The new home `editorBlocks.ts` carries no Monaco dependency, so
+// React surface that only needs the data lists (see <EditorToolbar>)
+// can import from there without pulling Monaco into the main chunk.
+export { alertblocks, codeblocks } from './editorBlocks';
+export type { BlockMapping } from './editorBlocks';
 
 export const commands: Record<string, EditorCommand> = {
   bold: {

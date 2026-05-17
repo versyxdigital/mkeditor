@@ -1,6 +1,6 @@
-import type { Options, Token } from 'markdown-it';
+import type { Options } from 'markdown-it';
+import type Token from 'markdown-it/lib/token.mjs';
 import type Renderer from 'markdown-it/lib/renderer.mjs';
-import Swal, { type SweetAlertIcon } from 'sweetalert2';
 import type { ContextBridgeAPI } from './interfaces/Bridge';
 import type { ExportSettings } from './interfaces/Editor';
 
@@ -128,6 +128,16 @@ export function selfRender(
  * @param name - the file name
  * @returns
  */
+/**
+ * Cross-platform basename helper. Splits on both POSIX (`/`) and
+ * Windows (`\`) separators so paths from either OS reduce to just the
+ * file (or last directory) name. Returns the input unchanged when no
+ * separator is present (e.g. `untitled-1`).
+ */
+export function basename(path: string): string {
+  return path.split(/[\\/]/).pop() ?? path;
+}
+
 export function withMdExtension(name: string) {
   let filename = name.trim();
   if (!filename.toLowerCase().endsWith('.md')) {
@@ -156,38 +166,3 @@ export function syncPreviewToExportSettings(
   elem.style.fontSize = `${settings.fontSize}px`;
   elem.style.lineHeight = settings.lineSpacing.toString();
 }
-
-/**
- * Configure a sweetalert2 mixin for toast notifications.
- */
-const toast: ReturnType<typeof Swal.mixin> = Swal.mixin({
-  toast: true,
-  position: 'bottom-end',
-  showConfirmButton: false,
-  showCloseButton: true,
-  timer: 7500,
-  timerProgressBar: true,
-  showClass: {
-    popup: '',
-  },
-  hideClass: {
-    popup: '',
-  },
-  didOpen: (toast) => {
-    toast.addEventListener('mouseenter', Swal.stopTimer);
-    toast.addEventListener('mouseleave', Swal.resumeTimer);
-  },
-});
-
-export const notify = {
-  /**
-   * Send a toast notification.
-   *
-   * @param icon - the icon for the notification
-   * @param html - the content of the notification
-   */
-  async send(icon: string, html: string) {
-    const title = icon.charAt(0).toUpperCase() + icon.slice(1);
-    await toast.fire({ html, title, icon: icon as SweetAlertIcon });
-  },
-};

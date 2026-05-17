@@ -6,9 +6,9 @@ Markdown with _style_.
 
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
-| Windows     | v3.6.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v3.6.0/mkeditor-setup-3.6.0.exe) |
-| MacOS       | v3.6.0  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v3.6.0/mkeditor-setup-3.6.0.pkg) |
-| Linux       | v3.6.0  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v3.6.0/mkeditor-setup-3.6.0.deb)  |
+| Windows     | v3.7.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v3.7.0/mkeditor-setup-3.7.0.exe) |
+| MacOS       | v3.7.0  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v3.7.0/mkeditor-setup-3.7.0.pkg) |
+| Linux       | v3.7.0  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v3.7.0/mkeditor-setup-3.7.0.deb)  |
 
 > [!NOTE] 
 > Supported languages:
@@ -31,14 +31,6 @@ Thank you for choosing MKEditor 😊, I hope you find this tool useful for all y
 If you have any issues or questions, please feel free to submit an [issue](https://github.com/versyxdigital/mkeditor/issues).
 
 MKEditor fully supports the [CommonMark](https://commonmark.org/) spec and comes with additional goodies.
-
-## Great support for _custom_ styling
-
-MKEditor comes with full support for styling your documents with:
-
-- Bootstrap
-- Fontawesome
-- Highlight.js
 
 ## Create alerts
 

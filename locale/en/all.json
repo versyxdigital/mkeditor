@@ -47,7 +47,9 @@
     "prompt_rename_folder_title": "Rename folder",
     "confirm_delete_file_title": "Delete file?",
     "confirm_delete_folder_title": "Delete folder?",
-    "confirm_delete_button": "Delete"
+    "confirm_delete_button": "Delete",
+    "prompt_save": "Save",
+    "prompt_cancel": "Cancel"
   },
   "menus-tables": {
     "rows_label": "Rows:",
@@ -58,7 +60,7 @@
     "version_label": "Version",
     "built_with_love_by": "Built with love by",
     "libraries_intro": "MKEditor uses the following open-source libraries:",
-    "libraries_list": "monaco, bootstrap, fontawesome, markdown-it, highlight.js, split.js, sweetalert2, webpack and electron.",
+    "libraries_list": "monaco, react, tailwind, markdown-it, highlight.js, webpack and electron.",
     "view_source_prefix": "View the source code",
     "view_source_here": "here"
   },
@@ -67,7 +69,7 @@
     "intro": "Here you can configure settings for HTML and PDF exports, settings are automatically saved as they are updated.",
     "settings_file_info": "Your settings file is located at ~/.mkeditor/settings.json.",
     "export_with_styles_label": "Export with styles",
-    "export_with_styles_help": "Enable this to export with Bootstrap, FontAwesome and KaTeX styles, provided from official CDNs with secure integrity and crossorigin checks.",
+    "export_with_styles_help": "Enable this to export with Highlight.js and KaTeX styles, provided from official CDNs with secure integrity and crossorigin checks.",
     "set_container_label": "Set container",
     "set_container_option_container": "container",
     "set_container_option_container_fluid": "container-fluid",
@@ -181,7 +183,10 @@
     "settings_tooltip": "Configure editor settings",
     "shortcuts_tooltip": "View editor shortcuts",
     "theme_switch_notice": "This switch is disabled on desktop if you are using your system theme.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "copy_path_tooltip": "Copy path to clipboard",
+    "path_copied": "Path copied to clipboard",
+    "code_copied": "Code copied to clipboard"
   },
   "notifications": {
     "unable_export_preview": "Unable to export preview",
@@ -210,7 +215,12 @@
     "update_downloaded": "Update {{version}} has been downloaded, restart to update."
   },
   "sidebar": {
-    "explorer": "Explorer"
+    "explorer": "Explorer",
+    "no_workspace": "No folder is open.",
+    "open_folder": "Open folder",
+    "restore_workspace": "Restore previous folder",
+    "disconnect_folder": "Disconnect folder",
+    "chromium_only_warning": "Folder access is only available in Chromium-based browsers (Chrome, Edge, Brave, Opera)."
   },
   "toolbar": {
     "reset_split": "Reset editor/preview split",

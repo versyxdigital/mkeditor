@@ -1,4 +1,4 @@
-import type { IRange, languages } from 'monaco-editor/esm/vs/editor/editor.api';
+import type { IRange, languages } from 'monaco-editor';
 
 export interface CompletionItem {
   label: string;

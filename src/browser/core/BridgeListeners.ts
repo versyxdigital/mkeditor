@@ -1,14 +1,19 @@
-import { editor } from 'monaco-editor/esm/vs/editor/editor.api';
+import { editor } from 'monaco-editor';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { File, FileProperties, RenamedPath } from '../interfaces/File';
-import type { BridgeProviders, ValidModal } from '../interfaces/Providers';
+import type { BridgeProviders } from '../interfaces/Providers';
 import type { SettingsFile } from '../interfaces/Editor';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import type { FileManager } from './FileManager';
 import type { FileTreeManager } from './FileTreeManager';
-import { showFilePropertiesWindow } from '../dom';
-import { notify } from '../util';
-import { t } from '../i18n';
+import {
+  openModalExternal,
+  type ModalKey,
+} from '../react/contexts/ModalsContext';
+import { sonnerToast } from '../notify';
+import { showPropertiesExternal } from '../react/contexts/PropertiesContext';
+import { basename } from '../util';
+import { t, whenLanguageReady } from '../i18n';
 
 /**
  * Register bridge channel listeners.
@@ -39,22 +44,22 @@ export function registerBridgeListeners(
     });
   };
 
-  // Set the theme according to the user's system theme
+  // Set the theme according to the user's system theme. React
+  // subscribes to SettingsProvider's emitter so the navbar 
+  // darkmode toggle reflects the change.
   bridge.receive('from:theme:set', (shouldUseDarkMode: boolean) => {
     if (shouldUseDarkMode) {
-      providers.settings?.setSetting('darkmode', shouldUseDarkMode);
-      providers.settings?.setTheme();
-      providers.settings?.setUIState();
+      providers.settings?.updateSetting('darkmode', shouldUseDarkMode);
     }
   });
 
-  // Set settings from stored settings file (%HOME%/.mkeditor/settings.json)
+  // Set settings from stored settings file (%HOME%/.mkeditor/settings.json).
+  // The providers' setSettings emits to SettingsContext / ExportSettingsContext
+  // subscribers and the React modals re-render to reflect the loaded values.
   bridge.receive('from:settings:set', (s: SettingsFile) => {
     loadSettingsFromBridgeListener(s);
     providers.settings?.setSettings(s);
-    providers.settings?.registerDOMListeners();
     providers.exportSettings?.setSettings(s.exportSettings);
-    providers.exportSettings?.registerDOMListeners();
   });
 
   // Enable new files from outside of the renderer execution context.
@@ -113,114 +118,53 @@ export function registerBridgeListeners(
     bridge.send(channel, true);
   });
 
-  // Handle post-file open events
-  bridge.receive('from:file:opened', ({ content, filename, file }: File) => {
+  // Handle post-file open events. We ignore the `filename` field in
+  // the payload and derive the tab label from the path's basename
+  // (POSIX `/` or Win `\`). Main's setActiveFile used to split only
+  // on `\`, so on Linux/macOS the renderer was receiving the full
+  // path as `filename` and rendering it in the tab. The Navbar reads
+  // the active file's PATH for the title bar — the tab itself only
+  // shows the filename.
+  bridge.receive('from:file:opened', ({ content, file }: File) => {
     const path = file || `untitled-${files.untitledCounter++}`;
-    const name = filename || `Untitled ${files.untitledCounter - 1}`;
-    let mdl = files.models.get(path);
+    const name = file
+      ? basename(file)
+      : `Untitled ${files.untitledCounter - 1}`;
 
-    if (
-      !mdl &&
-      !files.openingFile &&
-      files.activeFile &&
-      files.activeFile.startsWith('untitled') &&
-      file
-    ) {
-      mdl = files.models.get(files.activeFile);
-      const tab = files.tabs.get(files.activeFile);
-      if (mdl && tab) {
-        files.models.delete(files.activeFile);
-        files.tabs.delete(files.activeFile);
-        files.originals.delete(files.activeFile);
-
-        tab.textContent = name;
-        const newTab = tab.cloneNode(true) as HTMLAnchorElement;
-        newTab.textContent = name;
-        newTab.addEventListener('click', (e) => {
-          e.preventDefault();
-          files.activateFile(path);
-        });
-        tab.replaceWith(newTab);
-
-        files.models.set(path, mdl);
-        files.tabs.set(path, newTab);
-        files.originals.set(path, content);
-
-        mdl.setValue(content);
-
-        const closeBtn = newTab.nextElementSibling as HTMLButtonElement | null;
-        if (closeBtn) {
-          const newBtn = closeBtn.cloneNode(true) as HTMLButtonElement;
-          newBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            await files.closeTab(path);
-          });
-          closeBtn.replaceWith(newBtn);
-        }
-      }
+    if (files.models.has(path)) {
+      // Already open — just activate.
+      tree.addFileToTree(path);
+      files.activateFile(path, name);
+      files.openingFile = false;
+      return;
     }
 
-    // Fallback
-    if (!mdl) {
-      mdl = editor.createModel(content, 'markdown');
-      files.models.set(path, mdl);
-      files.originals.set(path, content);
-      files.addTab(name, path);
+    // If the active tab is an untitled scratch buffer and we have a real
+    // file path, replace the untitled in place (preserves the typed
+    // content's model identity and tab position).
+    if (file && files.replaceUntitled(path, name, content)) {
+      tree.addFileToTree(path);
+      files.activateFile(path, name);
+      files.openingFile = false;
+      return;
     }
+
+    // Fallback: create a fresh model + tab.
+    const mdl = editor.createModel(content, 'markdown');
+    files.models.set(path, mdl);
+    files.originals.set(path, content);
+    files.addTab(name, path);
 
     tree.addFileToTree(path);
     files.activateFile(path, name);
     files.openingFile = false;
   });
 
-  // Enable renaming of files and folders
-  bridge.receive(
-    'from:path:renamed',
-    ({ oldPath, newPath, name }: RenamedPath) => {
-      const mdl = files.models.get(oldPath);
-      if (!mdl) return;
-
-      const original = files.originals.get(oldPath);
-      if (original !== undefined) {
-        files.originals.delete(oldPath);
-        files.originals.set(newPath, original);
-      }
-
-      files.models.delete(oldPath);
-      files.models.set(newPath, mdl);
-
-      const tab = files.tabs.get(oldPath);
-      if (tab) {
-        const newTab = tab.cloneNode(true) as HTMLAnchorElement;
-        newTab.textContent = name;
-        newTab.addEventListener('click', (e) => {
-          e.preventDefault();
-          files.activateFile(newPath);
-        });
-        const li = tab.parentElement as HTMLLIElement | null;
-        if (li) li.dataset.path = newPath;
-        tab.replaceWith(newTab);
-        files.tabs.delete(oldPath);
-        files.tabs.set(newPath, newTab);
-
-        const closeBtn = newTab.nextElementSibling as HTMLButtonElement | null;
-        if (closeBtn) {
-          const newBtn = closeBtn.cloneNode(true) as HTMLButtonElement;
-          newBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            await files.closeTab(newPath);
-          });
-          closeBtn.replaceWith(newBtn);
-        }
-      }
-
-      if (files.activeFile === oldPath) {
-        files.activateFile(newPath, name);
-      }
-    },
-  );
+  // Enable renaming of files and folders. Same basename derivation as
+  // from:file:opened so the tab label stays consistent across OSes.
+  bridge.receive('from:path:renamed', ({ oldPath, newPath }: RenamedPath) => {
+    files.renameTab(oldPath, newPath, basename(newPath));
+  });
 
   // Enable access to the monaco editor command palette.
   bridge.receive('from:command:palette', (command: string) => {
@@ -228,30 +172,42 @@ export function registerBridgeListeners(
     mkeditor.trigger(command, 'editor.action.quickCommand', {});
   });
 
-  // Enable access to the monaco editor shortcuts modal.
-  bridge.receive('from:modal:open', (modal: ValidModal) => {
-    const handler = providers.commands?.getModal(modal);
-    handler?.toggle();
+  // Opens a React shadcn-Dialog modal triggered from the main process
+  // (e.g., a tray/menu item).
+  bridge.receive('from:modal:open', (modal: ModalKey) => {
+    openModalExternal(modal);
   });
 
-  // Enable notifications from the main context.
+  // Enable notifications from the main context. Translation is deferred
+  // behind `whenLanguageReady()` so a "settings saved" toast that
+  // arrives during a locale switch is rendered in the *new* language —
+  // the locale-change IPC and the settings-save IPC race back from the
+  // main process, and without this guard the toast would resolve
+  // against the previous language's bundle.
   bridge.receive('from:notification:display', (event: any) => {
     const { status } = event || {};
     const key: string | undefined = event?.key;
     const values: Record<string, unknown> | undefined = event?.values;
     const message: string | undefined = event?.message;
 
-    const text = key
-      ? t(key, values)
-      : typeof message === 'string'
-        ? message
-        : '';
+    const show = () => {
+      const text = key
+        ? t(key, values)
+        : typeof message === 'string'
+          ? message
+          : '';
+      if (text) sonnerToast(status || 'info', text);
+    };
 
-    if (text) notify.send(status || 'info', text);
+    if (key) {
+      void whenLanguageReady().then(show);
+    } else {
+      show();
+    }
   });
 
   // Trigger the file properties window from the context menu.
   bridge.receive('from:path:properties', (info: FileProperties) => {
-    showFilePropertiesWindow(info);
+    showPropertiesExternal(info);
   });
 }

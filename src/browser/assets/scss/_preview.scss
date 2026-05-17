@@ -1,40 +1,18 @@
-body[data-theme='light'] .hljs {
-  background: #f5f5f5 !important;
-}
+// Preview pane shell only. The markdown content inside `#preview-content`
+// is styled by `src/browser/markdownStyles.ts` (injected at boot) — that
+// module is the single source of truth shared with HTMLExporter so the
+// live preview always matches the export.
 
 #preview {
   height: 100%;
   overflow-y: auto;
   padding-bottom: 44px !important;
   background-color: #fff;
+}
 
-  ul li,
-  ol li {
-    position: relative;
-    font-size: 0.9rem;
-  }
-
-  h1 {
-    font-size: 1.75rem;
-  }
-
-  h2 {
-    font-size: 1.35rem;
-  }
-
-  h3 {
-    font-size: 1.25rem;
-  }
-
-  h4 {
-    font-size: 1.1rem;
-  }
-
-  h5 {
-    font-size: 1.05rem;
-  }
-
-  pre {
-    border-radius: 10px;
-  }
+// hljs github theme uses an off-white surface that disappears against
+// our light preview background. Force the soft grey so fenced code
+// blocks visually pop in the live preview.
+body[data-theme='light'] .hljs {
+  background: #f5f5f5 !important;
 }

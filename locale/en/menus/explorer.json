@@ -19,5 +19,7 @@
   "prompt_rename_folder_title": "Rename folder",
   "confirm_delete_file_title": "Delete file?",
   "confirm_delete_folder_title": "Delete folder?",
-  "confirm_delete_button": "Delete"
+  "confirm_delete_button": "Delete",
+  "prompt_save": "Save",
+  "prompt_cancel": "Cancel"
 }

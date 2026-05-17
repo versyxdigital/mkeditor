@@ -1,5 +1,15 @@
 # CHANGELOG
 
+### 2026-05-16 - v3.7.0
+
+#### Added
+
+- **UI Migration** Migrated from direct-DOM based structure to React UI.
+- **UI Libraries** Replaced bootstrap with Tailwind CSS.
+- **Live Preview Styling** Implemented a custom preview styling similar to Github's rendered markdown preview.
+
+---
+
 ### 2025-09-02 - v3.6.0
 
 #### Added

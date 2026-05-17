@@ -4,6 +4,7 @@
     "outDir": "./dist",
     "target": "esnext",
     "lib": ["dom", "dom.iterable", "esnext"],
+    "jsx": "react-jsx",
     "allowJs": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
@@ -13,10 +14,13 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "baseUrl": "."
+    "rootDir": "./src",
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "noUncheckedSideEffectImports": false
   },
   "files": ["./@types/index.d.ts"],
   "include": ["src"]

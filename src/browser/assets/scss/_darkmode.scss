@@ -1,6 +1,5 @@
+// Dark theme. App-specific selectors only.
 [data-theme='dark'] {
-  --form-range-track-bg: #cccccc;
-
   background-color: #222222;
   color: #e1e1e1;
 
@@ -19,10 +18,6 @@
 
   #app-build-id:hover {
     color: #eeeeee !important;
-  }
-
-  #editor-container {
-    border-right-color: #2b2b2b;
   }
 
   #preview {
@@ -49,7 +44,7 @@
 
       &.active {
         background-color: #353535 !important;
-        border-bottom: 1px solid #696969 !important; // nice
+        border-bottom: 1px solid #696969 !important;
       }
 
       a {
@@ -71,105 +66,11 @@
     font-weight: bold;
   }
 
-  .dropdown-menu {
-    --bs-dropdown-bg: #222222;
-    --bs-dropdown-color: #eeeeee;
-    --bs-dropdown-link-color: #eeeeee;
-    --bs-dropdown-link-hover-bg: #2f2f2f;
-    --bs-dropdown-link-hover-color: #f5f5f5;
-    --bs-dropdown-divider-bg: #333333;
-  }
-
-  .dropdown-item.active,
-  .dropdown-item:active {
-    background-color: #3f3f3f !important;
-  }
-
-  input.form-control {
-    background: #1a1a1a !important;
-    color: #eeeeee !important;
-    border-color: #5f5f5f !important;
-  }
-
-  .form-select {
-    background-color: #1a1a1a !important;
-    color: #eeeeee !important;
-    border-color: #5f5f5f !important;
-  }
-
-  .table {
-    --bs-table-bg: #222222;
-    --bs-table-color: #eeeeee;
-    --bs-table-striped-color: #eeeeee;
-    --bs-table-border-color: #5f5f5f;
-  }
-
-  .modal-content {
-    --bs-modal-color: #eeeeee;
-    --bs-modal-bg: #222222;
-  }
-
-  .bg-light {
-    background-color: #1e1e1e !important;
-  }
-
-  .bg-white {
-    background-color: #000000 !important;
-  }
-
-  .bg-black {
-    background-color: #eeeeee !important;
-  }
-
-  .btn-outline-secondary {
-    color: #cdcdcd !important;
-    border-color: #5f5f5f !important;
-  }
-
-  .text-muted {
-    color: #aeaeae !important;
-  }
-
-  .border-top {
-    border-top-color: #2b2b2b !important;
-  }
-
   .gutter {
     background-color: #3b3b3b !important;
   }
   .gutter.sidebar-gutter-horizontal {
     border-right: 1px solid rgb(28, 28, 28);
     background: #2d2d2d !important;
-  }
-
-  .unsaved-changes-popup div {
-    background: #222222 !important;
-    color: #eeeeee !important;
-  }
-
-  .swal2-popup.swal2-modal {
-    background: #222222 !important;
-    color: #eeeeee !important;
-  }
-
-  .swal2-popup.swal2-modal .swal2-title {
-    color: #eeeeee !important;
-  }
-
-  .swal2-popup.swal2-modal .swal2-styled.swal2-confirm {
-    background: #519088;
-  }
-
-  .swal2-popup.swal2-modal .swal2-styled.swal2-cancel {
-    background: #5f5f5f;
-  }
-
-  .swal2-popup.swal2-modal .swal2-styled.swal2-deny {
-    background: #853333;
-  }
-
-  .swal2-popup.swal2-toast {
-    background: #111111 !important;
-    color: #eeeeee !important;
   }
 }

@@ -3,7 +3,7 @@
   "intro": "여기에서 HTML 및 PDF 내보내기 설정을 구성할 수 있으며, 설정은 업데이트될 때 자동으로 저장됩니다.",
   "settings_file_info": "설정 파일은 ~/.mkeditor/settings.json 에 있습니다.",
   "export_with_styles_label": "스타일 포함하여 내보내기",
-  "export_with_styles_help": "공식 CDN 에서 제공되는 Bootstrap, FontAwesome, KaTeX 스타일을 무결성 및 crossorigin 검사와 함께 포함하여 내보냅니다.",
+  "export_with_styles_help": "공식 CDN 에서 제공되는 Highlight.js, KaTeX 스타일을 무결성 및 crossorigin 검사와 함께 포함하여 내보냅니다.",
   "set_container_label": "컨테이너 설정",
   "set_container_option_container": "container",
   "set_container_option_container_fluid": "container-fluid",

@@ -1,3 +1,8 @@
 {
-  "explorer": "Explorer"
+  "explorer": "Explorer",
+  "no_workspace": "No folder is open.",
+  "open_folder": "Open folder",
+  "restore_workspace": "Restore previous folder",
+  "disconnect_folder": "Disconnect folder",
+  "chromium_only_warning": "Folder access is only available in Chromium-based browsers (Chrome, Edge, Brave, Opera)."
 }

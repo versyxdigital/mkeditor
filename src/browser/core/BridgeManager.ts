@@ -1,4 +1,4 @@
-import type { editor } from 'monaco-editor/esm/vs/editor/editor.api';
+import type { editor } from 'monaco-editor';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { BridgeProviders } from '../interfaces/Providers';
 import type { SettingsFile } from '../interfaces/Editor';
@@ -31,11 +31,11 @@ export class BridgeManager {
     exportSettings: null,
   };
 
-  /** File manager helper */
-  private fileManager: FileManager;
+  /** File manager helper (exposed so FilesContext can subscribe). */
+  public fileManager: FileManager;
 
-  /** File tree helper */
-  private fileTreeManager: FileTreeManager;
+  /** File tree helper (exposed for FileTreeContext). */
+  public fileTreeManager: FileTreeManager;
 
   /**
    * Create a new bridge handler.
@@ -67,11 +67,6 @@ export class BridgeManager {
       this.fileManager,
       this.fileTreeManager,
     );
-
-    // Configure event listener for a settings update event.
-    this.dispatcher.addEventListener('editor:bridge:settings', (event) => {
-      this.saveSettingsToFile(event.detail);
-    });
   }
 
   /**

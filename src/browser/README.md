@@ -1,60 +1,88 @@
-# MKEditor Web App (Renderer)
+# MKEditor Renderer (`src/browser/`)
 
-This folder contains the renderer (browser) side of MKEditor: the Monaco editor, markdown preview, UI components, and the localization/runtime that also powers the desktop UI. The renderer can run in two modes: pure web or desktop (Electron) with a bridge.
+The renderer is the browser-side bundle: Monaco editor, markdown preview, React UI tree, i18n runtime, and the IPC seams that the Electron preload exposes. The same bundle ships as a pure web app (deployed to GitHub Pages) and as the renderer process inside the desktop Electron build.
 
-## Structure Overview
+For the full architecture see [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md). For the React migration that shaped the current layout see [docs/REACT_MIGRATION.md](../../docs/REACT_MIGRATION.md).
 
-- `index.ts`: Composition root. Detects runtime, initializes i18n, creates the editor, registers providers, and activates UI helpers.
-- `i18n.ts`: Localization: loads language bundles, normalizes locale, applies translations, and exposes `t()`.
-- `icons.ts`: Registers FontAwesome icons and observes DOM for icon placeholders.
-- `version.ts`: Build-generated version constant used by the UI.
-- `config.ts`: Default `EditorSettings` and `ExportSettings`.
-- `dom.ts`: Centralized DOM refs and UI helpers (splash fade, split panels, Bootstrap tooltips, properties modal).
-- `util.ts`: Utilities (debounce, OS detection, execution bridge detection, locale helpers).
-- `views/index.html`: Base HTML for the renderer runtime.
-- `assets/`: Static assets and styles.
-- `core/`: Editor orchestration and runtime plumbing
-  - `EditorManager.ts`: Creates Monaco, renders markdown, wires events and providers, drives preview.
-  - `FileManager.ts`, `FileTreeManager.ts`: Tabbed files/models and explorer tree handling.
-  - `BridgeManager.ts`: Desktop-only orchestrator around the execution bridge.
-  - `BridgeListeners.ts`: Subscribes to `from:*` channels; syncs settings/theme/files, shows notifications.
-  - `ToolbarListeners.ts`: Registers toolbar event listeners and actions.
-  - `mappings/`: Command and explorer context‑menu mappings.
-  - `completion/`: Data/logic for completions (lists, fenced blocks, etc.).
-- `events/`: Lightweight event/dispatcher system used inside the renderer.
-- `interfaces/`: Provider/editor/bridge/dispatcher interfaces.
-- `extensions/`: Editor/markdown renderer extensions (e.g., ScrollSync).
+## Layout
+
+Top-level seam files at `src/browser/`:
+
+- `index.ts` — composition root. Constructs the dispatcher + `EditorManager`, mounts `<App>` synchronously into `#react-root`, then wires providers + (desktop) `BridgeManager` in `onEditorReady`.
+- `i18n.ts` — i18next bundle loader + the (now tiny) `data-i18n-*` walker for the splash `<h1>`.
+- `icons.ts` — FontAwesome icon registry.
+- `dom.ts` — small constant map (`editor.dom`, `preview.dom`, `preview.wrapper`, `meta.scroll`) for non-React consumers (`HTMLExporter`, `ScrollSync`, `LineNumber`).
+- `notify.ts` — `sonnerToast(level, msg)` neutral seam shared by React + non-React callers.
+- `splash.ts` — boot-time splash fade-out.
+- `util.ts` — debounce, `getExecutionBridge`, `syncPreviewToExportSettings`.
+- `config.ts` — default `EditorSettings` + `ExportSettings`.
+- `version.ts` — build-generated.
+
+Subfolders:
+
+- `core/` — managers (Monaco + IPC + persistence + markdown pipeline). Pure TS, no React.
+  - `EditorManager`, `FileManager`, `FileTreeManager`, `BridgeManager`, `BridgeListeners`, `Markdown`, `HTMLExporter`
+  - `providers/`: `SettingsProvider`, `ExportSettingsProvider`, `CommandProvider`, `CompletionProvider`, `MkedLinkProvider`
+  - `completion/`, `mappings/`
+- `events/` — `EditorDispatcher` (decouples Monaco's watch loop from React subscribers via `editor:render` + `editor:track:content`).
+- `extensions/` — Monaco extensions (`WordCount`, `ScrollSync`) + markdown-it extensions (`AlertBlock`, `LineNumber`, `LinkTarget`, `ImageStyle`, `TableStyle`).
+- `interfaces/` — TypeScript types shared by both sides.
+- `react/` — the React UI tree (function components, React 19).
+  - `App.tsx` — providers + chrome + modals + sonner Toaster.
+  - `contexts/` — one context per reactive concern (`Settings`, `ExportSettings`, `Files`, `FileTree`, `Modals`, `Prompts`, `Properties`, `UIState`, `Managers`). Each wraps a manager via `useSyncExternalStore`.
+  - `hooks/` — `useTranslation`, `useCounts`, `useNotify`.
+  - `components/` — `Navbar`, `TabBar`, `Sidebar`, `FileTreePanel`, `Workspace`, `EditorHost`, `EditorToolbar`, `PreviewPane`, `BottomToolbarRight`, `Icon`, and `modals/*`.
+  - `components/ui/` — shadcn copy-in primitives (`Dialog`, `ContextMenu`, `DropdownMenu`, `Popover`, `Tooltip`, `Switch`, `Select`, `Checkbox`, `Input`, `Label`, `Button`) — thin Radix wrappers using Tailwind theme tokens.
+  - `styles/tailwind.css` — Tailwind v4 entry + theme tokens (light + `[data-theme='dark']`).
+- `assets/` — SCSS partials (`_base`, `_editor`, `_preview`, `_sidebar`, `_tabs`, `_darkmode`) + `intro.ts` (welcome markdown).
+- `views/index.html` — minimal shell: splash overlay, `#react-root` mount, bottom `<nav>` with the `#editor-functions` and `#bottom-toolbar-right` portal hosts. All Tailwind-styled.
+
+## Manager / React separation
+
+The governing rule is **managers own data and IPC; React owns UI and presentation.**
+
+- Managers under `core/` do not import React or any Radix module.
+- React components under `react/` do not import `ipcRenderer`, touch `window.executionBridge`, or read/write `localStorage` directly.
+- Reactive provider state crosses the boundary via `subscribe(listener) → unsubscribe` + `getSnapshot()` (stable reference between emits). React contexts pull through `useSyncExternalStore`.
+- Imperative cross-boundary calls (e.g., `BridgeListeners.from:modal:open` opening a React Dialog, or `FileManager.closeTab` opening a React confirm) go through module-level `*External` functions registered by React at mount time:
+  - `openModalExternal` (ModalsContext)
+  - `openPromptExternal` / `confirmExternal` / `promptExternal` (PromptsContext)
+  - `showPropertiesExternal` (PropertiesContext)
+  - `sonnerToast` (`src/browser/notify.ts`)
 
 ## Runtime Modes & Bridge Model
 
 `index.ts` uses `getExecutionBridge()` (from `util.ts`) to detect mode:
-- Web mode: returns `'web'`; the file‑tree sidebar is hidden and settings persist to `localStorage`.
-- Desktop mode: returns the bridge object created in the Electron preload; the renderer can `send`/`receive` on whitelisted IPC channels.
 
-Renderer perspective of bridge channels (selected):
-- Send (`to:*`): `to:file:*`, `to:folder:*`, `to:settings:save`, `to:html:export`, `to:pdf:export`, `to:i18n:set`.
-- Receive (`from:*`): `from:file:*`, `from:folder:*`, `from:settings:set`, `from:theme:set`, `from:notification:display`, `from:path:*`.
+- **Web**: returns `'web'`. Sidebar collapsed by default, `<EditorToolbar>` shows the delete-content button, settings + last-edited content persist to `localStorage`.
+- **Desktop**: returns the bridge object created in the Electron preload. Sidebar visible, file tree populated, settings persist via IPC.
+
+Renderer perspective of bridge channels:
+
+- Send (`to:*`): `to:title:set`, `to:editor:state`, `to:settings:save`, `to:html:export`, `to:pdf:export`, `to:file:*`, `to:folder:*`, `to:i18n:set`.
+- Receive (`from:*`): `from:file:*`, `from:folder:*`, `from:settings:set`, `from:theme:set`, `from:notification:display`, `from:path:*`, `from:modal:open`, `from:command:palette`, `from:i18n:set`.
+
+`BridgeListeners.ts` is the single entry point for `from:*` channels — see [ARCHITECTURE.md §4](../../docs/ARCHITECTURE.md) for the per-flow detail.
 
 ## i18n Model & Namespaces
 
-- Namespaces loaded include: `app`, `navbar`, `sidebar`, `toolbar`, `menus-explorer`, `menus-codeblocks`, `menus-alerts`, `menus-tables`, `modals-settings`, `modals-export`, `modals-about`, `modals-shortcuts`, `modals-unsaved`, `modals-properties`, and `notifications`.
-- Bundling: per-language `all.json` is generated by `scripts/combine-locales.mjs`. At runtime, the loader prefers `all.json` and falls back to individual JSON files in parallel when needed. Missing namespaces are supplemented dynamically, and English fallbacks are ensured for `notifications`.
-- Performance: language fetches are cached/deduped, bindings are precomputed in one DOM pass, and translations apply synchronously for minimal paint delay.
-- Usage: call `t('namespace:key', values?)`. The bridge listener translates `from:notification:display` payloads when `key` is provided.
+- Namespaces: `app`, `navbar`, `sidebar`, `toolbar`, `menus-explorer`, `menus-codeblocks`, `menus-alerts`, `menus-tables`, `modals-settings`, `modals-export`, `modals-about`, `modals-shortcuts`, `modals-unsaved`, `modals-properties`, `notifications`.
+- `scripts/combine-locales.mjs` produces a per-language `all.json` at build time. At runtime, the loader prefers the combined bundle and falls back to per-namespace fetches; missing namespaces are supplemented dynamically; English fallbacks are ensured for `notifications`.
+- Usage from React: `const { t } = useTranslation(); t('navbar:settings_tooltip')`. The hook subscribes to i18next's `languageChanged` event so consuming components re-render on locale change.
+- Usage from non-React: `import { t } from '../i18n'`.
+- Legacy attribute-driven binding (`data-i18n-text` / `-title` / `-placeholder`) remains for the splash `<h1>` only — every other label translates through React.
 
 ## Build & Run
 
-- Build the renderer bundle: `npm run build-editor` (generates `version.ts`, combines locales, and runs webpack to produce `dist/mkeditor.bundle.js`).
-- Run the web demo: `npm run serve-web` (serves `dist/`).
-- Run the desktop app: `npm run serve-app` (after `build-editor`; launches Electron with the compiled main process).
+- Build the renderer bundle: `npm run build-editor` (generates `version.ts`, combines locales, runs Prettier, runs webpack → `dist/mkeditor.bundle.js` + `dist/mkeditor.bundle.css`).
+- Run the web demo: `npm run serve-web` (serves `dist/` over http-server).
+- Run the desktop app: `npm run serve-app` (after `build-editor`; launches Electron pointing at `dist/app/main.js`).
 
 ## Lifecycle Highlights
 
-1. `icons.ts` registers icons.
-2. i18n initializes and applies the user locale (with prefetch + HTML `lang` set early).
-3. `EditorDispatcher` and `EditorManager` spin up Monaco + preview.
-4. Providers are attached: `SettingsProvider`, `ExportSettingsProvider`, `CommandProvider`, `CompletionProvider`.
-5. Desktop only: `BridgeManager` + `BridgeListeners` connect IPC (theme, settings, notifications, file events, mked:// links).
-6. UI helpers: draggable editor/preview split (with reset), sidebar toggle, Bootstrap tooltips, and a splash fade.
-
-
+1. `icons.ts` registers FontAwesome glyphs.
+2. `initI18n(mode)` builds the (tiny) splash binding, prefetches the combined locale bundle, initialises i18next, applies translations, sets `<html lang>`.
+3. `new EditorDispatcher` + `new EditorManager({mode, dispatcher})` — Monaco is **not** created yet; that's `<EditorHost>`'s job inside React.
+4. `createRoot(#react-root).render(<App initialManagers onEditorReady />)` mounts the full provider tree synchronously, including the `<ModalsBridge>` / `<PromptsBridge>` / `<PropertiesBridge>` sentinels that install the module-level seams.
+5. `<EditorHost>`'s `useEffect` runs once: calls `editorManager.create({mount, watch:true})`, then `onReady()` triggers `index.ts.onEditorReady` which attaches providers + (desktop) constructs `BridgeManager`, wires `setPersistHandler` callbacks, and pushes the new managers back into React state.
+6. `showSplashScreen({duration:750})` fades the splash overlay + bottom `<nav>` in.
