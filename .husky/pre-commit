@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Pre-commit gate: formatting, lint, and unit tests must all pass
+# before a commit lands locally. CI runs the same checks plus the
+# build verification (see .github/workflows/tests.yml).
+
+npm run lint && npm run prettier-check && npm test
