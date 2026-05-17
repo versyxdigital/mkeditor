@@ -426,6 +426,64 @@ describe('FileManager.scheduleSessionSave', () => {
     expect(lastPayload.tabs.map((t) => t.path)).toEqual(['untitled-1']);
   });
 
+  it('does not fire a save while suspendSessionSaves is in effect', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge, sent } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.suspendSessionSaves();
+    fm.seedUntitled('hello');
+
+    jest.advanceTimersByTime(1000);
+    expect(sent.filter((s) => s.channel === 'to:session:save')).toHaveLength(0);
+  });
+
+  it('re-checks the suspend flag at flush time (slow bootstrap)', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge, sent } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    // Seed *before* suspending — schedules a save. Suspend mid-debounce
+    // (simulates the boot race: a slow async bootstrap still hasn't
+    // emitted restore by the time the 300 ms debounce fires).
+    fm.seedUntitled('hello');
+    fm.suspendSessionSaves();
+    jest.advanceTimersByTime(1000);
+
+    expect(sent.filter((s) => s.channel === 'to:session:save')).toHaveLength(0);
+  });
+
+  it('restoreSession clears the suspend so future edits can save', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge, sent } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.suspendSessionSaves();
+    fm.seedUntitled('hello');
+
+    // Bootstrap "lands" with a null-session envelope (no prior state).
+    fm.restoreSession({ session: null, missing: [], contents: {} });
+
+    // A subsequent mutation should now persist normally.
+    fm.addTab('Other', 'untitled-2');
+    jest.advanceTimersByTime(500);
+
+    const saves = sent.filter((s) => s.channel === 'to:session:save');
+    expect(saves.length).toBeGreaterThan(0);
+  });
+
   it('does not fire a save when sessionEnabled getter returns false', async () => {
     const { FileManager, EditorDispatcher } = await loadFileManager();
     const { bridge, sent } = makeBridge();

@@ -113,6 +113,17 @@ export class FileManager {
   private sessionEnabledGetter: (() => boolean) | null = null;
 
   /**
+   * When true, `scheduleSessionSave()` short-circuits. Set by the
+   * composition root in web mode before `seedUntitled` so the seed's
+   * debounced save can't fire ahead of `WebFileBridge.bootstrap()` and
+   * overwrite the persisted session with the seeded-untitled-only
+   * state. Cleared at the top of `restoreSession()` (success, null
+   * session, or disabled — every path), so the very next user-driven
+   * change kicks off normal persistence.
+   */
+  private sessionSaveSuspended = false;
+
+  /**
    * Create a new file manager instance.
    *
    * @param bridge - the execution bridge
@@ -580,6 +591,16 @@ export class FileManager {
   }
 
   /**
+   * Block `scheduleSessionSave()` until `restoreSession()` runs. Used
+   * by the web composition root around `seedUntitled` so a 300 ms
+   * debounce can't fire ahead of the async bootstrap and overwrite
+   * the persisted session.
+   */
+  public suspendSessionSaves(): void {
+    this.sessionSaveSuspended = true;
+  }
+
+  /**
    * Returns true if session persistence is currently active. Falls back
    * to `true` when no getter is registered so first-boot writes (before
    * settings land) aren't silently dropped.
@@ -635,6 +656,12 @@ export class FileManager {
   public restoreSession(envelope: SessionRestoreEnvelope): void {
     if (this.restored) return;
     this.restored = true;
+    // Unblock pending edits regardless of what the envelope carries.
+    // Even a null/empty session means bootstrap is over and future
+    // user-initiated changes should persist normally. Disabled-by-
+    // setting is handled separately by `isSessionEnabled()` inside
+    // `scheduleSessionSave`.
+    this.sessionSaveSuspended = false;
     // When session restore is disabled, the envelope is still received
     // (main / WebFileBridge always emit one) but we drop it on the
     // floor. Marking `restored = true` above ensures a later toggle
@@ -722,12 +749,16 @@ export class FileManager {
    */
   public scheduleSessionSave(): void {
     if (this.restoring) return;
+    if (this.sessionSaveSuspended) return;
     if (!this.isSessionEnabled()) return;
     if (!this.debouncedSessionSave) {
       this.debouncedSessionSave = debounce(() => {
         // Re-check on flush: the user may have flipped the setting off
-        // during the debounce window. The persisted file is left
-        // untouched so a later flip back on resumes the prior state.
+        // during the debounce window, OR a bootstrap suspension may
+        // still be in flight (a slow async restoreSession has yet to
+        // clear the suspend). The persisted file is left untouched so
+        // a later flip back on / restoreSession resumes the prior state.
+        if (this.sessionSaveSuspended) return;
         if (!this.isSessionEnabled()) return;
         this.bridge.send('to:session:save', this.serializeSession());
       }, 300);

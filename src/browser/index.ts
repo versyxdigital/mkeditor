@@ -242,6 +242,14 @@ function onEditorReady() {
       bridgeManager.setLanguage(lng);
     };
   } else {
+    // Block session saves until bootstrap + restore land. Without this,
+    // `seedUntitled` below fires `scheduleSessionSave`, whose 300 ms
+    // debounce can race ahead of the async `bootstrap()` and overwrite
+    // the previously-good session with the seeded-untitled-only state.
+    // `FileManager.restoreSession` clears the suspension on entry, so
+    // the very next user-driven change persists as normal.
+    bridgeManager.fileManager.suspendSessionSaves();
+
     // Web mode: seed FileManager with an `untitled-1` tab so the
     // current Monaco buffer has a tab and shows up in the title bar.
     // If a session is later restored (via bootstrap below) and it
