@@ -46,6 +46,9 @@ export class FileManager {
   /** Insertion-ordered map of tab metadata. */
   public tabs: Map<string, TabInfo> = new Map();
 
+  /** Per-tab Monaco view state. */
+  private viewStates: Map<string, editor.ICodeEditorViewState> = new Map();
+
   /** counter for untitled files */
   public untitledCounter = 1;
 
@@ -180,6 +183,7 @@ export class FileManager {
     this.models.delete(path);
     this.originals.delete(path);
     this.tabs.delete(path);
+    this.viewStates.delete(path);
 
     if (this.activeFile === path) {
       this.activeFile = null;
@@ -260,6 +264,10 @@ export class FileManager {
 
     this.models.delete(oldPath);
     this.originals.delete(oldPath);
+    // The model is reused but its content is overwritten below, so any
+    // cursor/scroll state captured under the untitled key would now
+    // point at lines that no longer exist. Drop it.
+    this.viewStates.delete(oldPath);
 
     this.models.set(newPath, mdl);
     this.originals.set(newPath, content);
@@ -294,6 +302,12 @@ export class FileManager {
     if (original !== undefined) {
       this.originals.delete(oldPath);
       this.originals.set(newPath, original);
+    }
+
+    const view = this.viewStates.get(oldPath);
+    if (view !== undefined) {
+      this.viewStates.delete(oldPath);
+      this.viewStates.set(newPath, view);
     }
 
     this.models.delete(oldPath);
@@ -359,8 +373,21 @@ export class FileManager {
     const mdl = this.models.get(path);
     if (!mdl) return;
 
+    // Capture the outgoing tab's cursor/selection/scroll/folding so we
+    // can restore it when the user comes back.
+    const previousPath = this.activeFile;
+    if (previousPath && previousPath !== path) {
+      const state = this.mkeditor.saveViewState();
+      if (state) this.viewStates.set(previousPath, state);
+    }
+
     this.activeFile = path;
     this.mkeditor.setModel(mdl);
+
+    // Restore the incoming tab's view state if we have one.
+    const incoming = this.viewStates.get(path);
+    if (incoming) this.mkeditor.restoreViewState(incoming);
+
     const filename = name || path.split(/[\\/]/).pop() || '';
 
     const original = this.originals.get(path) ?? '';
