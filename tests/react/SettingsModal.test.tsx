@@ -34,6 +34,7 @@ function fakeSettingsProvider(initial: Partial<EditorSettings> = {}) {
     minimap: true,
     systemtheme: false,
     scrollsync: true,
+    sessionRestore: true,
     locale: 'en',
     ...initial,
   };
