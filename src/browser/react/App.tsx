@@ -187,7 +187,7 @@ const MenuActionBridge: React.FC = () => {
           }
           if (action.channel === 'from:command:palette') {
             if (editor) {
-              queueMicrotask(() => {
+              setTimeout(() => {
                 editor.focus();
                 editor.trigger('open', 'editor.action.quickCommand', {});
               });
@@ -226,10 +226,10 @@ const MenuActionBridge: React.FC = () => {
             // internally `accessor.get(IProductService)`. Monaco's own
             // textarea handles native clipboard events, so execCommand
             // is the working fallback. Deferred so the editor has focus
-            // (see the queueMicrotask note on command palette above).
+            // (see the setTimeout note on command palette above).
             case 'cut':
               if (editor) {
-                queueMicrotask(() => {
+                setTimeout(() => {
                   editor.focus();
                   document.execCommand('cut');
                 });
@@ -237,7 +237,7 @@ const MenuActionBridge: React.FC = () => {
               return;
             case 'copy':
               if (editor) {
-                queueMicrotask(() => {
+                setTimeout(() => {
                   editor.focus();
                   document.execCommand('copy');
                 });
@@ -245,7 +245,7 @@ const MenuActionBridge: React.FC = () => {
               return;
             case 'paste':
               if (editor) {
-                queueMicrotask(() => {
+                setTimeout(() => {
                   editor.focus();
                   document.execCommand('paste');
                 });

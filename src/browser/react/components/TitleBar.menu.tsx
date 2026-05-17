@@ -54,7 +54,14 @@ export const TitleBarMenu: React.FC<TitleBarMenuProps> = ({ group }) => {
       >
         {label(group.id, group.label)}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[14rem]">
+      <DropdownMenuContent
+        align="start"
+        className="min-w-[14rem]"
+        // Stop Radix from returning focus to the trigger button after
+        // selection — the dispatcher needs focus to land on Monaco so
+        // editor-scoped actions (command palette, clipboard ops) work.
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
         {group.items.map((item, idx) => (
           <MenuRow key={item.id} item={item} first={idx === 0} />
         ))}
