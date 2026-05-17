@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  ipcMain,
   nativeImage,
   nativeTheme,
   protocol,
@@ -14,6 +15,7 @@ import { homedir } from 'os';
 import { join, normalize } from 'path';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
+import { AppSession } from './lib/AppSession';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { iconBase64 } from './assets/icon';
@@ -140,6 +142,10 @@ function main(file: string | null = null) {
         context.webContents.send('from:theme:set', settings.applied?.darkmode);
       }
       context.webContents.send('from:settings:set', settings.loadFile());
+      // Phase 1: ship the persisted session payload (or null) right
+      // after settings so the renderer can reopen tabs/cursor state.
+      // The renderer-side handler arrives in Phase 2.
+      context.webContents.send('from:session:restore', AppSession.load());
       AppStorage.openActiveFile(context, file);
     }
   });
@@ -218,6 +224,36 @@ app.on('open-file', (event) => {
   } else {
     AppStorage.openActiveFile(context, file);
   }
+});
+
+/**
+ * Final session flush on quit. Asks the renderer to send one last
+ * `to:session:save` (so the at-quit cursor position of the active tab
+ * lands on disk), waits up to ~250 ms for it to arrive, and then
+ * proceeds with quit either way. The renderer's debounced save covers
+ * everything else, so a missed ack just means the very last cursor
+ * movement isn't persisted — not data loss.
+ */
+let isFlushingSession = false;
+app.on('before-quit', (event) => {
+  if (isFlushingSession) return; // second pass after our own app.quit()
+  if (!context || context.isDestroyed()) return;
+
+  event.preventDefault();
+  isFlushingSession = true;
+
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    ipcMain.removeListener('to:session:save', onAck);
+    app.quit();
+  };
+  const onAck = () => finish();
+
+  ipcMain.on('to:session:save', onAck);
+  context.webContents.send('from:session:flush-request');
+  setTimeout(finish, 250);
 });
 
 app.on('window-all-closed', () => {

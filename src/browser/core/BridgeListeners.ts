@@ -210,4 +210,11 @@ export function registerBridgeListeners(
   bridge.receive('from:path:properties', (info: FileProperties) => {
     showPropertiesExternal(info);
   });
+
+  // Phase 1 verification stub — confirms the new channel reaches the
+  // renderer. The full `FileManager.restoreSession` handler replaces
+  // this in Phase 2.
+  bridge.receive('from:session:restore', (payload: unknown) => {
+    console.info('[session] received from:session:restore', payload);
+  });
 }
