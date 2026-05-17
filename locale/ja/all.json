@@ -196,6 +196,7 @@
     "unable_export_preview": "プレビューをエクスポートできません",
     "unable_save_markdown": "Markdown を保存できません",
     "exported_html_success": "プレビューを HTML にエクスポートしました",
+    "exported_pdf_success": "プレビューを PDF にエクスポートしました",
     "saved_markdown_success": "Markdown ファイルを保存しました",
     "generic_error_try_again": "エラーが発生しました。もう一度お試しください。",
     "unable_open_file": "ファイルを開けません。",

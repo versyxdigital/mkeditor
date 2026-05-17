@@ -196,6 +196,7 @@
     "unable_export_preview": "Voorbeeld kan niet worden geëxporteerd",
     "unable_save_markdown": "Markdown kan niet worden opgeslagen",
     "exported_html_success": "Voorbeeld geëxporteerd naar HTML",
+    "exported_pdf_success": "Voorbeeld geëxporteerd naar PDF",
     "saved_markdown_success": "Markdown-bestand opgeslagen",
     "generic_error_try_again": "Er is een fout opgetreden. Probeer het opnieuw.",
     "unable_open_file": "Kan bestand niet openen.",

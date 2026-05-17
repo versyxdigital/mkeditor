@@ -196,6 +196,7 @@
     "unable_export_preview": "Vorschau kann nicht exportiert werden",
     "unable_save_markdown": "Markdown kann nicht gespeichert werden",
     "exported_html_success": "Vorschau als HTML exportiert",
+    "exported_pdf_success": "Vorschau als PDF exportiert",
     "saved_markdown_success": "Markdown-Datei gespeichert",
     "generic_error_try_again": "Ein Fehler ist aufgetreten. Bitte erneut versuchen.",
     "unable_open_file": "Datei kann nicht geöffnet werden.",

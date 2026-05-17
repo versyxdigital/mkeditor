@@ -196,6 +196,7 @@
     "unable_export_preview": "Не удалось экспортировать предварительный просмотр",
     "unable_save_markdown": "Не удалось сохранить Markdown",
     "exported_html_success": "Предпросмотр экспортирован в HTML",
+    "exported_pdf_success": "Предпросмотр экспортирован в PDF",
     "saved_markdown_success": "Файл Markdown сохранён",
     "generic_error_try_again": "Произошла ошибка. Пожалуйста, попробуйте ещё раз.",
     "unable_open_file": "Не удалось открыть файл.",

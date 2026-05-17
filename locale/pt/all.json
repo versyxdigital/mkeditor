@@ -196,6 +196,7 @@
     "unable_export_preview": "Não foi possível exportar a prévia",
     "unable_save_markdown": "Não foi possível salvar o markdown",
     "exported_html_success": "Prévia exportada para HTML",
+    "exported_pdf_success": "Prévia exportada para PDF",
     "saved_markdown_success": "Arquivo Markdown salvo",
     "generic_error_try_again": "Ocorreu um erro. Tente novamente.",
     "unable_open_file": "Não foi possível abrir o arquivo.",

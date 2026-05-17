@@ -196,6 +196,7 @@
     "unable_export_preview": "无法导出预览",
     "unable_save_markdown": "无法保存 Markdown",
     "exported_html_success": "预览已导出为 HTML",
+    "exported_pdf_success": "预览已导出为 PDF",
     "saved_markdown_success": "Markdown 文件已保存",
     "generic_error_try_again": "发生错误。请重试。",
     "unable_open_file": "无法打开文件。",
