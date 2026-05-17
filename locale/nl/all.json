@@ -207,10 +207,16 @@
     "unable_save_settings_permission_denied": "Kan instellingen niet opslaan: toegang geweigerd.",
     "unable_save_settings_unknown_error": "Kan instellingen niet opslaan: onbekende fout.",
     "update_available": "Update {{version}} is beschikbaar, wordt op de achtergrond gedownload...",
-    "update_downloaded": "Update {{version}} is gedownload, herstart om bij te werken."
+    "update_downloaded": "Update {{version}} is gedownload, herstart om bij te werken.",
+    "session_file_missing": "Sommige eerder geopende bestanden zijn niet gevonden en overgeslagen: {{files}}"
   },
   "sidebar": {
-    "explorer": "Verkenner"
+    "explorer": "Verkenner",
+    "no_workspace": "Geen map geopend.",
+    "open_folder": "Map openen",
+    "restore_workspace": "Vorige map herstellen",
+    "disconnect_folder": "Map loskoppelen",
+    "chromium_only_warning": "Toegang tot mappen is alleen beschikbaar in op Chromium gebaseerde browsers (Chrome, Edge, Brave, Opera)."
   },
   "toolbar": {
     "reset_split": "Indeling editor/voorbeeld resetten",

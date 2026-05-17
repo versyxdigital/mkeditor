@@ -1,3 +1,8 @@
 {
-  "explorer": "Explorer"
+  "explorer": "Explorer",
+  "no_workspace": "Kein Ordner geöffnet.",
+  "open_folder": "Ordner öffnen",
+  "restore_workspace": "Vorherigen Ordner wiederherstellen",
+  "disconnect_folder": "Ordner trennen",
+  "chromium_only_warning": "Ordnerzugriff ist nur in Chromium-basierten Browsern verfügbar (Chrome, Edge, Brave, Opera)."
 }

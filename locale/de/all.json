@@ -207,10 +207,16 @@
     "unable_save_settings_permission_denied": "Einstellungen können nicht gespeichert werden: Zugriff verweigert.",
     "unable_save_settings_unknown_error": "Einstellungen können nicht gespeichert werden: Unbekannter Fehler.",
     "update_available": "Update {{version}} ist verfügbar, wird im Hintergrund heruntergeladen...",
-    "update_downloaded": "Update {{version}} wurde heruntergeladen, zum Aktualisieren neu starten."
+    "update_downloaded": "Update {{version}} wurde heruntergeladen, zum Aktualisieren neu starten.",
+    "session_file_missing": "Einige zuvor geöffnete Dateien wurden nicht gefunden und übersprungen: {{files}}"
   },
   "sidebar": {
-    "explorer": "Explorer"
+    "explorer": "Explorer",
+    "no_workspace": "Kein Ordner geöffnet.",
+    "open_folder": "Ordner öffnen",
+    "restore_workspace": "Vorherigen Ordner wiederherstellen",
+    "disconnect_folder": "Ordner trennen",
+    "chromium_only_warning": "Ordnerzugriff ist nur in Chromium-basierten Browsern verfügbar (Chrome, Edge, Brave, Opera)."
   },
   "toolbar": {
     "reset_split": "Editor/Vorschau-Aufteilung zurücksetzen",

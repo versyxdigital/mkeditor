@@ -1,3 +1,8 @@
 {
-  "explorer": "Explorador"
+  "explorer": "Explorador",
+  "no_workspace": "Ninguna carpeta abierta.",
+  "open_folder": "Abrir carpeta",
+  "restore_workspace": "Restaurar carpeta anterior",
+  "disconnect_folder": "Desconectar carpeta",
+  "chromium_only_warning": "El acceso a carpetas solo está disponible en navegadores basados en Chromium (Chrome, Edge, Brave, Opera)."
 }

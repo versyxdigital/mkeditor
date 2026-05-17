@@ -112,7 +112,7 @@ describe('<SettingsModal>', () => {
     expect(autoindent.getAttribute('data-state')).toBe('checked');
   });
 
-  it('updateSetting fires when the wordwrap checkbox is toggled off', () => {
+  it('updateSetting fires when the wordwrap checkbox is toggled off', async () => {
     const settingsProvider = fakeSettingsProvider({ wordwrap: true });
 
     renderWithProviders(
@@ -133,7 +133,10 @@ describe('<SettingsModal>', () => {
       },
     );
 
-    const dialog = screen.getByRole('dialog');
+    // Await the dialog so the `getAvailableLocales` promise resolves
+    // inside act(...); otherwise its setLocales fires after the test
+    // returns and React emits an act() warning.
+    const dialog = await screen.findByRole('dialog');
     const wordwrap = within(dialog).getByRole('checkbox', {
       name: /wordwrap/i,
     });

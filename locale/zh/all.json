@@ -207,10 +207,16 @@
     "unable_save_settings_permission_denied": "无法保存设置：权限被拒绝。",
     "unable_save_settings_unknown_error": "无法保存设置：未知错误。",
     "update_available": "更新 {{version}} 可用，正在后台下载……",
-    "update_downloaded": "更新 {{version}} 已下载，重启以更新。"
+    "update_downloaded": "更新 {{version}} 已下载，重启以更新。",
+    "session_file_missing": "之前打开的部分文件未找到，已跳过：{{files}}"
   },
   "sidebar": {
-    "explorer": "资源管理器"
+    "explorer": "资源管理器",
+    "no_workspace": "未打开任何文件夹。",
+    "open_folder": "打开文件夹",
+    "restore_workspace": "恢复上一个文件夹",
+    "disconnect_folder": "断开文件夹",
+    "chromium_only_warning": "文件夹访问仅在基于 Chromium 的浏览器（Chrome、Edge、Brave、Opera）中可用。"
   },
   "toolbar": {
     "reset_split": "重置编辑器/预览分屏",

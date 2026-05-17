@@ -1,3 +1,8 @@
 {
-  "explorer": "Esplora"
+  "explorer": "Esplora",
+  "no_workspace": "Nessuna cartella aperta.",
+  "open_folder": "Apri cartella",
+  "restore_workspace": "Ripristina cartella precedente",
+  "disconnect_folder": "Disconnetti cartella",
+  "chromium_only_warning": "L'accesso alle cartelle è disponibile solo nei browser basati su Chromium (Chrome, Edge, Brave, Opera)."
 }

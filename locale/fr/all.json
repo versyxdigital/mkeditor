@@ -207,10 +207,16 @@
     "unable_save_settings_permission_denied": "Impossible d’enregistrer les paramètres : permission refusée.",
     "unable_save_settings_unknown_error": "Impossible d’enregistrer les paramètres : erreur inconnue.",
     "update_available": "Mise à jour {{version}} disponible, téléchargement en arrière-plan…",
-    "update_downloaded": "Mise à jour {{version}} téléchargée, redémarrez pour mettre à jour."
+    "update_downloaded": "Mise à jour {{version}} téléchargée, redémarrez pour mettre à jour.",
+    "session_file_missing": "Certains fichiers précédemment ouverts n'ont pas été trouvés et ont été ignorés : {{files}}"
   },
   "sidebar": {
-    "explorer": "Explorateur"
+    "explorer": "Explorateur",
+    "no_workspace": "Aucun dossier ouvert.",
+    "open_folder": "Ouvrir un dossier",
+    "restore_workspace": "Restaurer le dossier précédent",
+    "disconnect_folder": "Déconnecter le dossier",
+    "chromium_only_warning": "L'accès aux dossiers n'est disponible que dans les navigateurs basés sur Chromium (Chrome, Edge, Brave, Opera)."
   },
   "toolbar": {
     "reset_split": "Réinitialiser la division éditeur/aperçu",

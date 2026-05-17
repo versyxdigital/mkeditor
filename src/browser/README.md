@@ -74,7 +74,7 @@ Renderer perspective of bridge channels:
 
 ## Build & Run
 
-- Build the renderer bundle: `npm run build-editor` (generates `version.ts`, combines locales, runs Prettier, runs webpack → `dist/mkeditor.bundle.js` + `dist/mkeditor.bundle.css`).
+- Build the renderer bundle: `npm run build-editor` (generates `version.ts`, combines locales, runs webpack → `dist/mkeditor.bundle.js` + `dist/mkeditor.bundle.css`).
 - Run the web demo: `npm run serve-web` (serves `dist/` over http-server).
 - Run the desktop app: `npm run serve-app` (after `build-editor`; launches Electron pointing at `dist/app/main.js`).
 

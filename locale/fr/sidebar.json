@@ -1,3 +1,8 @@
 {
-  "explorer": "Explorateur"
+  "explorer": "Explorateur",
+  "no_workspace": "Aucun dossier ouvert.",
+  "open_folder": "Ouvrir un dossier",
+  "restore_workspace": "Restaurer le dossier précédent",
+  "disconnect_folder": "Déconnecter le dossier",
+  "chromium_only_warning": "L'accès aux dossiers n'est disponible que dans les navigateurs basés sur Chromium (Chrome, Edge, Brave, Opera)."
 }

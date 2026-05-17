@@ -3,6 +3,7 @@ import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { File, FileProperties, RenamedPath } from '../interfaces/File';
 import type { BridgeProviders } from '../interfaces/Providers';
 import type { SettingsFile } from '../interfaces/Editor';
+import type { SessionRestoreEnvelope } from '../interfaces/Session';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import type { FileManager } from './FileManager';
 import type { FileTreeManager } from './FileTreeManager';
@@ -45,7 +46,7 @@ export function registerBridgeListeners(
   };
 
   // Set the theme according to the user's system theme. React
-  // subscribes to SettingsProvider's emitter so the navbar 
+  // subscribes to SettingsProvider's emitter so the navbar
   // darkmode toggle reflects the change.
   bridge.receive('from:theme:set', (shouldUseDarkMode: boolean) => {
     if (shouldUseDarkMode) {
@@ -101,15 +102,16 @@ export function registerBridgeListeners(
 
   // Handle post-folder open events
   bridge.receive('from:folder:opened', ({ tree: t, path }) => {
-    if (
-      tree.openingFolder ||
-      !tree.treeRoot ||
-      !path.startsWith(tree.treeRoot)
-    ) {
+    const rootChanged = !tree.treeRoot || !path.startsWith(tree.treeRoot);
+    if (tree.openingFolder || rootChanged) {
       tree.treeRoot = path;
       tree.openingFolder = false;
     }
     tree.buildFileTree(t, path);
+    // Persist the new workspace root if it changed. Sub-directory
+    // expands (lazy-load) reuse the existing root, so they don't need
+    // their own save trigger.
+    if (rootChanged) files.scheduleSessionSave();
   });
 
   // Enable opening files from outside of the renderer execution context.
@@ -209,5 +211,37 @@ export function registerBridgeListeners(
   // Trigger the file properties window from the context menu.
   bridge.receive('from:path:properties', (info: FileProperties) => {
     showPropertiesExternal(info);
+  });
+
+  // Replay the persisted session into FileManager. The envelope was
+  // pre-filtered by main (missing real-file paths excluded, contents
+  // pre-loaded), so the tab replay is purely in-renderer + synchronous.
+  // The workspace folder restore is the one async step: we ask main
+  // to re-walk the persisted root via `to:file:openpath`, which fires
+  // the normal `from:folder:opened` flow.
+  bridge.receive('from:session:restore', (envelope: SessionRestoreEnvelope) => {
+    if (envelope?.missing && envelope.missing.length > 0) {
+      sonnerToast(
+        'warning',
+        t('notifications:session_file_missing', {
+          files: envelope.missing.join(', '),
+        }),
+      );
+    }
+    if (envelope) files.restoreSession(envelope);
+    const root = envelope?.session?.workspaceRoot;
+    if (root) {
+      // Mark openingFolder so `from:folder:opened` treats this as a
+      // root populate rather than a lazy-load.
+      tree.openingFolder = true;
+      bridge.send('to:file:openpath', { path: root });
+    }
+  });
+
+  // Final flush ahead of quit. Main's `before-quit` hook sends this
+  // and waits up to ~250 ms for the `to:session:save` ack — so the
+  // serialisation runs synchronously here and we ship immediately.
+  bridge.receive('from:session:flush-request', () => {
+    bridge.send('to:session:save', files.serializeSession());
   });
 }
