@@ -521,6 +521,129 @@ describe('FileManager.scheduleSessionSave', () => {
   });
 });
 
+describe('FileManager.restoreSession reconciliation', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  function envelope(
+    tabs: SessionRestoreEnvelope['session'] extends infer T
+      ? T extends null
+        ? never
+        : NonNullable<T>['tabs']
+      : never,
+    activeFile: string | null,
+    contents: Record<string, string> = {},
+  ): SessionRestoreEnvelope {
+    return {
+      session: { version: 1, tabs, activeFile, workspaceRoot: null },
+      missing: [],
+      contents,
+    };
+  }
+
+  it('evicts pre-seeded tabs that are not in the persisted session', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    // Web-boot shape: seed an untitled-1, then a session with only a
+    // real file arrives. The seeded untitled-1 must be evicted.
+    fm.seedUntitled('seeded body');
+    expect(fm.tabs.has('untitled-1')).toBe(true);
+
+    fm.restoreSession(
+      envelope(
+        [{ path: '/abs/foo.md', name: 'foo.md', viewState: null }],
+        '/abs/foo.md',
+        { '/abs/foo.md': 'real body' },
+      ),
+    );
+
+    expect(fm.tabs.has('untitled-1')).toBe(false);
+    expect(fm.tabs.has('/abs/foo.md')).toBe(true);
+    expect(fm.models.has('untitled-1')).toBe(false);
+    expect(fm.originals.has('untitled-1')).toBe(false);
+    expect(fm.activeFile).toBe('/abs/foo.md');
+  });
+
+  it('keeps pre-seeded untitled-1 when the session also tracks it', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.seedUntitled('seeded body');
+    fm.restoreSession(
+      envelope(
+        [
+          {
+            path: 'untitled-1',
+            name: 'Untitled 1',
+            viewState: null,
+            untitledContent: 'session body',
+          },
+        ],
+        'untitled-1',
+      ),
+    );
+
+    expect(fm.tabs.has('untitled-1')).toBe(true);
+    // Content updated to session's value (existing override path).
+    expect(fm.models.get('untitled-1')?.getValue()).toBe('session body');
+  });
+
+  it('leaves seeded state untouched when the session is empty / null', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.seedUntitled('keep me');
+    fm.restoreSession({ session: null, missing: [], contents: {} });
+
+    // Null session means the seed survives — no reconciliation runs.
+    expect(fm.tabs.has('untitled-1')).toBe(true);
+    expect(fm.models.get('untitled-1')?.getValue()).toBe('keep me');
+  });
+
+  it('post-restore serialize emits the session shape, not the seeded one', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.seedUntitled('seeded body');
+    fm.restoreSession(
+      envelope(
+        [{ path: '/abs/foo.md', name: 'foo.md', viewState: null }],
+        '/abs/foo.md',
+        { '/abs/foo.md': 'real body' },
+      ),
+    );
+
+    const payload = fm.serializeSession();
+    expect(payload.tabs.map((t) => t.path)).toEqual(['/abs/foo.md']);
+    expect(payload.activeFile).toBe('/abs/foo.md');
+  });
+});
+
 describe('FileManager.restoreSession gate', () => {
   beforeEach(() => {
     jest.useFakeTimers();

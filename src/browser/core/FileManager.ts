@@ -672,7 +672,37 @@ export class FileManager {
     if (!session || session.tabs.length === 0) return;
 
     this.restoring = true;
+    // Models we evicted during reconciliation. Kept alive until *after*
+    // `activateFile` swaps Monaco onto a survivor — disposing before
+    // the swap would put Monaco on a disposed model briefly and Monaco
+    // doesn't recover cleanly from that.
+    const evictedModels: editor.ITextModel[] = [];
     try {
+      // Reconcile current state to match the session exactly. Web boot
+      // pre-seeds `untitled-1` before bootstrap fires this restore; if
+      // the persisted session didn't include that tab, it would
+      // otherwise linger and land in the next save. Real-file tabs
+      // suffer the same fate if the user manually opened files between
+      // the previous save and this restore.
+      const desiredPaths = new Set(session.tabs.map((t) => t.path));
+      for (const path of [...this.tabs.keys()]) {
+        if (desiredPaths.has(path)) continue;
+        const mdl = this.models.get(path);
+        if (mdl) evictedModels.push(mdl);
+        this.models.delete(path);
+        this.originals.delete(path);
+        this.tabs.delete(path);
+        this.viewStates.delete(path);
+      }
+      // If the active path was just evicted, null it out so the
+      // `activateFile` call below sees `previousPath = null` and skips
+      // saving a view state under a path we no longer track. This also
+      // means the upcoming `setModel` is the first time Monaco hears
+      // about the new model — clean transition, no stale-state mixing.
+      if (this.activeFile && !desiredPaths.has(this.activeFile)) {
+        this.activeFile = null;
+      }
+
       // Advance the untitled counter past every restored synthetic id so
       // a new "Untitled N" created later doesn't collide.
       for (const tab of session.tabs) {
@@ -687,10 +717,10 @@ export class FileManager {
       // Build models + tabs + view-state cache in one pass. No
       // activation yet — that comes at the end.
       //
-      // If a tab already exists (web mode pre-seeds `untitled-1`
-      // before bootstrap fires `from:session:restore`), update the
-      // existing model's content to match the session's saved value
-      // rather than skipping. The session is the source of truth.
+      // If a tab already exists (e.g. a seeded `untitled-1` that the
+      // session also tracks), update the existing model's content to
+      // match the session's saved value rather than skipping. The
+      // session is the source of truth.
       for (const tab of session.tabs) {
         const content = tab.path.startsWith('untitled-')
           ? (tab.untitledContent ?? '')
@@ -737,6 +767,11 @@ export class FileManager {
       }
     } finally {
       this.restoring = false;
+      // Now safe to free evicted models. Monaco's current model is
+      // whichever survivor `activateFile` just attached. Disposing
+      // earlier risks the disposed-then-reattach race Monaco doesn't
+      // handle cleanly.
+      for (const mdl of evictedModels) mdl.dispose();
     }
   }
 
