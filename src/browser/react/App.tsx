@@ -187,8 +187,10 @@ const MenuActionBridge: React.FC = () => {
           }
           if (action.channel === 'from:command:palette') {
             if (editor) {
-              editor.focus();
-              editor.trigger('open', 'editor.action.quickCommand', {});
+              queueMicrotask(() => {
+                editor.focus();
+                editor.trigger('open', 'editor.action.quickCommand', {});
+              });
             }
             return;
           }
@@ -217,26 +219,37 @@ const MenuActionBridge: React.FC = () => {
             case 'redo':
               editor?.trigger('keyboard', 'redo', null);
               return;
+            // Cut/Copy/Paste go through `document.execCommand` rather
+            // than Monaco's `editor.action.clipboard*Action` because
+            // the standalone bundle (via monaco-editor-webpack-plugin)
+            // ships without `productService`, which those actions
+            // internally `accessor.get(IProductService)`. Monaco's own
+            // textarea handles native clipboard events, so execCommand
+            // is the working fallback. Deferred so the editor has focus
+            // (see the queueMicrotask note on command palette above).
             case 'cut':
-              editor?.trigger(
-                'source',
-                'editor.action.clipboardCutAction',
-                null,
-              );
+              if (editor) {
+                queueMicrotask(() => {
+                  editor.focus();
+                  document.execCommand('cut');
+                });
+              }
               return;
             case 'copy':
-              editor?.trigger(
-                'source',
-                'editor.action.clipboardCopyAction',
-                null,
-              );
+              if (editor) {
+                queueMicrotask(() => {
+                  editor.focus();
+                  document.execCommand('copy');
+                });
+              }
               return;
             case 'paste':
-              editor?.trigger(
-                'source',
-                'editor.action.clipboardPasteAction',
-                null,
-              );
+              if (editor) {
+                queueMicrotask(() => {
+                  editor.focus();
+                  document.execCommand('paste');
+                });
+              }
               return;
             case 'togglefullscreen':
               bridgeManager?.windowToggleFullscreen();
