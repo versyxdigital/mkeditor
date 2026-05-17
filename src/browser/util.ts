@@ -4,7 +4,19 @@ import type Renderer from 'markdown-it/lib/renderer.mjs';
 import type { ContextBridgeAPI } from './interfaces/Bridge';
 import type { ExportSettings } from './interfaces/Editor';
 
-export const logger = window.logger;
+// In desktop builds the Electron preload exposes `window.logger`, which
+// forwards to electron-log on the main side. In web builds there is no
+// preload, so without a fallback every `logger?.error(...)` call in the
+// renderer becomes a silent no-op — which has hidden real boot failures
+// (e.g. a stuck splash with no console trail). The fallback below pipes
+// to `console.*` so the same failures surface in DevTools on the web.
+export const logger: NonNullable<Window['logger']> = window.logger ?? {
+  log: (level, msg, meta) => console.log(`[${level}] ${msg}`, meta),
+  debug: (msg, meta) => console.debug(msg, meta),
+  info: (msg, meta) => console.info(msg, meta),
+  warn: (msg, meta) => console.warn(msg, meta),
+  error: (msg, meta) => console.error(msg, meta),
+};
 
 /**
  * Debounce to delay execution.
