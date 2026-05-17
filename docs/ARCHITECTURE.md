@@ -484,7 +484,7 @@ The `alert alert-*`, `img-fluid`, and `table table-sm table-bordered table-strip
 ```
 package.json scripts
 ├── prebuild      → writes src/browser/version.ts from package.json#version
-├── build-editor  → prebuild → combine-locales.mjs → prettier → webpack
+├── build-editor  → prebuild → combine-locales.mjs → webpack
 │                   produces dist/{index.html, mkeditor.bundle.js, mkeditor.bundle.css,
 │                                  favicon.ico, icon.png, locale/, fonts/}
 ├── build-app     → compile-app.mjs → tsc src/app/*.ts → dist/app/

@@ -85,7 +85,7 @@ When adding new cross-boundary functionality, follow this same seam pattern — 
 
 ## Build & Run
 
-- `npm run build-editor` — generates [src/browser/version.ts](src/browser/version.ts) from `package.json#version`, combines locales, runs Prettier, runs webpack ([webpack.config.js](webpack.config.js)). Output: `dist/`.
+- `npm run build-editor` — generates [src/browser/version.ts](src/browser/version.ts) from `package.json#version`, combines locales, runs webpack ([webpack.config.js](webpack.config.js)). Output: `dist/`.
 - `npm run build-app` — `tsc` over `src/app/*.ts` into `dist/app/`.
 - `npm run serve-web` — http-server on `dist/`.
 - `npm run serve-app` — `electron .` (uses `dist/app/main.js`).

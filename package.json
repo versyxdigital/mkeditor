@@ -7,7 +7,8 @@
   "description": "Markdown Editor",
   "main": "dist/app/main.js",
   "scripts": {
-    "prettier": "prettier . --write",
+    "prettier-check": "prettier . --check",
+    "prettier-fix": "prettier . --write",
     "lint": "eslint src",
     "test": "jest",
     "prebuild": "node -p \"\\\"export const APP_VERSION = '\\\" + require('./package.json').version + \\\"';\\\"\" > src/browser/version.ts",
