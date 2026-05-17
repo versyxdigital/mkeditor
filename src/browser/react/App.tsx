@@ -219,23 +219,29 @@ const MenuActionBridge: React.FC = () => {
             case 'redo':
               editor?.trigger('keyboard', 'redo', null);
               return;
-            // Cut/Copy/Paste go through `webContents.cut/copy/paste()`
-            // in main (see `AppWindow.register`). Monaco's own
-            // `editor.action.clipboard*Action` throws — the standalone
-            // bundle (via monaco-editor-webpack-plugin) ships without
-            // `productService` those actions internally require.
-            // `document.execCommand` from the renderer also fails after
-            // Radix's deferred close consumes the transient user
-            // activation. The WebContents path dispatches the native
-            // clipboard events without that constraint.
             case 'cut':
-              bridgeManager?.editCut();
+              if (editor && bridgeManager) {
+                setTimeout(() => {
+                  editor.focus();
+                  bridgeManager.editCut();
+                });
+              }
               return;
             case 'copy':
-              bridgeManager?.editCopy();
+              if (editor && bridgeManager) {
+                setTimeout(() => {
+                  editor.focus();
+                  bridgeManager.editCopy();
+                });
+              }
               return;
             case 'paste':
-              bridgeManager?.editPaste();
+              if (editor && bridgeManager) {
+                setTimeout(() => {
+                  editor.focus();
+                  bridgeManager.editPaste();
+                });
+              }
               return;
             case 'togglefullscreen':
               bridgeManager?.windowToggleFullscreen();
