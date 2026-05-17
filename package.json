@@ -13,6 +13,7 @@
     "prebuild": "node -p \"\\\"export const APP_VERSION = '\\\" + require('./package.json').version + \\\"';\\\"\" > src/browser/version.ts",
     "build-editor": "npm run prebuild && node ./scripts/combine-locales.mjs && webpack --config webpack.config.js",
     "build-app": "node ./scripts/compile-app.mjs",
+    "build-all": "npm run build-editor && npm run build-app",
     "make-installer": "node ./scripts/make-installer.mjs",
     "serve-web": "http-server dist",
     "serve-app": "electron .",
