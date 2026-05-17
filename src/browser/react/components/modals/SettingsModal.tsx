@@ -7,6 +7,7 @@ import {
 } from '../../../i18n';
 import { useManagers } from '../../contexts/ManagersContext';
 import { useModals } from '../../contexts/ModalsContext';
+import { confirmExternal } from '../../contexts/PromptsContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { Icon } from '../Icon';
@@ -56,6 +57,20 @@ export const SettingsModal: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  const handleClearSession = async () => {
+    if (!bridgeManager) return;
+    const ok = await confirmExternal({
+      title: t('modals-settings:clear_session_confirm_title'),
+      description: t('modals-settings:clear_session_confirm_text'),
+      confirmLabel: t('modals-settings:clear_session_confirm_button'),
+      cancelLabel: t('modals-settings:clear_session_cancel_button'),
+      destructive: true,
+    });
+    if (ok) {
+      bridgeManager.bridge.send('to:session:clear', null);
+    }
+  };
 
   const handleSave = () => {
     if (
@@ -132,6 +147,29 @@ export const SettingsModal: React.FC = () => {
               checked={settings.scrollsync}
               onChange={(v) => updateSetting('scrollsync', v)}
             />
+          </Section>
+
+          <Section label={t('modals-settings:session')}>
+            <SwitchRow
+              id="session-restore-setting"
+              label={t('modals-settings:session_restore_label')}
+              help={t('modals-settings:session_restore_help')}
+              checked={settings.sessionRestore}
+              onChange={(v) => updateSetting('sessionRestore', v)}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleClearSession}
+              className="self-start"
+            >
+              <Icon name="trash" />
+              <span>{t('modals-settings:clear_session_button')}</span>
+            </Button>
+            <small className="text-muted-foreground">
+              {t('modals-settings:clear_session_help')}
+            </small>
           </Section>
 
           <Section label={t('modals-settings:appearance')}>

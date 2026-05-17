@@ -413,3 +413,40 @@ describe('AppSession.buildRestoreEnvelope', () => {
     });
   });
 });
+
+describe('AppSession.clear', () => {
+  it('removes the canonical session file', () => {
+    withTempHome((tmpHome) => {
+      const AppSession = loadAppSession(tmpHome);
+      AppSession.save(validPayload);
+
+      const file = normalize(tmpHome + '/.mkeditor/session.json');
+      expect(existsSync(file)).toBe(true);
+
+      AppSession.clear();
+      expect(existsSync(file)).toBe(false);
+    });
+  });
+
+  it('also removes a leftover tmp from a crashed write', () => {
+    withTempHome((tmpHome) => {
+      const fs = jest.requireActual('fs') as typeof import('fs');
+      const dir = normalize(tmpHome + '/.mkeditor/');
+      fs.mkdirSync(dir, { recursive: true });
+      const tmp = dir + 'session.json.tmp';
+      fs.writeFileSync(tmp, '{}', 'utf-8');
+      expect(existsSync(tmp)).toBe(true);
+
+      const AppSession = loadAppSession(tmpHome);
+      AppSession.clear();
+      expect(existsSync(tmp)).toBe(false);
+    });
+  });
+
+  it('is a no-op when the file is already missing', () => {
+    withTempHome((tmpHome) => {
+      const AppSession = loadAppSession(tmpHome);
+      expect(() => AppSession.clear()).not.toThrow();
+    });
+  });
+});

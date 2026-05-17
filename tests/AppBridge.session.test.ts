@@ -9,6 +9,7 @@ jest.mock('../src/app/lib/AppSession', () => ({
   AppSession: {
     save: jest.fn(),
     load: jest.fn(() => null),
+    clear: jest.fn(),
     buildRestoreEnvelope: jest.fn(() => ({
       session: null,
       missing: [],
@@ -63,5 +64,36 @@ describe('AppBridge to:session:save handler', () => {
 
     expect(AppSession.save).toHaveBeenCalledTimes(1);
     expect(AppSession.save).toHaveBeenCalledWith(payload);
+  });
+});
+
+describe('AppBridge to:session:clear handler', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('calls AppSession.clear and fires the success notification', () => {
+    const send = jest.fn();
+    const context = {
+      webContents: { send },
+      setTitle: jest.fn(),
+    } as never;
+    const bridge = new AppBridge(context);
+    bridge.register();
+
+    const onMock = ipcMain.on as unknown as jest.Mock;
+    const clearCall = onMock.mock.calls.find(
+      (c) => c[0] === 'to:session:clear',
+    );
+    expect(clearCall).toBeDefined();
+    const handler = clearCall![1] as () => void;
+
+    handler();
+
+    expect(AppSession.clear).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith('from:notification:display', {
+      status: 'success',
+      key: 'notifications:session_cleared',
+    });
   });
 });

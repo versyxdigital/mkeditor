@@ -329,3 +329,39 @@ describe('WebFileBridge beforeunload flush', () => {
     expect(flushCount).toBe(1);
   });
 });
+
+describe('WebFileBridge to:session:clear', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    installIndexedDbStub();
+  });
+
+  it('removes mkeditor-session and fires the success notification', async () => {
+    localStorage.setItem('mkeditor-session', JSON.stringify({ x: 1 }));
+    const bridge = await loadBridge();
+    const notifications: Array<{ status: string; key: string }> = [];
+    bridge.receive('from:notification:display', (e: unknown) =>
+      notifications.push(e as { status: string; key: string }),
+    );
+
+    bridge.send('to:session:clear', null);
+
+    expect(localStorage.getItem('mkeditor-session')).toBeNull();
+    expect(notifications).toEqual([
+      { status: 'success', key: 'notifications:session_cleared' },
+    ]);
+  });
+
+  it('still fires the notification when nothing was stored', async () => {
+    const bridge = await loadBridge();
+    const notifications: Array<{ status: string; key: string }> = [];
+    bridge.receive('from:notification:display', (e: unknown) =>
+      notifications.push(e as { status: string; key: string }),
+    );
+
+    bridge.send('to:session:clear', null);
+
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].key).toBe('notifications:session_cleared');
+  });
+});

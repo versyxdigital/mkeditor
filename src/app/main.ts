@@ -142,14 +142,13 @@ function main(file: string | null = null) {
         context.webContents.send('from:theme:set', settings.applied?.darkmode);
       }
       context.webContents.send('from:settings:set', settings.loadFile());
-      // Ship the restore envelope right after settings. Main pre-checks
-      // the filesystem and reads file contents so the renderer can
-      // hydrate tabs synchronously (no per-file IPC round-trip during
-      // restore). Missing paths are excluded from `session.tabs` and
-      // listed under `missing` for the renderer to toast.
+
+      const sessionEnabled = settings.applied?.sessionRestore ?? true;
       context.webContents.send(
         'from:session:restore',
-        AppSession.buildRestoreEnvelope(AppSession.load()),
+        sessionEnabled
+          ? AppSession.buildRestoreEnvelope(AppSession.load())
+          : { session: null, missing: [], contents: {} },
       );
       AppStorage.openActiveFile(context, file);
     }

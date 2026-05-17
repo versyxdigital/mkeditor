@@ -30,5 +30,6 @@
   "update_available": "Güncelleme {{version}} mevcut, arka planda indiriliyor...",
   "update_downloaded": "Güncelleme {{version}} indirildi, güncellemek için yeniden başlatın.",
 
-  "session_file_missing": "Önceden açık olan bazı dosyalar bulunamadı ve atlandı: {{files}}"
+  "session_file_missing": "Önceden açık olan bazı dosyalar bulunamadı ve atlandı: {{files}}",
+  "session_cleared": "Kaydedilen oturum temizlendi."
 }

@@ -97,6 +97,16 @@ export class AppBridge {
       AppSession.save(payload);
     });
 
+    // Wipe the persisted session file. Fired by the renderer's
+    // "Clear saved session" action in the Settings modal.
+    ipcMain.on('to:session:clear', () => {
+      AppSession.clear();
+      this.context.webContents.send('from:notification:display', {
+        status: 'success',
+        key: 'notifications:session_cleared',
+      });
+    });
+
     // Export rendered HTML, triggered from the renderer process
     ipcMain.on('to:html:export', (event, { content }) => {
       AppStorage.saveFile(this.context, {

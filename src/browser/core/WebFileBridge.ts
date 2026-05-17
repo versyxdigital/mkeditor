@@ -96,6 +96,9 @@ export class WebFileBridge implements ContextBridgeAPI {
       case 'to:session:save':
         this.persistSession(data as SessionPayload);
         break;
+      case 'to:session:clear':
+        this.clearSession();
+        break;
       case 'to:title:set':
       case 'to:editor:state':
       case 'to:settings:save':
@@ -204,6 +207,24 @@ export class WebFileBridge implements ContextBridgeAPI {
     } catch (err) {
       logger?.error('WebFileBridge.persistSession', JSON.stringify(err));
     }
+  }
+
+  /**
+   * Wipe the persisted session from localStorage. Mirrors desktop's
+   * `AppSession.clear`. Currently-open tabs stay open; the next launch
+   * reads no session and lands on a fresh untitled. Fires the same
+   * `notifications:session_cleared` toast desktop does.
+   */
+  private clearSession(): void {
+    try {
+      localStorage.removeItem(LS_KEY_SESSION);
+    } catch (err) {
+      logger?.error('WebFileBridge.clearSession', JSON.stringify(err));
+    }
+    this.emit('from:notification:display', {
+      status: 'success',
+      key: 'notifications:session_cleared',
+    });
   }
 
   /**

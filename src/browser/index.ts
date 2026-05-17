@@ -210,6 +210,12 @@ function onEditorReady() {
   bridgeManager.provide('commands', editorManager.providers.commands);
   editorManager.provide('bridge', bridgeManager);
 
+  // Let FileManager honour the user's `sessionRestore` setting.
+  bridgeManager.fileManager.setSessionEnabledGetter(
+    () =>
+      editorManager.providers.settings?.getSetting('sessionRestore') ?? true,
+  );
+
   new MkedLinkProvider(mkeditor, (path) =>
     bridgeManager.fileTreeManager.hasFile(path),
   );
