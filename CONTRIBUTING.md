@@ -78,17 +78,17 @@ MKEditor is split into two main components:
 
 ## Testing
 
-- Run the full test suite before submitting a pull request:
+- Run the test suite before submitting a pull request:
   ```sh
   npm test
   ```
 
 ## AI Usage Policy
 
-MKEditor occasionally uses [Codex](https://chatgpt.com/codex) as an **augmentative tool** for tasks such as generating documentation, boilerplate code, and expanding on existing ideas.
+MKEditor occasionally uses AI tools such as Codex and Claude as an **augmentative tool**.
 
-- AI-generated content is always **reviewed, verified, and refined manually** before inclusion.
-- Core logic, architecture decisions, and final implementations remain developer-driven.
+- AI-generated content **must always be reviewed, verified, and refined manually** before inclusion.
+- Core logic, architecture decisions, and final implementations **must always remain developer-driven**.
 
 ## Getting Help
 
