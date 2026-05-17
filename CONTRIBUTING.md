@@ -19,6 +19,12 @@ If you would like to build from source, please follow the steps below:
    npm install
    ```
 
+   This also wires up the local Git pre-commit hook (via Husky's
+   `prepare` script). The hook runs `npm run prettier-check`,
+   `npm run lint`, and `npm test` before every commit; commits that
+   fail any of the three are aborted. Use `git commit --no-verify`
+   to bypass in an emergency, but expect CI to catch the same things.
+
 3. Build targets:
    - Build just the editor:
      ```sh
@@ -71,7 +77,10 @@ MKEditor is split into two main components:
 
 ### Code Standards
 
-- Run `npm run lint` before committing.
+- Formatting is handled by Prettier (`npm run prettier-fix` writes,
+  `npm run prettier-check` verifies). ESLint owns lint
+  (`npm run lint`). Both run automatically in the pre-commit hook
+  installed by `npm install`.
 - Prefer readability over micro-optimizations.
 - Write unit tests for new features or bug fixes when possible.
 - Keep code consistent with the existing style.
@@ -82,6 +91,10 @@ MKEditor is split into two main components:
   ```sh
   npm test
   ```
+- The pre-commit hook runs the suite for you on every commit. The
+  CI workflow (`.github/workflows/tests.yml`) re-runs the same
+  checks plus `build-editor` and `build-app` to catch
+  webpack/tsc errors that the unit tests miss.
 
 ## AI Usage Policy
 
