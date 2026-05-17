@@ -32,7 +32,6 @@ function installMonacoCancelFilter() {
 }
 
 interface EditorConstructOptions {
-  mode: 'web' | 'desktop';
   dispatcher: EditorDispatcher;
   init?: boolean | undefined;
   watch?: boolean | undefined;
@@ -44,9 +43,6 @@ interface EditorCreateOptions {
 }
 
 export class EditorManager {
-  /** App mode */
-  private mode: 'web' | 'desktop';
-
   /** Editor instance */
   private mkeditor: editor.IStandaloneCodeEditor | null = null;
 
@@ -69,7 +65,6 @@ export class EditorManager {
    * Create a new mkeditor.
    */
   public constructor(opts: EditorConstructOptions) {
-    this.mode = opts.mode;
     this.dispatcher = opts.dispatcher;
 
     // editor:render is handled by <PreviewPane> (innerHTML write) and
@@ -130,14 +125,15 @@ export class EditorManager {
     installMonacoCancelFilter();
 
     try {
-      let editorContent = welcomeMarkdown;
-      // For web mode, fetch stored content from localStorage.
-      // Web-mode delete-button click is wired by <EditorToolbar> via
-      // editorManager.resetContent().
-      if (this.mode === 'web') {
-        const webStoredContent = localStorage.getItem('mkeditor-content');
-        if (webStoredContent) editorContent = webStoredContent;
-      }
+      // Monaco boots with the welcome markdown. In web mode the
+      // WebFileBridge bootstrap (kicked off from `onEditorReady`)
+      // restores the persisted session — including any untitled
+      // tabs — and FileManager.restoreSession overwrites this
+      // placeholder content with the session's saved value. The
+      // legacy `mkeditor-content` localStorage entry is migrated
+      // into the session by WebFileBridge on the user's first
+      // launch after Phase 3.
+      const editorContent = welcomeMarkdown;
 
       // Create the underlying monaco editor.
       // See https://microsoft.github.io/monaco-editor/
@@ -201,14 +197,14 @@ export class EditorManager {
   }
 
   /**
-   * Web-mode "Delete content" handler — clears persisted markdown from
-   * `localStorage` and reloads the welcome page. Called by
-   * <EditorToolbar>'s trash button (visible only in web mode).
+   * Web-mode "Delete content" handler — resets the active buffer to
+   * the welcome markdown. Called by <EditorToolbar>'s trash button
+   * (visible only in web mode). The buffer change flows into the
+   * session via the normal Monaco-content-change → debounced session
+   * save chain, so the next launch will reopen with the welcome
+   * content rather than the wiped tab's previous value.
    */
   public resetContent() {
-    if (this.mode === 'web') {
-      localStorage.removeItem('mkeditor-content');
-    }
     this.mkeditor?.setValue(welcomeMarkdown);
   }
 
@@ -231,17 +227,14 @@ export class EditorManager {
   }
 
   /**
-   * Track content over the execution bridge.
+   * Track content over the execution bridge. Web mode used to mirror
+   * the active buffer into `localStorage['mkeditor-content']` as a
+   * crash-survival fallback — that's now covered by the session save
+   * path (FileManager.scheduleSessionSave fires on every edit-adjacent
+   * event), so this method is purely "tell the bridge whether the
+   * buffer has diverged from the last-saved baseline."
    */
   public updateBridgedContent({ init }: { init?: boolean } = {}) {
-    // In web mode, always mirror the buffer to localStorage so an
-    // untitled scratch tab survives a refresh. Workspace files don't
-    // need this — they're persisted via the WebFileBridge save path —
-    // but the cheap setItem keeps the fallback alive regardless.
-    if (this.mode === 'web' && this.mkeditor) {
-      localStorage.setItem('mkeditor-content', this.mkeditor.getValue());
-    }
-
     if (!this.providers.bridge) return;
 
     const hasChanged = init

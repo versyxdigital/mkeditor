@@ -616,11 +616,31 @@ export class FileManager {
 
       // Build models + tabs + view-state cache in one pass. No
       // activation yet — that comes at the end.
+      //
+      // If a tab already exists (web mode pre-seeds `untitled-1`
+      // before bootstrap fires `from:session:restore`), update the
+      // existing model's content to match the session's saved value
+      // rather than skipping. The session is the source of truth.
       for (const tab of session.tabs) {
-        if (this.models.has(tab.path)) continue; // defensive: don't double-add
         const content = tab.path.startsWith('untitled-')
           ? (tab.untitledContent ?? '')
           : (contents[tab.path] ?? '');
+
+        const existing = this.models.get(tab.path);
+        if (existing) {
+          if (existing.getValue() !== content) existing.setValue(content);
+          this.originals.set(tab.path, content);
+          if (tab.viewState) {
+            this.viewStates.set(
+              tab.path,
+              tab.viewState as editor.ICodeEditorViewState,
+            );
+          }
+          // Preserve any updated display name from the session.
+          this.tabs.set(tab.path, { path: tab.path, name: tab.name });
+          continue;
+        }
+
         const model = editor.createModel(content, 'markdown');
         this.models.set(tab.path, model);
         this.originals.set(tab.path, content);

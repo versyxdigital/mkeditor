@@ -417,6 +417,9 @@ Main pre-validates real-file paths against the filesystem, drops missing ones fr
 
 **Missing-file toast.** `BridgeListeners` surfaces one consolidated sonner toast via `notifications:session_file_missing` (with `{{files}}` interpolation) when `envelope.missing.length > 0` — never per-file noise.
 
+**Web mode parity.** [`WebFileBridge.bootstrap()`](../src/browser/core/WebFileBridge.ts) plays the role main process does on desktop: it runs `restoreWorkspace(false)` to silently re-attach the IDB-persisted FS-Access handle, then `shipSessionRestore()` reads `localStorage['mkeditor-session']`, walks each real-file path against the rebuilt `handles` map (reading contents via `handle.getFile()`), and emits `from:session:restore` with the same `SessionRestoreEnvelope` shape desktop uses. Saves go through `to:session:save` → `WebFileBridge.persistSession()` → `localStorage.setItem`. A `beforeunload` listener emits `from:session:flush-request` so BridgeListeners' synchronous handler ships one final save before the page tears down. `workspaceRoot` is null on the web envelope — the IDB handle owns the workspace identity, not the persisted path.
+A legacy `mkeditor-content` localStorage entry (left by pre-session-restore builds) is migrated into the first untitled tab of a freshly-written session on the first launch after Phase 3 lands, then the key is removed.
+
 **IPC channels** (whitelisted in [preload.ts](../src/app/preload.ts)):
 
 | Channel                       | Direction         | Payload                     | Purpose                                |
