@@ -35,6 +35,8 @@ const senderWhitelist = [
   'to:window:minimize',
   'to:window:maximize',
   'to:window:close',
+  'to:window:fullscreen',
+  'to:command:run',
 ];
 
 // Can be sent from the main process and received
@@ -100,6 +102,10 @@ const contextBridgeChannel = () => {
 contextBridge.exposeInMainWorld('executionBridge', contextBridgeChannel());
 
 contextBridge.exposeInMainWorld('mked', {
+  // Pinned at preload time: `process.platform` is authoritative here (the
+  // preload runs in Node), avoiding a renderer-side UA sniff. Read once
+  // by the composition root in `index.ts` and threaded through Managers.
+  platform: process.platform,
   getActiveFilePath: () => ipcRenderer.sendSync('mked:get-active-file'),
   getAppLocale: () => ipcRenderer.sendSync('mked:get-locale'),
   openMkedUrl: (url: string) => ipcRenderer.send('mked:open-url', url),

@@ -5,6 +5,7 @@ import type { BridgeProviders } from '../interfaces/Providers';
 import type { SettingsFile } from '../interfaces/Editor';
 import type { SessionRestoreEnvelope } from '../interfaces/Session';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
+import type { BridgeManager } from './BridgeManager';
 import type { FileManager } from './FileManager';
 import type { FileTreeManager } from './FileTreeManager';
 import {
@@ -26,6 +27,7 @@ export function registerBridgeListeners(
   providers: BridgeProviders,
   files: FileManager,
   tree: FileTreeManager,
+  manager: BridgeManager,
 ) {
   const loadSettingsFromBridgeListener = (settings: SettingsFile) => {
     mkeditor.updateOptions({
@@ -63,42 +65,13 @@ export function registerBridgeListeners(
     providers.exportSettings?.setSettings(s.exportSettings);
   });
 
-  // Enable new files from outside of the renderer execution context.
-  bridge.receive('from:file:new', (channel: string) => {
-    bridge.send('to:title:set', '');
-    bridge.send(channel, {
-      content: mkeditor.getValue(),
-      file: files.activeFile,
-    });
-  });
-
-  // Enable saving files from outside of the renderer execution context.
-  bridge.receive('from:file:save', (channel: string) => {
-    if (files.activeFile && !files.activeFile.startsWith('untitled')) {
-      bridge.send(channel, {
-        content: mkeditor.getValue(),
-        file: files.activeFile,
-      });
-
-      files.originals.set(files.activeFile, mkeditor.getValue());
-      dispatcher.setTrackedContent({
-        content: mkeditor.getValue(),
-      });
-    } else {
-      bridge.send('to:file:saveas', mkeditor.getValue());
-    }
-  });
-
-  // Handle file save-as events
-  bridge.receive('from:file:saveas', (channel: string) => {
-    bridge.send(channel, mkeditor.getValue());
-  });
-
-  // Handle opening folders and constructing file tree
-  bridge.receive('from:folder:open', (channel: string) => {
-    tree.openingFolder = true;
-    bridge.send(channel, true);
-  });
+  // File / folder menu actions delegate to BridgeManager helpers so the
+  // in-window menu (P2) can reach the same effects without re-routing
+  // through `bridge.receive`.
+  bridge.receive('from:file:new', () => manager.menuFileNew());
+  bridge.receive('from:file:save', () => manager.menuFileSave());
+  bridge.receive('from:file:saveas', () => manager.menuFileSaveAs());
+  bridge.receive('from:folder:open', () => manager.menuFolderOpen());
 
   // Handle post-folder open events
   bridge.receive('from:folder:opened', ({ tree: t, path }) => {
@@ -115,10 +88,7 @@ export function registerBridgeListeners(
   });
 
   // Enable opening files from outside of the renderer execution context.
-  bridge.receive('from:file:open', (channel: string) => {
-    files.openingFile = true;
-    bridge.send(channel, true);
-  });
+  bridge.receive('from:file:open', () => manager.menuFileOpen());
 
   // Handle post-file open events. We ignore the `filename` field in
   // the payload and derive the tab label from the path's basename
@@ -169,10 +139,7 @@ export function registerBridgeListeners(
   });
 
   // Enable access to the monaco editor command palette.
-  bridge.receive('from:command:palette', (command: string) => {
-    mkeditor.focus();
-    mkeditor.trigger(command, 'editor.action.quickCommand', {});
-  });
+  bridge.receive('from:command:palette', () => manager.menuCommandPalette());
 
   // Opens a React shadcn-Dialog modal triggered from the main process
   // (e.g., a tray/menu item).
@@ -244,4 +211,13 @@ export function registerBridgeListeners(
   bridge.receive('from:session:flush-request', () => {
     bridge.send('to:session:save', files.serializeSession());
   });
+
+  // BrowserWindow maximize/unmaximize state — `<TitleBar>`'s maximize
+  // icon reads this through WindowContext via BridgeManager's snapshot.
+  bridge.receive(
+    'from:window:state',
+    (state: { isMaximized: boolean } | undefined) => {
+      manager.setWindowState({ isMaximized: !!state?.isMaximized });
+    },
+  );
 }

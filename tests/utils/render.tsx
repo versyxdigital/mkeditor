@@ -114,6 +114,7 @@ export function buildManagers(overrides: Partial<Managers> = {}): Managers {
   const dispatcher = overrides.dispatcher ?? (fakeDispatcher() as any);
   return {
     mode: 'web',
+    platform: 'web',
     dispatcher,
     editorManager: {
       getValue: jest.fn(() => ''),

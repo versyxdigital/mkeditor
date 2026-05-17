@@ -18,6 +18,18 @@ const api = getExecutionBridge();
 // App mode (desktop or web).
 const mode: 'web' | 'desktop' = api !== 'web' ? 'desktop' : 'web';
 
+// Authoritative runtime platform. Desktop reads `process.platform` via the
+// preload's `window.mked.platform`; web has no preload so we collapse it to
+// `'web'`. Components that need to branch (e.g. `<TitleBar>` hiding on
+// macOS) read this from Managers — no UA sniffing in React.
+const mkedPlatform = window.mked?.platform;
+const platform: 'web' | 'darwin' | 'win32' | 'linux' =
+  mode === 'web'
+    ? 'web'
+    : mkedPlatform === 'darwin' || mkedPlatform === 'win32'
+      ? mkedPlatform
+      : 'linux';
+
 // Inject the markdown stylesheet into <head> so the live preview pane
 // is styled the moment React mounts. The same string is inlined into
 // exported HTML by HTMLExporter — single source of truth.
@@ -44,6 +56,7 @@ const dispatcher = new EditorDispatcher();
 
 const initialManagers: Managers = {
   mode,
+  platform,
   editorManager: null,
   dispatcher,
   fileManager: null,

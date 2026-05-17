@@ -43,6 +43,14 @@ export class AppWindow {
       this.context.close();
     });
 
+    // Native `role: 'togglefullscreen'` accelerators only fire when the
+    // application menu is mounted — Windows/Linux clear the menu in P1,
+    // so the renderer's in-window menu drives this IPC instead.
+    ipcMain.on('to:window:fullscreen', () => {
+      if (this.context.isDestroyed()) return;
+      this.context.setFullScreen(!this.context.isFullScreen());
+    });
+
     this.context.on('maximize', () => this.emitState(true));
     this.context.on('unmaximize', () => this.emitState(false));
 

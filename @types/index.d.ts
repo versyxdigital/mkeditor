@@ -17,6 +17,7 @@ declare global {
     };
     executionBridge?: any;
     mked?: {
+      platform: NodeJS.Platform;
       getActiveFilePath: () => string | null;
       getAppLocale: () => string;
       pathDirname: (p: string) => Promise<string>;

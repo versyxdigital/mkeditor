@@ -63,7 +63,6 @@ export const Navbar: React.FC = () => {
           >
             <Icon name="bars" />
           </Button>
-          <img src="./icon.png" className="ml-1 h-6 w-6" />
           <span
             id="active-file"
             className="truncate text-sm text-muted-foreground"

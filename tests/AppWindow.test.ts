@@ -16,7 +16,9 @@ interface MockWindow {
   maximize: jest.Mock;
   unmaximize: jest.Mock;
   close: jest.Mock;
+  setFullScreen: jest.Mock;
   isMaximized: jest.Mock<boolean, []>;
+  isFullScreen: jest.Mock<boolean, []>;
   isDestroyed: jest.Mock<boolean, []>;
   on: jest.Mock;
   webContents: {
@@ -35,7 +37,9 @@ function makeMockWindow(): MockWindow {
     maximize: jest.fn(),
     unmaximize: jest.fn(),
     close: jest.fn(),
+    setFullScreen: jest.fn(),
     isMaximized: jest.fn<boolean, []>(() => false),
+    isFullScreen: jest.fn<boolean, []>(() => false),
     isDestroyed: jest.fn<boolean, []>(() => false),
     on: jest.fn((event: string, handler: Listener) => {
       const arr = eventHandlers.get(event) ?? [];
@@ -103,6 +107,19 @@ describe('AppWindow', () => {
     expect(win.close).toHaveBeenCalledTimes(1);
   });
 
+  it('to:window:fullscreen toggles via setFullScreen with the inverse of isFullScreen', () => {
+    const win = makeMockWindow();
+    win.isFullScreen.mockReturnValueOnce(false).mockReturnValueOnce(true);
+    new AppWindow(win as never, true);
+    const handler = getIpcHandler('to:window:fullscreen');
+
+    handler();
+    expect(win.setFullScreen).toHaveBeenLastCalledWith(true);
+
+    handler();
+    expect(win.setFullScreen).toHaveBeenLastCalledWith(false);
+  });
+
   it('emits from:window:state on the maximize event', () => {
     const win = makeMockWindow();
     new AppWindow(win as never, true);
@@ -139,11 +156,13 @@ describe('AppWindow', () => {
     getIpcHandler('to:window:minimize')();
     getIpcHandler('to:window:maximize')();
     getIpcHandler('to:window:close')();
+    getIpcHandler('to:window:fullscreen')();
 
     expect(win.minimize).not.toHaveBeenCalled();
     expect(win.maximize).not.toHaveBeenCalled();
     expect(win.unmaximize).not.toHaveBeenCalled();
     expect(win.close).not.toHaveBeenCalled();
+    expect(win.setFullScreen).not.toHaveBeenCalled();
   });
 
   it('does not register IPC handlers when constructed without auto-register', () => {

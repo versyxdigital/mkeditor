@@ -7,8 +7,19 @@ import type { FileTreeManager } from '../../core/FileTreeManager';
 import type { EditorDispatcher } from '../../events/EditorDispatcher';
 import type { EditorProviders } from '../../interfaces/Providers';
 
+/**
+ * Runtime platform discriminator threaded from the composition root.
+ *
+ * `'web'` whenever the executionBridge isn't present (browser deploys).
+ * Otherwise pinned from `window.mked.platform` (preload reads the
+ * authoritative `process.platform`), so React components can branch on
+ * macOS vs Windows vs Linux without each rolling its own detection.
+ */
+export type Platform = 'web' | 'darwin' | 'win32' | 'linux';
+
 export interface Managers {
   mode: 'web' | 'desktop';
+  platform: Platform;
   /**
    * Null until the lazy-loaded `core/EditorManager` chunk lands. The
    * composition root pushes the constructed instance in via

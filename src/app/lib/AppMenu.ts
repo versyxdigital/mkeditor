@@ -1,5 +1,6 @@
 import {
   app,
+  ipcMain,
   Menu,
   type BrowserWindow,
   type MenuItemConstructorOptions,
@@ -137,11 +138,14 @@ export class AppMenu {
   }
 
   /**
-   * Dispatch table for `{ kind: 'command' }` menu actions. Adding a new
-   * command means adding both an entry here and a case in the renderer
-   * dispatch surface (P2's `to:command:run`).
+   * Dispatch table for `{ kind: 'command' }` menu actions. Public so the
+   * renderer-side in-window menu (P2) can reach the same handlers via
+   * `to:command:run` — see `wireRendererCommandBridge()` below.
+   *
+   * Adding a new command means adding an entry here; both the native
+   * macOS menu and the in-window menu pick it up for free.
    */
-  private runCommand(commandId: string): void {
+  public runCommand(commandId: string): void {
     switch (commandId) {
       case 'open-log': {
         const logpath = this.providers.logger?.logpath;
@@ -157,6 +161,18 @@ export class AppMenu {
         // dev, not a user-visible failure.
         return;
     }
+  }
+
+  /**
+   * Register the `to:command:run` IPC listener so the renderer's
+   * in-window menu (P2) can fire main-process commands through the
+   * same dispatch table the native macOS menu uses. Called from
+   * `main.ts` once per BrowserWindow.
+   */
+  wireRendererCommandBridge() {
+    ipcMain.on('to:command:run', (_event, commandId: string) => {
+      this.runCommand(commandId);
+    });
   }
 
   /**

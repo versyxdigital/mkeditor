@@ -37,6 +37,14 @@ export class BridgeManager {
   /** File tree helper (exposed for FileTreeContext). */
   public fileTreeManager: FileTreeManager;
 
+  /** Window-control state. Mutated by `BridgeListeners.from:window:state`
+   *  on every main-process maximize / unmaximize event. React's
+   *  `WindowContext` reads this via `subscribeWindowState` +
+   *  `getWindowState`. The snapshot reference is stable between emits
+   *  so `useSyncExternalStore`'s `===` compare is safe. */
+  private windowState: { isMaximized: boolean } = { isMaximized: false };
+  private windowListeners = new Set<() => void>();
+
   /**
    * Create a new bridge handler.
    */
@@ -71,6 +79,7 @@ export class BridgeManager {
       this.providers,
       this.fileManager,
       this.fileTreeManager,
+      this,
     );
   }
 
@@ -140,5 +149,100 @@ export class BridgeManager {
    */
   public sendFileContentHasChanged(hasChanged: boolean) {
     this.fileManager.trackContentHasChanged(hasChanged);
+  }
+
+  // Window-control surface (consumed by <TitleBar> via WindowContext) -----
+
+  /** Subscribe to maximize-state changes. Returns an unsubscribe. */
+  public subscribeWindowState(listener: () => void): () => void {
+    this.windowListeners.add(listener);
+    return () => {
+      this.windowListeners.delete(listener);
+    };
+  }
+
+  /** Latest maximize state; stable reference between emits. */
+  public getWindowState(): { isMaximized: boolean } {
+    return this.windowState;
+  }
+
+  /**
+   * Apply a state update from `from:window:state`. Rebuilds the snapshot
+   * object only when the value actually changes so consumers' `===`
+   * compares stay stable on no-op events.
+   */
+  public setWindowState(next: { isMaximized: boolean }): void {
+    if (this.windowState.isMaximized === next.isMaximized) return;
+    this.windowState = next;
+    this.windowListeners.forEach((l) => l());
+  }
+
+  public windowMinimize(): void {
+    this.bridge.send('to:window:minimize', null);
+  }
+
+  public windowMaximize(): void {
+    this.bridge.send('to:window:maximize', null);
+  }
+
+  public windowClose(): void {
+    this.bridge.send('to:window:close', null);
+  }
+
+  public windowToggleFullscreen(): void {
+    this.bridge.send('to:window:fullscreen', null);
+  }
+
+  /** Fires `to:command:run` so main's `AppMenu.runCommand` runs the
+   *  matching handler (open-log, toggle-devtools, …). */
+  public runCommand(commandId: string): void {
+    this.bridge.send('to:command:run', commandId);
+  }
+
+  // Menu dispatch helpers (consumed by both BridgeListeners' anonymous
+  // `from:*` handlers and the in-window menu's `dispatchMenuAction`) ------
+  //
+  // Each method encapsulates the renderer-side effect of one menu entry
+  // so both surfaces stay in lock-step. Adding a new menu item that
+  // talks to main means adding a helper here, registering it in
+  // BridgeListeners, and dispatching it from `menuDispatch.ts`.
+
+  public menuFileNew(): void {
+    this.bridge.send('to:title:set', '');
+    this.bridge.send('to:file:new', {
+      content: this.mkeditor.getValue(),
+      file: this.fileManager.activeFile,
+    });
+  }
+
+  public menuFileOpen(): void {
+    this.fileManager.openingFile = true;
+    this.bridge.send('to:file:open', true);
+  }
+
+  public menuFileSave(): void {
+    const active = this.fileManager.activeFile;
+    if (active && !active.startsWith('untitled')) {
+      const value = this.mkeditor.getValue();
+      this.bridge.send('to:file:save', { content: value, file: active });
+      this.fileManager.originals.set(active, value);
+      this.dispatcher.setTrackedContent({ content: value });
+    } else {
+      this.bridge.send('to:file:saveas', this.mkeditor.getValue());
+    }
+  }
+
+  public menuFileSaveAs(): void {
+    this.bridge.send('to:file:saveas', this.mkeditor.getValue());
+  }
+
+  public menuFolderOpen(): void {
+    this.fileTreeManager.openingFolder = true;
+    this.bridge.send('to:folder:open', true);
+  }
+
+  public menuCommandPalette(): void {
+    this.mkeditor.focus();
+    this.mkeditor.trigger('open', 'editor.action.quickCommand', {});
   }
 }

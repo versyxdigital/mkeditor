@@ -128,6 +128,10 @@ function main(file: string | null = null) {
   const menu = new AppMenu(context);
   menu.provide('logger', logconfig);
   menu.register(); // Register all menu items
+  // Renderer's in-window menu (P2) reaches main-process commands
+  // (open-log, toggle-devtools) through this IPC channel — same
+  // dispatch table the native macOS menu uses.
+  menu.wireRendererCommandBridge();
 
   // Window-control IPC + maximize-state emitter. The renderer's title bar
   // (P2) sends `to:window:minimize/maximize/close` here; `from:window:state`

@@ -11,6 +11,7 @@ jest.mock('../src/app/lib/AppMenu', () => ({
     provide: jest.fn(),
     register: jest.fn(),
     buildTrayContextMenu: jest.fn(() => ({})),
+    wireRendererCommandBridge: jest.fn(),
   })),
 }));
 

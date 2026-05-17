@@ -8,7 +8,11 @@ import {
 } from 'react-resizable-panels';
 import { Toaster } from 'sonner';
 
-import { ManagersProvider, type Managers } from './contexts/ManagersContext';
+import {
+  ManagersProvider,
+  useManagers,
+  type Managers,
+} from './contexts/ManagersContext';
 import { UIStateProvider, useUIState } from './contexts/UIStateContext';
 import { FilesProvider } from './contexts/FilesContext';
 import { FileTreeProvider } from './contexts/FileTreeContext';
@@ -31,10 +35,15 @@ import { SettingsContextProvider } from './contexts/SettingsContext';
 import { ExportSettingsContextProvider } from './contexts/ExportSettingsContext';
 import { Navbar } from './components/Navbar';
 import { TabBar } from './components/TabBar';
+import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { Workspace } from './components/Workspace';
 import { EditorToolbar } from './components/EditorToolbar';
 import { BottomToolbarRight } from './components/BottomToolbarRight';
+import { WindowProvider } from './contexts/WindowContext';
+import { registerMenuActionDispatcher } from '../menuDispatch';
+import type { MenuAction } from '../../app/lib/menuModel';
+import type { ModalKey } from './contexts/ModalsContext';
 
 // Modals are lazy: each one is a separate webpack chunk that is only
 // fetched the first time the user opens it. The five modal components
@@ -120,30 +129,34 @@ export const App: React.FC<AppProps> = ({
           <ModalsProvider>
             <PromptsProvider>
               <PropertiesProvider>
-                <ModalsBridge />
-                <PromptsBridge />
-                <PropertiesBridge />
-                <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
-                  <FilesProvider>
-                    <FileTreeProvider>
-                      <Navbar />
-                      <TabBar />
-                      <Shell
-                        onEditorReady={onEditorReady}
-                        workspaceGroupRef={workspaceGroupRef}
-                      />
-                      <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
-                      <BottomToolbarRight />
-                      <LazyModals />
-                      <Toaster
-                        position="bottom-right"
-                        richColors
-                        closeButton
-                        theme="system"
-                      />
-                    </FileTreeProvider>
-                  </FilesProvider>
-                </UIStateProvider>
+                <WindowProvider>
+                  <ModalsBridge />
+                  <PromptsBridge />
+                  <PropertiesBridge />
+                  <MenuActionBridge />
+                  <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
+                    <FilesProvider>
+                      <FileTreeProvider>
+                        <TitleBar />
+                        <Navbar />
+                        <TabBar />
+                        <Shell
+                          onEditorReady={onEditorReady}
+                          workspaceGroupRef={workspaceGroupRef}
+                        />
+                        <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
+                        <BottomToolbarRight />
+                        <LazyModals />
+                        <Toaster
+                          position="bottom-right"
+                          richColors
+                          closeButton
+                          theme="system"
+                        />
+                      </FileTreeProvider>
+                    </FilesProvider>
+                  </UIStateProvider>
+                </WindowProvider>
               </PropertiesProvider>
             </PromptsProvider>
           </ModalsProvider>
@@ -151,6 +164,102 @@ export const App: React.FC<AppProps> = ({
       </SettingsContextProvider>
     </ManagersProvider>
   );
+};
+
+/**
+ * Resolves a `MenuAction` from the in-window `<TitleBar>` into the right
+ * effect — modals, Monaco commands, BridgeManager helpers, or main-process
+ * IPC. Registered through `menuDispatch.ts` so the non-React TitleBar.menu
+ * component can fire actions through a stable module-level seam.
+ */
+const MenuActionBridge: React.FC = () => {
+  const { bridgeManager, editorManager } = useManagers();
+  const { openModal } = useModals();
+
+  const dispatch = React.useCallback(
+    (action: MenuAction) => {
+      switch (action.kind) {
+        case 'channel': {
+          const editor = editorManager?.getMkEditor() ?? null;
+          if (action.channel === 'from:modal:open') {
+            openModal(action.payload as ModalKey);
+            return;
+          }
+          if (action.channel === 'from:command:palette') {
+            if (editor) {
+              editor.focus();
+              editor.trigger('open', 'editor.action.quickCommand', {});
+            }
+            return;
+          }
+          // Other channels map 1-1 to a BridgeManager helper.
+          if (!bridgeManager) return;
+          switch (action.channel) {
+            case 'from:file:new':
+              return bridgeManager.menuFileNew();
+            case 'from:file:open':
+              return bridgeManager.menuFileOpen();
+            case 'from:file:save':
+              return bridgeManager.menuFileSave();
+            case 'from:file:saveas':
+              return bridgeManager.menuFileSaveAs();
+            case 'from:folder:open':
+              return bridgeManager.menuFolderOpen();
+          }
+          return;
+        }
+        case 'role': {
+          const editor = editorManager?.getMkEditor() ?? null;
+          switch (action.role) {
+            case 'undo':
+              editor?.trigger('keyboard', 'undo', null);
+              return;
+            case 'redo':
+              editor?.trigger('keyboard', 'redo', null);
+              return;
+            case 'cut':
+              editor?.trigger(
+                'source',
+                'editor.action.clipboardCutAction',
+                null,
+              );
+              return;
+            case 'copy':
+              editor?.trigger(
+                'source',
+                'editor.action.clipboardCopyAction',
+                null,
+              );
+              return;
+            case 'paste':
+              editor?.trigger(
+                'source',
+                'editor.action.clipboardPasteAction',
+                null,
+              );
+              return;
+            case 'togglefullscreen':
+              bridgeManager?.windowToggleFullscreen();
+              return;
+            case 'quit':
+              bridgeManager?.windowClose();
+              return;
+          }
+          return;
+        }
+        case 'command':
+          bridgeManager?.runCommand(action.commandId);
+          return;
+      }
+    },
+    [bridgeManager, editorManager, openModal],
+  );
+
+  React.useEffect(() => {
+    registerMenuActionDispatcher(dispatch);
+  }, [dispatch]);
+
+  return null;
 };
 
 /**
