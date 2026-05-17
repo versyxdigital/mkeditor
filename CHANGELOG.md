@@ -1,5 +1,15 @@
 # CHANGELOG
 
+### 2026-05-17 - v3.8.0
+
+#### Added
+
+- **Workspace session persistence**: Open tabs, the active tab, and per-tab cursor/scroll position are restored across launches on both desktop and web.
+- **Web file explorer**: The sidebar now supports opening, browsing, and editing local folders in Chromium-based browsers via the File System Access API; workspace handle persists across refresh via IndexedDB.
+- **Code block styling**: Preview code blocks now render with a header bar showing the language and a copy button; shell/bash blocks render in a terminal style.
+
+---
+
 ### 2026-05-16 - v3.7.0
 
 #### Added

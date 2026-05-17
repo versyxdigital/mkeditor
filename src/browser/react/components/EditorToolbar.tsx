@@ -93,7 +93,11 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     if (bridgeManager) {
       bridgeManager.saveContentToFile();
     } else {
-      HTMLExporter.webExport(editorManager?.getValue() ?? '', 'text/plain', '.md');
+      HTMLExporter.webExport(
+        editorManager?.getValue() ?? '',
+        'text/plain',
+        '.md',
+      );
     }
   };
 

@@ -111,6 +111,15 @@
     "minimap_help": "Отображать миникарту редактора.",
     "scrollsync_label": "Синхронизировать прокрутку",
     "scrollsync_help": "Включить синхронизацию прокрутки между редактором и предпросмотром.",
+    "session": "Сеанс",
+    "session_restore_label": "Восстанавливать сеанс при запуске",
+    "session_restore_help": "Открывать предыдущие вкладки, рабочую папку и позиции курсора при запуске MKEditor.",
+    "clear_session_button": "Очистить сохранённый сеанс",
+    "clear_session_help": "Удаляет сохранённый файл сеанса. Открытые вкладки остаются открытыми; следующий запуск начнётся заново.",
+    "clear_session_confirm_title": "Очистить сохранённый сеанс?",
+    "clear_session_confirm_text": "Сохранённый файл сеанса будет удалён. Открытые вкладки останутся открытыми; следующий запуск начнётся заново.",
+    "clear_session_confirm_button": "Очистить",
+    "clear_session_cancel_button": "Отмена",
     "appearance": "Оформление",
     "systemtheme_label": "Использовать системную тему",
     "systemtheme_help": "Позволить системной теме переопределять сохранённые настройки.",
@@ -207,10 +216,17 @@
     "unable_save_settings_permission_denied": "Не удалось сохранить настройки: доступ запрещён.",
     "unable_save_settings_unknown_error": "Не удалось сохранить настройки: неизвестная ошибка.",
     "update_available": "Доступно обновление {{version}}, скачивание в фоновом режиме…",
-    "update_downloaded": "Обновление {{version}} загружено, перезапустите для установки."
+    "update_downloaded": "Обновление {{version}} загружено, перезапустите для установки.",
+    "session_file_missing": "Некоторые ранее открытые файлы не найдены и пропущены: {{files}}",
+    "session_cleared": "Сохранённый сеанс очищен."
   },
   "sidebar": {
-    "explorer": "Проводник"
+    "explorer": "Проводник",
+    "no_workspace": "Папка не открыта.",
+    "open_folder": "Открыть папку",
+    "restore_workspace": "Восстановить предыдущую папку",
+    "disconnect_folder": "Отключить папку",
+    "chromium_only_warning": "Доступ к папкам возможен только в браузерах на базе Chromium (Chrome, Edge, Brave, Opera)."
   },
   "toolbar": {
     "reset_split": "Сбросить разделение редактор/предпросмотр",

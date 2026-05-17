@@ -1,3 +1,8 @@
 {
-  "explorer": "资源管理器"
+  "explorer": "资源管理器",
+  "no_workspace": "未打开任何文件夹。",
+  "open_folder": "打开文件夹",
+  "restore_workspace": "恢复上一个文件夹",
+  "disconnect_folder": "断开文件夹",
+  "chromium_only_warning": "文件夹访问仅在基于 Chromium 的浏览器（Chrome、Edge、Brave、Opera）中可用。"
 }

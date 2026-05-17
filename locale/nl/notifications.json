@@ -28,5 +28,8 @@
   "unable_save_settings_unknown_error": "Kan instellingen niet opslaan: onbekende fout.",
 
   "update_available": "Update {{version}} is beschikbaar, wordt op de achtergrond gedownload...",
-  "update_downloaded": "Update {{version}} is gedownload, herstart om bij te werken."
+  "update_downloaded": "Update {{version}} is gedownload, herstart om bij te werken.",
+
+  "session_file_missing": "Sommige eerder geopende bestanden zijn niet gevonden en overgeslagen: {{files}}",
+  "session_cleared": "Opgeslagen sessie gewist."
 }

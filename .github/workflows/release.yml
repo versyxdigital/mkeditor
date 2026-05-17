@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  # Manual trigger as a fallback — re-run a failed release without
+  # bumping the version.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # Read the version from package.json once and decide whether to build
+  # anything at all. If a tag for the current version already exists
+  # we treat this as a non-release push and skip the matrix entirely.
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      tag: ${{ steps.read.outputs.tag }}
+      exists: ${{ steps.read.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need full history for the tag check
+      - name: Read version + check tag
+        id: read
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG"         >> "$GITHUB_OUTPUT"
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "exists=true"  >> "$GITHUB_OUTPUT"
+            echo "Tag $TAG already exists — skipping release."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No tag $TAG yet — building release."
+          fi
+
+  # Build the installer on each target OS in parallel. Each job uploads
+  # its artifacts under a platform-tagged name; the `release` job
+  # downloads them all and assembles the GitHub release.
+  #
+  # TODO: add macOS (`{ os: macos-latest, platform: mac }`) once code
+  # signing + notarization are set up. electron-builder will produce
+  # `.pkg` + `latest-mac.yml` from the existing `build.mac` config.
+  build:
+    needs: check
+    if: needs.check.outputs.exists == 'false'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+      - run: npm ci
+      - name: Build installer
+        run: npm run make-installer
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.platform }}
+          path: |
+            releases/**/mkeditor-setup-*
+            releases/**/*.deb
+            releases/**/latest*.yml
+          if-no-files-found: error
+
+  # Collect every per-platform artifact and publish them under a single
+  # tagged release. `merge-multiple: true` flattens the per-job
+  # subfolders into a single working dir, so the glob below stays
+  # platform-agnostic.
+  release:
+    needs: [check, build]
+    if: needs.check.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.check.outputs.tag }}
+          name: ${{ needs.check.outputs.tag }}
+          generate_release_notes: true
+          draft: true
+          files: |
+            artifacts/**/mkeditor-setup-*
+            artifacts/**/latest*.yml

@@ -111,6 +111,15 @@
     "minimap_help": "显示编辑器小地图。",
     "scrollsync_label": "使用滚动同步",
     "scrollsync_help": "在编辑器与预览之间启用滚动同步。",
+    "session": "会话",
+    "session_restore_label": "启动时恢复会话",
+    "session_restore_help": "MKEditor 启动时恢复之前打开的标签页、工作文件夹和光标位置。",
+    "clear_session_button": "清除已保存的会话",
+    "clear_session_help": "清除已保存的会话文件。当前打开的标签页保持打开状态；下次启动时将重新开始。",
+    "clear_session_confirm_title": "清除已保存的会话？",
+    "clear_session_confirm_text": "这将清除已保存的会话文件。当前打开的标签页保持打开状态；下次启动时将重新开始。",
+    "clear_session_confirm_button": "清除",
+    "clear_session_cancel_button": "取消",
     "appearance": "外观",
     "systemtheme_label": "使用系统主题",
     "systemtheme_help": "允许系统主题覆盖已保存的设置。",
@@ -207,10 +216,17 @@
     "unable_save_settings_permission_denied": "无法保存设置：权限被拒绝。",
     "unable_save_settings_unknown_error": "无法保存设置：未知错误。",
     "update_available": "更新 {{version}} 可用，正在后台下载……",
-    "update_downloaded": "更新 {{version}} 已下载，重启以更新。"
+    "update_downloaded": "更新 {{version}} 已下载，重启以更新。",
+    "session_file_missing": "之前打开的部分文件未找到，已跳过：{{files}}",
+    "session_cleared": "已保存的会话已清除。"
   },
   "sidebar": {
-    "explorer": "资源管理器"
+    "explorer": "资源管理器",
+    "no_workspace": "未打开任何文件夹。",
+    "open_folder": "打开文件夹",
+    "restore_workspace": "恢复上一个文件夹",
+    "disconnect_folder": "断开文件夹",
+    "chromium_only_warning": "文件夹访问仅在基于 Chromium 的浏览器（Chrome、Edge、Brave、Opera）中可用。"
   },
   "toolbar": {
     "reset_split": "重置编辑器/预览分屏",

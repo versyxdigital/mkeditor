@@ -80,7 +80,7 @@ if (!reactRoot) {
     React.createElement(App, {
       initialManagers,
       onEditorReady,
-      initialSidebarOpen: api !== 'web',
+      initialSidebarOpen: true,
       registerSetManagers: (setter) => {
         setReactManagers = setter;
       },
@@ -119,7 +119,7 @@ async function boot() {
     import('./core/WebFileBridge'),
   ]);
 
-  const editorManager = new EditorManager({ mode, dispatcher });
+  const editorManager = new EditorManager({ dispatcher });
 
   // Push the EditorManager into React state. <EditorHost>'s useEffect
   // is gated on a non-null editorManager — it only calls .create()
@@ -210,6 +210,12 @@ function onEditorReady() {
   bridgeManager.provide('commands', editorManager.providers.commands);
   editorManager.provide('bridge', bridgeManager);
 
+  // Let FileManager honour the user's `sessionRestore` setting.
+  bridgeManager.fileManager.setSessionEnabledGetter(
+    () =>
+      editorManager.providers.settings?.getSetting('sessionRestore') ?? true,
+  );
+
   new MkedLinkProvider(mkeditor, (path) =>
     bridgeManager.fileTreeManager.hasFile(path),
   );
@@ -236,19 +242,27 @@ function onEditorReady() {
       bridgeManager.setLanguage(lng);
     };
   } else {
+    // Block session saves until bootstrap + restore land. Without this,
+    // `seedUntitled` below fires `scheduleSessionSave`, whose 300 ms
+    // debounce can race ahead of the async `bootstrap()` and overwrite
+    // the previously-good session with the seeded-untitled-only state.
+    // `FileManager.restoreSession` clears the suspension on entry, so
+    // the very next user-driven change persists as normal.
+    bridgeManager.fileManager.suspendSessionSaves();
+
     // Web mode: seed FileManager with an `untitled-1` tab so the
-    // current Monaco buffer (welcome content or restored localStorage)
-    // has a tab and shows up in the title bar — symmetry with how
-    // BridgeListeners.from:file:opened normally creates the first tab.
+    // current Monaco buffer has a tab and shows up in the title bar.
+    // If a session is later restored (via bootstrap below) and it
+    // tracks an `untitled-1`, FileManager.restoreSession overwrites
+    // the seeded content with the session's saved content.
     bridgeManager.fileManager.seedUntitled(mkeditor.getValue());
 
-    // Try to silently restore a previously opened workspace. If the
-    // permission grant is still live, this populates the file tree
-    // without any prompt. Otherwise the user must click "Open folder"
-    // (granting permission requires a user gesture).
-    void (bridge as InstanceType<typeof WebFileBridge>).restoreWorkspace(
-      false,
-    );
+    // Boot the web bridge: silent workspace restore + session load +
+    // legacy `mkeditor-content` migration + `beforeunload` flush. The
+    // bootstrap fires `from:session:restore` exactly once (with a
+    // null session payload if nothing's persisted yet), mirroring
+    // main's behaviour on desktop.
+    void (bridge as InstanceType<typeof WebFileBridge>).bootstrap();
   }
 
   setReactManagers?.((prev) => ({
@@ -260,4 +274,3 @@ function onEditorReady() {
 
   showSplashScreen({ duration: 750 });
 }
-

@@ -111,6 +111,15 @@
     "minimap_help": "Exibir o minimapa do editor.",
     "scrollsync_label": "Sincronizar rolagem",
     "scrollsync_help": "Habilitar a sincronização de rolagem entre o editor e a visualização.",
+    "session": "Sessão",
+    "session_restore_label": "Restaurar sessão ao iniciar",
+    "session_restore_help": "Reabrir abas anteriores, pasta de trabalho e posições do cursor ao iniciar o MKEditor.",
+    "clear_session_button": "Limpar sessão salva",
+    "clear_session_help": "Limpa o arquivo de sessão salvo. As abas abertas permanecem abertas; a próxima inicialização começa do zero.",
+    "clear_session_confirm_title": "Limpar sessão salva?",
+    "clear_session_confirm_text": "Isso limpa o arquivo de sessão salvo. As abas abertas permanecem abertas; a próxima inicialização começará do zero.",
+    "clear_session_confirm_button": "Limpar",
+    "clear_session_cancel_button": "Cancelar",
     "appearance": "Aparência",
     "systemtheme_label": "Usar tema do sistema",
     "systemtheme_help": "Permitir que o tema do sistema substitua suas configurações salvas.",
@@ -207,10 +216,17 @@
     "unable_save_settings_permission_denied": "Não foi possível salvar as configurações: permissão negada.",
     "unable_save_settings_unknown_error": "Não foi possível salvar as configurações: erro desconhecido.",
     "update_available": "A atualização {{version}} está disponível, baixando em segundo plano...",
-    "update_downloaded": "A atualização {{version}} foi baixada, reinicie para atualizar."
+    "update_downloaded": "A atualização {{version}} foi baixada, reinicie para atualizar.",
+    "session_file_missing": "Alguns arquivos anteriormente abertos não foram encontrados e foram ignorados: {{files}}",
+    "session_cleared": "Sessão salva limpa."
   },
   "sidebar": {
-    "explorer": "Explorador"
+    "explorer": "Explorador",
+    "no_workspace": "Nenhuma pasta aberta.",
+    "open_folder": "Abrir pasta",
+    "restore_workspace": "Restaurar pasta anterior",
+    "disconnect_folder": "Desconectar pasta",
+    "chromium_only_warning": "O acesso a pastas só está disponível em navegadores baseados em Chromium (Chrome, Edge, Brave, Opera)."
   },
   "toolbar": {
     "reset_split": "Redefinir divisão editor/visualização",

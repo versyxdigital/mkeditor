@@ -28,5 +28,8 @@
   "unable_save_settings_unknown_error": "无法保存设置：未知错误。",
 
   "update_available": "更新 {{version}} 可用，正在后台下载……",
-  "update_downloaded": "更新 {{version}} 已下载，重启以更新。"
+  "update_downloaded": "更新 {{version}} 已下载，重启以更新。",
+
+  "session_file_missing": "之前打开的部分文件未找到，已跳过：{{files}}",
+  "session_cleared": "已保存的会话已清除。"
 }

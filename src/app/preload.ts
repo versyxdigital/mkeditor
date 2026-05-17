@@ -16,6 +16,8 @@ const senderWhitelist = [
   'to:title:set',
   'to:editor:state',
   'to:settings:save',
+  'to:session:save',
+  'to:session:clear',
   'to:html:export',
   'to:pdf:export',
   'to:file:new',
@@ -37,6 +39,8 @@ const senderWhitelist = [
 const receiverWhitelist = [
   'from:theme:set',
   'from:settings:set',
+  'from:session:restore',
+  'from:session:flush-request',
   'from:file:new',
   'from:file:open',
   'from:folder:open',

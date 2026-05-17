@@ -1,3 +1,8 @@
 {
-  "explorer": "탐색기"
+  "explorer": "탐색기",
+  "no_workspace": "열린 폴더가 없습니다.",
+  "open_folder": "폴더 열기",
+  "restore_workspace": "이전 폴더 복원",
+  "disconnect_folder": "폴더 연결 해제",
+  "chromium_only_warning": "폴더 접근은 Chromium 기반 브라우저(Chrome, Edge, Brave, Opera)에서만 사용할 수 있습니다."
 }

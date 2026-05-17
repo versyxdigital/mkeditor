@@ -1,3 +1,8 @@
 {
-  "explorer": "Провідник"
+  "explorer": "Провідник",
+  "no_workspace": "Жодну папку не відкрито.",
+  "open_folder": "Відкрити папку",
+  "restore_workspace": "Відновити попередню папку",
+  "disconnect_folder": "Від'єднати папку",
+  "chromium_only_warning": "Доступ до папок можливий лише в браузерах на базі Chromium (Chrome, Edge, Brave, Opera)."
 }

@@ -6,6 +6,7 @@ import {
   getContextMenuItems,
   type ContextMenuItem as MenuItem,
 } from '../../core/mappings/explorerContextMenu';
+import { basename } from '../../util';
 import { useFiles } from '../contexts/FilesContext';
 import { useFileTree } from '../contexts/FileTreeContext';
 import { useManagers } from '../contexts/ManagersContext';
@@ -64,11 +65,10 @@ export const FileTreePanel: React.FC = () => {
     void webBridge.hasRestorableWorkspace().then((ok) => setHasRestorable(ok));
   }, [mode, bridgeManager, treeRoot]);
 
-  // Open the sidebar automatically when a web workspace first lands,
-  // since web mode starts with the sidebar collapsed and the user
-  // would otherwise see no feedback after granting folder access.
-  // Fires once per workspace-load via a ref guard so a user-initiated
-  // collapse later in the session isn't fought.
+  // Re-pop the sidebar when a web workspace first lands, in case the
+  // user manually collapsed it before opening a folder. Fires once
+  // per workspace-load via a ref guard so a user-initiated collapse
+  // *after* the workspace is loaded isn't fought.
   const sidebarPushedRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (mode !== 'web' || !treeRoot) return;
@@ -230,9 +230,13 @@ export const FileTreePanel: React.FC = () => {
   // is persisted in IndexedDB but its permission grant has expired —
   // re-granting requires a user gesture.
   const showWebEmptyState = mode === 'web' && !treeRoot;
-  // Workspace header row (web only): shows the open folder's name
-  // and a button to disconnect it.
-  const showWorkspaceHeader = mode === 'web' && !!treeRoot;
+  // Workspace header row: shows the open folder's name as a top-level
+  // label (VSCode-style). Both modes get the label so an open folder
+  // is always visible even when it has no children; only web shows
+  // the X disconnect button (desktop has no equivalent action — the
+  // folder is forgotten by main when the app closes anyway).
+  const showWorkspaceHeader = !!treeRoot;
+  const workspaceLabel = treeRoot ? basename(treeRoot) : '';
 
   return (
     <ContextMenu>
@@ -243,22 +247,24 @@ export const FileTreePanel: React.FC = () => {
           onContextMenu={handleContextMenu}
         >
           {showWorkspaceHeader && (
-            <li className="mb-1 flex items-center gap-1 border-b border-border px-2 py-1 text-xs text-muted-foreground">
+            <li className="mb-1 flex items-center gap-1 border-b border-border px-2 py-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
               <Icon name="folder-open" />
               <span className="flex-1 truncate" title={treeRoot ?? undefined}>
-                {treeRoot}
+                {workspaceLabel}
               </span>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                onClick={handleDisconnectFolder}
-                className="h-5 w-5 p-0 text-base leading-none text-muted-foreground hover:text-foreground"
-                aria-label={t('sidebar:disconnect_folder')}
-                title={t('sidebar:disconnect_folder')}
-              >
-                &times;
-              </Button>
+              {mode === 'web' && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleDisconnectFolder}
+                  className="h-5 w-5 p-0 text-base leading-none normal-case text-muted-foreground hover:text-foreground"
+                  aria-label={t('sidebar:disconnect_folder')}
+                  title={t('sidebar:disconnect_folder')}
+                >
+                  &times;
+                </Button>
+              )}
             </li>
           )}
           {showWebEmptyState && (

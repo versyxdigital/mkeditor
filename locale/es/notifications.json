@@ -28,5 +28,8 @@
   "unable_save_settings_unknown_error": "No se pueden guardar los ajustes: error desconocido.",
 
   "update_available": "La actualización {{version}} está disponible, descargando en segundo plano...",
-  "update_downloaded": "La actualización {{version}} se ha descargado, reinicia para actualizar."
+  "update_downloaded": "La actualización {{version}} se ha descargado, reinicia para actualizar.",
+
+  "session_file_missing": "Algunos archivos previamente abiertos no se encontraron y se omitieron: {{files}}",
+  "session_cleared": "Sesión guardada borrada."
 }

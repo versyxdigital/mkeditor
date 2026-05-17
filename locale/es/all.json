@@ -111,6 +111,15 @@
     "minimap_help": "Mostrar el minimapa del editor.",
     "scrollsync_label": "Sincronizar desplazamiento",
     "scrollsync_help": "Sincronizar el desplazamiento entre el editor y la vista previa.",
+    "session": "Sesión",
+    "session_restore_label": "Restaurar sesión al iniciar",
+    "session_restore_help": "Reabrir pestañas anteriores, carpeta de trabajo y posiciones del cursor al iniciar MKEditor.",
+    "clear_session_button": "Borrar sesión guardada",
+    "clear_session_help": "Borra el archivo de sesión guardada. Las pestañas abiertas permanecen abiertas; el próximo inicio comienza desde cero.",
+    "clear_session_confirm_title": "¿Borrar sesión guardada?",
+    "clear_session_confirm_text": "Esto borra el archivo de sesión guardada. Las pestañas abiertas permanecen abiertas; el próximo inicio comenzará desde cero.",
+    "clear_session_confirm_button": "Borrar",
+    "clear_session_cancel_button": "Cancelar",
     "appearance": "Apariencia",
     "systemtheme_label": "Usar tema del sistema",
     "systemtheme_help": "Permitir que el tema del sistema sobrescriba tus ajustes guardados.",
@@ -207,10 +216,17 @@
     "unable_save_settings_permission_denied": "No se pueden guardar los ajustes: permiso denegado.",
     "unable_save_settings_unknown_error": "No se pueden guardar los ajustes: error desconocido.",
     "update_available": "La actualización {{version}} está disponible, descargando en segundo plano...",
-    "update_downloaded": "La actualización {{version}} se ha descargado, reinicia para actualizar."
+    "update_downloaded": "La actualización {{version}} se ha descargado, reinicia para actualizar.",
+    "session_file_missing": "Algunos archivos previamente abiertos no se encontraron y se omitieron: {{files}}",
+    "session_cleared": "Sesión guardada borrada."
   },
   "sidebar": {
-    "explorer": "Explorador"
+    "explorer": "Explorador",
+    "no_workspace": "Ninguna carpeta abierta.",
+    "open_folder": "Abrir carpeta",
+    "restore_workspace": "Restaurar carpeta anterior",
+    "disconnect_folder": "Desconectar carpeta",
+    "chromium_only_warning": "El acceso a carpetas solo está disponible en navegadores basados en Chromium (Chrome, Edge, Brave, Opera)."
   },
   "toolbar": {
     "reset_split": "Restablecer división editor/vista previa",

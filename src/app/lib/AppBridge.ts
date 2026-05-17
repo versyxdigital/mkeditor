@@ -2,6 +2,8 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { dirname, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
 import type { Logger, LogMessage } from '../interfaces/Logging';
+import type { SessionPayload } from '../interfaces/Session';
+import { AppSession } from './AppSession';
 import { AppStorage } from './AppStorage';
 import { normalizeLanguage } from '../util';
 /**
@@ -86,6 +88,23 @@ export class AppBridge {
     // Save editor settings to file (~/.mkeditor/settings.json)
     ipcMain.on('to:settings:save', (event, { settings }) => {
       this.providers.settings?.saveSettingsToFile(settings);
+    });
+
+    // Persist the renderer's open-tab / cursor / scroll session. Fired
+    // by the renderer's debounced session save trigger (P2) and by the
+    // renderer's flush-request handler during quit (P1 stub, P2 real).
+    ipcMain.on('to:session:save', (_event, payload: SessionPayload) => {
+      AppSession.save(payload);
+    });
+
+    // Wipe the persisted session file. Fired by the renderer's
+    // "Clear saved session" action in the Settings modal.
+    ipcMain.on('to:session:clear', () => {
+      AppSession.clear();
+      this.context.webContents.send('from:notification:display', {
+        status: 'success',
+        key: 'notifications:session_cleared',
+      });
     });
 
     // Export rendered HTML, triggered from the renderer process

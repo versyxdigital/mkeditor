@@ -1,11 +1,27 @@
 import { HTMLExporter } from './HTMLExporter';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
+import type {
+  SessionPayload,
+  SessionRestoreEnvelope,
+  SessionTab,
+} from '../interfaces/Session';
 import { logger } from '../util';
 
 const IDB_NAME = 'mkeditor';
 const IDB_STORE = 'handles';
 const IDB_VERSION = 1;
 const ROOT_KEY = 'workspace-root';
+
+/** localStorage key for the persisted session. */
+const LS_KEY_SESSION = 'mkeditor-session';
+
+/**
+ * Legacy localStorage key used pre-session-restore to mirror the
+ * single Monaco buffer. Migrated into the first untitled tab of a
+ * freshly-written session on the first launch after Phase 3 ships,
+ * then removed.
+ */
+const LS_KEY_LEGACY_CONTENT = 'mkeditor-content';
 
 type Handle = FileSystemFileHandle | FileSystemDirectoryHandle;
 
@@ -44,45 +60,51 @@ export class WebFileBridge implements ContextBridgeAPI {
 
   send(channel: string, data: any): void {
     switch (channel) {
-    case 'to:folder:open':
-      void this.openFolder();
-      break;
-    case 'to:folder:create':
-      void this.createFolder(data.parent, data.name);
-      break;
-    case 'to:file:openpath':
-      void this.openPath(data.path);
-      break;
-    case 'to:file:save':
-      void this.saveFile(data.file, data.content);
-      break;
-    case 'to:file:saveas':
-      void this.saveAs(data);
-      break;
-    case 'to:file:create':
-      void this.createFile(data.parent, data.name);
-      break;
-    case 'to:file:rename':
-      void this.renamePath(data.path, data.name);
-      break;
-    case 'to:file:delete':
-      void this.deletePath(data.path);
-      break;
-    case 'to:file:properties':
-      void this.showProperties(data.path);
-      break;
-    case 'to:html:export':
-      HTMLExporter.webExport(data.content, 'text/html', '.html');
-      break;
-    case 'to:pdf:export':
-      HTMLExporter.pdfWebExport(data.content);
-      break;
-    case 'to:title:set':
-    case 'to:editor:state':
-    case 'to:settings:save':
-    case 'to:i18n:set':
-    case 'to:file:new':
-      break;
+      case 'to:folder:open':
+        void this.openFolder();
+        break;
+      case 'to:folder:create':
+        void this.createFolder(data.parent, data.name);
+        break;
+      case 'to:file:openpath':
+        void this.openPath(data.path);
+        break;
+      case 'to:file:save':
+        void this.saveFile(data.file, data.content);
+        break;
+      case 'to:file:saveas':
+        void this.saveAs(data);
+        break;
+      case 'to:file:create':
+        void this.createFile(data.parent, data.name);
+        break;
+      case 'to:file:rename':
+        void this.renamePath(data.path, data.name);
+        break;
+      case 'to:file:delete':
+        void this.deletePath(data.path);
+        break;
+      case 'to:file:properties':
+        void this.showProperties(data.path);
+        break;
+      case 'to:html:export':
+        HTMLExporter.webExport(data.content, 'text/html', '.html');
+        break;
+      case 'to:pdf:export':
+        HTMLExporter.pdfWebExport(data.content);
+        break;
+      case 'to:session:save':
+        this.persistSession(data as SessionPayload);
+        break;
+      case 'to:session:clear':
+        this.clearSession();
+        break;
+      case 'to:title:set':
+      case 'to:editor:state':
+      case 'to:settings:save':
+      case 'to:i18n:set':
+      case 'to:file:new':
+        break;
     }
   }
 
@@ -158,6 +180,216 @@ export class WebFileBridge implements ContextBridgeAPI {
     }
   }
 
+  // Session persistence (Phase 3) -------------------------------------
+
+  /**
+   * One-shot boot sequence for web mode. Attempts a silent workspace
+   * restore, runs the legacy-content migration, then ships the
+   * persisted session over `from:session:restore` (mirroring main
+   * process's did-finish-load behaviour on desktop). Also installs the
+   * `beforeunload` flush listener so the final cursor/tab state lands
+   * in localStorage before the page goes away.
+   */
+  public async bootstrap(): Promise<void> {
+    await this.restoreWorkspace(false);
+    await this.shipSessionRestore();
+    this.installBeforeUnloadFlush();
+  }
+
+  /**
+   * Persist the session payload to localStorage. Synchronous — survives
+   * a `beforeunload` flush. Any error (quota exceeded, storage
+   * disabled) is logged and swallowed; the renderer keeps running.
+   */
+  private persistSession(payload: SessionPayload): void {
+    try {
+      localStorage.setItem(LS_KEY_SESSION, JSON.stringify(payload));
+    } catch (err) {
+      logger?.error('WebFileBridge.persistSession', JSON.stringify(err));
+    }
+  }
+
+  /**
+   * Wipe the persisted session from localStorage. Mirrors desktop's
+   * `AppSession.clear`. Currently-open tabs stay open; the next launch
+   * reads no session and lands on a fresh untitled. Fires the same
+   * `notifications:session_cleared` toast desktop does.
+   */
+  private clearSession(): void {
+    try {
+      localStorage.removeItem(LS_KEY_SESSION);
+    } catch (err) {
+      logger?.error('WebFileBridge.clearSession', JSON.stringify(err));
+    }
+    this.emit('from:notification:display', {
+      status: 'success',
+      key: 'notifications:session_cleared',
+    });
+  }
+
+  /**
+   * Build and emit the `from:session:restore` envelope. Real-file
+   * paths are validated against the rebuilt handle map (only populated
+   * when workspace restore succeeded earlier in `bootstrap`); missing
+   * paths feed the same toast pipeline desktop uses. Legacy
+   * `mkeditor-content` is migrated inline and the old key removed.
+   */
+  private async shipSessionRestore(): Promise<void> {
+    const raw = (() => {
+      try {
+        return localStorage.getItem(LS_KEY_SESSION);
+      } catch {
+        return null;
+      }
+    })();
+
+    let payload: SessionPayload | null = null;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<SessionPayload>;
+        if (
+          parsed &&
+          parsed.version === 1 &&
+          Array.isArray(parsed.tabs) &&
+          (parsed.activeFile === null || typeof parsed.activeFile === 'string')
+        ) {
+          payload = {
+            version: 1,
+            tabs: parsed.tabs as SessionTab[],
+            activeFile: parsed.activeFile ?? null,
+            // workspaceRoot is desktop-only; web rebuilds via the
+            // IDB handle map regardless of what was persisted.
+            workspaceRoot: null,
+          };
+        }
+      } catch {
+        // Drop malformed session — better to start fresh.
+      }
+    }
+
+    payload = this.applyLegacyContentMigration(payload);
+
+    if (!payload) {
+      this.emit('from:session:restore', {
+        session: null,
+        missing: [],
+        contents: {},
+      } satisfies SessionRestoreEnvelope);
+      return;
+    }
+
+    const missing: string[] = [];
+    const kept: SessionTab[] = [];
+    const contents: Record<string, string> = {};
+
+    for (const tab of payload.tabs) {
+      if (tab.path.startsWith('untitled-')) {
+        kept.push(tab);
+        continue;
+      }
+      const handle = this.handles.get(tab.path);
+      if (!handle || handle.kind !== 'file') {
+        missing.push(tab.path);
+        continue;
+      }
+      try {
+        const file = await handle.getFile();
+        contents[tab.path] = await file.text();
+        kept.push(tab);
+      } catch {
+        missing.push(tab.path);
+      }
+    }
+
+    const activeStillPresent =
+      payload.activeFile !== null &&
+      kept.some((t) => t.path === payload!.activeFile);
+
+    this.emit('from:session:restore', {
+      session: {
+        version: 1,
+        tabs: kept,
+        activeFile: activeStillPresent ? payload.activeFile : null,
+        workspaceRoot: this.rootHandle ? this.rootName : null,
+      },
+      missing,
+      contents,
+    } satisfies SessionRestoreEnvelope);
+  }
+
+  /**
+   * If a legacy `mkeditor-content` localStorage entry exists (left
+   * behind by pre-session-restore versions of the app), absorb it as
+   * the first untitled tab of the returned session and remove the old
+   * key. Only fires when the session doesn't already track an
+   * untitled tab with content — otherwise we'd be reintroducing stale
+   * data the user already moved past.
+   */
+  private applyLegacyContentMigration(
+    payload: SessionPayload | null,
+  ): SessionPayload | null {
+    let legacy: string | null;
+    try {
+      legacy = localStorage.getItem(LS_KEY_LEGACY_CONTENT);
+    } catch {
+      legacy = null;
+    }
+    if (!legacy || legacy.length === 0) {
+      // Clean up empty-string entries from older builds while we're here.
+      try {
+        if (legacy !== null) localStorage.removeItem(LS_KEY_LEGACY_CONTENT);
+      } catch {
+        // ignore
+      }
+      return payload;
+    }
+
+    const hasUntitledWithContent = payload?.tabs.some(
+      (t) => t.path.startsWith('untitled-') && t.untitledContent,
+    );
+
+    if (!hasUntitledWithContent) {
+      const migrated: SessionTab = {
+        path: 'untitled-1',
+        name: 'Untitled 1',
+        viewState: null,
+        untitledContent: legacy,
+      };
+      const existing =
+        payload?.tabs.filter((t) => t.path !== 'untitled-1') ?? [];
+      payload = {
+        version: 1,
+        tabs: [migrated, ...existing],
+        activeFile: payload?.activeFile ?? 'untitled-1',
+        workspaceRoot: payload?.workspaceRoot ?? null,
+      };
+    }
+
+    try {
+      localStorage.removeItem(LS_KEY_LEGACY_CONTENT);
+    } catch {
+      // ignore
+    }
+    return payload;
+  }
+
+  /**
+   * Install the beforeunload flush listener. Mirrors desktop's
+   * `before-quit` hook: emits `from:session:flush-request` so
+   * BridgeListeners synchronously serializes + sends one final
+   * `to:session:save`. localStorage writes are synchronous, so by
+   * the time `beforeunload` returns, the session is on disk.
+   */
+  private installBeforeUnloadFlush(): void {
+    if (typeof window === 'undefined' || this.beforeUnloadInstalled) return;
+    this.beforeUnloadInstalled = true;
+    window.addEventListener('beforeunload', () => {
+      this.emit('from:session:flush-request');
+    });
+  }
+
+  private beforeUnloadInstalled = false;
+
   // Folder open + walk -------------------------------------------------
 
   private async openFolder(): Promise<void> {
@@ -183,9 +415,7 @@ export class WebFileBridge implements ContextBridgeAPI {
     }
   }
 
-  private async activateRoot(
-    handle: FileSystemDirectoryHandle,
-  ): Promise<void> {
+  private async activateRoot(handle: FileSystemDirectoryHandle): Promise<void> {
     this.rootHandle = handle;
     this.rootName = handle.name;
     this.handles.clear();

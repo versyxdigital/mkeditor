@@ -111,6 +111,15 @@
     "minimap_help": "Editör mini haritasını görüntüle.",
     "scrollsync_label": "Kaydırmayı eşitle",
     "scrollsync_help": "Editör ve önizleme arasında kaydırmayı eşitle.",
+    "session": "Oturum",
+    "session_restore_label": "Başlangıçta oturumu geri yükle",
+    "session_restore_help": "MKEditor başladığında önceki sekmelerinizi, çalışma klasörünüzü ve imleç konumlarınızı yeniden açar.",
+    "clear_session_button": "Kaydedilen oturumu temizle",
+    "clear_session_help": "Kaydedilen oturum dosyasını siler. Açık sekmeler açık kalır; bir sonraki başlatma sıfırdan başlar.",
+    "clear_session_confirm_title": "Kaydedilen oturum temizlensin mi?",
+    "clear_session_confirm_text": "Bu, kaydedilen oturum dosyasını siler. Açık sekmeler açık kalır; bir sonraki başlatma sıfırdan başlayacak.",
+    "clear_session_confirm_button": "Temizle",
+    "clear_session_cancel_button": "İptal",
     "appearance": "Görünüm",
     "systemtheme_label": "Sistem temasını kullan",
     "systemtheme_help": "Sistem temasının kaydedilmiş ayarları değiştirmesine izin ver.",
@@ -207,10 +216,17 @@
     "unable_save_settings_permission_denied": "Ayarlar kaydedilemiyor: izin reddedildi.",
     "unable_save_settings_unknown_error": "Ayarlar kaydedilemiyor: bilinmeyen hata.",
     "update_available": "Güncelleme {{version}} mevcut, arka planda indiriliyor...",
-    "update_downloaded": "Güncelleme {{version}} indirildi, güncellemek için yeniden başlatın."
+    "update_downloaded": "Güncelleme {{version}} indirildi, güncellemek için yeniden başlatın.",
+    "session_file_missing": "Önceden açık olan bazı dosyalar bulunamadı ve atlandı: {{files}}",
+    "session_cleared": "Kaydedilen oturum temizlendi."
   },
   "sidebar": {
-    "explorer": "Gezgin"
+    "explorer": "Gezgin",
+    "no_workspace": "Açık klasör yok.",
+    "open_folder": "Klasör aç",
+    "restore_workspace": "Önceki klasörü geri yükle",
+    "disconnect_folder": "Klasörü ayır",
+    "chromium_only_warning": "Klasör erişimi yalnızca Chromium tabanlı tarayıcılarda (Chrome, Edge, Brave, Opera) kullanılabilir."
   },
   "toolbar": {
     "reset_split": "Editör/önizleme bölmesini sıfırla",

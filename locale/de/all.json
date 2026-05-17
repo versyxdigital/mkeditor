@@ -111,6 +111,15 @@
     "minimap_help": "Die Editor-Minimap anzeigen.",
     "scrollsync_label": "Scrollen synchronisieren",
     "scrollsync_help": "Scrollen zwischen Editor und Vorschau synchronisieren.",
+    "session": "Sitzung",
+    "session_restore_label": "Sitzung beim Start wiederherstellen",
+    "session_restore_help": "Vorherige Registerkarten, Arbeitsbereich und Cursorpositionen beim Start von MKEditor wiederherstellen.",
+    "clear_session_button": "Gespeicherte Sitzung löschen",
+    "clear_session_help": "Löscht die gespeicherte Sitzungsdatei. Geöffnete Registerkarten bleiben offen; der nächste Start beginnt von vorn.",
+    "clear_session_confirm_title": "Gespeicherte Sitzung löschen?",
+    "clear_session_confirm_text": "Dies löscht die gespeicherte Sitzungsdatei. Geöffnete Registerkarten bleiben offen; der nächste Start beginnt von vorn.",
+    "clear_session_confirm_button": "Löschen",
+    "clear_session_cancel_button": "Abbrechen",
     "appearance": "Darstellung",
     "systemtheme_label": "Systemdesign verwenden",
     "systemtheme_help": "Das Systemdesign kann gespeicherte Einstellungen überschreiben.",
@@ -207,10 +216,17 @@
     "unable_save_settings_permission_denied": "Einstellungen können nicht gespeichert werden: Zugriff verweigert.",
     "unable_save_settings_unknown_error": "Einstellungen können nicht gespeichert werden: Unbekannter Fehler.",
     "update_available": "Update {{version}} ist verfügbar, wird im Hintergrund heruntergeladen...",
-    "update_downloaded": "Update {{version}} wurde heruntergeladen, zum Aktualisieren neu starten."
+    "update_downloaded": "Update {{version}} wurde heruntergeladen, zum Aktualisieren neu starten.",
+    "session_file_missing": "Einige zuvor geöffnete Dateien wurden nicht gefunden und übersprungen: {{files}}",
+    "session_cleared": "Gespeicherte Sitzung gelöscht."
   },
   "sidebar": {
-    "explorer": "Explorer"
+    "explorer": "Explorer",
+    "no_workspace": "Kein Ordner geöffnet.",
+    "open_folder": "Ordner öffnen",
+    "restore_workspace": "Vorherigen Ordner wiederherstellen",
+    "disconnect_folder": "Ordner trennen",
+    "chromium_only_warning": "Ordnerzugriff ist nur in Chromium-basierten Browsern verfügbar (Chrome, Edge, Brave, Opera)."
   },
   "toolbar": {
     "reset_split": "Editor/Vorschau-Aufteilung zurücksetzen",

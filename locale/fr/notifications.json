@@ -28,5 +28,8 @@
   "unable_save_settings_unknown_error": "Impossible d’enregistrer les paramètres : erreur inconnue.",
 
   "update_available": "Mise à jour {{version}} disponible, téléchargement en arrière-plan…",
-  "update_downloaded": "Mise à jour {{version}} téléchargée, redémarrez pour mettre à jour."
+  "update_downloaded": "Mise à jour {{version}} téléchargée, redémarrez pour mettre à jour.",
+
+  "session_file_missing": "Certains fichiers précédemment ouverts n'ont pas été trouvés et ont été ignorés : {{files}}",
+  "session_cleared": "Session sauvegardée effacée."
 }

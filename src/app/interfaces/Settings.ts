@@ -6,6 +6,7 @@ export interface EditorSettings {
   minimap: boolean;
   systemtheme: boolean;
   scrollsync: boolean;
+  sessionRestore: boolean;
   locale: string;
 }
 

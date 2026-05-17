@@ -1,3 +1,8 @@
 {
-  "explorer": "Explorador"
+  "explorer": "Explorador",
+  "no_workspace": "Nenhuma pasta aberta.",
+  "open_folder": "Abrir pasta",
+  "restore_workspace": "Restaurar pasta anterior",
+  "disconnect_folder": "Desconectar pasta",
+  "chromium_only_warning": "O acesso a pastas só está disponível em navegadores baseados em Chromium (Chrome, Edge, Brave, Opera)."
 }

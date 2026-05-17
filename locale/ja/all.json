@@ -111,6 +111,15 @@
     "minimap_help": "エディターのミニマップを表示します。",
     "scrollsync_label": "スクロール同期を使用",
     "scrollsync_help": "エディターとプレビュー間のスクロール同期を有効にします。",
+    "session": "セッション",
+    "session_restore_label": "起動時にセッションを復元",
+    "session_restore_help": "MKEditor の起動時に、前回開いていたタブ、ワークスペース、カーソル位置を復元します。",
+    "clear_session_button": "保存されたセッションをクリア",
+    "clear_session_help": "保存されたセッションファイルを削除します。開いているタブはそのままで、次回起動時は新規状態で開始します。",
+    "clear_session_confirm_title": "保存されたセッションをクリアしますか?",
+    "clear_session_confirm_text": "これにより保存されたセッションファイルが削除されます。開いているタブはそのままで、次回起動時は新規状態で開始されます。",
+    "clear_session_confirm_button": "クリア",
+    "clear_session_cancel_button": "キャンセル",
     "appearance": "外観",
     "systemtheme_label": "システムテーマを使用",
     "systemtheme_help": "システムテーマが保存済み設定を上書きできるようにします。",
@@ -207,10 +216,17 @@
     "unable_save_settings_permission_denied": "設定を保存できません: 許可が拒否されました。",
     "unable_save_settings_unknown_error": "設定を保存できません: 不明なエラー。",
     "update_available": "更新 {{version}} が利用可能です。バックグラウンドでダウンロード中…",
-    "update_downloaded": "更新 {{version}} がダウンロードされました。再起動して更新してください。"
+    "update_downloaded": "更新 {{version}} がダウンロードされました。再起動して更新してください。",
+    "session_file_missing": "以前に開いていた一部のファイルが見つからず、スキップされました: {{files}}",
+    "session_cleared": "保存されたセッションをクリアしました。"
   },
   "sidebar": {
-    "explorer": "エクスプローラー"
+    "explorer": "エクスプローラー",
+    "no_workspace": "フォルダーが開かれていません。",
+    "open_folder": "フォルダーを開く",
+    "restore_workspace": "前のフォルダーを復元",
+    "disconnect_folder": "フォルダーを切断",
+    "chromium_only_warning": "フォルダーへのアクセスは Chromium ベースのブラウザー (Chrome、Edge、Brave、Opera) でのみ利用できます。"
   },
   "toolbar": {
     "reset_split": "エディター/プレビューの分割をリセット",

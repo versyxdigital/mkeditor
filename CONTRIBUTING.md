@@ -19,6 +19,12 @@ If you would like to build from source, please follow the steps below:
    npm install
    ```
 
+   This also wires up the local Git pre-commit hook (via Husky's
+   `prepare` script). The hook runs `npm run prettier-check`,
+   `npm run lint`, and `npm test` before every commit; commits that
+   fail any of the three are aborted. Use `git commit --no-verify`
+   to bypass in an emergency, but expect CI to catch the same things.
+
 3. Build targets:
    - Build just the editor:
      ```sh
@@ -71,24 +77,31 @@ MKEditor is split into two main components:
 
 ### Code Standards
 
-- Run `npm run lint` before committing.
+- Formatting is handled by Prettier (`npm run prettier-fix` writes,
+  `npm run prettier-check` verifies). ESLint owns lint
+  (`npm run lint`). Both run automatically in the pre-commit hook
+  installed by `npm install`.
 - Prefer readability over micro-optimizations.
 - Write unit tests for new features or bug fixes when possible.
 - Keep code consistent with the existing style.
 
 ## Testing
 
-- Run the full test suite before submitting a pull request:
+- Run the test suite before submitting a pull request:
   ```sh
   npm test
   ```
+- The pre-commit hook runs the suite for you on every commit. The
+  CI workflow (`.github/workflows/tests.yml`) re-runs the same
+  checks plus `build-editor` and `build-app` to catch
+  webpack/tsc errors that the unit tests miss.
 
 ## AI Usage Policy
 
-MKEditor occasionally uses [Codex](https://chatgpt.com/codex) as an **augmentative tool** for tasks such as generating documentation, boilerplate code, and expanding on existing ideas.
+MKEditor occasionally uses AI tools such as Codex and Claude as an **augmentative tool**.
 
-- AI-generated content is always **reviewed, verified, and refined manually** before inclusion.
-- Core logic, architecture decisions, and final implementations remain developer-driven.
+- AI-generated content **must always be reviewed, verified, and refined manually** before inclusion.
+- Core logic, architecture decisions, and final implementations **must always remain developer-driven**.
 
 ## Getting Help
 

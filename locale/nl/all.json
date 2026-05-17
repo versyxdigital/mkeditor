@@ -111,6 +111,15 @@
     "minimap_help": "De minimap van de editor weergeven.",
     "scrollsync_label": "Scrollen synchroniseren",
     "scrollsync_help": "Scrollsynchronisatie tussen de editor en de voorbeeldweergave inschakelen.",
+    "session": "Sessie",
+    "session_restore_label": "Sessie herstellen bij opstarten",
+    "session_restore_help": "Eerder geopende tabbladen, werkmap en cursorposities openen wanneer MKEditor start.",
+    "clear_session_button": "Opgeslagen sessie wissen",
+    "clear_session_help": "Wist het opgeslagen sessiebestand. Geopende tabbladen blijven open; de volgende start begint opnieuw.",
+    "clear_session_confirm_title": "Opgeslagen sessie wissen?",
+    "clear_session_confirm_text": "Hiermee wordt het opgeslagen sessiebestand gewist. Geopende tabbladen blijven open; de volgende start begint opnieuw.",
+    "clear_session_confirm_button": "Wissen",
+    "clear_session_cancel_button": "Annuleren",
     "appearance": "Uiterlijk",
     "systemtheme_label": "Systeemthema gebruiken",
     "systemtheme_help": "Het systeemthema mag je opgeslagen instellingen overschrijven.",
@@ -207,10 +216,17 @@
     "unable_save_settings_permission_denied": "Kan instellingen niet opslaan: toegang geweigerd.",
     "unable_save_settings_unknown_error": "Kan instellingen niet opslaan: onbekende fout.",
     "update_available": "Update {{version}} is beschikbaar, wordt op de achtergrond gedownload...",
-    "update_downloaded": "Update {{version}} is gedownload, herstart om bij te werken."
+    "update_downloaded": "Update {{version}} is gedownload, herstart om bij te werken.",
+    "session_file_missing": "Sommige eerder geopende bestanden zijn niet gevonden en overgeslagen: {{files}}",
+    "session_cleared": "Opgeslagen sessie gewist."
   },
   "sidebar": {
-    "explorer": "Verkenner"
+    "explorer": "Verkenner",
+    "no_workspace": "Geen map geopend.",
+    "open_folder": "Map openen",
+    "restore_workspace": "Vorige map herstellen",
+    "disconnect_folder": "Map loskoppelen",
+    "chromium_only_warning": "Toegang tot mappen is alleen beschikbaar in op Chromium gebaseerde browsers (Chrome, Edge, Brave, Opera)."
   },
   "toolbar": {
     "reset_split": "Indeling editor/voorbeeld resetten",
