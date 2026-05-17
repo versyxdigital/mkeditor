@@ -6,12 +6,11 @@ import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 
 /**
- * File/folder properties modal. Phase 8 replaces the legacy
- * `showFilePropertiesWindow` SweetAlert2 popup in dom.ts. Triggered by
- * the explorer right-click "Show properties" item, which sends
- * `to:file:properties` over the bridge; the main process replies with
- * `from:path:properties` carrying a FileProperties payload, which
- * BridgeListeners routes here via `showPropertiesExternal`.
+ * File/folder properties modal. Triggered by the explorer right-click
+ * "Show properties" item, which sends `to:file:properties` over the 
+ * bridge; the main process replies with `from:path:properties` carrying 
+ * a FileProperties payload, which BridgeListeners routes here via 
+ * `showPropertiesExternal`.
  */
 export const PropertiesModal: React.FC = () => {
   const { info, close } = useProperties();

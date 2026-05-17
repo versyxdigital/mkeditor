@@ -23,9 +23,7 @@ import {
 } from './ui/context-menu';
 
 /**
- * Recursive React rendering of the file explorer tree. Phase 5 keeps the
- * legacy CSS classes (ft-node, directory, file, file-name) so the styling
- * in _sidebar.scss carries over unchanged.
+ * Recursive React rendering of the file explorer tree.
  *
  * Structure:
  * - One Radix <ContextMenu> wraps the whole panel. The active "context

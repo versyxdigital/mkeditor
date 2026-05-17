@@ -58,8 +58,7 @@ export function registerPropertiesShower(fn: (info: FileProperties) => void) {
 
 /**
  * Open the properties modal from non-React code (specifically the
- * `from:path:properties` IPC handler in BridgeListeners). Mirrors the
- * `openModalExternal` pattern from Phase 7's ModalsContext.
+ * `from:path:properties` IPC handler in BridgeListeners).
  */
 export function showPropertiesExternal(info: FileProperties) {
   externalShow?.(info);

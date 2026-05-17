@@ -127,9 +127,7 @@ export class FileManager {
 
   /**
    * Close a tab. If the buffer is dirty, opens a three-button prompt
-   * (Save & close / Close without saving / Cancel) via the
-   * shadcn-Dialog-backed `openPromptExternal`. Phase 8 replaced the
-   * legacy SweetAlert2 prompt with the React-rendered equivalent.
+   * (Save & close / Close without saving / Cancel) via openPromptExternal.
    */
   public async closeTab(path: string) {
     const mdl = this.models.get(path);

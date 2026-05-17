@@ -82,7 +82,7 @@ export class EditorManager {
   public create({ mount, watch = false }: EditorCreateOptions = {}) {
     if (this.mkeditor) {
       // Idempotency: React effects may re-fire under strict-mode or hot
-      // reload. Phase 2 exit criterion: Monaco is created exactly once.
+      // reload. Monaco is created exactly once.
       logger?.warn(
         'EditorManager.create',
         'Editor already created; ignoring duplicate invocation.',
@@ -103,7 +103,7 @@ export class EditorManager {
       let editorContent = welcomeMarkdown;
       // For web mode, fetch stored content from localStorage.
       // Web-mode delete-button click is wired by <EditorToolbar> via
-      // editorManager.resetContent() (Phase 6 onwards).
+      // editorManager.resetContent().
       if (this.mode === 'web') {
         const webStoredContent = localStorage.getItem('mkeditor-content');
         if (webStoredContent) editorContent = webStoredContent;
@@ -123,9 +123,6 @@ export class EditorManager {
         roundedSelection: false,
         accessibilityPageSize: 1000,
       });
-      // console.info (not logger.info) so the breadcrumb is visible in the
-      // renderer devtools in both web and desktop modes — needed for the
-      // Phase 2 exit-criterion smoke check.
       console.info('mkeditor: Monaco editor instance created.');
 
       // Set loadedInitialEditorValue for tracking file changes.

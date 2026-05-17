@@ -119,10 +119,6 @@ export class CommandProvider {
       this.mkeditor.addAction(<editor.IActionDescriptor>commands[cmd]);
     }
 
-    // Phase 7 moved the build-version chip into <BottomToolbarRight>;
-    // its onClick now opens the React About modal via ModalsContext.
-    // No DOM listener is registered from here anymore.
-
     for (const block of alertblocks) {
       // Register command keybindings for each alertblock type.
       const binding = `Key${block.key}` as keyof typeof KeyCode;
@@ -242,8 +238,6 @@ export class CommandProvider {
   /**
    * Insert a markdown table with the given dimensions. Public so
    * <EditorToolbar>'s tables Popover can pass the form values directly.
-   * Previously read `dom.commands.forms.tables.{rows,cols}.value`;
-   * Phase 6 routes the form values through React state instead.
    */
   public table(numCols: number, numRows: number) {
     const makeRow = (cells: string[]) => `| ${cells.join(' | ')} |`;

@@ -1,8 +1,5 @@
 /**
- * Splash overlay fade. Phase 9 moved this out of dom.ts so dom.ts can
- * be trimmed to just the constants still consumed by non-React code
- * (`#editor` fallback, preview content/wrapper getters, scroll-sync
- * meta attributes).
+ * Splash overlay fade.
  */
 export function showSplashScreen({ duration }: { duration: number }) {
   const splash = document.getElementById('splashscreen');

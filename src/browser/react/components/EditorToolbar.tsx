@@ -37,8 +37,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const [openDropdown, setOpenDropdown] =
     React.useState<ToolbarDropdownKey | null>(null);
 
-  // Table-form local state. Kept in React rather than DOM (Phase 6
-  // removed `dom.commands.forms.tables.{rows,cols}.value`).
+  // Table-form local state.
   const [tableRows, setTableRows] = React.useState(2);
   const [tableCols, setTableCols] = React.useState(2);
 

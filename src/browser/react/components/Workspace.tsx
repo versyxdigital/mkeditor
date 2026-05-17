@@ -18,12 +18,11 @@ interface WorkspaceProps {
 }
 
 /**
- * The editor/preview split. Replaces split.js for this gutter using
- * `react-resizable-panels` v4 (Group + Panel + Separator). Panel.onResize
- * fires `editorManager.layout()` so Monaco reflows on every drag tick.
+ * The editor/preview split. Using `react-resizable-panels` v4 
+ * (Group + Panel + Separator). Panel.onResize fires 
+ * `editorManager.layout()` so Monaco reflows on every drag tick.
  *
- * Phase 6 retired the Phase 3 `#split-reset` DOM-bridge useEffect — the
- * React `<EditorToolbar>` now owns the split-reset button and calls
+ * React `<EditorToolbar>` owns the split-reset button and calls
  * `groupRef.current.setLayout(...)` directly through the ref that <App>
  * passes here.
  */

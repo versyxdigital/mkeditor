@@ -5,14 +5,12 @@ import { settings } from '../../config';
 type PersistHandler = (next: Partial<SettingsFile>) => void;
 
 /**
- * Settings data + IPC owner. Phase 7 stripped this of all DOM
- * responsibilities — `registerDOMListeners`, `populateLocaleOptions`,
- * `setUIState` and the per-setting `register*ChangeListener` methods are
- * gone. Instead the provider exposes a stable snapshot + `subscribe`
- * pair that <SettingsContext> consumes via `useSyncExternalStore`. React
- * components drive every change through `updateSetting(key, value)`,
- * which: (1) writes state, (2) applies the Monaco / theme side effect,
- * (3) emits to subscribers, and (4) persists to localStorage / bridge.
+ * Settings data + IPC owner. The provider exposes a stable
+ * snapshot + `subscribe` pair that <SettingsContext> consumes
+ * via `useSyncExternalStore`. React components drive every change 
+ * through `updateSetting(key, value)`, which: (1) writes state, 
+ * (2) applies the Monaco / theme side effect, (3) emits to subscribers,
+ * and (4) persists to localStorage / bridge.
  */
 export class SettingsProvider {
   /** Execution mode */
@@ -31,9 +29,8 @@ export class SettingsProvider {
   private listeners = new Set<() => void>();
 
   /**
-   * Desktop persist handler — registered by the composition root once
-   * BridgeManager exists. Phase 9 replaced the dispatcher's
-   * `editor:bridge:settings` event with a direct call here.
+   * Desktop persist handler, registered by the composition root
+   * once BridgeManager exists.
    */
   private persistHandler: PersistHandler | null = null;
 
@@ -215,7 +212,7 @@ export class SettingsProvider {
   }
 
   // ---------------------------------------------------------------------
-  // Monaco / theme applicators (kept by name per the Phase 7 doc)
+  // Monaco / theme applicators
   // ---------------------------------------------------------------------
 
   public setAudoIndent() {
@@ -256,10 +253,10 @@ export class SettingsProvider {
   }
 
   public setSystemThemeOverride() {
-    // No DOM mutation required after Phase 7 — the modal's React UI
-    // reads `systemtheme` from SettingsContext and disables the
-    // darkmode toggle conditionally. Kept as a no-op method so the
-    // public surface listed in the migration doc still resolves.
+    // No DOM mutation requiredm, the modal's React UI reads 
+    // `systemtheme` from SettingsContext and disables the darkmode 
+    // toggle conditionally. Kept as a no-op method so the public 
+    // surface listed in the migration doc still resolves.
     return this;
   }
 }

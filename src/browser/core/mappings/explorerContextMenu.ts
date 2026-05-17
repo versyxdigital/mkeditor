@@ -26,12 +26,7 @@ export interface ContextMenuCallbacks {
 /**
  * Build the explorer right-click menu items for a given node (or null
  * for an empty-tree / background right-click). Items are plain data
- * `{ label, action, divider }` — `<ExplorerContextMenu>` renders them
- * via shadcn's ContextMenu primitives.
- *
- * Phase 8 swapped the SweetAlert2 prompts for shadcn Dialog-backed
- * `promptExternal` / `confirmExternal` calls. The functions are
- * module-level seams registered by `<PromptsBridge>` inside `<App>`.
+ * `{ label, action, divider }`.
  */
 export function getContextMenuItems(
   bridge: ContextBridgeAPI,

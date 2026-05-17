@@ -4,13 +4,7 @@ import * as ContextMenuPrimitive from '@radix-ui/react-context-menu';
 import { cn } from '../../lib/utils';
 
 /**
- * Minimal shadcn-style wrapper around Radix's `react-context-menu`.
- *
- * Phase 5 needs only the Root/Trigger/Portal/Content/Item/Separator/Label
- * subset. CheckboxItem, RadioItem and SubMenu (which would pull in
- * lucide-react icons for indicators) are intentionally omitted — the
- * Decisions table defers `lucide-react` until post-migration. Add those
- * primitives here when a later phase needs them.
+ * Minimal wrapper around Radix's `react-context-menu`.
  */
 
 const ContextMenu = ContextMenuPrimitive.Root;

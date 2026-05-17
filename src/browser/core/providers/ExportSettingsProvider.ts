@@ -6,18 +6,13 @@ import { dom } from '../../dom';
 type PersistHandler = (next: Partial<SettingsFile>) => void;
 
 /**
- * Export-settings data + IPC owner. Phase 7 strips this of DOM
- * responsibilities — `registerDOMListeners`, `setUIState`,
- * `isApplying` are all gone. React's <ExportSettingsModal> reads
+ * Export-settings data + IPC owner. React's <ExportSettingsModal> reads
  * from the snapshot via `subscribe`/`getSnapshot` and drives changes
  * through `updateSetting(key, value)` (or `setSettings(...)` for
  * batch loads coming from the bridge).
  *
  * Persistence stays debounced (250ms for most settings, 400ms for the
  * line-spacing slider) and dedupes against `lastPersistedJSON`.
- *
- * The live preview style sync still happens on every state change —
- * after Phase 7 we run it from `applyAll()` instead of `setUIState()`.
  */
 export class ExportSettingsProvider {
   private mode: 'web' | 'desktop' = 'web';
@@ -32,9 +27,8 @@ export class ExportSettingsProvider {
   private lastPersistedJSON = '';
 
   /**
-   * Desktop persist handler — registered by the composition root once
-   * BridgeManager exists. Phase 9 replaced the dispatcher's
-   * `editor:bridge:settings` event with a direct call here.
+   * Desktop persist handler, registered by the composition root
+   * once BridgeManager exists.
    */
   private persistHandler: PersistHandler | null = null;
 

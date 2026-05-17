@@ -44,9 +44,9 @@ export function registerBridgeListeners(
     });
   };
 
-  // Set the theme according to the user's system theme. Phase 7
-  // dropped setUIState() — React subscribes to SettingsProvider's
-  // emitter so the navbar darkmode toggle reflects the change.
+  // Set the theme according to the user's system theme. React
+  // subscribes to SettingsProvider's emitter so the navbar 
+  // darkmode toggle reflects the change.
   bridge.receive('from:theme:set', (shouldUseDarkMode: boolean) => {
     if (shouldUseDarkMode) {
       providers.settings?.updateSetting('darkmode', shouldUseDarkMode);
@@ -54,9 +54,8 @@ export function registerBridgeListeners(
   });
 
   // Set settings from stored settings file (%HOME%/.mkeditor/settings.json).
-  // Phase 7 dropped registerDOMListeners — the providers' setSettings
-  // emits to SettingsContext / ExportSettingsContext subscribers and
-  // the React modals re-render to reflect the loaded values.
+  // The providers' setSettings emits to SettingsContext / ExportSettingsContext
+  // subscribers and the React modals re-render to reflect the loaded values.
   bridge.receive('from:settings:set', (s: SettingsFile) => {
     loadSettingsFromBridgeListener(s);
     providers.settings?.setSettings(s);

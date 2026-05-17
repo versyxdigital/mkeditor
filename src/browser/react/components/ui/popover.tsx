@@ -4,8 +4,7 @@ import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { cn } from '../../lib/utils';
 
 /**
- * Minimal shadcn-style wrapper around Radix `react-popover`. Phase 6
- * uses this for the "insert table" form (rows/columns/submit).
+ * Minimal wrapper around Radix `react-popover`.
  */
 
 const Popover = PopoverPrimitive.Root;

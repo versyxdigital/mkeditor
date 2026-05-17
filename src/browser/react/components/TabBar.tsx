@@ -5,8 +5,6 @@ import { useManagers } from '../contexts/ManagersContext';
 
 /**
  * Tab strip. Renders one `<li>` per FileManager tab from FilesContext.
- * Click activates; the close button calls `fileManager.closeTab(path)`
- * which retains its SweetAlert unsaved-change prompt until Phase 8.
  *
  * HTML5 drag-and-drop reorders the *visual* order; on dragend we read
  * the resulting DOM order and call `fileManager.reorderTabs(newOrder)`,

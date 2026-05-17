@@ -219,7 +219,7 @@ function onEditorReady() {
       changeLanguage(lng);
     });
 
-    // Phase 9: wire each provider's persist callback directly into the
+    // Wire each provider's persist callback directly into the
     // bridge instead of routing through an `editor:bridge:settings`
     // dispatcher event. Web mode persists via localStorage inside the
     // settings providers themselves, so the handler isn't wired there.

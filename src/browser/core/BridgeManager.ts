@@ -31,10 +31,10 @@ export class BridgeManager {
     exportSettings: null,
   };
 
-  /** File manager helper (exposed so React's FilesContext can subscribe). */
+  /** File manager helper (exposed so FilesContext can subscribe). */
   public fileManager: FileManager;
 
-  /** File tree helper (exposed for Phase 5's FileTreeContext). */
+  /** File tree helper (exposed for FileTreeContext). */
   public fileTreeManager: FileTreeManager;
 
   /**

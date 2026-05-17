@@ -46,9 +46,8 @@ interface PromptsContextValue {
 const PromptsContext = React.createContext<PromptsContextValue | null>(null);
 
 /**
- * Centralised dialog driver — Phase 8 replaces every SweetAlert2 prompt
- * with a React-rendered `<Dialog>` whose buttons resolve a promise.
- * Used by:
+ * Centralised dialog driverr, React-rendered `<Dialog>` whose buttons resolve
+ * a promise. Used by:
  *   - `FileManager.closeTab` (3-button unsaved-changes confirm)
  *   - explorer right-click menu (rename/new/delete/confirm)
  *
@@ -224,10 +223,7 @@ export function registerPromptOpener(
  * was set, the typed value.
  *
  * If the React tree has not yet mounted the `<PromptsProvider>`, the
- * call resolves with `{ button: null }` (treated as a cancel). Phase 8
- * callers (FileManager, explorerContextMenu) only fire after
- * BridgeManager attaches — well after the React mount, so this is a
- * defensive fallback rather than a normal path.
+ * call resolves with `{ button: null }` (treated as a cancel).
  */
 export function openPromptExternal(
   request: PromptRequest,

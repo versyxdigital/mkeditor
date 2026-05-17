@@ -4,10 +4,8 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { cn } from '../../lib/utils';
 
 /**
- * Minimal shadcn-style wrapper around Radix Dialog. Phase 7 uses this
- * for all four modals (Settings / ExportSettings / About / Shortcuts).
+ * Minimal wrapper around Radix Dialog.
  */
-
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;

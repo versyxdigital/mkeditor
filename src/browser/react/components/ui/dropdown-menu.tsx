@@ -4,12 +4,7 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { cn } from '../../lib/utils';
 
 /**
- * Minimal shadcn-style wrapper around Radix `react-dropdown-menu`.
- *
- * Phase 6 needs only Root/Trigger/Portal/Content/Item/Separator/Label
- * for the alert + codeblock menus. CheckboxItem/RadioItem/SubMenu
- * (which would pull in `lucide-react` for indicator icons) are
- * intentionally omitted per the Decisions table.
+ * Minimal wrapper around Radix `react-dropdown-menu`.
  */
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
