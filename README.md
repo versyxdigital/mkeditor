@@ -13,15 +13,15 @@ Markdown with _style_.
 > [!NOTE] 
 > Supported languages:
 >
-> 🇬🇧 English, 🇩🇪 Deutsch, 🇪🇸 Español, 🇫🇷 Français, 🇮🇹 Italiano, 🇳🇱 Nederlands, 🇵🇹 Português, 🇷🇺 Русский, 🇺🇦 Українська, 🇹🇷 Türkçe, 🇨🇳 简体中文, 🇯🇵 日本語, 🇰🇷 한국어
+>  English,  Deutsch,  Español,  Français,  Italiano,  Nederlands,  Português,  Русский,  Українська,  Türkçe,  简体中文,  日本語,  한국어
 
 Download for desktop or use it directly through your [browser](https://versyxdigital.github.io/mkeditor/web/).
 
 More documentation is available at the [website](https://versyxdigital.github.io/mkeditor).
 
 <p>
-    <img src="https://versyxdigital.github.io/mkeditor/assets/img/demo-dark.png" alt="MKEditor dark mode" width="45%" style="display:inline-block; margin-right:10px;" />
-    <img src="https://versyxdigital.github.io/mkeditor/assets/img/demo.png" alt="MKEditor light mode" width="45%" style="display:inline-block;" />
+    <img src="https://versyxdigital.github.io/mkeditor/assets/img/demo-dark.webp" alt="MKEditor dark mode" width="45%" style="display:inline-block; margin-right:10px;" />
+    <img src="https://versyxdigital.github.io/mkeditor/assets/img/demo-light.webp" alt="MKEditor light mode" width="45%" style="display:inline-block;" />
 </p>
 
 # Welcome
