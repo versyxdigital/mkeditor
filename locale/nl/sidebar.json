@@ -1,3 +1,8 @@
 {
-  "explorer": "Verkenner"
+  "explorer": "Verkenner",
+  "no_workspace": "Geen map geopend.",
+  "open_folder": "Map openen",
+  "restore_workspace": "Vorige map herstellen",
+  "disconnect_folder": "Map loskoppelen",
+  "chromium_only_warning": "Toegang tot mappen is alleen beschikbaar in op Chromium gebaseerde browsers (Chrome, Edge, Brave, Opera)."
 }

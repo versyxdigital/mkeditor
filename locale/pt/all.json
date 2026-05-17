@@ -207,10 +207,16 @@
     "unable_save_settings_permission_denied": "Não foi possível salvar as configurações: permissão negada.",
     "unable_save_settings_unknown_error": "Não foi possível salvar as configurações: erro desconhecido.",
     "update_available": "A atualização {{version}} está disponível, baixando em segundo plano...",
-    "update_downloaded": "A atualização {{version}} foi baixada, reinicie para atualizar."
+    "update_downloaded": "A atualização {{version}} foi baixada, reinicie para atualizar.",
+    "session_file_missing": "Alguns arquivos anteriormente abertos não foram encontrados e foram ignorados: {{files}}"
   },
   "sidebar": {
-    "explorer": "Explorador"
+    "explorer": "Explorador",
+    "no_workspace": "Nenhuma pasta aberta.",
+    "open_folder": "Abrir pasta",
+    "restore_workspace": "Restaurar pasta anterior",
+    "disconnect_folder": "Desconectar pasta",
+    "chromium_only_warning": "O acesso a pastas só está disponível em navegadores baseados em Chromium (Chrome, Edge, Brave, Opera)."
   },
   "toolbar": {
     "reset_split": "Redefinir divisão editor/visualização",

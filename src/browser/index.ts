@@ -80,7 +80,7 @@ if (!reactRoot) {
     React.createElement(App, {
       initialManagers,
       onEditorReady,
-      initialSidebarOpen: api !== 'web',
+      initialSidebarOpen: true,
       registerSetManagers: (setter) => {
         setReactManagers = setter;
       },

@@ -207,10 +207,16 @@
     "unable_save_settings_permission_denied": "Ayarlar kaydedilemiyor: izin reddedildi.",
     "unable_save_settings_unknown_error": "Ayarlar kaydedilemiyor: bilinmeyen hata.",
     "update_available": "Güncelleme {{version}} mevcut, arka planda indiriliyor...",
-    "update_downloaded": "Güncelleme {{version}} indirildi, güncellemek için yeniden başlatın."
+    "update_downloaded": "Güncelleme {{version}} indirildi, güncellemek için yeniden başlatın.",
+    "session_file_missing": "Önceden açık olan bazı dosyalar bulunamadı ve atlandı: {{files}}"
   },
   "sidebar": {
-    "explorer": "Gezgin"
+    "explorer": "Gezgin",
+    "no_workspace": "Açık klasör yok.",
+    "open_folder": "Klasör aç",
+    "restore_workspace": "Önceki klasörü geri yükle",
+    "disconnect_folder": "Klasörü ayır",
+    "chromium_only_warning": "Klasör erişimi yalnızca Chromium tabanlı tarayıcılarda (Chrome, Edge, Brave, Opera) kullanılabilir."
   },
   "toolbar": {
     "reset_split": "Editör/önizleme bölmesini sıfırla",

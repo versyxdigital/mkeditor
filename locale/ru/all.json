@@ -207,10 +207,16 @@
     "unable_save_settings_permission_denied": "Не удалось сохранить настройки: доступ запрещён.",
     "unable_save_settings_unknown_error": "Не удалось сохранить настройки: неизвестная ошибка.",
     "update_available": "Доступно обновление {{version}}, скачивание в фоновом режиме…",
-    "update_downloaded": "Обновление {{version}} загружено, перезапустите для установки."
+    "update_downloaded": "Обновление {{version}} загружено, перезапустите для установки.",
+    "session_file_missing": "Некоторые ранее открытые файлы не найдены и пропущены: {{files}}"
   },
   "sidebar": {
-    "explorer": "Проводник"
+    "explorer": "Проводник",
+    "no_workspace": "Папка не открыта.",
+    "open_folder": "Открыть папку",
+    "restore_workspace": "Восстановить предыдущую папку",
+    "disconnect_folder": "Отключить папку",
+    "chromium_only_warning": "Доступ к папкам возможен только в браузерах на базе Chromium (Chrome, Edge, Brave, Opera)."
   },
   "toolbar": {
     "reset_split": "Сбросить разделение редактор/предпросмотр",

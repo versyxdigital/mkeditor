@@ -207,10 +207,16 @@
     "unable_save_settings_permission_denied": "設定を保存できません: 許可が拒否されました。",
     "unable_save_settings_unknown_error": "設定を保存できません: 不明なエラー。",
     "update_available": "更新 {{version}} が利用可能です。バックグラウンドでダウンロード中…",
-    "update_downloaded": "更新 {{version}} がダウンロードされました。再起動して更新してください。"
+    "update_downloaded": "更新 {{version}} がダウンロードされました。再起動して更新してください。",
+    "session_file_missing": "以前に開いていた一部のファイルが見つからず、スキップされました: {{files}}"
   },
   "sidebar": {
-    "explorer": "エクスプローラー"
+    "explorer": "エクスプローラー",
+    "no_workspace": "フォルダーが開かれていません。",
+    "open_folder": "フォルダーを開く",
+    "restore_workspace": "前のフォルダーを復元",
+    "disconnect_folder": "フォルダーを切断",
+    "chromium_only_warning": "フォルダーへのアクセスは Chromium ベースのブラウザー (Chrome、Edge、Brave、Opera) でのみ利用できます。"
   },
   "toolbar": {
     "reset_split": "エディター/プレビューの分割をリセット",

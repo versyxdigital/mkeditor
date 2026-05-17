@@ -64,11 +64,10 @@ export const FileTreePanel: React.FC = () => {
     void webBridge.hasRestorableWorkspace().then((ok) => setHasRestorable(ok));
   }, [mode, bridgeManager, treeRoot]);
 
-  // Open the sidebar automatically when a web workspace first lands,
-  // since web mode starts with the sidebar collapsed and the user
-  // would otherwise see no feedback after granting folder access.
-  // Fires once per workspace-load via a ref guard so a user-initiated
-  // collapse later in the session isn't fought.
+  // Re-pop the sidebar when a web workspace first lands, in case the
+  // user manually collapsed it before opening a folder. Fires once
+  // per workspace-load via a ref guard so a user-initiated collapse
+  // *after* the workspace is loaded isn't fought.
   const sidebarPushedRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (mode !== 'web' || !treeRoot) return;
