@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 on:
   pull_request:
     branches: [ main, develop ]
@@ -6,7 +6,7 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  test:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,3 +17,9 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      # Build verification — catches webpack/tsc errors that lint and
+      # unit tests miss (config drift, missing exports, broken dynamic
+      # imports). build-editor bundles the renderer; build-app compiles
+      # the Electron main process.
+      - run: npm run build-editor
+      - run: npm run build-app

@@ -39,12 +39,12 @@ Decision needed before significant new feature work touches provider wiring.
 
 ## 3. Bring Up to Date _(catch-all)_
 
-🔵 Generic "modernise" bucket. Concrete items to be added as they're identified — placeholders below.
+🟡 In progress. Concrete items below.
 
-- ⚪ **Dependency audit** — bundle size, security advisories, deprecations. Specifically check Electron (currently `^37.4.0`), Monaco (`^0.52.2`), markdown-it (`^14.1.0`).
-- ⚪ **CI coverage** — extend GitHub Actions beyond the existing test workflow if useful (e.g. lint gate, build verification per platform).
-- ⚪ **Logging levels as a setting** — TODO already in [main.ts:34](../src/app/main.ts#L34).
-- ⚪ **Recent documents** — TODO in [main.ts:224](../src/app/main.ts#L224) ("get recent documents working or remove").
+- 🟢 **Dependency bumps** _(2026-05-17)_ — Electron `^37.4.0` → `^42.1.0`, Monaco `^0.52.2` → `^0.55.1`, TypeScript and ESLint upgraded alongside (see `package.json` for current versions). markdown-it stays on `^14.1.0` (current major).
+- 🟢 **CI coverage** _(2026-05-17)_ — `.github/workflows/tests.yml` (renamed to `CI`) now runs lint, jest, `build-editor`, and `build-app` on every PR/push to `main`/`develop`. Build steps catch webpack/tsc errors that the unit suite misses.
+- ⚪ **Logging levels as a setting** — TODO at [main.ts:34](../src/app/main.ts#L34).
+- ⚪ **Recent documents** — TODO at [main.ts:224](../src/app/main.ts#L224) ("get recent documents working or remove").
 - ⚪ **Auto-update on macOS** — currently disabled pending code signing.
 
 ---
