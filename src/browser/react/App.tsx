@@ -36,11 +36,40 @@ import { Sidebar } from './components/Sidebar';
 import { Workspace } from './components/Workspace';
 import { EditorToolbar } from './components/EditorToolbar';
 import { BottomToolbarRight } from './components/BottomToolbarRight';
-import { SettingsModal } from './components/modals/SettingsModal';
-import { ExportSettingsModal } from './components/modals/ExportSettingsModal';
-import { AboutModal } from './components/modals/AboutModal';
-import { ShortcutsModal } from './components/modals/ShortcutsModal';
-import { PropertiesModal } from './components/modals/PropertiesModal';
+
+// Modals are lazy: each one is a separate webpack chunk that is only
+// fetched the first time the user opens it. The five modal components
+// pull in shadcn primitives (Switch, Select, Checkbox, locale list,
+// shortcut tables, FileProperties formatting) that aren't needed for
+// initial paint — keeping them out of the main bundle is a measurable
+// startup win. See `<LazyModals>` below for the mount strategy that
+// preserves Radix's close-animation by keeping each modal mounted
+// once it has been opened for the first time.
+const SettingsModal = React.lazy(() =>
+  import('./components/modals/SettingsModal').then((m) => ({
+    default: m.SettingsModal,
+  })),
+);
+const ExportSettingsModal = React.lazy(() =>
+  import('./components/modals/ExportSettingsModal').then((m) => ({
+    default: m.ExportSettingsModal,
+  })),
+);
+const AboutModal = React.lazy(() =>
+  import('./components/modals/AboutModal').then((m) => ({
+    default: m.AboutModal,
+  })),
+);
+const ShortcutsModal = React.lazy(() =>
+  import('./components/modals/ShortcutsModal').then((m) => ({
+    default: m.ShortcutsModal,
+  })),
+);
+const PropertiesModal = React.lazy(() =>
+  import('./components/modals/PropertiesModal').then((m) => ({
+    default: m.PropertiesModal,
+  })),
+);
 
 import './styles/tailwind.css';
 
@@ -107,11 +136,7 @@ export const App: React.FC<AppProps> = ({
                       />
                       <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
                       <BottomToolbarRight />
-                      <SettingsModal />
-                      <ExportSettingsModal />
-                      <AboutModal />
-                      <ShortcutsModal />
-                      <PropertiesModal />
+                      <LazyModals />
                       {/* Sonner toaster — Phase 8 replaces SweetAlert2
                           toasts. `position` matches the legacy bottom-end
                           placement; `richColors` gives the success/error
@@ -173,6 +198,50 @@ const PropertiesBridge: React.FC = () => {
     registerPropertiesShower(show);
   }, [show]);
   return null;
+};
+
+/**
+ * Lazy-mount the five Dialog-based modals.
+ *
+ * Strategy: track which modals have *ever* been opened in this session
+ * and only render those. Each one's React.lazy chunk loads the first
+ * time the user triggers it, then stays mounted afterward so Radix's
+ * close-animation plays normally. Modals the user never touches never
+ * load at all — Shortcuts/About/Properties are common no-ops.
+ */
+const LazyModals: React.FC = () => {
+  const { open } = useModals();
+  const { info: propertiesInfo } = useProperties();
+
+  const [seen, setSeen] = React.useState({
+    settings: false,
+    exportSettings: false,
+    about: false,
+    shortcuts: false,
+    properties: false,
+  });
+
+  React.useEffect(() => {
+    if (!open) return;
+    setSeen((prev) => (prev[open] ? prev : { ...prev, [open]: true }));
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!propertiesInfo) return;
+    setSeen((prev) =>
+      prev.properties ? prev : { ...prev, properties: true },
+    );
+  }, [propertiesInfo]);
+
+  return (
+    <React.Suspense fallback={null}>
+      {seen.settings && <SettingsModal />}
+      {seen.exportSettings && <ExportSettingsModal />}
+      {seen.about && <AboutModal />}
+      {seen.shortcuts && <ShortcutsModal />}
+      {seen.properties && <PropertiesModal />}
+    </React.Suspense>
+  );
 };
 
 /**

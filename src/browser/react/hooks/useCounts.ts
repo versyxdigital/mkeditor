@@ -22,7 +22,7 @@ export function useCounts(): Counts {
 
   React.useEffect(() => {
     const recompute = () => {
-      const value = editorManager.getValue();
+      const value = editorManager?.getValue() ?? '';
       setCounts({
         words: countWords(value),
         characters: countCharacters(value),

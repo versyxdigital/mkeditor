@@ -4,7 +4,7 @@ import type { GroupImperativeHandle } from 'react-resizable-panels';
 
 import { HTMLExporter } from '../../core/HTMLExporter';
 import { exportSettings as exportSettingsDefaults } from '../../config';
-import { alertblocks, codeblocks } from '../../core/mappings/editorCommands';
+import { alertblocks, codeblocks } from '../../core/mappings/editorBlocks';
 import type { ToolbarDropdownKey } from '../../core/providers/CommandProvider';
 import { dom } from '../../dom';
 import { useManagers } from '../contexts/ManagersContext';
@@ -63,25 +63,25 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
   const inline = (syntax: string) => () => {
     providers.commands?.editInline(syntax);
-    editorManager.getMkEditor()?.focus();
+    editorManager?.getMkEditor()?.focus();
   };
 
   const insertCodeblock = (language: string) => () => {
     providers.commands?.codeblock(language);
     setOpenDropdown(null);
-    editorManager.getMkEditor()?.focus();
+    editorManager?.getMkEditor()?.focus();
   };
 
   const insertAlert = (type: string) => () => {
     providers.commands?.alert(type);
     setOpenDropdown(null);
-    editorManager.getMkEditor()?.focus();
+    editorManager?.getMkEditor()?.focus();
   };
 
   const insertTable = () => {
     providers.commands?.table(tableCols, tableRows);
     setOpenDropdown(null);
-    editorManager.getMkEditor()?.focus();
+    editorManager?.getMkEditor()?.focus();
   };
 
   const buildExportHtml = () => {
@@ -94,7 +94,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     if (mode === 'desktop' && bridgeManager) {
       bridgeManager.saveContentToFile();
     } else {
-      HTMLExporter.webExport(editorManager.getValue(), 'text/plain', '.md');
+      HTMLExporter.webExport(editorManager?.getValue() ?? '', 'text/plain', '.md');
     }
   };
 
@@ -112,7 +112,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   };
 
   const openExportSettingsModal = () => openModal('exportSettings');
-  const handleDelete = () => editorManager.resetContent();
+  const handleDelete = () => editorManager?.resetContent();
 
   // Find the host once; we render via createPortal into the static
   // `<div id="editor-functions">`.
@@ -152,7 +152,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         title={t('toolbar:unordered_list_tooltip')}
         onClick={() => {
           providers.commands?.unorderedList();
-          editorManager.getMkEditor()?.focus();
+          editorManager?.getMkEditor()?.focus();
         }}
       >
         <Icon name="list-ul" />
@@ -161,7 +161,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         title={t('toolbar:ordered_list_tooltip')}
         onClick={() => {
           providers.commands?.orderedList();
-          editorManager.getMkEditor()?.focus();
+          editorManager?.getMkEditor()?.focus();
         }}
       >
         <Icon name="list-ol" />

@@ -17,7 +17,7 @@ export const EditorHost: React.FC<EditorHostProps> = ({ onReady }) => {
 
   React.useEffect(() => {
     const mount = mountRef.current;
-    if (!mount) return;
+    if (!mount || !editorManager) return;
 
     editorManager.create({ mount, watch: true });
     onReady?.();
@@ -29,7 +29,13 @@ export const EditorHost: React.FC<EditorHostProps> = ({ onReady }) => {
       observer.disconnect();
       editorManager.dispose();
     };
-  }, []);
+    // `editorManager` is null on first mount (the Monaco chunk is
+    // still loading via boot() in index.ts). The composition root
+    // pushes the constructed instance into React state once it
+    // lands, which re-runs this effect to actually instantiate
+    // Monaco. EditorManager.create() is idempotent so we don't
+    // need to track that ourselves.
+  }, [editorManager, onReady]);
 
   return (
     <div

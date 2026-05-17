@@ -1,12 +1,15 @@
 import * as React from 'react';
-import { act } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 
 import { PreviewPane } from '../../src/browser/react/components/PreviewPane';
 import { renderWithProviders, fakeDispatcher } from '../utils/render';
 
 // Stub the markdown renderer + ScrollSync helper so we exercise the
 // dispatch-→-innerHTML wiring without depending on markdown-it / KaTeX
-// /highlight.js being available in jsdom.
+// /highlight.js being available in jsdom. PreviewPane dynamic-imports
+// Markdown (so its bundle ends up in a separate webpack chunk); the
+// mock is hooked under the same module path that the dynamic import
+// resolves to.
 jest.mock('../../src/browser/core/Markdown', () => ({
   Markdown: {
     render: jest.fn((src: string) => `<rendered>${src}</rendered>`),
@@ -19,7 +22,7 @@ jest.mock('../../src/browser/extensions/editor/ScrollSync', () => ({
 }));
 
 describe('<PreviewPane>', () => {
-  it('renders the initial markdown immediately (catch-up render)', () => {
+  it('renders the initial markdown after the lazy Markdown chunk loads', async () => {
     const dispatcher = fakeDispatcher();
     const editorManager = {
       getValue: jest.fn(() => '# Hello'),
@@ -37,13 +40,15 @@ describe('<PreviewPane>', () => {
     });
 
     const content = container.querySelector('#preview-content');
-    // PreviewPane's useEffect calls `handler()` once for the catch-up
-    // render so the initial markdown shows up without waiting for an
-    // `editor:render` event.
-    expect(content?.innerHTML).toBe('<rendered># Hello</rendered>');
+
+    // The dynamic `import()` in PreviewPane resolves on a microtask;
+    // wait for the first render to land.
+    await waitFor(() => {
+      expect(content?.innerHTML).toBe('<rendered># Hello</rendered>');
+    });
   });
 
-  it('re-renders the preview when the dispatcher fires editor:render', () => {
+  it('re-renders the preview when the dispatcher fires editor:render', async () => {
     const dispatcher = fakeDispatcher();
     let value = '# v1';
     const editorManager = {
@@ -62,7 +67,9 @@ describe('<PreviewPane>', () => {
     });
 
     const content = container.querySelector('#preview-content');
-    expect(content?.innerHTML).toBe('<rendered># v1</rendered>');
+    await waitFor(() => {
+      expect(content?.innerHTML).toBe('<rendered># v1</rendered>');
+    });
 
     // Mutate the value the manager returns and dispatch — the pane
     // should re-render with the new content.

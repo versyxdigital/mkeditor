@@ -3,13 +3,6 @@ import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { EditorDispatcher } from './events/EditorDispatcher';
-import { EditorManager } from './core/EditorManager';
-import { CompletionProvider } from './core/providers/CompletionProvider';
-import { CommandProvider } from './core/providers/CommandProvider';
-import { MkedLinkProvider } from './core/providers/MkedLinkProvider';
-import { SettingsProvider } from './core/providers/SettingsProvider';
-import { ExportSettingsProvider } from './core/providers/ExportSettingsProvider';
-import { BridgeManager } from './core/BridgeManager';
 import { initI18n, changeLanguage } from './i18n';
 import { markdownStylesheet } from './markdownStyles';
 import { getExecutionBridge, logger } from './util';
@@ -37,42 +30,152 @@ document.head.appendChild(markdownStyleEl);
 initI18n(mode);
 
 if (api === 'web') {
-  // Expose a language setter for web mode.
-  // (Phase 6: the legacy `dom.buttons.delete.classList.remove('d-none')`
-  // is gone — <EditorToolbar> renders the delete button conditionally
-  // on `mode === 'web'`.)
+  // Web-mode language setter (replaced by the desktop variant below
+  // once BridgeManager is constructed).
   window.setLanguage = (lng: string) => {
     changeLanguage(lng);
   };
 }
 
-// Construct the dispatcher and editor manager up-front; Monaco itself is
-// created later, by <EditorHost> inside the React tree.
+// EditorDispatcher carries no Monaco dependency, so it can stay
+// synchronous and the React tree can subscribe to its events as soon
+// as it mounts (even before Monaco's chunk lands).
 const dispatcher = new EditorDispatcher();
-const editorManager = new EditorManager({ mode, dispatcher });
 
 const initialManagers: Managers = {
   mode,
-  editorManager,
+  editorManager: null,
   dispatcher,
   fileManager: null,
   fileTreeManager: null,
   bridgeManager: null,
-  providers: editorManager.providers,
+  providers: {
+    bridge: null,
+    commands: null,
+    completion: null,
+    settings: null,
+    exportSettings: null,
+  },
 };
 
 // Setter handed to us by <App> on first render; we call it from
-// onEditorReady once BridgeManager (and therefore FileManager +
-// FileTreeManager) have been constructed, so React contexts see them.
+// boot() once Monaco's chunk has loaded and the editor manager +
+// providers are constructed.
 let setReactManagers: React.Dispatch<React.SetStateAction<Managers>> | null =
   null;
 
+const reactRoot = document.getElementById('react-root');
+if (!reactRoot) {
+  logger?.error(
+    'index',
+    '#react-root not found in DOM; aborting Monaco mount.',
+  );
+} else {
+  // Mount React immediately with an editor-less Managers object —
+  // the splash overlay is still up so the user sees no blank frame.
+  // The async `boot()` below loads Monaco + the manager classes as
+  // a separate webpack chunk, then pushes the fully-wired managers
+  // into React state via setReactManagers.
+  createRoot(reactRoot).render(
+    React.createElement(App, {
+      initialManagers,
+      onEditorReady,
+      initialSidebarOpen: api !== 'web',
+      registerSetManagers: (setter) => {
+        setReactManagers = setter;
+      },
+    }),
+  );
+
+  void boot();
+}
+
+/**
+ * Lazy-load every Monaco-touching module as a single async chunk and
+ * construct the editor manager + providers. Webpack splits everything
+ * imported here (EditorManager, the five providers, BridgeManager and
+ * its FileManager/FileTreeManager/BridgeListeners, plus Monaco itself)
+ * into a separate bundle that the user only downloads once, behind
+ * the splash overlay.
+ */
+async function boot() {
+  const [
+    { EditorManager },
+    { CommandProvider },
+    { CompletionProvider },
+    { MkedLinkProvider },
+    { SettingsProvider },
+    { ExportSettingsProvider },
+    { BridgeManager },
+  ] = await Promise.all([
+    import('./core/EditorManager'),
+    import('./core/providers/CommandProvider'),
+    import('./core/providers/CompletionProvider'),
+    import('./core/providers/MkedLinkProvider'),
+    import('./core/providers/SettingsProvider'),
+    import('./core/providers/ExportSettingsProvider'),
+    import('./core/BridgeManager'),
+  ]);
+
+  const editorManager = new EditorManager({ mode, dispatcher });
+
+  // Push the EditorManager into React state. <EditorHost>'s useEffect
+  // is gated on a non-null editorManager — it only calls .create()
+  // (which instantiates Monaco) once it sees the manager.
+  setReactManagers?.((prev) => ({
+    ...prev,
+    editorManager,
+    providers: editorManager.providers,
+  }));
+
+  // Stash the constructors that `onEditorReady` needs once Monaco
+  // is mounted. They live in this closure and can't reach the
+  // top-level `onEditorReady` otherwise.
+  pendingFactories = {
+    editorManager,
+    CommandProvider,
+    CompletionProvider,
+    MkedLinkProvider,
+    SettingsProvider,
+    ExportSettingsProvider,
+    BridgeManager,
+  };
+}
+
+/* Holds factories pulled in by `boot()` so onEditorReady can use them
+ * once <EditorHost> has called editorManager.create(). */
+let pendingFactories: {
+  editorManager: import('./core/EditorManager').EditorManager;
+  CommandProvider: typeof import('./core/providers/CommandProvider').CommandProvider;
+  CompletionProvider: typeof import('./core/providers/CompletionProvider').CompletionProvider;
+  MkedLinkProvider: typeof import('./core/providers/MkedLinkProvider').MkedLinkProvider;
+  SettingsProvider: typeof import('./core/providers/SettingsProvider').SettingsProvider;
+  ExportSettingsProvider: typeof import('./core/providers/ExportSettingsProvider').ExportSettingsProvider;
+  BridgeManager: typeof import('./core/BridgeManager').BridgeManager;
+} | null = null;
+
 /**
  * Runs once after <EditorHost> has called editorManager.create(). Wires
- * the providers, the IPC bridge (desktop), and the legacy split/sidebar/
- * splash chrome that depend on a live Monaco instance.
+ * the providers, the IPC bridge (desktop), and the splash dismissal.
  */
 function onEditorReady() {
+  if (!pendingFactories) {
+    logger?.error(
+      'index.onEditorReady',
+      'onEditorReady fired before boot() finished loading manager classes.',
+    );
+    return;
+  }
+  const {
+    editorManager,
+    CommandProvider,
+    CompletionProvider,
+    MkedLinkProvider,
+    SettingsProvider,
+    ExportSettingsProvider,
+    BridgeManager,
+  } = pendingFactories;
+
   const mkeditor = editorManager.getMkEditor();
   if (!mkeditor) {
     logger?.error(
@@ -129,42 +232,13 @@ function onEditorReady() {
     };
   }
 
-  // Push a managers update unconditionally. `editorManager.providers` was
-  // mutated in place by the `provide(...)` calls above, so a fresh
-  // managers object is required to make React contexts (SettingsContext,
-  // ExportSettingsContext) re-evaluate `providers.settings` /
-  // `.exportSettings` and re-subscribe via `useSyncExternalStore`.
-  // Without this, web mode never sees the providers attach and every
-  // setting/modal control becomes a no-op.
+  // Push a managers update unconditionally. `editorManager.providers`
+  // was mutated in place by the `provide(...)` calls above, so a
+  // fresh managers object is required to make React contexts
+  // (SettingsContext, ExportSettingsContext) re-evaluate
+  // `providers.settings`/`.exportSettings` and re-subscribe via
+  // `useSyncExternalStore`.
   setReactManagers?.((prev) => ({ ...prev, ...desktopExtras }));
 
-  // Splits, sidebar visibility, and split-reset are now owned by the
-  // React tree (<Shell> + <Workspace> in App.tsx). The legacy
-  // #sidebar-toggle and #split-reset buttons are bridged via useEffect
-  // listeners inside those components.
-
   showSplashScreen({ duration: 750 });
-}
-
-// Sidebar starts open in desktop mode (legacy behaviour) and collapsed
-// in web mode (legacy had `dom.sidebar.classList.add('d-none')` on boot).
-const initialSidebarOpen = api !== 'web';
-
-const reactRoot = document.getElementById('react-root');
-if (reactRoot) {
-  createRoot(reactRoot).render(
-    React.createElement(App, {
-      initialManagers,
-      onEditorReady,
-      initialSidebarOpen,
-      registerSetManagers: (setter) => {
-        setReactManagers = setter;
-      },
-    }),
-  );
-} else {
-  logger?.error(
-    'index',
-    '#react-root not found in DOM; aborting Monaco mount.',
-  );
 }

@@ -1,8 +1,20 @@
 import * as React from 'react';
 
-import { Markdown } from '../../core/Markdown';
 import { refreshLines } from '../../extensions/editor/ScrollSync';
 import { useManagers } from '../contexts/ManagersContext';
+
+// Markdown.ts pulls in markdown-it, KaTeX, highlight.js core + 13
+// language modules — ~400 KB of code that isn't needed until the
+// preview renders its first frame. Dynamic-import it once on mount
+// so it lands in a separate chunk and stays out of the main bundle.
+type MarkdownAPI = typeof import('../../core/Markdown').Markdown;
+let markdownPromise: Promise<MarkdownAPI> | null = null;
+function loadMarkdown(): Promise<MarkdownAPI> {
+  if (!markdownPromise) {
+    markdownPromise = import('../../core/Markdown').then((m) => m.Markdown);
+  }
+  return markdownPromise;
+}
 
 /**
  * Renders the markdown preview. Subscribes to `editor:render`; on each
@@ -22,17 +34,31 @@ export const PreviewPane: React.FC = () => {
   const contentRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    const handler = () => {
-      if (!contentRef.current) return;
-      contentRef.current.innerHTML = Markdown.render(editorManager.getValue());
+    let cancelled = false;
+    let md: MarkdownAPI | null = null;
+
+    const render = () => {
+      if (!contentRef.current || !md) return;
+      contentRef.current.innerHTML = md.render(editorManager?.getValue() ?? '');
       refreshLines();
     };
-    dispatcher.addEventListener('editor:render', handler);
-    // Catch-up: if EditorHost's useEffect already created Monaco and
-    // dispatched its initial render before this effect ran, the
-    // synchronous call here renders the current content immediately.
-    handler();
-    return () => dispatcher.removeEventListener('editor:render', handler);
+
+    // Load Markdown once, then wire up the render handler. While the
+    // chunk is in flight, any editor:render dispatches are silently
+    // dropped — the catch-up `render()` call after the load handles
+    // the initial state, and subsequent edits stay within the editor's
+    // debounce window so nothing visible is lost.
+    void loadMarkdown().then((api) => {
+      if (cancelled) return;
+      md = api;
+      render();
+    });
+
+    dispatcher.addEventListener('editor:render', render);
+    return () => {
+      cancelled = true;
+      dispatcher.removeEventListener('editor:render', render);
+    };
   }, [dispatcher, editorManager]);
 
   return (

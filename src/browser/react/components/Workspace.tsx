@@ -35,7 +35,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
   return (
     <Group orientation="horizontal" id="editor-preview" groupRef={groupRef}>
-      <Panel id="editor-pane" onResize={() => editorManager.layout()}>
+      <Panel id="editor-pane" onResize={() => editorManager?.layout()}>
         <EditorHost onReady={onEditorReady} />
       </Panel>
       <Separator className="gutter gutter-horizontal" />

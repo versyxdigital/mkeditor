@@ -9,11 +9,18 @@ import type { EditorProviders } from '../../interfaces/Providers';
 
 export interface Managers {
   mode: 'web' | 'desktop';
-  editorManager: EditorManager;
+  /**
+   * Null until the lazy-loaded `core/EditorManager` chunk lands. The
+   * composition root pushes the constructed instance in via
+   * `setReactManagers` once `boot()` completes; <EditorHost>'s
+   * useEffect is gated on this being non-null before calling
+   * `editorManager.create()`.
+   */
+  editorManager: EditorManager | null;
   dispatcher: EditorDispatcher;
-  /** Constructed in later phases; null on initial Phase 2 mount. */
+  /** Constructed in onEditorReady; null until then. */
   fileManager: FileManager | null;
-  /** Constructed in later phases; null on initial Phase 2 mount. */
+  /** Constructed in onEditorReady; null until then. */
   fileTreeManager: FileTreeManager | null;
   /** Desktop-only; null in web mode. Wired in onEditorReady. */
   bridgeManager: BridgeManager | null;

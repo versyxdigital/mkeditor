@@ -67,29 +67,27 @@ module.exports = {
   plugins: [
     new MonacoWebpackPlugin({
       languages: ['markdown'],
+      // Trimmed in the bundle-size pass: dropped `codeAction`,
+      // `cursorUndo`, `fontZoom`, `inlineCompletions`, `inPlaceReplace`,
+      // `referenceSearch`, `wordPartOperations` — none are used by the
+      // markdown editor surface (or are bound to keybindings we don't
+      // expose).
       features: [
         'bracketMatching',
         'caretOperations',
         'clipboard',
-        'codeAction',
         'contextmenu',
-        'cursorUndo',
         'find',
         'folding',
-        'fontZoom',
-        'inlineCompletions',
-        'inPlaceReplace',
         'indentation',
         'lineSelection',
         'linesOperations',
         'links',
         'multicursor',
         'quickCommand',
-        'referenceSearch',
         'suggest',
         'wordHighlighter',
         'wordOperations',
-        'wordPartOperations',
       ],
     }),
     new CopyWebpackPlugin({
