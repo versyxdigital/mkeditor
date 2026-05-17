@@ -29,7 +29,6 @@ import {
 } from './contexts/PropertiesContext';
 import { SettingsContextProvider } from './contexts/SettingsContext';
 import { ExportSettingsContextProvider } from './contexts/ExportSettingsContext';
-import { LegacyShell } from './components/LegacyShell';
 import { Navbar } from './components/Navbar';
 import { TabBar } from './components/TabBar';
 import { Sidebar } from './components/Sidebar';
@@ -127,7 +126,6 @@ export const App: React.FC<AppProps> = ({
                 <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
                   <FilesProvider>
                     <FileTreeProvider>
-                      <LegacyShell />
                       <Navbar />
                       <TabBar />
                       <Shell
@@ -137,11 +135,6 @@ export const App: React.FC<AppProps> = ({
                       <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
                       <BottomToolbarRight />
                       <LazyModals />
-                      {/* Sonner toaster — Phase 8 replaces SweetAlert2
-                          toasts. `position` matches the legacy bottom-end
-                          placement; `richColors` gives the success/error
-                          variants the coloured background SweetAlert2
-                          used to. */}
                       <Toaster
                         position="bottom-right"
                         richColors
