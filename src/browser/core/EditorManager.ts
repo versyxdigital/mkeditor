@@ -207,13 +207,15 @@ export class EditorManager {
    * Track content over the execution bridge.
    */
   public updateBridgedContent({ init }: { init?: boolean } = {}) {
-    if (!this.providers.bridge) {
-      // For web mode, store changes in localStorage
-      if (this.mode === 'web' && this.mkeditor) {
-        localStorage.setItem('mkeditor-content', this.mkeditor.getValue());
-      }
-      return;
+    // In web mode, always mirror the buffer to localStorage so an
+    // untitled scratch tab survives a refresh. Workspace files don't
+    // need this — they're persisted via the WebFileBridge save path —
+    // but the cheap setItem keeps the fallback alive regardless.
+    if (this.mode === 'web' && this.mkeditor) {
+      localStorage.setItem('mkeditor-content', this.mkeditor.getValue());
     }
+
+    if (!this.providers.bridge) return;
 
     const hasChanged = init
       ? false

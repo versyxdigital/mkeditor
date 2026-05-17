@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import type { TreeNode } from '../../core/FileTreeManager';
+import type { WebFileBridge } from '../../core/WebFileBridge';
 import {
   getContextMenuItems,
   type ContextMenuItem as MenuItem,
@@ -11,6 +12,7 @@ import { useManagers } from '../contexts/ManagersContext';
 import { useModals } from '../contexts/ModalsContext';
 import { useUIState } from '../contexts/UIStateContext';
 import { useTranslation } from '../hooks/useTranslation';
+import { Button } from './ui/button';
 import { Icon } from './Icon';
 import {
   ContextMenu,
@@ -40,16 +42,52 @@ import {
  *   keeps the IPC fire-exactly-once.
  */
 export const FileTreePanel: React.FC = () => {
-  const { fileTreeManager, fileManager, bridgeManager } = useManagers();
+  const { mode, fileTreeManager, fileManager, bridgeManager } = useManagers();
   const { nodes, treeRoot } = useFileTree();
   const { activeFile } = useFiles();
   const { openModal } = useModals();
-  const { toggleSidebar } = useUIState();
+  const { sidebarOpen, setSidebarOpen, toggleSidebar } = useUIState();
   // `getContextMenuItems` calls `t(...)` and bakes the resolved strings
   // into the items array. We need the memo to invalidate when i18next
   // finishes loading (its first init resolves AFTER React mounts) and
   // whenever the user picks a new language.
-  const { language } = useTranslation();
+  const { t, language } = useTranslation();
+
+  // Web mode only: track whether a previously-opened workspace handle
+  // exists in IndexedDB so we can offer a one-click "Restore previous
+  // folder" button. Auto-restore on boot only succeeds when the
+  // permission grant is still live; if the browser dropped permission
+  // the user needs a fresh click to re-grant it.
+  const [hasRestorable, setHasRestorable] = React.useState(false);
+  React.useEffect(() => {
+    if (mode !== 'web' || !bridgeManager) return;
+    const webBridge = bridgeManager.bridge as WebFileBridge;
+    if (typeof webBridge.hasRestorableWorkspace !== 'function') return;
+    void webBridge.hasRestorableWorkspace().then((ok) => setHasRestorable(ok));
+  }, [mode, bridgeManager, treeRoot]);
+
+  // Open the sidebar automatically when a web workspace first lands,
+  // since web mode starts with the sidebar collapsed and the user
+  // would otherwise see no feedback after granting folder access.
+  // Fires once per workspace-load via a ref guard so a user-initiated
+  // collapse later in the session isn't fought.
+  const sidebarPushedRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (mode !== 'web' || !treeRoot) return;
+    if (sidebarPushedRef.current === treeRoot) return;
+    sidebarPushedRef.current = treeRoot;
+    if (!sidebarOpen) setSidebarOpen(true);
+  }, [mode, treeRoot, sidebarOpen, setSidebarOpen]);
+
+  const handleOpenFolder = React.useCallback(() => {
+    bridgeManager?.bridge.send('to:folder:open', true);
+  }, [bridgeManager]);
+
+  const handleRestoreWorkspace = React.useCallback(() => {
+    if (!bridgeManager) return;
+    const webBridge = bridgeManager.bridge as WebFileBridge;
+    void webBridge.restoreWorkspace?.(true);
+  }, [bridgeManager]);
 
   const [expandedPaths, setExpandedPaths] = React.useState<Set<string>>(
     () => new Set(),
@@ -178,6 +216,13 @@ export const FileTreePanel: React.FC = () => {
     setContextNode(node ?? null);
   };
 
+  // Web mode empty-state. Surfaces the "Open folder" affordance
+  // inline so the user doesn't have to discover the right-click menu.
+  // The "Restore previous folder" button appears only when a handle
+  // is persisted in IndexedDB but its permission grant has expired —
+  // re-granting requires a user gesture.
+  const showWebEmptyState = mode === 'web' && !treeRoot;
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -186,6 +231,45 @@ export const FileTreePanel: React.FC = () => {
           className="list-none m-0 p-0 flex-1"
           onContextMenu={handleContextMenu}
         >
+          {showWebEmptyState && (
+            <li className="whitespace-normal! break-words px-2 py-3 text-xs text-muted-foreground">
+              <div className="mb-2">{t('sidebar:no_workspace')}</div>
+              <div className="flex flex-col gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleOpenFolder}
+                  className="w-full justify-center"
+                >
+                  {t('sidebar:open_folder')}
+                </Button>
+                {hasRestorable && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleRestoreWorkspace}
+                    className="w-full justify-center"
+                  >
+                    {t('sidebar:restore_workspace')}
+                  </Button>
+                )}
+              </div>
+              {/* Mirrors the preview's `::: warning` block:
+                  soft tinted bg, coloured left border, uppercase
+                  "Warning" label. Body text inherits the sidebar's
+                  muted foreground. */}
+              <div className="mt-3 rounded-md border-l-4 border-[#9a6700] bg-[rgba(154,103,0,0.08)] px-3 py-2 dark:bg-[rgba(187,128,9,0.15)]">
+                <div className="mb-1 text-[0.65rem] font-bold uppercase tracking-wider text-[#9a6700]">
+                  Warning
+                </div>
+                <div className="text-foreground">
+                  {t('sidebar:chromium_only_warning')}
+                </div>
+              </div>
+            </li>
+          )}
           {nodes.map((node) => (
             <NodeRow
               key={node.path}

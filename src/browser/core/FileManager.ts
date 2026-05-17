@@ -177,7 +177,8 @@ export class FileManager {
       }
     }
 
-    mdl.dispose();
+    // Remove the closing tab from the bookkeeping first so the
+    // iterator below doesn't yield it back.
     this.models.delete(path);
     this.originals.delete(path);
     this.tabs.delete(path);
@@ -188,8 +189,15 @@ export class FileManager {
       if (!next.done) {
         const nextPath = next.value;
         const nextInfo = this.tabs.get(nextPath);
-        // Activate the next tab. activateFile will emitChange itself.
+        // Swap Monaco to the next tab's model BEFORE disposing the
+        // outgoing one. If we disposed first, Monaco would briefly be
+        // pointing at a disposed model — fine when the next step
+        // creates a fresh model (the empty-tabs branch), but in this
+        // branch the next model is an existing one we're re-attaching,
+        // and Monaco's internal state doesn't recover cleanly from the
+        // disposed-then-reattach sequence.
         this.activateFile(nextPath, nextInfo?.name);
+        mdl.dispose();
         return;
       }
       // No tabs left — open a fresh untitled.
@@ -200,9 +208,13 @@ export class FileManager {
       this.originals.set(newPath, '');
       this.tabs.set(newPath, { path: newPath, name: newName });
       this.activateFile(newPath, newName);
+      mdl.dispose();
       return;
     }
 
+    // Inactive tab — Monaco doesn't reference this model, so disposing
+    // now is safe.
+    mdl.dispose();
     this.emitChange();
   }
 
@@ -311,6 +323,29 @@ export class FileManager {
 
     this.emitChange();
     return true;
+  }
+
+  /**
+   * Seed an initial `untitled-N` tab from the supplied content. Used in
+   * web mode at boot so the navbar/title bar reflect the current Monaco
+   * buffer (welcome content or restored localStorage) — desktop normally
+   * gets its first tab from the first `from:file:opened` event, but on
+   * web there is no main process to send one.
+   *
+   * Creates a fresh model rather than adopting `mkeditor.getModel()`:
+   * the editor's auto-created model gets disposed by Monaco the first
+   * time `setModel(otherModel)` is called, so adopting it here would
+   * leave the seeded tab pointing at a dead reference as soon as the
+   * user opens a real file.
+   */
+  public seedUntitled(initialContent: string): void {
+    const path = `untitled-${this.untitledCounter++}`;
+    const name = `Untitled ${this.untitledCounter - 1}`;
+    const model = editor.createModel(initialContent, 'markdown');
+    this.models.set(path, model);
+    this.originals.set(path, initialContent);
+    this.addTab(name, path);
+    this.activateFile(path, name);
   }
 
   // ---------------------------------------------------------------------

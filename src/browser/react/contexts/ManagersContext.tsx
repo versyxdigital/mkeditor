@@ -22,7 +22,7 @@ export interface Managers {
   fileManager: FileManager | null;
   /** Constructed in onEditorReady; null until then. */
   fileTreeManager: FileTreeManager | null;
-  /** Desktop-only; null in web mode. Wired in onEditorReady. */
+  /** Wired in onEditorReady (both modes — web uses WebFileBridge). */
   bridgeManager: BridgeManager | null;
   /**
    * Live reference to `editorManager.providers`. The map is mutated by

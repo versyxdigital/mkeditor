@@ -91,7 +91,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   };
 
   const handleSave = () => {
-    if (mode === 'desktop' && bridgeManager) {
+    if (bridgeManager) {
       bridgeManager.saveContentToFile();
     } else {
       HTMLExporter.webExport(editorManager?.getValue() ?? '', 'text/plain', '.md');
@@ -100,7 +100,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
   const handleExport = (type: 'html' | 'pdf') => () => {
     const content = buildExportHtml();
-    if (mode === 'desktop' && bridgeManager) {
+    if (bridgeManager) {
       bridgeManager.exportToDifferentFormat({ content, type });
     } else {
       HTMLExporter.webExport(

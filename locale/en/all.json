@@ -215,7 +215,11 @@
     "update_downloaded": "Update {{version}} has been downloaded, restart to update."
   },
   "sidebar": {
-    "explorer": "Explorer"
+    "explorer": "Explorer",
+    "no_workspace": "No folder is open.",
+    "open_folder": "Open folder",
+    "restore_workspace": "Restore previous folder",
+    "chromium_only_warning": "Folder access is only available in Chromium-based browsers (Chrome, Edge, Brave, Opera)."
   },
   "toolbar": {
     "reset_split": "Reset editor/preview split",

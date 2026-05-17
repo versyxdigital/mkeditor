@@ -107,6 +107,7 @@ async function boot() {
     { SettingsProvider },
     { ExportSettingsProvider },
     { BridgeManager },
+    { WebFileBridge },
   ] = await Promise.all([
     import('./core/EditorManager'),
     import('./core/providers/CommandProvider'),
@@ -115,6 +116,7 @@ async function boot() {
     import('./core/providers/SettingsProvider'),
     import('./core/providers/ExportSettingsProvider'),
     import('./core/BridgeManager'),
+    import('./core/WebFileBridge'),
   ]);
 
   const editorManager = new EditorManager({ mode, dispatcher });
@@ -139,6 +141,7 @@ async function boot() {
     SettingsProvider,
     ExportSettingsProvider,
     BridgeManager,
+    WebFileBridge,
   };
 }
 
@@ -152,6 +155,7 @@ let pendingFactories: {
   SettingsProvider: typeof import('./core/providers/SettingsProvider').SettingsProvider;
   ExportSettingsProvider: typeof import('./core/providers/ExportSettingsProvider').ExportSettingsProvider;
   BridgeManager: typeof import('./core/BridgeManager').BridgeManager;
+  WebFileBridge: typeof import('./core/WebFileBridge').WebFileBridge;
 } | null = null;
 
 /**
@@ -174,6 +178,7 @@ function onEditorReady() {
     SettingsProvider,
     ExportSettingsProvider,
     BridgeManager,
+    WebFileBridge,
   } = pendingFactories;
 
   const mkeditor = editorManager.getMkEditor();
@@ -190,24 +195,34 @@ function onEditorReady() {
   editorManager.provide('commands', new CommandProvider(mkeditor));
   editorManager.provide('completion', new CompletionProvider(mkeditor));
 
-  let desktopExtras: Partial<Managers> = {};
+  // Pick the bridge implementation that matches the runtime. Both modes
+  // now construct a BridgeManager so the renderer side (FileManager,
+  // FileTreeManager, BridgeListeners, the sidebar's right-click menu)
+  // is mode-agnostic. The web bridge translates the same channel calls
+  // into File System Access API operations.
+  const bridge = api !== 'web' ? api : new WebFileBridge();
+  const bridgeManager = new BridgeManager(bridge, mkeditor, dispatcher);
+  bridgeManager.provide('settings', editorManager.providers.settings);
+  bridgeManager.provide(
+    'exportSettings',
+    editorManager.providers.exportSettings,
+  );
+  bridgeManager.provide('commands', editorManager.providers.commands);
+  editorManager.provide('bridge', bridgeManager);
+
+  new MkedLinkProvider(mkeditor, (path) =>
+    bridgeManager.fileTreeManager.hasFile(path),
+  );
+
   if (api !== 'web') {
     api.receive('from:i18n:set', (lng: string) => {
       changeLanguage(lng);
     });
 
-    const bridgeManager = new BridgeManager(api, mkeditor, dispatcher);
-    bridgeManager.provide('settings', editorManager.providers.settings);
-    bridgeManager.provide(
-      'exportSettings',
-      editorManager.providers.exportSettings,
-    );
-    bridgeManager.provide('commands', editorManager.providers.commands);
-    editorManager.provide('bridge', bridgeManager);
-
     // Phase 9: wire each provider's persist callback directly into the
     // bridge instead of routing through an `editor:bridge:settings`
-    // dispatcher event.
+    // dispatcher event. Web mode persists via localStorage inside the
+    // settings providers themselves, so the handler isn't wired there.
     editorManager.providers.settings?.setPersistHandler((s) =>
       bridgeManager.saveSettingsToFile(s),
     );
@@ -215,30 +230,34 @@ function onEditorReady() {
       bridgeManager.saveSettingsToFile(s),
     );
 
-    new MkedLinkProvider(mkeditor, (path) =>
-      bridgeManager.fileTreeManager.hasFile(path),
-    );
-
     editorManager.updateBridgedContent({ init: true });
 
     window.setLanguage = (lng: string) => {
       bridgeManager.setLanguage(lng);
     };
+  } else {
+    // Web mode: seed FileManager with an `untitled-1` tab so the
+    // current Monaco buffer (welcome content or restored localStorage)
+    // has a tab and shows up in the title bar — symmetry with how
+    // BridgeListeners.from:file:opened normally creates the first tab.
+    bridgeManager.fileManager.seedUntitled(mkeditor.getValue());
 
-    desktopExtras = {
-      bridgeManager,
-      fileManager: bridgeManager.fileManager,
-      fileTreeManager: bridgeManager.fileTreeManager,
-    };
+    // Try to silently restore a previously opened workspace. If the
+    // permission grant is still live, this populates the file tree
+    // without any prompt. Otherwise the user must click "Open folder"
+    // (granting permission requires a user gesture).
+    void (bridge as InstanceType<typeof WebFileBridge>).restoreWorkspace(
+      false,
+    );
   }
 
-  // Push a managers update unconditionally. `editorManager.providers`
-  // was mutated in place by the `provide(...)` calls above, so a
-  // fresh managers object is required to make React contexts
-  // (SettingsContext, ExportSettingsContext) re-evaluate
-  // `providers.settings`/`.exportSettings` and re-subscribe via
-  // `useSyncExternalStore`.
-  setReactManagers?.((prev) => ({ ...prev, ...desktopExtras }));
+  setReactManagers?.((prev) => ({
+    ...prev,
+    bridgeManager,
+    fileManager: bridgeManager.fileManager,
+    fileTreeManager: bridgeManager.fileTreeManager,
+  }));
 
   showSplashScreen({ duration: 750 });
 }
+
