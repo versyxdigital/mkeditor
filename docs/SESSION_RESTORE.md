@@ -97,7 +97,7 @@ interface SessionTab {
 | --- | ----------------------------------------------------------- | ------------- |
 | 1   | Main-process infrastructure (AppSession + IPC + atomic write) | 🟢 2026-05-17 |
 | 2   | Renderer integration (serialize/restore + debounce + toast)   | 🟢 2026-05-17 |
-| 3   | Web mode parity (localStorage + handle re-walk)               | 🔵            |
+| 3   | Web mode parity (localStorage + handle re-walk)               | 🟢 2026-05-17 |
 
 A phase is **complete** only when its exit criteria are met _and_ `npm test`, `npm run lint`, and a manual smoke (desktop + web for P3) pass. **Each phase ends with a focused commit (or small commit series) on a `feature/session-phase-N-<slug>` branch.**
 
