@@ -59,6 +59,39 @@ const printOverrides = `
 }
 `;
 
+/**
+ * Inline script baked into exported HTML so the per-codeblock copy
+ * buttons keep working in a standalone document (no React, no toast
+ * library). Decodes the base64 `data-source` attribute that Markdown.ts
+ * stamps on each `.md-codeblock` wrapper, writes the original source
+ * to the clipboard, and gives brief visual feedback by toggling a
+ * `.is-copied` class on the button for 1.2s.
+ */
+const codeblockCopyScript = `
+(function () {
+  if (typeof document === 'undefined') return;
+  document.addEventListener('click', function (event) {
+    var target = event.target;
+    if (!target || !target.closest) return;
+    var btn = target.closest('.md-codeblock-copy');
+    if (!btn) return;
+    var wrapper = btn.closest('.md-codeblock');
+    var encoded = wrapper && wrapper.getAttribute('data-source');
+    if (!encoded) return;
+    try {
+      var binary = atob(encoded);
+      var bytes = Uint8Array.from(binary, function (c) { return c.charCodeAt(0); });
+      var text = new TextDecoder().decode(bytes);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text);
+      }
+      btn.classList.add('is-copied');
+      setTimeout(function () { btn.classList.remove('is-copied'); }, 1200);
+    } catch (err) { /* noop */ }
+  });
+})();
+`;
+
 type ProviderKey = keyof typeof cdn;
 
 const providers: ProviderKey[] = ['highlightjs', 'katex'];
@@ -112,6 +145,12 @@ export class HTMLExporter {
         document.createTextNode(markdownStylesheet + printOverrides),
       );
       document.head.appendChild(style);
+
+      // Copy-button handler for the .md-codeblock wrappers Markdown.ts
+      // emits. Self-contained — no toast library in the export.
+      const copyScript = document.createElement('script');
+      copyScript.appendChild(document.createTextNode(codeblockCopyScript));
+      document.body.appendChild(copyScript);
 
       // User-driven body styles. These cascade through to
       // #preview-content via `color: inherit` / `font-size: inherit`

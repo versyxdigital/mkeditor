@@ -173,6 +173,120 @@ export const markdownStylesheet = `
   font-size: 100%;
 }
 
+/* ===== Fenced code block wrapper =====
+ * The Markdown.ts renderer wraps every fenced block (and indented block
+ * with a recognised language) with a header bar carrying the language
+ * label and a copy button. The wrapper supplies the rounded corners +
+ * border + background; the inner <pre> drops its own to sit flush.
+ */
+
+#preview-content .md-codeblock {
+  margin: 0 0 16px 0;
+  background: var(--md-muted-bg);
+  border: 1px solid var(--md-border);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 85%;
+}
+
+#preview-content .md-codeblock-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  color: var(--md-muted-fg);
+  background: var(--md-muted-bg);
+  border-bottom: 1px solid var(--md-border);
+  line-height: 1;
+}
+
+#preview-content .md-codeblock-lang {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+#preview-content .md-codeblock-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7em;
+  height: 1.7em;
+  padding: 0;
+  margin-left: auto;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+#preview-content .md-codeblock-copy:hover {
+  background: rgba(127, 127, 127, 0.18);
+  color: var(--foreground, inherit);
+}
+
+#preview-content .md-codeblock-copy:active {
+  transform: scale(0.94);
+}
+
+#preview-content .md-codeblock-copy svg {
+  width: 1em;
+  height: 1em;
+}
+
+#preview-content .md-codeblock > pre {
+  margin: 0;
+  padding: 12px 16px;
+  background: transparent;
+  border-radius: 0;
+  font-size: 100%;
+}
+
+/* Terminal-style variant: dark macOS-style chrome with traffic lights. */
+
+#preview-content .md-codeblock--terminal {
+  background: #1f1f23;
+  border-color: #0f0f12;
+  color: #e6e6e6;
+}
+
+#preview-content .md-codeblock--terminal .md-codeblock-header {
+  background: #2b2b30;
+  color: #b8b8c0;
+  border-bottom-color: #0f0f12;
+}
+
+#preview-content .md-codeblock--terminal .md-codeblock-copy:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+#preview-content .md-codeblock--terminal > pre,
+#preview-content .md-codeblock--terminal > pre > code {
+  background: transparent;
+  color: #e6e6e6;
+}
+
+#preview-content .md-codeblock-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#preview-content .md-codeblock-dots i {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+#preview-content .md-codeblock-dots i:nth-child(1) { background: #ff5f56; }
+#preview-content .md-codeblock-dots i:nth-child(2) { background: #ffbd2e; }
+#preview-content .md-codeblock-dots i:nth-child(3) { background: #27c93f; }
+
 /* ===== Tables ===== */
 
 #preview-content table {
@@ -359,6 +473,25 @@ export const markdownStylesheet = `
   #preview-content code,
   #preview-content kbd {
     background: #f6f8fa !important;
+  }
+  #preview-content .md-codeblock,
+  #preview-content .md-codeblock--terminal {
+    background: #f6f8fa !important;
+    color: #000 !important;
+    border-color: #d1d9e0 !important;
+  }
+  #preview-content .md-codeblock-header {
+    background: #f6f8fa !important;
+    color: #59636e !important;
+    border-bottom-color: #d1d9e0 !important;
+  }
+  #preview-content .md-codeblock--terminal > pre,
+  #preview-content .md-codeblock--terminal > pre > code {
+    color: #000 !important;
+  }
+  #preview-content .md-codeblock-copy,
+  #preview-content .md-codeblock-dots {
+    display: none !important;
   }
 }
 `;
