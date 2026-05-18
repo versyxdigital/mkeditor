@@ -77,7 +77,6 @@ export function fakeFileTreeManager(
 
   return {
     requestDirectoryContents: jest.fn(),
-    hasFile: jest.fn(() => false),
     on: jest.fn((event: 'change', listener: () => void) => {
       if (event !== 'change') throw new Error(`unsupported event ${event}`);
       listeners.add(listener);

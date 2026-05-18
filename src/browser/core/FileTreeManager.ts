@@ -198,15 +198,6 @@ export class FileTreeManager {
     this.listeners.forEach((l) => l());
   }
 
-  /**
-   * Return true if the given absolute path matches a file node anywhere
-   * in the currently-loaded tree. Used by `MkedLinkProvider` to decide
-   * whether an `mked://` link is openable.
-   */
-  public hasFile(path: string): boolean {
-    return hasFileInNodes(this.snapshot.nodes, path);
-  }
-
   // ---------------------------------------------------------------------
   // Internal helpers
   // ---------------------------------------------------------------------
@@ -254,20 +245,6 @@ function sortNodes(nodes: TreeNode[]): TreeNode[] {
     }
     return a.type === 'directory' ? -1 : 1;
   });
-}
-
-function hasFileInNodes(nodes: TreeNode[], path: string): boolean {
-  for (const node of nodes) {
-    if (node.type === 'file' && node.path === path) return true;
-    if (
-      node.type === 'directory' &&
-      node.children &&
-      hasFileInNodes(node.children, path)
-    ) {
-      return true;
-    }
-  }
-  return false;
 }
 
 function findInsertIndex(children: TreeNode[], node: TreeNode): number {

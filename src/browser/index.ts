@@ -239,9 +239,12 @@ function onEditorReadyInner() {
       editorManager.providers.settings?.getSetting('sessionRestore') ?? true,
   );
 
-  new MkedLinkProvider(mkeditor, (path) =>
-    bridgeManager.fileTreeManager.hasFile(path),
-  );
+  // Source the active file from FileManager (renderer-side, always
+  // current). Reading via the main process here would lag tab switches
+  // — main only learns about `from:file:opened`, not about renderer-
+  // driven `activateFile` calls — so relative links in any non-most-
+  // recently-opened tab would resolve against the wrong base dir.
+  new MkedLinkProvider(mkeditor, () => bridgeManager.fileManager.activeFile);
 
   if (api !== 'web') {
     api.receive('from:i18n:set', (lng: string) => {
