@@ -29,7 +29,7 @@ You implement one self-contained slice of an AI Assistant phase. You are spawned
   - **Right-sidebar view state** (`open`, `size`) extends `SessionPayload.assistant`, not `assistant.json`.
 - **IPC channels:** if your slice introduces or uses a new channel, it **must** be whitelisted in `src/app/preload.ts`. If `preload.ts` is on your file list, do it. If it isn't, stop and report so the main session can.
 - **No commits, no branches, no PRs, no `git` writes.** Implementation only.
-- **No `npm install` or dependency changes** — those are the main session's job. Allowed deps per the plan are `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `ollama-ai-provider`, `zod` (P1) — nothing else.
+- **No `npm install` or dependency changes** — those are the main session's job. Allowed deps per the plan are `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `ollama-ai-provider-v2`, `zod` (P1) — nothing else.
 - **i18n:** new assistant strings go in `locale/en/assistant.json` only. Other locales fall back via `fallbackLng: 'en'` unless your briefing specifically asks you to mirror.
 - **Mode parity:** if your file branches on `mode === 'web'` vs `'desktop'`, the branch belongs in `AssistantTransport`. Other files take the transport as a dep.
 - **Markdown rendering:** assistant message bubbles reuse the existing `Markdown` manager. Do not instantiate a second `markdown-it`.

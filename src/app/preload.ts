@@ -40,6 +40,15 @@ const senderWhitelist = [
   'to:edit:cut',
   'to:edit:copy',
   'to:edit:paste',
+  // AI Assistant (P1)
+  'to:ai:chat',
+  'to:ai:cancel',
+  'to:ai:tool-result',
+  'to:ai:config:get',
+  'to:ai:config:set',
+  'to:ai:key:set',
+  'to:ai:key:clear',
+  'to:ai:ollama:list',
 ];
 
 // Can be sent from the main process and received
@@ -63,6 +72,13 @@ const receiverWhitelist = [
   'from:path:renamed',
   'from:i18n:set',
   'from:window:state',
+  // AI Assistant (P1)
+  'from:ai:chunk',
+  'from:ai:tool-call',
+  'from:ai:done',
+  'from:ai:error',
+  'from:ai:config',
+  'from:ai:ollama:models',
 ];
 
 /**

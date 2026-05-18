@@ -70,6 +70,8 @@
     "webpack-cli": "^7.0.2"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.78",
+    "@ai-sdk/openai": "^3.0.64",
     "@fortawesome/fontawesome-svg-core": "^7.2.0",
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
     "@fortawesome/react-fontawesome": "^3.3.1",
@@ -83,6 +85,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@vscode/markdown-it-katex": "^1.1.2",
+    "ai": "^6.0.184",
     "circle-buffer": "^0.2.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -93,11 +96,13 @@
     "markdown-it": "^14.1.0",
     "markdown-it-container": "^4.0.0",
     "monaco-editor": "^0.55.1",
+    "ollama-ai-provider-v2": "^3.5.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-resizable-panels": "^4.11.1",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
   },
   "build": {
     "appId": "com.mkeditor.app",

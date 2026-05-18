@@ -3,8 +3,19 @@ import { dirname, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
 import type { Logger, LogMessage } from '../interfaces/Logging';
 import type { SessionPayload } from '../interfaces/Session';
+import type {
+  CancelRequest,
+  ChatRequest,
+  ConfigSetRequest,
+  KeyClearRequest,
+  KeySetRequest,
+  OllamaListRequest,
+  ToolResultRequest,
+} from '../interfaces/Assistant';
 import { AppSession } from './AppSession';
 import { AppStorage } from './AppStorage';
+import { AssistantConfig } from './AssistantConfig';
+import { AssistantKeyStore } from './AssistantKeyStore';
 import { normalizeLanguage } from '../util';
 /**
  * AppBridge
@@ -23,6 +34,7 @@ export class AppBridge {
   private providers: SettingsProviders = {
     logger: null,
     settings: null,
+    assistant: null,
   };
 
   /**
@@ -265,6 +277,70 @@ export class AppBridge {
         this.providers.logger?.log.error('[to:i18n:set]', e);
       }
     });
+
+    // ---- AI Assistant (P1) ----------------------------------------
+    //
+    // All `to:ai:*` channels delegate to the AppAssistant service the
+    // composition root injects via `provide('assistant', ...)`. Each
+    // handler returns silently when no AppAssistant is registered so
+    // the bridge degrades gracefully in test contexts.
+
+    ipcMain.on('to:ai:chat', (_e, payload: ChatRequest) => {
+      this.providers.assistant?.chat(payload);
+    });
+
+    ipcMain.on('to:ai:cancel', (_e, payload: CancelRequest) => {
+      this.providers.assistant?.cancel(payload);
+    });
+
+    ipcMain.on('to:ai:tool-result', (_e, payload: ToolResultRequest) => {
+      this.providers.assistant?.submitToolResult(payload);
+    });
+
+    ipcMain.on('to:ai:config:get', () => {
+      this.pushAssistantConfig();
+    });
+
+    ipcMain.on('to:ai:config:set', (_e, payload: ConfigSetRequest) => {
+      AssistantConfig.update(payload);
+      this.pushAssistantConfig();
+    });
+
+    ipcMain.on('to:ai:key:set', (_e, payload: KeySetRequest) => {
+      // The key value lives in `payload.key`; never log it, never echo
+      // it back. AssistantKeyStore encrypts via safeStorage. The
+      // follow-up config push only carries `hasKey: boolean`.
+      AssistantKeyStore.setKey(payload.provider, payload.key);
+      this.pushAssistantConfig();
+    });
+
+    ipcMain.on('to:ai:key:clear', (_e, payload: KeyClearRequest) => {
+      AssistantKeyStore.clearKey(payload.provider);
+      this.pushAssistantConfig();
+    });
+
+    ipcMain.on('to:ai:ollama:list', (_e, payload: OllamaListRequest) => {
+      void this.providers.assistant?.listOllamaModels(payload);
+    });
+  }
+
+  /**
+   * Push the sanitized assistant config to the renderer over
+   * `from:ai:config`. Triggered by the `to:ai:config:get` handler, by
+   * every config/key mutation, and by main.ts on `did-finish-load` so
+   * the renderer hydrates on first paint.
+   */
+  pushAssistantConfig(): void {
+    if (!this.providers.assistant) return;
+    try {
+      if (this.context.isDestroyed()) return;
+      this.context.webContents.send(
+        'from:ai:config',
+        this.providers.assistant.buildSanitizedConfig(),
+      );
+    } catch (e) {
+      this.providers.logger?.log.error('[from:ai:config]', e);
+    }
   }
 
   /**

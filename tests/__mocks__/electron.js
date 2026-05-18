@@ -64,11 +64,25 @@ const protocol = {
   handle: jest.fn(),
 };
 
+// safeStorage mock — used by AssistantKeyStore.
+// Tests that exercise the encryption path replace these with jest.fn()
+// per-suite. The defaults give a working round-trip via base64 + a
+// fixed prefix so jest.requireActual paths still behave sanely.
+const safeStorage = {
+  isEncryptionAvailable: jest.fn(() => true),
+  encryptString: jest.fn((s) => Buffer.from('ENC:' + s, 'utf-8')),
+  decryptString: jest.fn((buf) => {
+    const text = buf.toString('utf-8');
+    return text.startsWith('ENC:') ? text.slice(4) : text;
+  }),
+};
+
 module.exports = {
   app,
   BrowserWindow,
   nativeImage,
   nativeTheme,
+  safeStorage,
   shell,
   Tray,
   dialog,

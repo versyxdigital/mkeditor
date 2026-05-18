@@ -21,7 +21,7 @@ You are executing **Phase $1** of the AI Assistant feature described in `docs/AI
 5. **Implement.** Execute tasks in the listed order.
    - **Parallel sub-agents are allowed** only when sub-tasks have strictly non-overlapping file ownership. Dispatch via the `assistant-phase-executor` agent, briefing each one with its exact file list and the rule "do not touch any other files." Sequential or shared-file work stays in this session.
    - **Shared infrastructure** is always your responsibility — never delegate it to a sub-agent. Specifically: `src/app/preload.ts`, `src/app/AppBridge.ts`, `src/app/main.ts`, `src/browser/core/BridgeManager.ts`, `src/browser/core/BridgeListeners.ts`, `src/browser/react/App.tsx`, `src/browser/react/contexts/UIStateContext.tsx`, `src/browser/react/contexts/ManagersContext.tsx`, `src/app/lib/AppSession.ts`, `src/browser/core/FileManager.ts` session methods, `webpack.config.js`, `package.json`.
-   - **Dependency installs** (P1: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `ollama-ai-provider`, `zod`) are also your responsibility — confirm the Decisions table or task list authorises any new dep before installing.
+   - **Dependency installs** (P1: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `ollama-ai-provider-v2`, `zod`) are also your responsibility — confirm the Decisions table or task list authorises any new dep before installing.
    - If implementation reveals a planning gap or wrong assumption, **stop, surface the question to the user, update `docs/AI_ASSISTANT.md` first, then resume**.
 
 6. **End-of-phase review.** Once implementation tasks are complete, dispatch all three reviewers **in parallel** (single message, three `Agent` tool calls):

@@ -43,10 +43,10 @@ You audit an AI Assistant change for architectural rule violations. You do **not
 
 ### Rule 4 — Single Vercel AI SDK surface
 
-- `ai` + `@ai-sdk/openai` + `@ai-sdk/anthropic` + `ollama-ai-provider` are imported only in `src/app/lib/AppAssistant.ts` (desktop) and `src/browser/core/AssistantTransport.ts`'s `WebTransport` (web).
+- `ai` + `@ai-sdk/openai` + `@ai-sdk/anthropic` + `ollama-ai-provider-v2` are imported only in `src/app/lib/AppAssistant.ts` (desktop) and `src/browser/core/AssistantTransport.ts`'s `WebTransport` (web).
 - No other file constructs a provider client. No `new OpenAI(...)`, no `new Anthropic(...)`, no raw `fetch('https://api.openai.com/...')` reintroduced.
 - `webpack.config.js` `externals` keeps the SDK out of the desktop renderer bundle (the renderer talks via IPC).
-- Grep: `git diff main...HEAD | grep -E "from ['\"]@ai-sdk|from ['\"]ollama-ai-provider|from ['\"]ai['\"]"`
+- Grep: `git diff main...HEAD | grep -E "from ['\"]@ai-sdk|from ['\"]ollama-ai-provider-v2|from ['\"]ai['\"]"`
 
 ### Rule 5 — Single tool catalog
 

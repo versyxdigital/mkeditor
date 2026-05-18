@@ -13,6 +13,7 @@ import log from 'electron-log/main';
 import { existsSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 import { join, normalize } from 'path';
+import { AppAssistant } from './lib/AppAssistant';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
 import { AppSession } from './lib/AppSession';
@@ -120,6 +121,14 @@ function main(file: string | null = null) {
   const bridge = new AppBridge(context);
   bridge.provide('settings', settings);
   bridge.provide('logger', logconfig);
+
+  // AI Assistant (P1) — service the bridge delegates `to:ai:*` to. The
+  // SDK clients and `safeStorage`-encrypted keys live entirely inside
+  // this instance; the renderer reaches it only through the IPC surface
+  // AppBridge whitelists.
+  const assistant = new AppAssistant(context);
+  bridge.provide('assistant', assistant);
+
   bridge.register(); // Register all IPC event listeners
 
   // Load the electron application menu. On Windows + Linux this calls
@@ -180,6 +189,13 @@ function main(file: string | null = null) {
           ? AppSession.buildRestoreEnvelope(AppSession.load())
           : { session: null, missing: [], contents: {} },
       );
+
+      // Hydrate the renderer with the sanitized AI Assistant config
+      // (P1). The payload exposes per-provider `hasKey: boolean` only —
+      // never the key value. The renderer's AssistantManager (P2/P3)
+      // uses this to decide which provider tabs to show.
+      bridge.pushAssistantConfig();
+
       AppStorage.openActiveFile(context, file);
     }
   });
