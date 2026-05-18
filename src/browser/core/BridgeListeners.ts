@@ -125,6 +125,7 @@ export function registerBridgeListeners(
     const mdl = editor.createModel(content, 'markdown');
     files.models.set(path, mdl);
     files.originals.set(path, content);
+    files.trackTab(path, mdl);
     files.addTab(name, path);
 
     tree.addFileToTree(path);

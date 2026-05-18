@@ -29,30 +29,6 @@
     background-color: #121212 !important;
   }
 
-  #editor-tabs {
-    background-color: #1c1c1c !important;
-    border-bottom: 1px solid #252525 !important;
-
-    li {
-      border-color: #313131 !important;
-      border-top: 0px;
-      border-bottom: 1px solid #1a1a1a !important;
-
-      &:hover {
-        background-color: #353535 !important;
-      }
-
-      &.active {
-        background-color: #353535 !important;
-        border-bottom: 1px solid #696969 !important;
-      }
-
-      a {
-        color: #c9c9c9 !important;
-      }
-    }
-  }
-
   #file-tree {
     color: #c3c3c3 !important;
   }

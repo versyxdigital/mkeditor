@@ -13,6 +13,13 @@ import { t } from '../i18n';
 export interface TabInfo {
   path: string;
   name: string;
+  /**
+   * True when the tab's Monaco model has unsaved changes (current
+   * alternative-version-id differs from the baseline captured at
+   * load/save time). Flips back to false when the user undoes back
+   * to baseline, and after a successful save.
+   */
+  dirty: boolean;
 }
 
 export interface FilesSnapshot {
@@ -54,6 +61,24 @@ export class FileManager {
 
   /** Per-tab Monaco view state. */
   private viewStates: Map<string, editor.ICodeEditorViewState> = new Map();
+
+  /**
+   * Per-tab baseline alternative-version-id. Stored at load/save time;
+   * dirty state is (current alt-version !== baseline). Monaco resets
+   * the alt-version when the user undoes back to the saved revision,
+   * so comparing IDs is correct even after redo chains.
+   */
+  private baselineVersions: Map<string, number> = new Map();
+
+  /**
+   * Per-tab `onDidChangeContent` disposables. Listener compares the
+   * model's current alt-version against the stored baseline and emits
+   * a change event only when the dirty flag actually flips.
+   */
+  private modelListeners: Map<string, { dispose: () => void }> = new Map();
+
+  /** Per-tab dirty flag, surfaced via the snapshot. */
+  private dirtyByPath: Map<string, boolean> = new Map();
 
   /** counter for untitled files */
   public untitledCounter = 1;
@@ -165,10 +190,65 @@ export class FileManager {
   /** Rebuild the snapshot and notify all subscribed listeners. */
   private emitChange() {
     this.snapshot = {
-      tabs: Array.from(this.tabs.values()),
+      tabs: Array.from(this.tabs.values()).map((info) => ({
+        ...info,
+        dirty: this.dirtyByPath.get(info.path) ?? false,
+      })),
       activeFile: this.activeFile,
     };
     this.listeners.forEach((l) => l());
+  }
+
+  /**
+   * Start tracking dirty state for `path` against `model`. Captures the
+   * model's current alternative-version-id as the baseline and attaches
+   * a content listener that flips `dirtyByPath[path]` whenever the
+   * current alt-version diverges from (or returns to) the baseline.
+   *
+   * Called by FileManager wherever a model is created/swapped, and
+   * by BridgeListeners after its inline `models.set` in the
+   * `from:file:opened` handler.
+   */
+  public trackTab(path: string, model: editor.ITextModel): void {
+    this.modelListeners.get(path)?.dispose();
+    this.baselineVersions.set(path, model.getAlternativeVersionId());
+    const wasDirty = this.dirtyByPath.get(path) ?? false;
+    this.dirtyByPath.set(path, false);
+    const disposable = model.onDidChangeContent(() => {
+      const baseline = this.baselineVersions.get(path);
+      if (baseline === undefined) return;
+      const nextDirty = model.getAlternativeVersionId() !== baseline;
+      const prevDirty = this.dirtyByPath.get(path) ?? false;
+      if (prevDirty !== nextDirty) {
+        this.dirtyByPath.set(path, nextDirty);
+        this.emitChange();
+      }
+    });
+    this.modelListeners.set(path, disposable);
+    if (wasDirty) this.emitChange();
+  }
+
+  /**
+   * Reset the dirty baseline for `path` to the model's current
+   * alt-version. Called after a successful save (and any other moment
+   * the on-disk content catches up to the editor buffer).
+   */
+  private markTabClean(path: string): void {
+    const model = this.models.get(path);
+    if (!model) return;
+    this.baselineVersions.set(path, model.getAlternativeVersionId());
+    if (this.dirtyByPath.get(path)) {
+      this.dirtyByPath.set(path, false);
+      this.emitChange();
+    }
+  }
+
+  /** Tear down dirty-tracking for a tab being closed/renamed. */
+  private detachTabTracking(path: string): void {
+    this.modelListeners.get(path)?.dispose();
+    this.modelListeners.delete(path);
+    this.baselineVersions.delete(path);
+    this.dirtyByPath.delete(path);
   }
 
   // ---------------------------------------------------------------------
@@ -183,7 +263,11 @@ export class FileManager {
    * @param path - the file path
    */
   public addTab(name: string, path: string) {
-    this.tabs.set(path, { path, name });
+    this.tabs.set(path, {
+      path,
+      name,
+      dirty: this.dirtyByPath.get(path) ?? false,
+    });
     this.emitChange();
     this.scheduleSessionSave();
   }
@@ -244,6 +328,7 @@ export class FileManager {
     this.originals.delete(path);
     this.tabs.delete(path);
     this.viewStates.delete(path);
+    this.detachTabTracking(path);
 
     if (this.activeFile === path) {
       this.activeFile = null;
@@ -269,7 +354,8 @@ export class FileManager {
       const model = editor.createModel('', 'markdown');
       this.models.set(newPath, model);
       this.originals.set(newPath, '');
-      this.tabs.set(newPath, { path: newPath, name: newName });
+      this.tabs.set(newPath, { path: newPath, name: newName, dirty: false });
+      this.trackTab(newPath, model);
       this.activateFile(newPath, newName);
       mdl.dispose();
       this.scheduleSessionSave();
@@ -332,17 +418,23 @@ export class FileManager {
     // cursor/scroll state captured under the untitled key would now
     // point at lines that no longer exist. Drop it.
     this.viewStates.delete(oldPath);
+    // Drop the old path's dirty tracking; rebind below under newPath.
+    this.detachTabTracking(oldPath);
 
     this.models.set(newPath, mdl);
     this.originals.set(newPath, content);
     mdl.setValue(content);
+    // Reset the dirty baseline to the freshly-loaded content's
+    // alt-version so the "real file" tab opens clean even though the
+    // setValue above bumped the model's revision counter.
+    this.trackTab(newPath, mdl);
 
     // Rebuild tabs map preserving insertion order, swapping the
     // untitled entry's key + name in place.
     const next: Map<string, TabInfo> = new Map();
     for (const [path, info] of this.tabs) {
       if (path === oldPath) {
-        next.set(newPath, { path: newPath, name: newName });
+        next.set(newPath, { path: newPath, name: newName, dirty: false });
       } else {
         next.set(path, info);
       }
@@ -375,14 +467,33 @@ export class FileManager {
       this.viewStates.set(newPath, view);
     }
 
+    // Migrate dirty bookkeeping to the new path. Drop the listener
+    // under oldPath and re-attach under newPath against the same
+    // model so the alt-version baseline survives the rename.
+    const wasDirty = this.dirtyByPath.get(oldPath) ?? false;
+    const baseline = this.baselineVersions.get(oldPath);
+    this.detachTabTracking(oldPath);
+
     this.models.delete(oldPath);
     this.models.set(newPath, mdl);
+
+    this.trackTab(newPath, mdl);
+    if (baseline !== undefined) {
+      this.baselineVersions.set(newPath, baseline);
+    }
+    if (wasDirty) {
+      this.dirtyByPath.set(newPath, true);
+    }
 
     if (this.tabs.has(oldPath)) {
       const next: Map<string, TabInfo> = new Map();
       for (const [path, info] of this.tabs) {
         if (path === oldPath) {
-          next.set(newPath, { path: newPath, name: newName });
+          next.set(newPath, {
+            path: newPath,
+            name: newName,
+            dirty: wasDirty,
+          });
         } else {
           next.set(path, info);
         }
@@ -423,6 +534,7 @@ export class FileManager {
     const model = editor.createModel(initialContent, 'markdown');
     this.models.set(path, model);
     this.originals.set(path, initialContent);
+    this.trackTab(path, model);
     this.addTab(name, path);
     this.activateFile(path, name);
   }
@@ -540,6 +652,7 @@ export class FileManager {
       this.dispatcher.setTrackedContent({
         content: this.mkeditor.getValue(),
       });
+      this.markTabClean(this.activeFile);
     } else {
       this.bridge.send('to:file:saveas', this.mkeditor.getValue());
     }
@@ -693,6 +806,7 @@ export class FileManager {
         this.originals.delete(path);
         this.tabs.delete(path);
         this.viewStates.delete(path);
+        this.detachTabTracking(path);
       }
       // If the active path was just evicted, null it out so the
       // `activateFile` call below sees `previousPath = null` and skips
@@ -736,21 +850,33 @@ export class FileManager {
               tab.viewState as editor.ICodeEditorViewState,
             );
           }
+          // Re-baseline so the restored tab opens clean — the
+          // setValue above may have bumped the alt-version counter.
+          this.trackTab(tab.path, existing);
           // Preserve any updated display name from the session.
-          this.tabs.set(tab.path, { path: tab.path, name: tab.name });
+          this.tabs.set(tab.path, {
+            path: tab.path,
+            name: tab.name,
+            dirty: false,
+          });
           continue;
         }
 
         const model = editor.createModel(content, 'markdown');
         this.models.set(tab.path, model);
         this.originals.set(tab.path, content);
+        this.trackTab(tab.path, model);
         if (tab.viewState) {
           this.viewStates.set(
             tab.path,
             tab.viewState as editor.ICodeEditorViewState,
           );
         }
-        this.tabs.set(tab.path, { path: tab.path, name: tab.name });
+        this.tabs.set(tab.path, {
+          path: tab.path,
+          name: tab.name,
+          dirty: false,
+        });
       }
 
       // Pick what to activate. Prefer the persisted active file;

@@ -301,7 +301,6 @@ describe('<TitleBar>', () => {
       expect(document.activeElement).toBe(input);
       input.remove();
     });
-
   });
 
   describe('double-click drag region', () => {

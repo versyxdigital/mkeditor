@@ -5,7 +5,6 @@
 @use '_preview';
 @use '_darkmode';
 @use '_sidebar';
-@use '_tabs';
 
 @include meta.load-css('katex/dist/katex.min.css');
 
