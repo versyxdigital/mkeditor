@@ -159,6 +159,16 @@ export function fakeAssistantManager(
     setAutoAcceptWrites: jest.fn(),
     onToolCall: jest.fn(),
 
+    // P6 context surface
+    setContextProvider: jest.fn(),
+    setShareActiveFile: jest.fn(),
+    setShareSelection: jest.fn(),
+    addMention: jest.fn(async () => {}),
+    removeMention: jest.fn(),
+    contextChips: jest.fn(() => [] as unknown[]),
+    contextTokenEstimate: jest.fn(() => 0),
+    contextFor: jest.fn(async () => null),
+
     _setSnapshot: (next: typeof snapshot) => {
       snapshot = next;
       emitConfig();

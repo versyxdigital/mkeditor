@@ -270,6 +270,19 @@ export type ChatMessageStatus =
  * assistant turn (rendered as cards below the text body by
  * `<ChatMessage>` / `<ToolCallCard>`).
  */
+/**
+ * Ordered renderer-side segment. The model emits text and tool calls
+ * interleaved across one or more steps within a single assistant
+ * turn; `segments` preserves that order so `<ChatMessage>` can render
+ * text → tool card → more text → more tool cards in the right
+ * positions. `content` is still maintained as the concatenated text
+ * (for the wire shape we ship to the model and the eventual P7
+ * persistence payload).
+ */
+export type UiMessageSegment =
+  | { type: 'text'; text: string }
+  | { type: 'tool-call'; toolCallId: string };
+
 export interface UiChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -285,6 +298,15 @@ export interface UiChatMessage {
    * / succeeded / failed) independent of the message's `status`.
    */
   toolCalls?: ToolInvocation[];
+  /**
+   * Ordered text + tool-call slots for the renderer. Lets
+   * `<ChatMessage>` interleave tool-call cards with the surrounding
+   * text instead of dumping all cards under the message. Populated
+   * by `AssistantManager.appendChunk` + `recordToolCall`; the
+   * `content` field above stays in sync (joined text segments) so
+   * the wire shape sent to the model is unchanged.
+   */
+  segments?: UiMessageSegment[];
   createdAt: number;
 }
 
@@ -338,6 +360,21 @@ export interface ChatConversation {
    * shape without breaking forward-compat when P7 lands.
    */
   autoAcceptWrites: boolean;
+  /**
+   * Context controls (P6). Defaults: `shareActiveFile: true`,
+   * `shareSelection: false`. Per-conversation; persist alongside
+   * `autoAcceptWrites`. Drive the chip row, the gear popover
+   * switches, and the system message `AssistantManager.contextFor()`
+   * assembles at send time.
+   */
+  shareActiveFile: boolean;
+  shareSelection: boolean;
+  /**
+   * Sticky explicit `@`-mention chips (P6). Absolute paths picked
+   * from the file tree via `<MentionPicker>`. Persist across sends
+   * within the conversation until the user × removes them.
+   */
+  mentions: string[];
   createdAt: number;
   updatedAt: number;
 }

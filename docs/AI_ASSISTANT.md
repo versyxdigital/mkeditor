@@ -121,6 +121,12 @@ interface ConversationRecord {
   model: string; // captured at send time
   messages: ChatMessage[];
   autoAcceptWrites: boolean; // per-chat write-confirmation override
+  // P6 context controls — defaults shareActiveFile=true,
+  // shareSelection=false. `mentions` is the sticky @-mention list
+  // (paths persist across sends until the user × removes them).
+  shareActiveFile: boolean;
+  shareSelection: boolean;
+  mentions: string[];
 }
 
 interface ChatMessage {
@@ -176,7 +182,7 @@ API keys live in a separate, encrypted-at-rest section managed by [AssistantKeyS
 | 3   | Provider settings UI (per-provider enable + key + model picker)    | 🟢 2026-05-18 |
 | 4   | Chat surface + streaming (send, stream, cancel, model switch)      | 🟢 2026-05-18 |
 | 5   | Agent tools (read/write/edit/list + confirm flow)                  | 🟢 2026-05-18 |
-| 6   | Context controls (@-mentions, active-file chip, selection sharing) | 🔵     |
+| 6   | Context controls (@-mentions, active-file chip, selection sharing) | 🟢 2026-05-18 |
 | 7   | Persistence + web parity (assistant.json + localStorage mirror)    | 🔵     |
 | 8   | Polish (i18n mirror, menu entries, docs, smoke)                    | 🔵     |
 
@@ -386,10 +392,10 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
    - Active file (if "share active file" toggle on) — included as a `system` role with a tagged code block: ` ```md path="X.md" \n…\n``` `.
    - Current selection (if "share selection" toggle on and a selection exists) — included with line range.
    - Explicit `@`-mentioned files — each as its own tagged block.
-2. **`<ContextChip>`** — row above the input listing currently included context: `[× X.md (active)] [× workspace/notes.md] [× selection L42-L67]`. Clicking × drops that item for the next send only.
-3. **`<MentionPicker>`** — opens on `@` keystroke. Built from `FileTreeManager.snapshot()` flattened + fuzzy-filtered. Arrow keys + Enter to select; the chosen path becomes a chip in `<ContextChip>` and the `@` token is removed from the input.
+2. **`<ContextChip>`** — row above the input listing currently included context: `[× X.md (active)] [× workspace/notes.md] [× selection L42-L67]`. Active-file / selection chips re-attach per send based on their toggles; explicit `@`-mention chips **stick until the user × removes them** (Cursor/Continue convention — a transient @ would defeat the point of explicitly picking files).
+3. **`<MentionPicker>`** — opens on `@` keystroke. Built from `FileTreeManager.snapshot()` flattened + fuzzy-filtered, with the same lazy-load-on-demand walk `list_files` uses (P5) so the picker sees the whole workspace from a freshly-restored session, not just top-level files. Arrow keys + Enter to select; the chosen path becomes a chip in `<ContextChip>` and the `@` token is removed from the input.
 4. **Context size indicator** — small text below the input: `~1,200 tokens` (estimated via `text.length / 4` — good enough; no tiktoken dependency in v1). Turns amber above the provider's published context window.
-5. **Default toggles** — share-active-file: on; share-selection: off (selection sharing is fiddly and easy to over-share). Both are per-conversation and persist.
+5. **Default toggles** — share-active-file: on; share-selection: off (selection sharing is fiddly and easy to over-share). Both are per-conversation and persist. UI surface: the existing P5 gear popover in `<ChatPane>`'s header — `<Switch>` rows alongside the `autoAcceptWrites` toggle. No new visual real estate.
 6. **`tests/AssistantManager.context.test.ts`** — context assembly with various toggle combinations; @-mention dedupes against the active file; size indicator updates as input grows.
 7. **Reviewers + commit approval.**
 

@@ -853,6 +853,94 @@ describe('AssistantManager — startCall ships tools when an executor is set', (
   });
 });
 
+describe('AssistantManager — interleaved segments (P6 polish)', () => {
+  it('appendChunk extends the trailing text segment in place (no fragmentation)', () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never);
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    mgr.appendChunk(callId, 'Hello ');
+    mgr.appendChunk(callId, 'world');
+    const msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)!
+      .messages.find((m) => m.role === 'assistant')!;
+    expect(msg.segments).toEqual([{ type: 'text', text: 'Hello world' }]);
+    expect(msg.content).toBe('Hello world');
+  });
+
+  it('onToolCall (read-class) pushes a tool-call segment after the existing text — exact emission order', async () => {
+    // Regression for the "text concatenated, tool cards dumped below"
+    // visual: the manager must record segments in the emission order
+    // text → tool → text → tool so the renderer can interleave them.
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never);
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'read' as const,
+      buildPreview: () => null,
+      execute: async () => ({ ok: true }),
+    });
+    mgr.appendChunk(callId, "I'll create one. ");
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'create_file',
+      arguments: {},
+    });
+    // Let the executor microtask resolve.
+    await Promise.resolve();
+    await Promise.resolve();
+    mgr.appendChunk(callId, 'Done!');
+    const msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)!
+      .messages.find((m) => m.role === 'assistant')!;
+    expect(msg.segments).toEqual([
+      { type: 'text', text: "I'll create one. " },
+      { type: 'tool-call', toolCallId: 'tc-1' },
+      { type: 'text', text: 'Done!' },
+    ]);
+    // `content` stays in sync (joined text only) — the wire shape the
+    // model sees is unchanged.
+    expect(msg.content).toBe("I'll create one. Done!");
+  });
+
+  it('a tool-call segment is recorded once even though recordToolCall fires on every status transition', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never);
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'read' as const,
+      buildPreview: () => null,
+      execute: async () => ({ ok: true }),
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'read_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    // The tool went pending → executing → succeeded — three updates,
+    // but the segments list must show exactly one entry for this id.
+    const msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)!
+      .messages.find((m) => m.role === 'assistant')!;
+    const toolSegs = msg.segments?.filter((s) => s.type === 'tool-call');
+    expect(toolSegs).toHaveLength(1);
+    expect(toolSegs?.[0]).toEqual({ type: 'tool-call', toolCallId: 'tc-1' });
+  });
+});
+
 describe('AssistantManager — done/error routing (test path still works after P4)', () => {
   it('onChatDone resolves a pending testConnection before checking chats', async () => {
     const { bridge, sent } = makeBridge();

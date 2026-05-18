@@ -5,6 +5,7 @@ import type { SettingsFile } from '../interfaces/Editor';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { AssistantManager } from './AssistantManager';
 import { AssistantTools } from './AssistantTools';
+import { AssistantContextSource } from './AssistantContextSource';
 import { registerBridgeListeners } from './BridgeListeners';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
@@ -82,6 +83,12 @@ export class BridgeManager {
     // FileManager / FileTreeManager / EditorManager through there),
     // so it's constructed AFTER those exist on `this`.
     this.assistantManager.setToolExecutor(new AssistantTools(this));
+    // AI Assistant P6: hand the context provider to the manager.
+    // Same pattern as above — the source reaches into FileManager /
+    // EditorManager / `window.mked` through the bridge ref.
+    this.assistantManager.setContextProvider(
+      new AssistantContextSource(this),
+    );
     // Let FileManager.serializeSession read the workspace root without
     // taking a direct dependency on FileTreeManager.
     this.fileManager.setWorkspaceRootGetter(

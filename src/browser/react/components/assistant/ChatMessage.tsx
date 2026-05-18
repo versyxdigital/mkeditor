@@ -1,6 +1,9 @@
 import * as React from 'react';
 
-import type { UiChatMessage } from '../../../../app/interfaces/Assistant';
+import type {
+  ToolInvocation,
+  UiChatMessage,
+} from '../../../../app/interfaces/Assistant';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 import { Icon } from '../Icon';
@@ -46,7 +49,7 @@ export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
     >
       <div
         className={cn(
-          'max-w-[85%] min-w-0 rounded-md px-3 py-2 text-sm',
+          'max-w-[85%] min-w-0 rounded-md px-3 py-2 text-[13px]',
           isUser
             ? 'bg-primary text-primary-foreground'
             : 'bg-muted text-foreground',
@@ -82,7 +85,13 @@ export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
           </p>
         )}
 
+        {/* Legacy fallback: when `segments` isn't set (early P5 chats,
+            tests that build messages without going through appendChunk)
+            render the tool-call list below the body the way P5 did. The
+            AssistantBody above already handles segment-based rendering
+            when segments IS set, so we skip the legacy list there. */}
         {!isUser &&
+          !message.segments &&
           message.toolCalls &&
           message.toolCalls.length > 0 && (
             <div className="mt-1" data-testid="tool-call-list">
@@ -162,37 +171,72 @@ const AssistantBody: React.FC<{ message: UiChatMessage }> = React.memo(
       void loadAssistantMarkdownRenderer();
     }, []);
 
-    const html = React.useMemo(() => {
-      if (!message.content) return '';
-      if (!renderer) {
-        // Plain-text fallback while the renderer loads. Wrap in <p>
-        // + whitespace-pre-wrap so multi-line output reads naturally.
-        return `<p style="white-space: pre-wrap">${escapeHtml(
-          message.content,
-        )}</p>`;
-      }
-      return renderer(message.content);
-    }, [message.content, renderer]);
+    // P6 polish — interleaved rendering. When the manager populated
+    // `segments`, walk them in emission order so a "text → tool calls
+    // → more text" turn renders top-to-bottom in that order instead
+    // of dumping all tool cards under the concatenated text.
+    if (message.segments && message.segments.length > 0) {
+      const toolCallsById = new Map<string, ToolInvocation>(
+        (message.toolCalls ?? []).map((tc) => [tc.toolCallId, tc]),
+      );
+      return (
+        <div className="space-y-1" data-testid="assistant-segments">
+          {message.segments.map((seg, idx) => {
+            if (seg.type === 'text') {
+              if (!seg.text) return null;
+              return (
+                <MarkdownText
+                  key={`text-${idx}`}
+                  text={seg.text}
+                  renderer={renderer}
+                />
+              );
+            }
+            const tc = toolCallsById.get(seg.toolCallId);
+            if (!tc) return null;
+            return <ToolCallCard key={seg.toolCallId} invocation={tc} />;
+          })}
+        </div>
+      );
+    }
 
+    // Legacy / fallback path — no segments populated (test fixtures
+    // that build a message directly with just `content`, or messages
+    // restored from pre-P6 sessions). Render the concatenated content
+    // as one markdown block.
     if (!message.content) return null;
-    return (
-      <div
-        // Selectors keep markdown content from busting the bubble's
-        // `max-w-[85%]`:
-        //   - `break-words` + `[&_code]:break-words` wrap long URLs /
-        //     inline tokens at character boundaries when needed.
-        //   - `[&_pre]:overflow-x-auto [&_pre]:max-w-full` gives code
-        //     blocks a horizontal scrollbar instead of expanding the
-        //     bubble.
-        //   - `[&_table]:block` + overflow-x-auto does the same for
-        //     wide markdown tables.
-        className="prose prose-sm dark:prose-invert max-w-none break-words [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_p]:my-1 [&_code]:break-words [&_a]:break-words [&_table]:block [&_table]:overflow-x-auto [&_table]:max-w-full"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    );
+    return <MarkdownText text={message.content} renderer={renderer} />;
   },
 );
 AssistantBody.displayName = 'AssistantBody';
+
+const MarkdownText: React.FC<{
+  text: string;
+  renderer: MarkdownRenderer | null;
+}> = ({ text, renderer }) => {
+  const html = React.useMemo(() => {
+    if (!text) return '';
+    if (!renderer) {
+      return `<p style="white-space: pre-wrap">${escapeHtml(text)}</p>`;
+    }
+    return renderer(text);
+  }, [text, renderer]);
+  return (
+    <div
+      // Selectors keep markdown content from busting the bubble's
+      // `max-w-[85%]`:
+      //   - `break-words` + `[&_code]:break-words` wrap long URLs /
+      //     inline tokens at character boundaries when needed.
+      //   - `[&_pre]:overflow-x-auto [&_pre]:max-w-full` gives code
+      //     blocks a horizontal scrollbar instead of expanding the
+      //     bubble.
+      //   - `[&_table]:block` + overflow-x-auto does the same for
+      //     wide markdown tables.
+      className="prose prose-sm dark:prose-invert max-w-none break-words [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_p]:my-1 [&_code]:break-words [&_a]:break-words [&_table]:block [&_table]:overflow-x-auto [&_table]:max-w-full"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+};
 
 /* -------------------------------------------------------------------- */
 /*  ThinkingIndicator — "Thinking…" gerund that rotates while streaming   */

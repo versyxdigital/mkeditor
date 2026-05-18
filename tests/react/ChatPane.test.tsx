@@ -9,13 +9,14 @@
  */
 
 import * as React from 'react';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { ChatPane } from '../../src/browser/react/components/assistant/ChatPane';
 import { fakeAssistantManager, renderWithProviders } from '../utils/render';
 
 jest.mock('../../src/browser/i18n', () => ({
-  t: (key: string) => key,
+  t: (key: string, vars?: Record<string, unknown>) =>
+    vars ? `${key}:${JSON.stringify(vars)}` : key,
   normalizeLanguage: (lng: string) => lng,
   whenLanguageReady: () => Promise.resolve(),
   getAvailableLocales: jest.fn(async () => []),
@@ -51,6 +52,9 @@ function snapshotWith(opts: {
       createdAt: m.createdAt ?? Date.now(),
     })),
     autoAcceptWrites: false,
+    shareActiveFile: true,
+    shareSelection: false,
+    mentions: [] as string[],
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -108,7 +112,11 @@ describe('<ChatPane> — input + send', () => {
     expect(screen.getByTestId('chat-send')).toBeDisabled();
   });
 
-  it('typing + clicking Send fires startCall with the trimmed text', () => {
+  it('typing + clicking Send fires startCall with the trimmed text (after contextFor resolves)', async () => {
+    // P6: handleSend is now async — it awaits manager.contextFor(...)
+    // before firing startCall, so we have to flush microtasks before
+    // asserting. The fake manager's contextFor resolves null (no
+    // workspace context) by default, so the system message arg is null.
     const { conv, snapshot } = snapshotWith({ messages: [] });
     const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
     renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
@@ -117,16 +125,20 @@ describe('<ChatPane> — input + send', () => {
     const input = screen.getByTestId('chat-input');
     fireEvent.change(input, { target: { value: '  hi there  ' } });
     fireEvent.click(screen.getByTestId('chat-send'));
-    expect(am.startCall).toHaveBeenCalledWith(
-      'anthropic',
-      'conv-1',
-      'hi there',
-    );
-    // Input clears after send.
+    // Input clears synchronously (we capture text up-front before the
+    // await) so this assertion can stay sync.
     expect((input as HTMLTextAreaElement).value).toBe('');
+    await waitFor(() =>
+      expect(am.startCall).toHaveBeenCalledWith(
+        'anthropic',
+        'conv-1',
+        'hi there',
+        null,
+      ),
+    );
   });
 
-  it('Enter (without Shift) sends; Shift+Enter does not send', () => {
+  it('Enter (without Shift) sends; Shift+Enter does not send', async () => {
     const { conv, snapshot } = snapshotWith({ messages: [] });
     const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
     renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
@@ -135,12 +147,16 @@ describe('<ChatPane> — input + send', () => {
     const input = screen.getByTestId('chat-input');
     fireEvent.change(input, { target: { value: 'message' } });
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+    // Shift+Enter doesn't fire startCall — assert sync.
     expect(am.startCall).not.toHaveBeenCalled();
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
-    expect(am.startCall).toHaveBeenCalledWith(
-      'anthropic',
-      'conv-1',
-      'message',
+    await waitFor(() =>
+      expect(am.startCall).toHaveBeenCalledWith(
+        'anthropic',
+        'conv-1',
+        'message',
+        null,
+      ),
     );
   });
 });
@@ -200,16 +216,50 @@ describe('<ChatPane> — model editor', () => {
 });
 
 describe('<ChatPane> — gear popover (auto-accept writes)', () => {
-  it('opens the popover on gear click and exposes the auto-accept switch', () => {
+  it('opens the popover on gear click and exposes the auto-accept + P6 share switches', () => {
     const { conv, snapshot } = snapshotWith({ messages: [] });
     const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
     renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
       managers: { assistantManager: am as never },
     });
-    // Popover closed → switch isn't in the DOM yet.
+    // Popover closed → switches aren't in the DOM yet.
     expect(screen.queryByTestId('chat-auto-accept')).toBeNull();
     fireEvent.click(screen.getByTestId('chat-options'));
     expect(screen.getByTestId('chat-auto-accept')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-share-active-file')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-share-selection')).toBeInTheDocument();
+  });
+
+  it('toggling share-active-file fires manager.setShareActiveFile (P6)', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    conv.shareActiveFile = true;
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    fireEvent.click(screen.getByTestId('chat-options'));
+    fireEvent.click(screen.getByTestId('chat-share-active-file'));
+    expect(am.setShareActiveFile).toHaveBeenCalledWith(
+      'anthropic',
+      'conv-1',
+      false,
+    );
+  });
+
+  it('toggling share-selection fires manager.setShareSelection (P6)', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    conv.shareSelection = false;
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    fireEvent.click(screen.getByTestId('chat-options'));
+    fireEvent.click(screen.getByTestId('chat-share-selection'));
+    expect(am.setShareSelection).toHaveBeenCalledWith(
+      'anthropic',
+      'conv-1',
+      true,
+    );
   });
 
   it('toggling the auto-accept switch fires setAutoAcceptWrites with the new value', () => {
@@ -240,6 +290,146 @@ describe('<ChatPane> — gear popover (auto-accept writes)', () => {
     const sw = screen.getByTestId('chat-auto-accept');
     // Radix Switch surfaces state via aria-checked + data-state.
     expect(sw.getAttribute('aria-checked')).toBe('true');
+  });
+});
+
+describe('<ChatPane> — P6 context chips + token estimate', () => {
+  it('renders chips from manager.contextChips and routes × clicks to the right setter', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    am.contextChips.mockReturnValue([
+      { kind: 'active', path: '/w/a.md', label: 'a.md (active)' },
+      { kind: 'mention', path: '/w/b.md', label: 'b.md' },
+    ]);
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    // Active chip click → flips share-active-file off.
+    fireEvent.click(
+      screen.getByTestId('context-chip-active').querySelector('button')!,
+    );
+    expect(am.setShareActiveFile).toHaveBeenCalledWith(
+      'anthropic',
+      'conv-1',
+      false,
+    );
+    // Mention chip click → removeMention with the path.
+    fireEvent.click(
+      screen.getByTestId('context-chip-mention').querySelector('button')!,
+    );
+    expect(am.removeMention).toHaveBeenCalledWith(
+      'anthropic',
+      'conv-1',
+      '/w/b.md',
+    );
+  });
+
+  it('shows the token-estimate row using manager.contextTokenEstimate output', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    am.contextTokenEstimate.mockReturnValue(1234);
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    expect(screen.getByTestId('context-token-estimate').textContent).toContain(
+      '1,234',
+    );
+  });
+
+  it('typing `@` opens the MentionPicker; picking a result calls addMention, strips the @ token, and closes the picker', async () => {
+    // Integration test for the @-mention wiring in ChatPane — the
+    // MentionPicker is unit-tested in isolation, but ChatPane is
+    // where the token detection, picker visibility, and post-pick
+    // input scrubbing all live.
+    const treeSnapshot = {
+      treeRoot: '/w',
+      nodes: [{ type: 'file', name: 'notes.md', path: '/w/notes.md' }],
+    };
+    const fileTreeManager = {
+      // Stable snapshot reference — useSyncExternalStore infinite-
+      // loops if `getSnapshot` returns a fresh object every call.
+      getSnapshot: jest.fn(() => treeSnapshot),
+      on: jest.fn(() => () => {}),
+      requestDirectoryContents: jest.fn(),
+      treeRoot: '/w',
+    };
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: {
+        assistantManager: am as never,
+        fileTreeManager: fileTreeManager as never,
+      },
+    });
+    const input = screen.getByTestId('chat-input') as HTMLTextAreaElement;
+    // Type `summarise @no` → picker opens, ranks notes.md.
+    fireEvent.change(input, { target: { value: 'summarise @no' } });
+    expect(screen.getByTestId('mention-picker')).toBeInTheDocument();
+    // Click the option.
+    fireEvent.click(screen.getByTestId('mention-option-/w/notes.md'));
+    expect(am.addMention).toHaveBeenCalledWith(
+      'anthropic',
+      'conv-1',
+      '/w/notes.md',
+    );
+    // The `@no` token gets stripped from the draft, leaving the
+    // rest of the prompt intact.
+    expect(input.value).toBe('summarise ');
+    // Picker should close after pick.
+    expect(screen.queryByTestId('mention-picker')).toBeNull();
+  });
+
+  it('Enter while the picker is open does NOT also fire send (picker owns Enter)', async () => {
+    const treeSnapshot = {
+      treeRoot: '/w',
+      nodes: [{ type: 'file', name: 'a.md', path: '/w/a.md' }],
+    };
+    const fileTreeManager = {
+      // Stable snapshot reference (see prior test).
+      getSnapshot: jest.fn(() => treeSnapshot),
+      on: jest.fn(() => () => {}),
+      requestDirectoryContents: jest.fn(),
+      treeRoot: '/w',
+    };
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: {
+        assistantManager: am as never,
+        fileTreeManager: fileTreeManager as never,
+      },
+    });
+    const input = screen.getByTestId('chat-input');
+    fireEvent.change(input, { target: { value: '@a' } });
+    expect(screen.getByTestId('mention-picker')).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
+    // Picker handles the Enter; startCall should NOT have been
+    // fired from ChatPane's onKeyDown (the picker's window-level
+    // handler picks the first option).
+    expect(am.startCall).not.toHaveBeenCalled();
+  });
+
+  it('handleSend awaits manager.contextFor and ships its result as the systemContext arg of startCall', async () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    am.contextFor.mockResolvedValueOnce({
+      role: 'system' as const,
+      content: 'system context payload',
+    });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: 'hello' },
+    });
+    fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() =>
+      expect(am.startCall).toHaveBeenCalledWith('anthropic', 'conv-1', 'hello', {
+        role: 'system',
+        content: 'system context payload',
+      }),
+    );
+    expect(am.contextFor).toHaveBeenCalledWith('anthropic', 'conv-1');
   });
 });
 

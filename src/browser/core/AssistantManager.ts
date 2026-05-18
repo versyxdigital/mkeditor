@@ -18,9 +18,55 @@ import type {
   ToolInvocation,
   ToolResultRequest,
   UiChatMessage,
+  UiMessageSegment,
 } from '../../app/interfaces/Assistant';
 import type { ToolExecutor } from './AssistantTools';
 import { confirmToolCallExternal } from '../react/contexts/ToolConfirmContext';
+
+/**
+ * P6 — surface AssistantManager uses to gather context at send time
+ * (active file content, selection, mention file content). Implemented
+ * by `AssistantContextSource` in `BridgeManager` and injected via
+ * `setContextProvider`. Kept narrow so the manager doesn't grow a
+ * direct dependency on FileManager / EditorManager / `window.mked`.
+ */
+export interface AssistantContextProvider {
+  /** Active file path + content snapshot, or null when no real file is active. */
+  getActiveFile(): { path: string; content: string } | null;
+  /** Current editor selection + line range, or null when empty / no model. */
+  getSelection(): {
+    path: string | null;
+    text: string;
+    startLine: number;
+    endLine: number;
+  } | null;
+  /**
+   * Read a file by absolute path. Open Monaco models win over disk
+   * so unsaved edits are captured. Throws when the file can't be read.
+   */
+  readFile(path: string): Promise<{ content: string }>;
+}
+
+/**
+ * P6 — synchronous chip descriptor surfaced through the chat snapshot
+ * so the chip row + the token indicator can render without awaiting
+ * disk reads. Mention chips carry an optional cached `byteCount` so
+ * the indicator can include them in its estimate even though the
+ * content itself isn't loaded into the snapshot.
+ */
+export interface AssistantContextChip {
+  kind: 'active' | 'selection' | 'mention';
+  /** Absolute path for active/mention; null for selection in untitled buffers. */
+  path: string | null;
+  /** Human-readable label rendered in the chip ("README.md", "selection L42–L67"). */
+  label: string;
+  /**
+   * Optional content-size estimate (in characters) — present for
+   * sources we can size cheaply (active file content length,
+   * selection text length, cached mention byte count).
+   */
+  byteCount?: number;
+}
 
 /**
  * Stable snapshot the React side reads through `useSyncExternalStore`.
@@ -146,6 +192,24 @@ export class AssistantManager {
    * no tools exist).
    */
   private toolExecutor: ToolExecutor | null = null;
+
+  /**
+   * P6 context provider — gives the manager access to the active file,
+   * current selection, and arbitrary file content for `@`-mentions.
+   * Injected by `BridgeManager` after construction (same pattern as
+   * `setToolExecutor`). Null until set; when null, `contextFor`
+   * returns null and chip/indicator surfaces collapse.
+   */
+  private contextProvider: AssistantContextProvider | null = null;
+
+  /**
+   * Cached content snapshots for `@`-mentioned files. Keyed by
+   * absolute path. Populated when a mention is added; consulted by
+   * both the chip row (for byte-count display) and `contextFor()`
+   * (for system-message assembly). Refreshed when a mention is
+   * re-added; dropped when no conversation references the path.
+   */
+  private mentionContents = new Map<string, string>();
 
   constructor(private bridge: ContextBridgeAPI) {}
 
@@ -358,6 +422,12 @@ export class AssistantManager {
       model: this.defaultModelFor(provider),
       messages: [],
       autoAcceptWrites: false,
+      // P6 defaults: active file ON, selection OFF (selection
+      // sharing is fiddly and easy to over-share). Mentions start
+      // empty; user picks via the `<MentionPicker>`.
+      shareActiveFile: true,
+      shareSelection: false,
+      mentions: [],
       createdAt: now,
       updatedAt: now,
     };
@@ -444,6 +514,16 @@ export class AssistantManager {
     provider: ProviderId,
     conversationId: string,
     userText: string,
+    /**
+     * Optional pre-assembled system context message (P6). Caller is
+     * expected to `await manager.contextFor(...)` first and pass the
+     * result here; we keep `startCall` synchronous so the IPC ship,
+     * snapshot rebuild, and inflight bookkeeping all happen in one
+     * tick — concurrent send/cancel logic in tests + the chat UI
+     * relied on that timing. Pass `null` (or omit) to send without
+     * any leading system turn.
+     */
+    systemContext?: ChatMessage | null,
   ): string | null {
     const conv = this.conversations[provider].get(conversationId);
     if (!conv) return null;
@@ -486,11 +566,15 @@ export class AssistantManager {
     // placeholder we just inserted, drop cancelled/failed messages
     // (they confuse the model — `cancelled` carries no content,
     // `failed` is similarly noisy).
-    const wireMessages: ChatMessage[] = conv.messages
+    const history: ChatMessage[] = conv.messages
       .filter(
         (m) => m.id !== assistantMsg.id && m.status === 'complete' && m.content,
       )
       .map((m) => ({ role: m.role, content: m.content }));
+
+    const wireMessages: ChatMessage[] = systemContext
+      ? [systemContext, ...history]
+      : history;
 
     const req: ChatRequest = {
       callId,
@@ -544,11 +628,27 @@ export class AssistantManager {
       inflight.conversationId,
     );
     if (!conv) return;
-    this.replaceAssistantMessage(conv, inflight.assistantMessageId, (msg) =>
-      msg.status === 'streaming'
-        ? { ...msg, content: msg.content + text }
-        : msg,
-    );
+    this.replaceAssistantMessage(conv, inflight.assistantMessageId, (msg) => {
+      if (msg.status !== 'streaming') return msg;
+      // Append to the trailing text segment if there is one;
+      // otherwise start a new text segment (typical after a
+      // tool-call segment was just pushed). This keeps the
+      // interleaved order intact for the renderer.
+      const segments = msg.segments ?? [];
+      const last = segments[segments.length - 1];
+      const nextSegments: UiMessageSegment[] =
+        last && last.type === 'text'
+          ? [
+            ...segments.slice(0, -1),
+            { type: 'text', text: last.text + text },
+          ]
+          : [...segments, { type: 'text', text }];
+      return {
+        ...msg,
+        content: msg.content + text,
+        segments: nextSegments,
+      };
+    });
     this.rebuildChatSnapshot();
   }
 
@@ -710,10 +810,24 @@ export class AssistantManager {
       inflight.conversationId,
     );
     if (!conv) return;
-    this.replaceAssistantMessage(conv, inflight.assistantMessageId, (msg) => ({
-      ...msg,
-      toolCalls: [...(msg.toolCalls ?? []), invocation],
-    }));
+    this.replaceAssistantMessage(conv, inflight.assistantMessageId, (msg) => {
+      const existing = msg.segments ?? [];
+      // Don't push a tool-call segment if this tool already has one —
+      // `recordToolCall` runs on every state transition (pending →
+      // executing → succeeded/failed) and we want the same slot to
+      // render the updated card, not a fresh row.
+      const alreadyInSegments = existing.some(
+        (s) => s.type === 'tool-call' && s.toolCallId === invocation.toolCallId,
+      );
+      const nextSegments: UiMessageSegment[] = alreadyInSegments
+        ? existing
+        : [...existing, { type: 'tool-call', toolCallId: invocation.toolCallId }];
+      return {
+        ...msg,
+        toolCalls: [...(msg.toolCalls ?? []), invocation],
+        segments: nextSegments,
+      };
+    });
     this.rebuildChatSnapshot();
   }
 
@@ -737,6 +851,223 @@ export class AssistantManager {
       return { ...msg, toolCalls: next };
     });
     this.rebuildChatSnapshot();
+  }
+
+  // ---- P6 — Context controls ----------------------------------------
+
+  /**
+   * Inject the context provider (P6). Called once by `BridgeManager`
+   * after the other managers exist. Before this, `contextFor()`
+   * returns null and the chip/indicator surfaces collapse to empty —
+   * non-fatal, just means no system context until injection lands.
+   */
+  public setContextProvider(provider: AssistantContextProvider): void {
+    this.contextProvider = provider;
+  }
+
+  /** Set per-conversation share-active-file toggle. */
+  public setShareActiveFile(
+    provider: ProviderId,
+    conversationId: string,
+    value: boolean,
+  ): void {
+    const conv = this.conversations[provider].get(conversationId);
+    if (!conv || conv.shareActiveFile === value) return;
+    conv.shareActiveFile = value;
+    conv.updatedAt = Date.now();
+    this.rebuildChatSnapshot();
+  }
+
+  /** Set per-conversation share-selection toggle. */
+  public setShareSelection(
+    provider: ProviderId,
+    conversationId: string,
+    value: boolean,
+  ): void {
+    const conv = this.conversations[provider].get(conversationId);
+    if (!conv || conv.shareSelection === value) return;
+    conv.shareSelection = value;
+    conv.updatedAt = Date.now();
+    this.rebuildChatSnapshot();
+  }
+
+  /**
+   * Add an explicit `@`-mention to a conversation. Reads the file
+   * content immediately so the chip row + token indicator can size
+   * it without a second async hop, and stashes the content for
+   * `contextFor()` to consume at send time. Idempotent on the path
+   * (re-add refreshes the cached content).
+   */
+  public async addMention(
+    provider: ProviderId,
+    conversationId: string,
+    path: string,
+  ): Promise<void> {
+    const conv = this.conversations[provider].get(conversationId);
+    if (!conv) return;
+    if (!this.contextProvider) return;
+    // Read first — if it throws, we don't poison the chip row with a
+    // path we can't actually include.
+    const { content } = await this.contextProvider.readFile(path);
+    this.mentionContents.set(path, content);
+    if (conv.mentions.includes(path)) {
+      // Re-add: chip stays put, content gets refreshed (above), but
+      // we still emit so any consumer keying on `updatedAt` re-renders.
+      conv.updatedAt = Date.now();
+      this.rebuildChatSnapshot();
+      return;
+    }
+    conv.mentions = [...conv.mentions, path];
+    conv.updatedAt = Date.now();
+    this.rebuildChatSnapshot();
+  }
+
+  /**
+   * Remove an `@`-mention. Drops the cached content when no remaining
+   * conversation references the path (chats might share mentions; we
+   * keep the cache live until the last reference goes).
+   */
+  public removeMention(
+    provider: ProviderId,
+    conversationId: string,
+    path: string,
+  ): void {
+    const conv = this.conversations[provider].get(conversationId);
+    if (!conv) return;
+    if (!conv.mentions.includes(path)) return;
+    conv.mentions = conv.mentions.filter((m) => m !== path);
+    conv.updatedAt = Date.now();
+    const stillUsed = PROVIDER_IDS.some((p) => {
+      for (const c of this.conversations[p].values()) {
+        if (c.mentions.includes(path)) return true;
+      }
+      return false;
+    });
+    if (!stillUsed) this.mentionContents.delete(path);
+    this.rebuildChatSnapshot();
+  }
+
+  /**
+   * Synchronous descriptor list for the chip row. Built from the
+   * conversation's toggles + cached mention metadata; no disk I/O.
+   * Returns an empty array when the context provider hasn't been
+   * injected yet (early boot).
+   *
+   * Order: active file → selection → mentions (insertion order). The
+   * active file is omitted when it doesn't exist or the buffer is
+   * untitled; the selection chip is omitted when the toggle is off
+   * or there's no live selection. Mentions whose path equals the
+   * active file path are de-duped so the user doesn't see two chips
+   * for the same content.
+   */
+  public contextChips(
+    provider: ProviderId,
+    conversationId: string,
+  ): AssistantContextChip[] {
+    const conv = this.conversations[provider].get(conversationId);
+    if (!conv || !this.contextProvider) return [];
+    const chips: AssistantContextChip[] = [];
+    const active = conv.shareActiveFile
+      ? this.contextProvider.getActiveFile()
+      : null;
+    if (active) {
+      chips.push({
+        kind: 'active',
+        path: active.path,
+        label: `${baseName(active.path)} (active)`,
+        byteCount: active.content.length,
+      });
+    }
+    if (conv.shareSelection) {
+      const sel = this.contextProvider.getSelection();
+      if (sel) {
+        chips.push({
+          kind: 'selection',
+          path: sel.path,
+          label: `selection L${sel.startLine}–L${sel.endLine}`,
+          byteCount: sel.text.length,
+        });
+      }
+    }
+    for (const path of conv.mentions) {
+      if (active && active.path === path) continue; // dedupe vs active
+      const content = this.mentionContents.get(path);
+      chips.push({
+        kind: 'mention',
+        path,
+        label: baseName(path),
+        ...(content !== undefined ? { byteCount: content.length } : {}),
+      });
+    }
+    return chips;
+  }
+
+  /**
+   * Estimated token count for the next send: draft input + every chip's
+   * byte-count contribution + tag overhead, divided by 4. Cheap
+   * heuristic, intentionally rough — surfaced to the user purely to
+   * flag "you're about to ship a huge prompt." No tiktoken dependency
+   * in v1 (see Decisions).
+   */
+  public contextTokenEstimate(
+    provider: ProviderId,
+    conversationId: string,
+    draftText: string,
+  ): number {
+    const chips = this.contextChips(provider, conversationId);
+    let chars = draftText.length;
+    for (const chip of chips) {
+      if (chip.byteCount !== undefined) {
+        // Add a small constant for the fence/path tag wrapper we add
+        // when assembling the system message — keeps the estimate
+        // honest for many small mentions.
+        chars += chip.byteCount + 64;
+      }
+    }
+    return Math.ceil(chars / 4);
+  }
+
+  /**
+   * Assemble the system context message that gets prepended to the
+   * next send. Reads the active-file / selection synchronously off
+   * the context provider and the mention contents from the cache
+   * (`addMention` populates it eagerly). Returns null when there's
+   * nothing to share — caller (`startCall`) just ships the message
+   * history without a leading system turn.
+   */
+  public async contextFor(
+    provider: ProviderId,
+    conversationId: string,
+  ): Promise<ChatMessage | null> {
+    const conv = this.conversations[provider].get(conversationId);
+    if (!conv || !this.contextProvider) return null;
+    const blocks: string[] = [];
+    const seenPaths = new Set<string>();
+    const active = conv.shareActiveFile
+      ? this.contextProvider.getActiveFile()
+      : null;
+    if (active) {
+      blocks.push(formatFileBlock(active.path, active.content));
+      seenPaths.add(active.path);
+    }
+    if (conv.shareSelection) {
+      const sel = this.contextProvider.getSelection();
+      if (sel && sel.text) {
+        blocks.push(formatSelectionBlock(sel));
+      }
+    }
+    for (const path of conv.mentions) {
+      if (seenPaths.has(path)) continue; // already included via active-file
+      const content = this.mentionContents.get(path);
+      if (content === undefined) continue; // not yet loaded — skip silently
+      blocks.push(formatFileBlock(path, content));
+      seenPaths.add(path);
+    }
+    if (blocks.length === 0) return null;
+    return {
+      role: 'system',
+      content: blocks.join('\n\n'),
+    };
   }
 
   // ---- Done / error routing (shared with the P3 test path) -----------
@@ -922,4 +1253,45 @@ interface PendingOllama {
   resolve: (value: string[]) => void;
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
+}
+
+/* -------------------------------------------------------------------- */
+/*  P6 — context-message formatting helpers                              */
+/* -------------------------------------------------------------------- */
+
+/**
+ * Cross-platform basename — strips both `/` and `\` separators so chip
+ * labels read naturally on every OS. We deliberately don't import
+ * `path.basename` (Node-only) since this code runs in the renderer.
+ */
+function baseName(path: string): string {
+  const idx = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  return idx >= 0 ? path.slice(idx + 1) : path;
+}
+
+/**
+ * Fence content with `\`\`\`md path="X.md"\n…\n\`\`\`` — the format
+ * the doc's "Context controls" section calls out. Markdown fences
+ * inside the content are escaped by widening the outer fence to four
+ * backticks when the content itself contains a triple-backtick run,
+ * so models don't see a prematurely-closed code block.
+ */
+function formatFileBlock(path: string, content: string): string {
+  const fence = content.includes('```') ? '````' : '```';
+  return `${fence}md path="${path}"\n${content}\n${fence}`;
+}
+
+/**
+ * Selection block — same fenced shape as `formatFileBlock` but adds
+ * `lines="L42-L67"` so the model knows where the snippet came from.
+ */
+function formatSelectionBlock(sel: {
+  path: string | null;
+  text: string;
+  startLine: number;
+  endLine: number;
+}): string {
+  const fence = sel.text.includes('```') ? '````' : '```';
+  const pathAttr = sel.path ? ` path="${sel.path}"` : '';
+  return `${fence}md${pathAttr} lines="L${sel.startLine}-L${sel.endLine}"\n${sel.text}\n${fence}`;
 }

@@ -202,4 +202,71 @@ describe('<ChatMessage>', () => {
     );
     expect(screen.queryByTestId('tool-call-list')).toBeNull();
   });
+
+  // ----- P6 polish: segment-ordered interleaving ---------------------
+
+  it('renders text and tool-call segments in emission order (regression for concatenated text + cards-below)', async () => {
+    // Before P6 polish, two text streams that bracketed a tool call
+    // (text1 → tool → text2) collapsed into one concatenated content
+    // block with all tool cards dumped below. The new `segments`
+    // array preserves emission order so text appears above AND below
+    // its tool cards.
+    const tc = (id: string, name: string): ToolInvocation => ({
+      toolCallId: id,
+      toolName: name,
+      arguments: {},
+      status: 'succeeded',
+    });
+    render(
+      <ChatMessage
+        message={msg({
+          id: 'a-segs',
+          status: 'complete',
+          content: 'before-toolafter-tool', // legacy field — not used when segments is set
+          toolCalls: [tc('tc-1', 'create_file')],
+          segments: [
+            { type: 'text', text: 'before-tool' },
+            { type: 'tool-call', toolCallId: 'tc-1' },
+            { type: 'text', text: 'after-tool' },
+          ],
+        })}
+      />,
+    );
+    await waitFor(() => {
+      const container = screen.getByTestId('assistant-segments');
+      expect(container).toBeInTheDocument();
+    });
+    // The legacy tool-call-list container is NOT rendered when
+    // segments is present — the cards live inline in the segment row.
+    expect(screen.queryByTestId('tool-call-list')).toBeNull();
+    const container = screen.getByTestId('assistant-segments');
+    // Children appear in segment order: text → tool card → text.
+    const kids = Array.from(container.children) as HTMLElement[];
+    expect(kids).toHaveLength(3);
+    expect(kids[0].textContent).toContain('before-tool');
+    expect(kids[1].getAttribute('data-testid')).toBe('tool-call-tc-1');
+    expect(kids[2].textContent).toContain('after-tool');
+  });
+
+  it('skips empty text segments and missing tool-call refs gracefully', () => {
+    render(
+      <ChatMessage
+        message={msg({
+          id: 'a-skip',
+          status: 'complete',
+          content: 'visible',
+          toolCalls: [], // no entries — the tool-call segment below is orphaned
+          segments: [
+            { type: 'text', text: '' }, // empty → skipped
+            { type: 'tool-call', toolCallId: 'tc-orphan' }, // no matching toolCall → skipped
+            { type: 'text', text: 'visible' },
+          ],
+        })}
+      />,
+    );
+    const container = screen.getByTestId('assistant-segments');
+    expect(container.textContent).toContain('visible');
+    // No tool card rendered for the orphaned segment.
+    expect(screen.queryByTestId('tool-call-tc-orphan')).toBeNull();
+  });
 });

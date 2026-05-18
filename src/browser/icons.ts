@@ -3,6 +3,7 @@ import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faBold } from '@fortawesome/free-solid-svg-icons/faBold';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons/faChevronDown';
+import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
 import { faChevronRight } from '@fortawesome/free-solid-svg-icons/faChevronRight';
 import { faChevronUp } from '@fortawesome/free-solid-svg-icons/faChevronUp';
 import { faClipboard } from '@fortawesome/free-solid-svg-icons/faClipboard';
@@ -34,6 +35,7 @@ import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
 import { faTableColumns } from '@fortawesome/free-solid-svg-icons/faTableColumns';
 import { faTasks } from '@fortawesome/free-solid-svg-icons/faTasks';
 import { faTerminal } from '@fortawesome/free-solid-svg-icons/faTerminal';
+import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
 
 library.add(
@@ -41,6 +43,7 @@ library.add(
   faBold,
   faCheck,
   faChevronDown,
+  faChevronLeft,
   faChevronRight,
   faChevronUp,
   faClipboard,
@@ -72,6 +75,7 @@ library.add(
   faTableColumns,
   faTasks,
   faTerminal,
+  faTimes,
   faTrash,
 );
 

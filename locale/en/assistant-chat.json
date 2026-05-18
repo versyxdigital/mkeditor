@@ -22,5 +22,15 @@
   "delete_cancel_button": "Cancel",
   "options_aria": "Conversation options",
   "auto_accept_label": "Auto-accept write tools",
-  "auto_accept_help": "Skip the confirmation dialog for edit / write / create / replace tool calls in this conversation. Read-class tools always auto-execute."
+  "auto_accept_help": "Skip the confirmation dialog for edit / write / create / replace tool calls in this conversation. Read-class tools always auto-execute.",
+  "share_active_file_label": "Share active file",
+  "share_active_file_help": "Attach the currently-open file to every send in this conversation. The agent sees the latest in-editor content.",
+  "share_selection_label": "Share selection",
+  "share_selection_help": "Attach the current editor selection (with line range) to every send. Off by default to avoid accidentally over-sharing.",
+  "remove_context_chip": "Remove {{label}} from context",
+  "token_estimate": "≈ {{tokens}} tokens",
+  "mention_picker_aria": "Pick a file to mention",
+  "mention_picker_empty": "No matching files",
+  "hide_conversations_aria": "Hide conversation list",
+  "show_conversations_aria": "Show conversation list"
 }
