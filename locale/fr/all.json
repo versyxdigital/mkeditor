@@ -220,6 +220,7 @@
     "unable_export_preview": "Impossible d’exporter l’aperçu",
     "unable_save_markdown": "Impossible d’enregistrer le markdown",
     "exported_html_success": "Aperçu exporté en HTML",
+    "exported_pdf_success": "Aperçu exporté en PDF",
     "saved_markdown_success": "Fichier Markdown enregistré",
     "generic_error_try_again": "Une erreur s’est produite. Veuillez réessayer.",
     "unable_open_file": "Impossible d’ouvrir le fichier.",

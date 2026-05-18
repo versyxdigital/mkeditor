@@ -2,6 +2,7 @@
   "unable_export_preview": "Unable to export preview",
   "unable_save_markdown": "Unable to save markdown",
   "exported_html_success": "Preview exported to HTML",
+  "exported_pdf_success": "Preview exported to PDF",
   "saved_markdown_success": "Markdown file saved",
 
   "generic_error_try_again": "An error has occurred, please try again.",
