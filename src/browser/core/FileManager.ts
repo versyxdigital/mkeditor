@@ -539,6 +539,17 @@ export class FileManager {
     this.activateFile(path, name);
   }
 
+  /**
+   * User-initiated "new tab" — opens an empty untitled buffer and
+   * activates it. Used by the `+` button at the end of the tab strip.
+   * Runs entirely in the renderer (no IPC), so it works identically
+   * in desktop and web mode. Delegates to `seedUntitled` to keep the
+   * untitled-creation logic single-sourced.
+   */
+  public createUntitledTab(): void {
+    this.seedUntitled('');
+  }
+
   // ---------------------------------------------------------------------
   // Activation, opening, saving
   // ---------------------------------------------------------------------

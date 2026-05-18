@@ -63,6 +63,31 @@ describe('<TabBar>', () => {
     expect(fileManager.activateFile).not.toHaveBeenCalled();
   });
 
+  it('clicking the + button calls createUntitledTab', () => {
+    const fileManager = fakeFileManager({
+      tabs: [{ path: '/a.md', name: 'a.md', dirty: false }],
+      activeFile: '/a.md',
+    });
+
+    renderWithProviders(<TabBar />, {
+      managers: { fileManager: fileManager as any },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'New tab' }));
+    expect(fileManager.createUntitledTab).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the + button even when there are no tabs', () => {
+    const fileManager = fakeFileManager({ tabs: [], activeFile: null });
+
+    renderWithProviders(<TabBar />, {
+      managers: { fileManager: fileManager as any },
+    });
+
+    expect(screen.getByRole('button', { name: 'New tab' })).toBeInTheDocument();
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+  });
+
   it('marks dirty tabs via data-dirty and the close-button aria-label', () => {
     const fileManager = fakeFileManager({
       tabs: [
