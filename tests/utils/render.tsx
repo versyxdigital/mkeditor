@@ -154,6 +154,11 @@ export function fakeAssistantManager(
     onChatDone: jest.fn(),
     onChatError: jest.fn(),
 
+    // P5 tool surface
+    setToolExecutor: jest.fn(),
+    setAutoAcceptWrites: jest.fn(),
+    onToolCall: jest.fn(),
+
     _setSnapshot: (next: typeof snapshot) => {
       snapshot = next;
       emitConfig();

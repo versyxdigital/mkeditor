@@ -4,6 +4,7 @@ import type { UiChatMessage } from '../../../../app/interfaces/Assistant';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 import { Icon } from '../Icon';
+import { ToolCallCard } from './ToolCallCard';
 
 /**
  * Single chat bubble. User messages render as a right-aligned solid
@@ -79,6 +80,16 @@ export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
             </span>
           </p>
         )}
+
+        {!isUser &&
+          message.toolCalls &&
+          message.toolCalls.length > 0 && (
+            <div className="mt-1" data-testid="tool-call-list">
+              {message.toolCalls.map((tc) => (
+                <ToolCallCard key={tc.toolCallId} invocation={tc} />
+              ))}
+            </div>
+          )}
       </div>
     </div>
   );

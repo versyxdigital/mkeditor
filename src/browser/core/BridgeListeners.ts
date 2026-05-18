@@ -8,6 +8,7 @@ import type {
   ChatChunkEvent,
   ChatDoneEvent,
   ChatErrorEvent,
+  ChatToolCallEvent,
   ConfigPushPayload,
   OllamaModelsEvent,
 } from '../../app/interfaces/Assistant';
@@ -279,5 +280,12 @@ export function registerBridgeListeners(
   });
   bridge.receive('from:ai:error', (payload: ChatErrorEvent) => {
     manager.assistantManager.onChatError(payload);
+  });
+
+  // P5: tool-call events. AssistantManager classifies read vs write,
+  // executes read-class immediately, prompts for write-class
+  // (or auto-accepts based on per-conversation toggle).
+  bridge.receive('from:ai:tool-call', (payload: ChatToolCallEvent) => {
+    manager.assistantManager.onToolCall(payload);
   });
 }

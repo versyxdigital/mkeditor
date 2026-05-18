@@ -131,6 +131,17 @@ contextBridge.exposeInMainWorld('mked', {
   pathDirname: (p: string) => ipcRenderer.invoke('mked:path:dirname', p),
   resolvePath: (base: string, rel: string) =>
     ipcRenderer.invoke('mked:path:resolve', base, rel),
+  /**
+   * Read a file's contents without opening it as a tab. Used by the
+   * AI assistant's `read_file` tool when the requested file isn't
+   * already open — keeps tab-spam down when the agent is gathering
+   * context across many files.
+   */
+  readFile: (path: string) =>
+    ipcRenderer.invoke('mked:fs:readfile', path) as Promise<{
+      content: string;
+      lineCount: number;
+    }>,
 });
 
 contextBridge.exposeInMainWorld('logger', {

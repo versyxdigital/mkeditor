@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { promises as fsPromises } from 'fs';
 import { dirname, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
 import type { Logger, LogMessage } from '../interfaces/Logging';
@@ -220,9 +221,19 @@ export class AppBridge {
       });
     });
 
-    ipcMain.on('to:file:create', async (_e, { parent, name }) => {
-      await AppStorage.createFile(this.context, parent, name);
-    });
+    ipcMain.on(
+      'to:file:create',
+      async (
+        _e,
+        {
+          parent,
+          name,
+          content,
+        }: { parent: string; name: string; content?: string },
+      ) => {
+        await AppStorage.createFile(this.context, parent, name, content);
+      },
+    );
 
     ipcMain.on('to:folder:create', async (_e, { parent, name }) => {
       await AppStorage.createFolder(this.context, parent, name);
@@ -259,6 +270,24 @@ export class AppBridge {
     ipcMain.handle('mked:path:dirname', (_e, p: string) => dirname(p));
     ipcMain.handle('mked:path:resolve', (_e, base: string, rel: string) =>
       resolve(base, rel),
+    );
+
+    // Tab-free file read for the AI assistant. The agent's `read_file`
+    // tool routes here when the requested file isn't already open as
+    // a tab — opening every read in a new tab gets noisy fast when
+    // the agent is gathering context across many files.
+    ipcMain.handle(
+      'mked:fs:readfile',
+      async (_e, path: string): Promise<{ content: string; lineCount: number }> => {
+        const content = await fsPromises.readFile(path, 'utf-8');
+        // Count line breaks rather than splitting (avoids a large
+        // intermediate array for big files). Empty string → 1 line.
+        let lineCount = 1;
+        for (let i = 0; i < content.length; i++) {
+          if (content.charCodeAt(i) === 0x0a) lineCount += 1;
+        }
+        return { content, lineCount };
+      },
     );
 
     ipcMain.on('mked:open-url', (_e, url: string) => {

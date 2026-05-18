@@ -373,10 +373,11 @@ export class AppStorage {
     context: BrowserWindow,
     parent: string,
     name: string,
+    content = '',
   ) {
     try {
       const file = join(parent, name);
-      await fs.writeFile(file, '', 'utf-8');
+      await fs.writeFile(file, content, 'utf-8');
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
       context.webContents.send('from:notification:display', {

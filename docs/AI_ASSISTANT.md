@@ -114,6 +114,7 @@ interface ProviderConfigMap {
 
 interface ConversationRecord {
   id: string; // uuid
+  providerId: ProviderId; // owning provider tab; lets snapshots group across providers
   title: string; // first-message-derived; user-renamable
   createdAt: number; // epoch ms
   updatedAt: number;
@@ -126,17 +127,24 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string; // markdown for user/assistant; JSON for tool
-  toolCalls?: ToolCallRecord[];
+  toolCalls?: ToolInvocation[];
   createdAt: number;
 }
 
-interface ToolCallRecord {
-  id: string;
-  name: string;
+// Renderer-side type (see src/app/interfaces/Assistant.ts). Field names
+// match the Vercel AI SDK wire shape (`toolCallId`, `toolName`) so we
+// don't translate at every IPC boundary. The status vocabulary tracks
+// the four observable lifecycle phases on the renderer; `errorCode` is
+// a translatable key and `errorMessage` is the free-text detail (split
+// for i18n).
+interface ToolInvocation {
+  toolCallId: string;
+  toolName: string;
   arguments: unknown;
-  status: 'pending' | 'confirmed' | 'rejected' | 'succeeded' | 'failed';
+  status: 'pending-confirm' | 'executing' | 'succeeded' | 'failed';
   result?: unknown;
-  error?: string;
+  errorCode?: 'rejected' | 'execution_failed' | 'unknown_tool';
+  errorMessage?: string;
 }
 ```
 
@@ -167,7 +175,7 @@ API keys live in a separate, encrypted-at-rest section managed by [AssistantKeyS
 | 2   | Right-sidebar shell (collapsible/resizable, empty tab strip)       | 🟢 2026-05-18 |
 | 3   | Provider settings UI (per-provider enable + key + model picker)    | 🟢 2026-05-18 |
 | 4   | Chat surface + streaming (send, stream, cancel, model switch)      | 🟢 2026-05-18 |
-| 5   | Agent tools (read/write/edit/list + confirm flow)                  | 🔵     |
+| 5   | Agent tools (read/write/edit/list + confirm flow)                  | 🟢 2026-05-18 |
 | 6   | Context controls (@-mentions, active-file chip, selection sharing) | 🔵     |
 | 7   | Persistence + web parity (assistant.json + localStorage mirror)    | 🔵     |
 | 8   | Polish (i18n mirror, menu entries, docs, smoke)                    | 🔵     |
@@ -342,7 +350,7 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
    - `open_tab({ path })` — `BridgeManager.openPath(path)`.
 2. **`AssistantManager.onToolCall(callId, tool)`** — receives `from:ai:tool-call`. For read-class: immediately executes via `AssistantTools.execute(...)` and replies with `to:ai:tool-result`. For write-class: enters `pending` state on the message; if the conversation's `autoAcceptWrites` is true, executes directly; otherwise pushes a confirmation request through `confirmExternal`.
 3. **Tool-call payload to the SDK** — `AppAssistant.chat` ships the tool list to Vercel AI SDK's `tools` parameter, names + Zod schemas matching the renderer's catalog. The SDK's `experimental_continueSteps` (or v5 equivalent) loops automatically once tool results come back.
-4. **`src/browser/react/components/assistant/ToolCallCard.tsx`** — collapsible row inside the assistant message stream. States: `pending-confirm` (confirm/reject buttons inline) · `executing` (spinner) · `succeeded` (collapsed by default; expandable to show args + result) · `failed` (red border + retry).
+4. **`src/browser/react/components/assistant/ToolCallCard.tsx`** — collapsible row inside the assistant message stream. States: `pending-confirm` (confirm/reject buttons inline) · `executing` (spinner) · `succeeded` (collapsed by default; expandable to show args + result) · `failed` (red border + error code/message). A per-card retry button was deferred to P8 — re-driving a tool call after the SDK stream has advanced past the originating turn is non-trivial and benefits from being designed alongside the other polish (error taxonomy, refined cards).
 5. **`src/browser/react/components/assistant/ConfirmToolCall.tsx`** — `AlertDialog` for write-class tools. For `edit_file` / `write_file`, embeds a `<DiffView>` (Monaco's `diffEditor` reused with `readOnly: true` and `renderSideBySide: false`).
 6. **Per-conversation auto-accept toggle** — gear icon in `<ChatPane>` header opens a popover with `autoAcceptWrites` switch + sharing toggles (P6 lands the sharing toggles).
 7. **Error surfacing** — tool execution failures become a `tool` role message with the error text, fed back to the SDK so it can recover. The card shows the error inline.
@@ -355,6 +363,7 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
 - Multi-file batch edits (single-tool-call-per-step in v1; the SDK loops naturally).
 - Cross-workspace tools (operate within the open workspace + open tabs only).
 - Diff acceptance per-hunk (whole-edit accept or reject in v1).
+- Per-card retry on a failed tool call (deferred to P8 — see Tasks #4 above; the user can always ask the agent to retry conversationally).
 
 ### Exit criteria
 
@@ -447,7 +456,7 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
 3. **Tray menu** — add "Toggle Assistant" entry to the tray's `Show Window` group on desktop.
 4. **Keyboard shortcuts within the chat** — `Esc` cancels in-flight call · `Cmd/Ctrl+K` opens a new conversation · `Cmd/Ctrl+/` focuses the input from anywhere.
 5. **Empty-state copy** — final, friendly copy for "no providers connected", "no conversations yet", "agent is thinking".
-6. **Tool-card refinements** — diff preview uses the editor's current theme tokens; long results truncate with "Show more".
+6. **Tool-card refinements** — diff preview uses the editor's current theme tokens; long results truncate with "Show more"; failed cards gain a retry button that re-issues the same tool call in a new turn (deferred from P5).
 7. **Visible streaming indicator** — small pulsing dot in the provider tab while a call is in flight (useful when the tab isn't the active one).
 8. **Error taxonomy** — map the SDK's common errors to user-friendly translatable messages: missing key, invalid key, rate limited, context window exceeded, network failure, Ollama unreachable.
 9. **Smoke tests** — manual checklist covering: enable + connect each provider; chat with each; cancel mid-stream; ask the agent to edit the active file; confirm + apply; reject; ask the agent to create a new file; relaunch and verify history; do the same on web.

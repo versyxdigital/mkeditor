@@ -10,6 +10,13 @@ import { useAssistantChat } from '../../contexts/AssistantContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../ui/popover';
+import { Switch } from '../ui/switch';
 import { Icon } from '../Icon';
 import { ChatMessage } from './ChatMessage';
 
@@ -129,6 +136,14 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     manager.setConversationModel(provider, conversation.id, modelEditor);
   }, [manager, provider, conversation.id, modelEditor]);
 
+  const handleAutoAcceptChange = React.useCallback(
+    (value: boolean) => {
+      if (!manager) return;
+      manager.setAutoAcceptWrites(provider, conversation.id, value);
+    },
+    [manager, provider, conversation.id],
+  );
+
   return (
     <div className="flex h-full flex-col" data-testid="chat-pane">
       <ChatHeader
@@ -136,6 +151,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         modelEditor={modelEditor}
         onModelChange={setModelEditor}
         onModelBlur={handleModelBlur}
+        onAutoAcceptChange={handleAutoAcceptChange}
       />
       <MessageList messages={conversation.messages} />
       <div className="border-t border-border p-2">
@@ -187,7 +203,14 @@ const ChatHeader: React.FC<{
   modelEditor: string;
   onModelChange: (next: string) => void;
   onModelBlur: () => void;
-}> = ({ conversation, modelEditor, onModelChange, onModelBlur }) => {
+  onAutoAcceptChange: (value: boolean) => void;
+}> = ({
+  conversation,
+  modelEditor,
+  onModelChange,
+  onModelBlur,
+  onAutoAcceptChange,
+}) => {
   const { t } = useTranslation();
   return (
     <div className="flex items-center gap-2 border-b border-border px-2 py-1.5">
@@ -210,6 +233,44 @@ const ChatHeader: React.FC<{
         spellCheck={false}
         aria-label={t('assistant-chat:model_aria')}
       />
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            aria-label={t('assistant-chat:options_aria')}
+            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            data-testid="chat-options"
+          >
+            <Icon name="cog" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          className="w-72 rounded-md border border-border bg-popover p-3 text-sm shadow-md"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <Label
+                htmlFor="auto-accept-toggle"
+                className="text-xs font-medium"
+              >
+                {t('assistant-chat:auto_accept_label')}
+              </Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('assistant-chat:auto_accept_help')}
+              </p>
+            </div>
+            <Switch
+              id="auto-accept-toggle"
+              checked={conversation.autoAcceptWrites}
+              onCheckedChange={onAutoAcceptChange}
+              data-testid="chat-auto-accept"
+            />
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 };

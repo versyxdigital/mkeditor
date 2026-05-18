@@ -41,6 +41,7 @@ import type { SessionRestoreEnvelope } from '../src/browser/interfaces/Session';
 import type {
   ChatDoneEvent,
   ChatErrorEvent,
+  ChatToolCallEvent,
   ConfigPushPayload,
   OllamaModelsEvent,
 } from '../src/app/interfaces/Assistant';
@@ -59,6 +60,7 @@ describe('BridgeListeners session handlers', () => {
     onChatError: jest.Mock;
     ownsCallId: jest.Mock;
     appendChunk: jest.Mock;
+    onToolCall: jest.Mock;
   };
   let manager: { setWindowState: jest.Mock; assistantManager: typeof assistantManager };
   let files: {
@@ -137,6 +139,7 @@ describe('BridgeListeners session handlers', () => {
       onChatError: jest.fn(),
       ownsCallId: jest.fn(() => true),
       appendChunk: jest.fn(),
+      onToolCall: jest.fn(),
     };
     manager = {
       setWindowState: jest.fn(),
@@ -379,5 +382,19 @@ describe('BridgeListeners session handlers', () => {
     assistantManager.appendChunk = appendChunk;
     handlers['from:ai:chunk']({ callId: 'chat-x', text: 'Hello' });
     expect(appendChunk).toHaveBeenCalledWith('chat-x', 'Hello');
+  });
+
+  // ----- AI Assistant P5 forwarding ---------------------------------
+
+  it('from:ai:tool-call delegates to assistantManager.onToolCall with the exact payload (P5)', () => {
+    const payload: ChatToolCallEvent = {
+      callId: 'chat-x',
+      toolCallId: 'tc-1',
+      toolName: 'read_file',
+      arguments: { path: '/a.md' },
+    };
+    handlers['from:ai:tool-call'](payload);
+    expect(assistantManager.onToolCall).toHaveBeenCalledTimes(1);
+    expect(assistantManager.onToolCall).toHaveBeenCalledWith(payload);
   });
 });

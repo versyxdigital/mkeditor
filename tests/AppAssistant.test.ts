@@ -496,6 +496,179 @@ describe('AppAssistant — tool-call → tool-result loop', () => {
     );
   });
 
+  it('next turn carries assistant + tool messages in order, even when the tool result arrives mid-stream (regression)', async () => {
+    // Race regression: previously `submitToolResult` fired the next
+    // streamText turn synchronously, which could happen BEFORE the
+    // current turn's `for await` loop finished consuming the stream
+    // and pushed the assistant message. Anthropic then saw
+    // `[user, tool]`, collapsed them into one user message with a
+    // stray tool_result block, and rejected with a 400 ("tool_use_id
+    // has no matching tool_use").
+    //
+    // Repro: yield the tool-call event from the stream and call
+    // `submitToolResult` BEFORE flushing the rest of the stream.
+    // The fix gates the next turn on (a) the assistant message being
+    // pushed AND (b) all tool results landing — so the second
+    // streamText call's `messages` must contain the assistant message.
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    seedKey('anthropic', 'sk-x');
+
+    // Turn 1: tool-call. We yield via a hand-rolled async iterator
+    // so the test can wedge `submitToolResult` between the tool-call
+    // yield and the stream's completion.
+    let resolveResponse!: (v: { messages: unknown[] }) => void;
+    const responsePromise = new Promise<{ messages: unknown[] }>((res) => {
+      resolveResponse = res;
+    });
+    let releaseStream!: () => void;
+    const streamRelease = new Promise<void>((res) => {
+      releaseStream = res;
+    });
+
+    const turn1Stream = {
+      fullStream: (async function* () {
+        // Emit the tool-call immediately.
+        yield {
+          type: 'tool-call' as const,
+          toolCallId: 'tc-race',
+          toolName: 'get_active_file',
+          input: {},
+        };
+        // ...then hold the stream open until the test releases it.
+        await streamRelease;
+      })(),
+      response: responsePromise,
+      usage: Promise.resolve({}),
+      finishReason: Promise.resolve('tool-calls'),
+    };
+    mockStreamText.mockReturnValueOnce(turn1Stream);
+
+    // Turn 2: model emits a final answer.
+    mockStreamText.mockReturnValueOnce(
+      makeStreamResult([{ type: 'text-delta', text: 'Edits applied.' }]),
+    );
+
+    assistant.chat({
+      ...baseRequest('call-race'),
+      tools: [
+        {
+          name: 'get_active_file',
+          description: 'Returns the active file',
+          parameters: { type: 'object', properties: {} },
+        },
+      ],
+    });
+    // Drain the iterator far enough to deliver the tool-call event
+    // (but not the stream's natural end — that needs `releaseStream`).
+    await flush();
+    // Tool-call event delivered to the renderer.
+    expect(findSend(ctx, 'from:ai:tool-call')).toEqual(
+      expect.objectContaining({ toolCallId: 'tc-race' }),
+    );
+
+    // RACE: submit the tool result BEFORE the stream finishes / the
+    // response.messages resolves. Under the old bug this would
+    // immediately fire turn 2 with `[user, tool]`. Under the fix it
+    // buffers the result and waits for runTurn to wake it.
+    assistant.submitToolResult({
+      callId: 'call-race',
+      toolCallId: 'tc-race',
+      result: { path: 'README.md', content: 'body', lineCount: 1 },
+    });
+    await flush();
+
+    // Turn 2 should NOT have fired yet — the stream is still parked.
+    expect(mockStreamText).toHaveBeenCalledTimes(1);
+
+    // Now release the stream and resolve the response.
+    releaseStream();
+    resolveResponse({
+      messages: [
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool-call',
+              toolCallId: 'tc-race',
+              toolName: 'get_active_file',
+              input: {},
+            },
+          ],
+        },
+      ],
+    });
+    await flush();
+
+    // Turn 2 fired exactly once, and its messages include the
+    // assistant message (with tool_use) BEFORE the tool message.
+    expect(mockStreamText).toHaveBeenCalledTimes(2);
+    const turn2Args = mockStreamText.mock.calls[1][0] as {
+      messages: Array<{ role: string }>;
+    };
+    const roles = turn2Args.messages.map((m) => m.role);
+    expect(roles).toEqual(['user', 'assistant', 'tool']);
+  });
+
+  it('cancel() during a parked tool wait wakes the runTurn promise and does not leak', async () => {
+    // Companion to the race fix above: if the user cancels while
+    // runTurn is parked waiting for tool results, the awaiting
+    // Promise must resolve (not leak forever) and the call should
+    // be cleaned out of `calls`.
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    seedKey('anthropic', 'sk-x');
+
+    // A stream that emits a tool-call then ends.
+    mockStreamText.mockReturnValueOnce(
+      makeStreamResult(
+        [
+          {
+            type: 'tool-call',
+            toolCallId: 'tc-cancel',
+            toolName: 'get_active_file',
+            input: {},
+          },
+        ],
+        {
+          responseMessages: [
+            {
+              role: 'assistant',
+              content: [
+                {
+                  type: 'tool-call',
+                  toolCallId: 'tc-cancel',
+                  toolName: 'get_active_file',
+                  input: {},
+                },
+              ],
+            },
+          ],
+          finishReason: 'tool-calls',
+        },
+      ),
+    );
+
+    assistant.chat({
+      ...baseRequest('call-cancel'),
+      tools: [
+        {
+          name: 'get_active_file',
+          description: 'Returns the active file',
+          parameters: { type: 'object', properties: {} },
+        },
+      ],
+    });
+    await flush();
+
+    // runTurn is now parked awaiting the (never-arriving) tool result.
+    // Cancel; the awaiting promise should resolve, the call entry
+    // should be deleted, and no second streamText should fire.
+    expect(assistant.cancel('call-cancel')).toBe(true);
+    await flush();
+    expect(mockStreamText).toHaveBeenCalledTimes(1);
+  });
+
   it('ignores submitToolResult for unknown callIds', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);

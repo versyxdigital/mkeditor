@@ -28,6 +28,11 @@ import {
   usePrompts,
 } from './contexts/PromptsContext';
 import {
+  ToolConfirmProvider,
+  registerToolConfirmOpener,
+  useToolConfirm,
+} from './contexts/ToolConfirmContext';
+import {
   PropertiesProvider,
   registerPropertiesShower,
   useProperties,
@@ -39,6 +44,7 @@ import { Navbar } from './components/Navbar';
 import { TabBar } from './components/TabBar';
 import { TitleBar } from './components/TitleBar';
 import { AssistantSidebar } from './components/AssistantSidebar';
+import { ConfirmToolCall } from './components/assistant/ConfirmToolCall';
 import { Sidebar } from './components/Sidebar';
 import { Workspace } from './components/Workspace';
 import { EditorToolbar } from './components/EditorToolbar';
@@ -134,32 +140,36 @@ export const App: React.FC<AppProps> = ({
             <PromptsProvider>
               <PropertiesProvider>
                 <WindowProvider>
-                  <ModalsBridge />
-                  <PromptsBridge />
-                  <PropertiesBridge />
-                  <MenuActionBridge />
-                  <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
-                    <FilesProvider>
-                      <FileTreeProvider>
-                        <TitleBar />
-                        <Navbar />
-                        <TabBar />
-                        <Shell
-                          onEditorReady={onEditorReady}
-                          workspaceGroupRef={workspaceGroupRef}
-                        />
-                        <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
-                        <BottomToolbarRight />
-                        <LazyModals />
-                        <Toaster
-                          position="bottom-right"
-                          richColors
-                          closeButton
-                          theme="system"
-                        />
-                      </FileTreeProvider>
-                    </FilesProvider>
-                  </UIStateProvider>
+                  <ToolConfirmProvider>
+                    <ModalsBridge />
+                    <PromptsBridge />
+                    <PropertiesBridge />
+                    <MenuActionBridge />
+                    <ToolConfirmBridge />
+                    <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
+                      <FilesProvider>
+                        <FileTreeProvider>
+                          <TitleBar />
+                          <Navbar />
+                          <TabBar />
+                          <Shell
+                            onEditorReady={onEditorReady}
+                            workspaceGroupRef={workspaceGroupRef}
+                          />
+                          <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
+                          <BottomToolbarRight />
+                          <LazyModals />
+                          <ConfirmToolCall />
+                          <Toaster
+                            position="bottom-right"
+                            richColors
+                            closeButton
+                            theme="system"
+                          />
+                        </FileTreeProvider>
+                      </FilesProvider>
+                    </UIStateProvider>
+                  </ToolConfirmProvider>
                 </WindowProvider>
               </PropertiesProvider>
             </PromptsProvider>
@@ -309,6 +319,20 @@ const PropertiesBridge: React.FC = () => {
   React.useEffect(() => {
     registerPropertiesShower(show);
   }, [show]);
+  return null;
+};
+
+/**
+ * Hands the `useToolConfirm().open` function to the module-level
+ * `confirmToolCallExternal` so `AssistantManager.runWithConfirmation`
+ * (a non-React caller) can open the confirm dialog and await the
+ * user's response.
+ */
+const ToolConfirmBridge: React.FC = () => {
+  const { open } = useToolConfirm();
+  React.useEffect(() => {
+    registerToolConfirmOpener(open);
+  }, [open]);
   return null;
 };
 

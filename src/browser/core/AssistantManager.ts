@@ -7,6 +7,7 @@ import type {
   ChatErrorEvent,
   ChatMessage,
   ChatRequest,
+  ChatToolCallEvent,
   ConfigPushPayload,
   ConfigSetRequest,
   InflightChatCall,
@@ -14,8 +15,12 @@ import type {
   OllamaModelsEvent,
   ProviderId,
   SanitizedProviderConfig,
+  ToolInvocation,
+  ToolResultRequest,
   UiChatMessage,
 } from '../../app/interfaces/Assistant';
+import type { ToolExecutor } from './AssistantTools';
+import { confirmToolCallExternal } from '../react/contexts/ToolConfirmContext';
 
 /**
  * Stable snapshot the React side reads through `useSyncExternalStore`.
@@ -133,6 +138,14 @@ export class AssistantManager {
   /** Key shape: `${provider}:${conversationId}`. */
   private drafts = new Map<string, string>();
   private inflightChats = new Map<string, InflightChatCall>();
+
+  /**
+   * Optional tool executor (P5). Null until `setToolExecutor` is
+   * called by `BridgeManager` after construction. When null,
+   * `startCall` ships an empty `tools` array (the model behaves as if
+   * no tools exist).
+   */
+  private toolExecutor: ToolExecutor | null = null;
 
   constructor(private bridge: ContextBridgeAPI) {}
 
@@ -484,6 +497,7 @@ export class AssistantManager {
       provider,
       model: conv.model,
       messages: wireMessages,
+      tools: this.toolExecutor?.describe() ?? undefined,
     };
     this.bridge.send('to:ai:chat', req);
     this.rebuildChatSnapshot();
@@ -535,6 +549,193 @@ export class AssistantManager {
         ? { ...msg, content: msg.content + text }
         : msg,
     );
+    this.rebuildChatSnapshot();
+  }
+
+  // ---- P5 — Tool calls -----------------------------------------------
+
+  /**
+   * Inject the tool executor (P5). Called once by `BridgeManager`
+   * after `AssistantTools` is constructed. `startCall` reads from
+   * this on each send so tools are available as soon as it's set;
+   * before that, chat works fine without tools.
+   */
+  public setToolExecutor(executor: ToolExecutor): void {
+    this.toolExecutor = executor;
+  }
+
+  /** Set per-conversation auto-accept (skips confirm dialogs for writes). */
+  public setAutoAcceptWrites(
+    provider: ProviderId,
+    conversationId: string,
+    value: boolean,
+  ): void {
+    const conv = this.conversations[provider].get(conversationId);
+    if (!conv || conv.autoAcceptWrites === value) return;
+    conv.autoAcceptWrites = value;
+    conv.updatedAt = Date.now();
+    this.rebuildChatSnapshot();
+  }
+
+  /**
+   * Handle a `from:ai:tool-call` event. Routes by tool class:
+   *   - read-class: execute immediately, ship tool-result
+   *   - write-class: pending-confirm (open dialog unless auto-accept)
+   *
+   * Errors and rejections still ship a tool-result back to main —
+   * the SDK needs every tool-call to have a matching tool-result so
+   * it can resume the stream. The result shape carries `ok: false +
+   * error` so the model can recover and try a different approach.
+   */
+  public onToolCall(payload: ChatToolCallEvent): void {
+    const inflight = this.inflightChats.get(payload.callId);
+    if (!inflight) return; // foreign callId (e.g. test ping) — silently drop
+    const executor = this.toolExecutor;
+    if (!executor || !executor.hasTool(payload.toolName)) {
+      this.recordToolCall(inflight, {
+        toolCallId: payload.toolCallId,
+        toolName: payload.toolName,
+        arguments: payload.arguments,
+        status: 'failed',
+        errorCode: 'unknown_tool',
+        errorMessage: `Unknown tool: ${payload.toolName}`,
+      });
+      this.shipToolResult(payload.callId, payload.toolCallId, {
+        ok: false,
+        error: 'unknown_tool',
+      });
+      return;
+    }
+    const toolClass = executor.classify(payload.toolName);
+    const conv = this.conversations[inflight.provider].get(
+      inflight.conversationId,
+    );
+    const autoAccept = conv?.autoAcceptWrites ?? false;
+
+    const initialStatus: ToolInvocation['status'] =
+      toolClass === 'write' && !autoAccept ? 'pending-confirm' : 'executing';
+    this.recordToolCall(inflight, {
+      toolCallId: payload.toolCallId,
+      toolName: payload.toolName,
+      arguments: payload.arguments,
+      status: initialStatus,
+    });
+
+    if (toolClass === 'write' && !autoAccept) {
+      void this.runWithConfirmation(payload, executor);
+    } else {
+      void this.runImmediate(payload, executor);
+    }
+  }
+
+  /** Execute a tool now and ship the result. */
+  private async runImmediate(
+    payload: ChatToolCallEvent,
+    executor: ToolExecutor,
+  ): Promise<void> {
+    const inflight = this.inflightChats.get(payload.callId);
+    if (!inflight) return;
+    try {
+      const result = await executor.execute(payload.toolName, payload.arguments);
+      this.updateToolCall(inflight, payload.toolCallId, (tc) => ({
+        ...tc,
+        status: 'succeeded',
+        result,
+      }));
+      this.shipToolResult(payload.callId, payload.toolCallId, result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.updateToolCall(inflight, payload.toolCallId, (tc) => ({
+        ...tc,
+        status: 'failed',
+        errorCode: 'execution_failed',
+        errorMessage: message,
+      }));
+      this.shipToolResult(payload.callId, payload.toolCallId, {
+        ok: false,
+        error: message,
+      });
+    }
+  }
+
+  /** Open the confirm dialog, then execute or reject. */
+  private async runWithConfirmation(
+    payload: ChatToolCallEvent,
+    executor: ToolExecutor,
+  ): Promise<void> {
+    const preview = executor.buildPreview(payload.toolName, payload.arguments);
+    const ok = await confirmToolCallExternal({
+      toolCallId: payload.toolCallId,
+      toolName: payload.toolName,
+      arguments: payload.arguments,
+      preview,
+    });
+    const inflight = this.inflightChats.get(payload.callId);
+    if (!inflight) return; // chat was cancelled while we awaited the user
+    if (!ok) {
+      this.updateToolCall(inflight, payload.toolCallId, (tc) => ({
+        ...tc,
+        status: 'failed',
+        errorCode: 'rejected',
+        errorMessage: 'User declined the tool call.',
+      }));
+      this.shipToolResult(payload.callId, payload.toolCallId, {
+        ok: false,
+        error: 'rejected',
+      });
+      return;
+    }
+    this.updateToolCall(inflight, payload.toolCallId, (tc) => ({
+      ...tc,
+      status: 'executing',
+    }));
+    await this.runImmediate(payload, executor);
+  }
+
+  private shipToolResult(
+    callId: string,
+    toolCallId: string,
+    result: unknown,
+  ): void {
+    const req: ToolResultRequest = { callId, toolCallId, result };
+    this.bridge.send('to:ai:tool-result', req);
+  }
+
+  /** Append a new toolCall record to the assistant message (immutable). */
+  private recordToolCall(
+    inflight: InflightChatCall,
+    invocation: ToolInvocation,
+  ): void {
+    const conv = this.conversations[inflight.provider].get(
+      inflight.conversationId,
+    );
+    if (!conv) return;
+    this.replaceAssistantMessage(conv, inflight.assistantMessageId, (msg) => ({
+      ...msg,
+      toolCalls: [...(msg.toolCalls ?? []), invocation],
+    }));
+    this.rebuildChatSnapshot();
+  }
+
+  /** Update an existing toolCall record via the mapper (immutable). */
+  private updateToolCall(
+    inflight: InflightChatCall,
+    toolCallId: string,
+    mapper: (tc: ToolInvocation) => ToolInvocation,
+  ): void {
+    const conv = this.conversations[inflight.provider].get(
+      inflight.conversationId,
+    );
+    if (!conv) return;
+    this.replaceAssistantMessage(conv, inflight.assistantMessageId, (msg) => {
+      const list = msg.toolCalls;
+      if (!list) return msg;
+      const idx = list.findIndex((tc) => tc.toolCallId === toolCallId);
+      if (idx < 0) return msg;
+      const next = [...list];
+      next[idx] = mapper(list[idx]);
+      return { ...msg, toolCalls: next };
+    });
     this.rebuildChatSnapshot();
   }
 

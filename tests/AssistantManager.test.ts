@@ -556,6 +556,303 @@ describe('AssistantManager.startCall + appendChunk + onChatDone', () => {
   });
 });
 
+/* ====================================================================== */
+/*  P5 — Tool calls                                                          */
+/* ====================================================================== */
+
+describe('AssistantManager.onToolCall — read-class auto-execute', () => {
+  it('records the tool call as succeeded and ships to:ai:tool-result with the result', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never);
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const executor = {
+      hasTool: jest.fn(() => true),
+      describe: jest.fn(() => []),
+      classify: jest.fn(() => 'read' as const),
+      buildPreview: jest.fn(() => null),
+      execute: jest.fn(async () => ({ ok: true, content: 'file body' })),
+    };
+    mgr.setToolExecutor(executor);
+
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'read_file',
+      arguments: { path: '/x.md' },
+    });
+    // Microtasks drain the immediate-execute path.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(executor.execute).toHaveBeenCalledWith('read_file', { path: '/x.md' });
+    const toolResultSend = sent.find((s) => s.channel === 'to:ai:tool-result');
+    expect(toolResultSend).toBeDefined();
+    expect(toolResultSend!.data).toEqual({
+      callId,
+      toolCallId: 'tc-1',
+      result: { ok: true, content: 'file body' },
+    });
+    const msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)
+      ?.messages.find((m) => m.role === 'assistant');
+    expect(msg?.toolCalls?.[0]).toMatchObject({
+      toolCallId: 'tc-1',
+      status: 'succeeded',
+    });
+  });
+
+  it('records failure when the tool throws and ships an error-shaped tool-result', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never);
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const executor = {
+      hasTool: jest.fn(() => true),
+      describe: jest.fn(() => []),
+      classify: jest.fn(() => 'read' as const),
+      buildPreview: jest.fn(() => null),
+      execute: jest.fn(async () => {
+        throw new Error('disk full');
+      }),
+    };
+    mgr.setToolExecutor(executor);
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-x',
+      toolName: 'read_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)
+      ?.messages.find((m) => m.role === 'assistant');
+    expect(msg?.toolCalls?.[0].status).toBe('failed');
+    expect(msg?.toolCalls?.[0].errorCode).toBe('execution_failed');
+    expect(msg?.toolCalls?.[0].errorMessage).toBe('disk full');
+    const toolResultSend = sent.find((s) => s.channel === 'to:ai:tool-result');
+    expect((toolResultSend!.data as { result: { ok: boolean } }).result.ok).toBe(false);
+  });
+
+  it('marks the call failed with unknown_tool when the executor does not know the tool', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never);
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const executor = {
+      hasTool: jest.fn(() => false),
+      describe: jest.fn(() => []),
+      classify: jest.fn(() => 'unknown' as const),
+      buildPreview: jest.fn(() => null),
+      execute: jest.fn(),
+    };
+    mgr.setToolExecutor(executor);
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-x',
+      toolName: 'made_up',
+      arguments: {},
+    });
+    await Promise.resolve();
+
+    expect(executor.execute).not.toHaveBeenCalled();
+    const toolResultSend = sent.find((s) => s.channel === 'to:ai:tool-result');
+    expect(toolResultSend).toBeDefined();
+    expect((toolResultSend!.data as { result: { ok: boolean; error: string } }).result).toEqual({
+      ok: false,
+      error: 'unknown_tool',
+    });
+    const msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)
+      ?.messages.find((m) => m.role === 'assistant');
+    expect(msg?.toolCalls?.[0].status).toBe('failed');
+    expect(msg?.toolCalls?.[0].errorCode).toBe('unknown_tool');
+  });
+
+  it('silently drops onToolCall for foreign callIds (no message mutation, no IPC)', () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never);
+    mgr.onToolCall({
+      callId: 'never-existed',
+      toolCallId: 'tc-x',
+      toolName: 'read_file',
+      arguments: {},
+    });
+    expect(sent.filter((s) => s.channel === 'to:ai:tool-result')).toHaveLength(0);
+  });
+});
+
+describe('AssistantManager.onToolCall — write-class confirmation', () => {
+  // The confirm dialog lives in React; AssistantManager opens it via
+  // the module-level `confirmToolCallExternal` seam. We register a
+  // fake opener that resolves with our chosen verdict.
+  let resolveOpen: ((ok: boolean) => void) | null = null;
+  beforeEach(() => {
+    resolveOpen = null;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { registerToolConfirmOpener } = require('../src/browser/react/contexts/ToolConfirmContext');
+    registerToolConfirmOpener(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveOpen = resolve;
+        }),
+    );
+  });
+
+  it('opens the confirm dialog; on accept executes the tool', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never);
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const executor = {
+      hasTool: jest.fn(() => true),
+      describe: jest.fn(() => []),
+      classify: jest.fn(() => 'write' as const),
+      buildPreview: jest.fn(() => ({
+        kind: 'write' as const,
+        path: '/x.md',
+        after: 'new',
+      })),
+      execute: jest.fn(async () => ({ ok: true })),
+    };
+    mgr.setToolExecutor(executor);
+
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: { path: '/x.md', content: 'new' },
+    });
+    // Initial state: pending-confirm, dialog open, executor NOT called.
+    await Promise.resolve();
+    let msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)
+      ?.messages.find((m) => m.role === 'assistant');
+    expect(msg?.toolCalls?.[0].status).toBe('pending-confirm');
+    expect(executor.execute).not.toHaveBeenCalled();
+
+    // Accept the dialog.
+    resolveOpen!(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(executor.execute).toHaveBeenCalledWith('write_file', {
+      path: '/x.md',
+      content: 'new',
+    });
+    msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)
+      ?.messages.find((m) => m.role === 'assistant');
+    expect(msg?.toolCalls?.[0].status).toBe('succeeded');
+    const toolResultSend = sent.find((s) => s.channel === 'to:ai:tool-result');
+    expect(toolResultSend).toBeDefined();
+  });
+
+  it('opens the confirm dialog; on reject ships an error-shaped tool-result + marks failed/rejected', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never);
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const executor = {
+      hasTool: jest.fn(() => true),
+      describe: jest.fn(() => []),
+      classify: jest.fn(() => 'write' as const),
+      buildPreview: jest.fn(() => null),
+      execute: jest.fn(),
+    };
+    mgr.setToolExecutor(executor);
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+    resolveOpen!(false);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(executor.execute).not.toHaveBeenCalled();
+    const msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)
+      ?.messages.find((m) => m.role === 'assistant');
+    expect(msg?.toolCalls?.[0].status).toBe('failed');
+    expect(msg?.toolCalls?.[0].errorCode).toBe('rejected');
+    const toolResultSend = sent.find((s) => s.channel === 'to:ai:tool-result');
+    expect((toolResultSend!.data as { result: { error: string } }).result.error).toBe('rejected');
+  });
+
+  it('autoAcceptWrites bypasses the confirm dialog and executes immediately', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never);
+    const conv = mgr.createConversation('anthropic');
+    mgr.setAutoAcceptWrites('anthropic', conv, true);
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const executor = {
+      hasTool: jest.fn(() => true),
+      describe: jest.fn(() => []),
+      classify: jest.fn(() => 'write' as const),
+      buildPreview: jest.fn(() => null),
+      execute: jest.fn(async () => ({ ok: true })),
+    };
+    mgr.setToolExecutor(executor);
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(executor.execute).toHaveBeenCalled();
+    expect(resolveOpen).toBeNull(); // confirm seam never invoked
+  });
+});
+
+describe('AssistantManager — startCall ships tools when an executor is set', () => {
+  it('includes the executor.describe() result in ChatRequest.tools', () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never);
+    const conv = mgr.createConversation('anthropic');
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [
+        {
+          name: 'read_file',
+          description: 'read a file',
+          parameters: { type: 'object' },
+        },
+      ],
+      classify: () => 'read',
+      buildPreview: () => null,
+      execute: async () => ({}),
+    });
+    mgr.startCall('anthropic', conv, 'hi');
+    const chatSend = sent.find((s) => s.channel === 'to:ai:chat');
+    const payload = chatSend!.data as { tools?: Array<{ name: string }> };
+    expect(payload.tools?.map((t) => t.name)).toEqual(['read_file']);
+  });
+
+  it('omits tools when no executor is set (chat-only fallback)', () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never);
+    const conv = mgr.createConversation('anthropic');
+    mgr.startCall('anthropic', conv, 'hi');
+    const chatSend = sent.find((s) => s.channel === 'to:ai:chat');
+    const payload = chatSend!.data as { tools?: unknown };
+    expect(payload.tools).toBeUndefined();
+  });
+});
+
 describe('AssistantManager — done/error routing (test path still works after P4)', () => {
   it('onChatDone resolves a pending testConnection before checking chats', async () => {
     const { bridge, sent } = makeBridge();

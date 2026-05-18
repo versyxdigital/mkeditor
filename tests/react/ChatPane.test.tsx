@@ -199,6 +199,50 @@ describe('<ChatPane> — model editor', () => {
   });
 });
 
+describe('<ChatPane> — gear popover (auto-accept writes)', () => {
+  it('opens the popover on gear click and exposes the auto-accept switch', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    // Popover closed → switch isn't in the DOM yet.
+    expect(screen.queryByTestId('chat-auto-accept')).toBeNull();
+    fireEvent.click(screen.getByTestId('chat-options'));
+    expect(screen.getByTestId('chat-auto-accept')).toBeInTheDocument();
+  });
+
+  it('toggling the auto-accept switch fires setAutoAcceptWrites with the new value', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    fireEvent.click(screen.getByTestId('chat-options'));
+    fireEvent.click(screen.getByTestId('chat-auto-accept'));
+    expect(am.setAutoAcceptWrites).toHaveBeenCalledWith(
+      'anthropic',
+      'conv-1',
+      true,
+    );
+  });
+
+  it('switch reflects conv.autoAcceptWrites on open', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    // Mutate the snapshot conversation in place — the fake manager
+    // returns the same object reference from getChatSnapshot.
+    conv.autoAcceptWrites = true;
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    fireEvent.click(screen.getByTestId('chat-options'));
+    const sw = screen.getByTestId('chat-auto-accept');
+    // Radix Switch surfaces state via aria-checked + data-state.
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+  });
+});
+
 describe('<ChatPane> — draft sync', () => {
   it('seeds the input from manager.getDraft on mount', () => {
     const { conv, snapshot } = snapshotWith({ messages: [] });

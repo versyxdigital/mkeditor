@@ -24,7 +24,10 @@
     "delete_confirm_title": "Delete conversation?",
     "delete_confirm_text": "\"{{title}}\" will be removed from this provider's history.",
     "delete_confirm_button": "Delete",
-    "delete_cancel_button": "Cancel"
+    "delete_cancel_button": "Cancel",
+    "options_aria": "Conversation options",
+    "auto_accept_label": "Auto-accept write tools",
+    "auto_accept_help": "Skip the confirmation dialog for edit / write / create / replace tool calls in this conversation. Read-class tools always auto-execute."
   },
   "assistant-settings": {
     "loading": "Loading provider config…",
@@ -63,6 +66,31 @@
     "error_ollama_unreachable": "Couldn't reach the Ollama daemon.",
     "error_cancelled": "Cancelled.",
     "error_unknown": "Connection failed."
+  },
+  "assistant-tools": {
+    "confirm_title": "Allow {{toolName}}?",
+    "confirm_title_fallback": "Allow tool call?",
+    "confirm_intro": "The assistant wants to run this tool. Review the change before accepting.",
+    "confirm_accept": "Allow",
+    "confirm_reject": "Reject",
+    "args_label": "Arguments",
+    "result_label": "Result",
+    "error_label": "Error",
+    "preview_create": "Create file {{path}}",
+    "preview_write": "Replace {{path}}",
+    "preview_edit": "Edit {{path}}",
+    "preview_replace": "Replace selection in {{path}}",
+    "preview_insert": "Insert into {{path}}",
+    "preview_before": "Before",
+    "preview_after": "After",
+    "status_pending-confirm": "Awaiting confirmation",
+    "status_executing": "Running",
+    "status_succeeded": "Done",
+    "status_failed": "Failed",
+    "toggle_card": "Toggle {{toolName}} details",
+    "error_rejected": "The user declined this tool call.",
+    "error_execution_failed": "The tool execution failed.",
+    "error_unknown_tool": "Unknown tool."
   },
   "assistant": {
     "title": "AI Assistant",

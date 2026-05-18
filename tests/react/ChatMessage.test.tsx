@@ -12,10 +12,14 @@ import * as React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 
 import { ChatMessage } from '../../src/browser/react/components/assistant/ChatMessage';
-import type { UiChatMessage } from '../../src/app/interfaces/Assistant';
+import type {
+  ToolInvocation,
+  UiChatMessage,
+} from '../../src/app/interfaces/Assistant';
 
 jest.mock('../../src/browser/i18n', () => ({
-  t: (key: string) => key,
+  t: (key: string, vars?: Record<string, unknown>) =>
+    vars ? `${key}:${JSON.stringify(vars)}` : key,
 }));
 
 jest.mock('../../src/browser/core/Markdown', () => ({
@@ -127,5 +131,70 @@ describe('<ChatMessage>', () => {
     expect(
       screen.getByText('assistant-settings:error_unknown'),
     ).toBeInTheDocument();
+  });
+
+  // ----- P5: tool-call render branch ---------------------------------
+
+  function tc(overrides: Partial<ToolInvocation> = {}): ToolInvocation {
+    return {
+      toolCallId: 'tc-1',
+      toolName: 'read_file',
+      arguments: { path: '/a.md' },
+      status: 'succeeded',
+      ...overrides,
+    };
+  }
+
+  it('renders a tool-call list inside an assistant bubble when toolCalls is non-empty (P5)', () => {
+    render(
+      <ChatMessage
+        message={msg({
+          id: 'a-tools',
+          status: 'complete',
+          content: 'Done.',
+          toolCalls: [
+            tc({ toolCallId: 'tc-a', toolName: 'read_file' }),
+            tc({ toolCallId: 'tc-b', toolName: 'list_files' }),
+          ],
+        })}
+      />,
+    );
+    const list = screen.getByTestId('tool-call-list');
+    expect(list).toBeInTheDocument();
+    // One card per invocation, keyed by toolCallId via ToolCallCard's
+    // own testid contract (`tool-call-<toolCallId>`).
+    expect(screen.getByTestId('tool-call-tc-a')).toBeInTheDocument();
+    expect(screen.getByTestId('tool-call-tc-b')).toBeInTheDocument();
+  });
+
+  it('does NOT render the tool-call list on a user bubble even when toolCalls is set', () => {
+    // User bubbles never carry toolCalls in practice, but the guard
+    // (`!isUser && ...`) is worth pinning.
+    render(
+      <ChatMessage
+        message={msg({
+          id: 'u-tools',
+          role: 'user',
+          content: 'hello',
+          status: 'complete',
+          toolCalls: [tc()],
+        })}
+      />,
+    );
+    expect(screen.queryByTestId('tool-call-list')).toBeNull();
+  });
+
+  it('does NOT render a tool-call list container when toolCalls is empty', () => {
+    render(
+      <ChatMessage
+        message={msg({
+          id: 'a-empty',
+          status: 'complete',
+          content: 'ok',
+          toolCalls: [],
+        })}
+      />,
+    );
+    expect(screen.queryByTestId('tool-call-list')).toBeNull();
   });
 });

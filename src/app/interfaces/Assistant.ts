@@ -265,6 +265,10 @@ export type ChatMessageStatus =
  * introduce a `ConversationRecord`-shaped persistence type and a
  * `toUiMessage` / `fromUiMessage` translation pair — `UiChatMessage`
  * is intentionally not written to disk verbatim.
+ *
+ * P5: added `toolCalls` — invocations the model emitted during this
+ * assistant turn (rendered as cards below the text body by
+ * `<ChatMessage>` / `<ToolCallCard>`).
  */
 export interface UiChatMessage {
   id: string;
@@ -275,7 +279,45 @@ export interface UiChatMessage {
   errorCode?: ChatErrorEvent['code'];
   /** Human-readable error detail when status === 'failed' (for logs / debugging). */
   errorMessage?: string;
+  /**
+   * Tool invocations the model emitted during this assistant turn.
+   * Each card carries its own lifecycle (pending-confirm / executing
+   * / succeeded / failed) independent of the message's `status`.
+   */
+  toolCalls?: ToolInvocation[];
   createdAt: number;
+}
+
+/* -------------------------------------------------------------------- */
+/*  Tool invocation (P5 — renderer-side, no IPC wire role)               */
+/* -------------------------------------------------------------------- */
+
+/**
+ * Lifecycle of a single tool invocation inside an assistant message.
+ *
+ * - `pending-confirm`: write-class tool waiting for the user's OK.
+ * - `executing`: read-class auto-execute (or post-confirm) running.
+ * - `succeeded`: the tool returned a result; assistant turn continues.
+ * - `failed`: the tool threw or the user rejected; an error-shaped
+ *   tool-result is sent back to the SDK so the model can recover.
+ */
+export type ToolInvocationStatus =
+  | 'pending-confirm'
+  | 'executing'
+  | 'succeeded'
+  | 'failed';
+
+/** A single tool call rendered as a card inside the assistant bubble. */
+export interface ToolInvocation {
+  toolCallId: string;
+  toolName: string;
+  arguments: unknown;
+  status: ToolInvocationStatus;
+  /** Serialised result returned by the tool's `execute()` (succeeded). */
+  result?: unknown;
+  /** Translatable error short-code + human-readable detail (failed). */
+  errorCode?: 'rejected' | 'execution_failed' | 'unknown_tool';
+  errorMessage?: string;
 }
 
 /** A single conversation tracked under one provider tab. */

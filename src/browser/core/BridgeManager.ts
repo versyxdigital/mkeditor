@@ -4,6 +4,7 @@ import type { BridgeProviders } from '../interfaces/Providers';
 import type { SettingsFile } from '../interfaces/Editor';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { AssistantManager } from './AssistantManager';
+import { AssistantTools } from './AssistantTools';
 import { registerBridgeListeners } from './BridgeListeners';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
@@ -76,6 +77,11 @@ export class BridgeManager {
       this.fileManager.openFileFromPath(path),
     );
     this.assistantManager = new AssistantManager(this.bridge);
+    // AI Assistant P5: hand the tool catalog to the manager. The
+    // executor needs the BridgeManager instance (it reaches into
+    // FileManager / FileTreeManager / EditorManager through there),
+    // so it's constructed AFTER those exist on `this`.
+    this.assistantManager.setToolExecutor(new AssistantTools(this));
     // Let FileManager.serializeSession read the workspace root without
     // taking a direct dependency on FileTreeManager.
     this.fileManager.setWorkspaceRootGetter(

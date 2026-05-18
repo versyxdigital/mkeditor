@@ -58,6 +58,17 @@ interface CallState {
   abortController: AbortController;
   /** Sticky flag flipped by `cancel()` so racing iterations bail out. */
   cancelled: boolean;
+  /**
+   * Resolver awaited by `runTurn` after the stream ends if tool calls are
+   * still outstanding. `submitToolResult` calls this once every pending
+   * call has a result. Set inside `runTurn`, consumed by `submitToolResult`.
+   * Critically: the next streamText turn only fires after `runTurn` has
+   * pushed the assistant message AND all tool results have landed —
+   * without this gate, a fast IPC round-trip could fire the next turn
+   * before we pushed the assistant message, leaving the model with a
+   * tool_result block that has no matching tool_use in the prior message.
+   */
+  toolWaiter: (() => void) | null;
 }
 
 /**
@@ -111,6 +122,7 @@ export class AppAssistant {
       toolResults: new Map(),
       abortController: new AbortController(),
       cancelled: false,
+      toolWaiter: null,
     };
     this.calls.set(request.callId, state);
     void this.runTurn(state);
@@ -133,14 +145,30 @@ export class AppAssistant {
     } catch {
       // best-effort
     }
+    // If runTurn is parked awaiting tool results, wake it so the
+    // cancelled guard at the top of the post-stream branch can fire
+    // and the awaiting Promise resolves instead of leaking.
+    const waiter = state.toolWaiter;
+    if (waiter) {
+      state.toolWaiter = null;
+      waiter();
+    }
     this.calls.delete(callId);
     return true;
   }
 
   /**
-   * Feed a single tool result back into the loop. When every pending
-   * tool from the prior assistant turn has been satisfied, the next
-   * `streamText` turn is kicked off automatically.
+   * Buffer a tool result. When every pending tool from the prior
+   * assistant turn has been satisfied, the awaiting `runTurn` resumes
+   * and starts the next streamText turn.
+   *
+   * Buffer-only is critical: firing the next turn from here used to
+   * race the current turn's stream consumer — the assistant message
+   * (carrying the tool_use blocks) hadn't been pushed yet when the
+   * tool result for a fast read-class tool round-tripped from the
+   * renderer. That meant the next request looked like `[user, tool]`
+   * to Anthropic, which collapses adjacent user+tool blocks and rejects
+   * with a `tool_use_id has no matching tool_use` 400 error.
    */
   submitToolResult(req: ToolResultRequest): void {
     const state = this.calls.get(req.callId);
@@ -150,26 +178,14 @@ export class AppAssistant {
     state.toolResults.set(req.toolCallId, req.result);
     if (state.toolResults.size !== state.pending.size) return; // still waiting
 
-    // All pending tool calls have results — append a tool message and
-    // start the next turn. Reset the pending bookkeeping for the next
-    // assistant turn.
-    const toolMessage: ModelMessage = {
-      role: 'tool',
-      content: Array.from(state.pending.entries()).map(([toolCallId, p]) => ({
-        type: 'tool-result',
-        toolCallId,
-        toolName: p.toolName,
-        output: {
-          type: 'json',
-          value: state.toolResults.get(toolCallId) as never,
-        },
-      })),
-    };
-    state.messages.push(toolMessage);
-    state.pending.clear();
-    state.toolResults.clear();
-    state.abortController = new AbortController();
-    void this.runTurn(state);
+    // All pending tool calls have results. If `runTurn` is awaiting,
+    // wake it; otherwise the results sit in the buffer for the next
+    // post-stream check in `runTurn`.
+    const waiter = state.toolWaiter;
+    if (waiter) {
+      state.toolWaiter = null;
+      waiter();
+    }
   }
 
   /**
@@ -225,7 +241,14 @@ export class AppAssistant {
     };
   }
 
-  /** Run a single streamText turn against the current state. */
+  /**
+   * Drive the streamText loop for a single call. Runs the assistant
+   * step, then — if tool calls were emitted — awaits external results
+   * and recurses for the next assistant step. All ordering invariants
+   * (push assistant message before tool message; only fire next turn
+   * after both have landed) live here so `submitToolResult` can stay a
+   * pure result-collector and the IPC handler can't trigger a race.
+   */
   private async runTurn(state: CallState): Promise<void> {
     const { request } = state;
     let model: LanguageModel;
@@ -301,14 +324,49 @@ export class AppAssistant {
       }
 
       // Append the assistant message (with any tool calls) to the
-      // running history so the next turn has full context.
+      // running history so the next turn has full context. This MUST
+      // happen before we push the tool message — Anthropic rejects a
+      // tool_result block that has no preceding tool_use.
       const responseMessages = (await result.response).messages;
       for (const m of responseMessages) {
         state.messages.push(m as ModelMessage);
       }
 
       if (state.pending.size > 0) {
-        // Wait for `submitToolResult` to feed every pending call back.
+        // Wait for every pending tool to have a result. If the renderer
+        // was fast and they all arrived during the stream, this resolves
+        // synchronously; otherwise we park here until `submitToolResult`
+        // wakes us.
+        if (state.toolResults.size < state.pending.size) {
+          await new Promise<void>((resolve) => {
+            state.toolWaiter = resolve;
+          });
+        }
+        // The chat may have been cancelled while we awaited the user.
+        if (state.cancelled) {
+          this.calls.delete(request.callId);
+          return;
+        }
+        // Append a tool message containing every result.
+        const toolMessage: ModelMessage = {
+          role: 'tool',
+          content: Array.from(state.pending.entries()).map(
+            ([toolCallId, p]) => ({
+              type: 'tool-result',
+              toolCallId,
+              toolName: p.toolName,
+              output: {
+                type: 'json',
+                value: state.toolResults.get(toolCallId) as never,
+              },
+            }),
+          ),
+        };
+        state.messages.push(toolMessage);
+        state.pending.clear();
+        state.toolResults.clear();
+        state.abortController = new AbortController();
+        await this.runTurn(state);
         return;
       }
 
