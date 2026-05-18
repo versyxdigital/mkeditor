@@ -164,7 +164,7 @@ API keys live in a separate, encrypted-at-rest section managed by [AssistantKeyS
 | #   | Phase                                                              | Status |
 | --- | ------------------------------------------------------------------ | ------ |
 | 1   | Main-process infrastructure (AppAssistant + keystore + IPC)        | 🟢 2026-05-18 |
-| 2   | Right-sidebar shell (collapsible/resizable, empty tab strip)       | 🔵     |
+| 2   | Right-sidebar shell (collapsible/resizable, empty tab strip)       | 🟢 2026-05-18 |
 | 3   | Provider settings UI (per-provider enable + key + model picker)    | 🔵     |
 | 4   | Chat surface + streaming (send, stream, cancel, model switch)      | 🔵     |
 | 5   | Agent tools (read/write/edit/list + confirm flow)                  | 🔵     |
