@@ -258,6 +258,43 @@ describe('AppAssistant.chat — streaming + callId fan-out', () => {
       finishReason: 'stop',
     });
   });
+
+  it('forwards maxOutputTokens to streamText when the request sets it (AI Assistant P3 connection-test path)', async () => {
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    seedKey('anthropic', 'sk-x');
+
+    mockStreamText.mockReturnValueOnce(
+      makeStreamResult([{ type: 'text-delta', text: 'pong' }]),
+    );
+
+    assistant.chat({ ...baseRequest('call-ping'), maxOutputTokens: 1 });
+    await flush();
+
+    expect(mockStreamText).toHaveBeenCalledTimes(1);
+    const args = mockStreamText.mock.calls[0][0] as {
+      maxOutputTokens?: number;
+    };
+    expect(args.maxOutputTokens).toBe(1);
+  });
+
+  it('omits maxOutputTokens from streamText when the request leaves it unset (chat path)', async () => {
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    seedKey('anthropic', 'sk-x');
+
+    mockStreamText.mockReturnValueOnce(
+      makeStreamResult([{ type: 'text-delta', text: 'ok' }]),
+    );
+
+    assistant.chat(baseRequest('call-no-cap'));
+    await flush();
+
+    const args = mockStreamText.mock.calls[0][0] as {
+      maxOutputTokens?: number;
+    };
+    expect(args.maxOutputTokens).toBeUndefined();
+  });
 });
 
 describe('AppAssistant.cancel', () => {

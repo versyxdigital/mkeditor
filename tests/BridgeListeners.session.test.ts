@@ -38,12 +38,28 @@ import { sonnerToast } from '../src/browser/notify';
 import { applyRestoredAssistantState } from '../src/browser/react/contexts/UIStateContext';
 import { registerBridgeListeners } from '../src/browser/core/BridgeListeners';
 import type { SessionRestoreEnvelope } from '../src/browser/interfaces/Session';
+import type {
+  ChatDoneEvent,
+  ChatErrorEvent,
+  ConfigPushPayload,
+  OllamaModelsEvent,
+} from '../src/app/interfaces/Assistant';
 
 type Handler = (...args: unknown[]) => void;
 
 describe('BridgeListeners session handlers', () => {
   let handlers: Record<string, Handler>;
   let bridge: { send: jest.Mock; receive: jest.Mock };
+  // Minimal AssistantManager surface BridgeListeners exercises in P3.
+  // Returned via the `manager` arg as `manager.assistantManager`.
+  let assistantManager: {
+    setConfigFromServer: jest.Mock;
+    onOllamaModels: jest.Mock;
+    onChatDone: jest.Mock;
+    onChatError: jest.Mock;
+    ownsCallId: jest.Mock;
+  };
+  let manager: { setWindowState: jest.Mock; assistantManager: typeof assistantManager };
   let files: {
     restoreSession: jest.Mock;
     serializeSession: jest.Mock;
@@ -113,6 +129,18 @@ describe('BridgeListeners session handlers', () => {
       completion: null,
     };
 
+    assistantManager = {
+      setConfigFromServer: jest.fn(),
+      onOllamaModels: jest.fn(),
+      onChatDone: jest.fn(),
+      onChatError: jest.fn(),
+      ownsCallId: jest.fn(() => true),
+    };
+    manager = {
+      setWindowState: jest.fn(),
+      assistantManager,
+    };
+
     registerBridgeListeners(
       bridge as never,
       mkeditor as never,
@@ -120,6 +148,7 @@ describe('BridgeListeners session handlers', () => {
       providers as never,
       files as never,
       tree as never,
+      manager as never,
     );
   });
 
@@ -273,5 +302,76 @@ describe('BridgeListeners session handlers', () => {
       contents: {},
     });
     expect(bridge.send).not.toHaveBeenCalled();
+  });
+
+  // ----- AI Assistant P3 forwarding ---------------------------------
+
+  it('from:ai:config delegates to assistantManager.setConfigFromServer with the exact payload', () => {
+    const payload: ConfigPushPayload = {
+      config: {
+        anthropic: {
+          enabled: true,
+          hasKey: true,
+          defaultModel: 'claude-sonnet-4-6',
+        },
+        openai: {
+          enabled: false,
+          hasKey: false,
+          defaultModel: 'gpt-4o',
+        },
+        ollama: {
+          enabled: true,
+          hasKey: false,
+          baseUrl: 'http://localhost:11434',
+          defaultModel: 'llama3.2',
+        },
+      },
+      encryptionAvailable: true,
+    };
+    handlers['from:ai:config'](payload);
+    expect(assistantManager.setConfigFromServer).toHaveBeenCalledTimes(1);
+    expect(assistantManager.setConfigFromServer).toHaveBeenCalledWith(payload);
+  });
+
+  it('from:ai:ollama:models delegates to assistantManager.onOllamaModels with the exact payload', () => {
+    const payload: OllamaModelsEvent = {
+      callId: 'oll-1',
+      models: ['llama3.2', 'qwen2.5'],
+    };
+    handlers['from:ai:ollama:models'](payload);
+    expect(assistantManager.onOllamaModels).toHaveBeenCalledTimes(1);
+    expect(assistantManager.onOllamaModels).toHaveBeenCalledWith(payload);
+  });
+
+  it('from:ai:done routes to onChatDone only when the manager owns the callId', () => {
+    const payload: ChatDoneEvent = { callId: 'test-abc', finishReason: 'stop' };
+    assistantManager.ownsCallId.mockReturnValueOnce(true);
+    handlers['from:ai:done'](payload);
+    expect(assistantManager.onChatDone).toHaveBeenCalledWith('test-abc');
+
+    assistantManager.onChatDone.mockClear();
+    assistantManager.ownsCallId.mockReturnValueOnce(false);
+    handlers['from:ai:done']({ callId: 'chat-from-p4' });
+    expect(assistantManager.onChatDone).not.toHaveBeenCalled();
+  });
+
+  it('from:ai:error routes to onChatError only when the manager owns the callId', () => {
+    const payload: ChatErrorEvent = {
+      callId: 'test-abc',
+      code: 'invalid_key',
+      message: '401',
+    };
+    assistantManager.ownsCallId.mockReturnValueOnce(true);
+    handlers['from:ai:error'](payload);
+    expect(assistantManager.onChatError).toHaveBeenCalledWith(payload);
+
+    assistantManager.onChatError.mockClear();
+    assistantManager.ownsCallId.mockReturnValueOnce(false);
+    handlers['from:ai:error']({
+      callId: 'chat-from-p4',
+      code: 'unknown',
+      message: 'foo',
+    });
+    expect(assistantManager.onChatError).not.toHaveBeenCalled();
   });
 });

@@ -66,6 +66,7 @@ const initialManagers: Managers = {
   fileManager: null,
   fileTreeManager: null,
   bridgeManager: null,
+  assistantManager: null,
   providers: {
     bridge: null,
     commands: null,
@@ -311,5 +312,6 @@ function onEditorReadyInner() {
     bridgeManager,
     fileManager: bridgeManager.fileManager,
     fileTreeManager: bridgeManager.fileTreeManager,
+    assistantManager: bridgeManager.assistantManager,
   }));
 }

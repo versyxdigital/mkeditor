@@ -248,6 +248,10 @@ export class AppAssistant {
         abortSignal: state.abortController.signal,
         // We drive the loop externally; stop the SDK after the first model call.
         stopWhen: stepCountIs(1),
+        // Honoured by both real providers; ignored by mock SDKs in tests.
+        ...(request.maxOutputTokens !== undefined
+          ? { maxOutputTokens: request.maxOutputTokens }
+          : {}),
       });
     } catch (err) {
       this.sendError(request.callId, AppAssistant.mapError(err));

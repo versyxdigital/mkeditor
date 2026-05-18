@@ -4,6 +4,12 @@ import type { File, FileProperties, RenamedPath } from '../interfaces/File';
 import type { BridgeProviders } from '../interfaces/Providers';
 import type { SettingsFile } from '../interfaces/Editor';
 import type { SessionRestoreEnvelope } from '../interfaces/Session';
+import type {
+  ChatDoneEvent,
+  ChatErrorEvent,
+  ConfigPushPayload,
+  OllamaModelsEvent,
+} from '../../app/interfaces/Assistant';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import type { BridgeManager } from './BridgeManager';
 import type { FileManager } from './FileManager';
@@ -238,4 +244,33 @@ export function registerBridgeListeners(
       manager.setWindowState({ isMaximized: !!state?.isMaximized });
     },
   );
+
+  // ---- AI Assistant (P3) ------------------------------------------
+  //
+  // Sanitized config snapshot the renderer reads — never carries any
+  // key value, only `hasKey: boolean` per provider. `AssistantManager`
+  // diffs the snapshot and notifies React subscribers.
+  bridge.receive('from:ai:config', (payload: ConfigPushPayload) => {
+    manager.assistantManager.setConfigFromServer(payload);
+  });
+
+  // Ollama model-list reply. AssistantManager has the pending Promise
+  // resolver keyed by callId; late deliveries are silently dropped.
+  bridge.receive('from:ai:ollama:models', (payload: OllamaModelsEvent) => {
+    manager.assistantManager.onOllamaModels(payload);
+  });
+
+  // Chat completion / error events. In P3 only the connection-test
+  // call path consumes these (other callIds will be claimed by the
+  // chat surface in P4 — AssistantManager.ownsCallId distinguishes).
+  bridge.receive('from:ai:done', (payload: ChatDoneEvent) => {
+    if (manager.assistantManager.ownsCallId(payload.callId)) {
+      manager.assistantManager.onChatDone(payload.callId);
+    }
+  });
+  bridge.receive('from:ai:error', (payload: ChatErrorEvent) => {
+    if (manager.assistantManager.ownsCallId(payload.callId)) {
+      manager.assistantManager.onChatError(payload);
+    }
+  });
 }

@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import type { AssistantManager } from '../../core/AssistantManager';
 import type { EditorManager } from '../../core/EditorManager';
 import type { BridgeManager } from '../../core/BridgeManager';
 import type { FileManager } from '../../core/FileManager';
@@ -35,6 +36,14 @@ export interface Managers {
   fileTreeManager: FileTreeManager | null;
   /** Wired in onEditorReady (both modes — web uses WebFileBridge). */
   bridgeManager: BridgeManager | null;
+  /**
+   * Renderer-side AI Assistant manager (P3+). Holds the sanitized
+   * `from:ai:config` snapshot and the public mutators the settings
+   * UI calls — see `AssistantContext` / `useAssistantConfig`.
+   * Constructed inside `BridgeManager` in `onEditorReady`; null until
+   * then.
+   */
+  assistantManager: AssistantManager | null;
   /**
    * Live reference to `editorManager.providers`. The map is mutated by
    * `onEditorReady` after Monaco creation, so consumers should read fields

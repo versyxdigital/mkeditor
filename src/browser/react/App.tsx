@@ -34,6 +34,7 @@ import {
 } from './contexts/PropertiesContext';
 import { SettingsContextProvider } from './contexts/SettingsContext';
 import { ExportSettingsContextProvider } from './contexts/ExportSettingsContext';
+import { AssistantContextProvider } from './contexts/AssistantContext';
 import { Navbar } from './components/Navbar';
 import { TabBar } from './components/TabBar';
 import { TitleBar } from './components/TitleBar';
@@ -128,7 +129,8 @@ export const App: React.FC<AppProps> = ({
     <ManagersProvider value={managers}>
       <SettingsContextProvider>
         <ExportSettingsContextProvider>
-          <ModalsProvider>
+          <AssistantContextProvider>
+            <ModalsProvider>
             <PromptsProvider>
               <PropertiesProvider>
                 <WindowProvider>
@@ -161,7 +163,8 @@ export const App: React.FC<AppProps> = ({
                 </WindowProvider>
               </PropertiesProvider>
             </PromptsProvider>
-          </ModalsProvider>
+            </ModalsProvider>
+          </AssistantContextProvider>
         </ExportSettingsContextProvider>
       </SettingsContextProvider>
     </ManagersProvider>

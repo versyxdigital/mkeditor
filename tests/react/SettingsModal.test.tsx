@@ -113,6 +113,56 @@ describe('<SettingsModal>', () => {
     expect(autoindent.getAttribute('data-state')).toBe('checked');
   });
 
+  it('opens on the AI Providers tab when payload.tab is "assistant", and swaps the title accordingly', async () => {
+    const settingsProvider = fakeSettingsProvider({});
+    const OpenOnAssistantTab: React.FC = () => {
+      const { openModal } = useModals();
+      React.useEffect(() => {
+        openModal('settings', { tab: 'assistant' });
+      }, [openModal]);
+      return null;
+    };
+
+    renderWithProviders(
+      <>
+        <OpenOnAssistantTab />
+        <SettingsModal />
+      </>,
+      {
+        managers: {
+          providers: {
+            bridge: null,
+            commands: null,
+            completion: null,
+            settings: settingsProvider as any,
+            exportSettings: null,
+          },
+        },
+      },
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    // Title swaps to the AI variant (the i18n mock echoes keys, so we
+    // match the key directly).
+    expect(
+      within(dialog).getByText('modals-settings:title_assistant'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByText('modals-settings:title'),
+    ).toBeNull();
+    // The AI Providers tab trigger is selected, not General.
+    expect(
+      within(dialog).getByRole('tab', {
+        name: 'modals-settings:tab_assistant',
+      }),
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(
+      within(dialog).getByRole('tab', {
+        name: 'modals-settings:tab_general',
+      }),
+    ).toHaveAttribute('aria-selected', 'false');
+  });
+
   it('updateSetting fires when the wordwrap checkbox is toggled off', async () => {
     const settingsProvider = fakeSettingsProvider({ wordwrap: true });
 

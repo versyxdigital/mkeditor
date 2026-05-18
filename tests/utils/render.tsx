@@ -17,6 +17,7 @@ import { PromptsProvider } from '../../src/browser/react/contexts/PromptsContext
 import { PropertiesProvider } from '../../src/browser/react/contexts/PropertiesContext';
 import { SettingsContextProvider } from '../../src/browser/react/contexts/SettingsContext';
 import { ExportSettingsContextProvider } from '../../src/browser/react/contexts/ExportSettingsContext';
+import { AssistantContextProvider } from '../../src/browser/react/contexts/AssistantContext';
 
 /**
  * Minimal in-memory FileManager stub good enough to drive the React
@@ -54,6 +55,60 @@ export function fakeFileManager(
       };
     }),
     getSnapshot: jest.fn(() => snapshot),
+    _setSnapshot: (next: typeof snapshot) => {
+      snapshot = next;
+      emit();
+    },
+  };
+}
+
+/**
+ * Stub the AssistantManager observable surface AssistantContext
+ * expects. Defaults to "no config yet" (config: null) — the initial
+ * loading state. Pass `initialSnapshot` to seed a hydrated state.
+ *
+ * Exposes `_setSnapshot` so tests can drive subsequent emits (e.g.
+ * "user enables a provider" → snapshot update → sidebar re-renders).
+ */
+export function fakeAssistantManager(
+  init: {
+    initialSnapshot?: {
+      config: {
+        anthropic: { enabled: boolean; hasKey: boolean; defaultModel: string };
+        openai: { enabled: boolean; hasKey: boolean; defaultModel: string };
+        ollama: {
+          enabled: boolean;
+          hasKey: false;
+          baseUrl: string;
+          defaultModel: string;
+        };
+      } | null;
+      encryptionAvailable: boolean;
+    };
+  } = {},
+) {
+  let snapshot =
+    init.initialSnapshot ?? { config: null, encryptionAvailable: false };
+  const listeners = new Set<() => void>();
+  const emit = () => listeners.forEach((l) => l());
+  return {
+    subscribeConfig: jest.fn((listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    }),
+    getConfigSnapshot: jest.fn(() => snapshot),
+    setProviderConfig: jest.fn(),
+    setKey: jest.fn(),
+    clearKey: jest.fn(),
+    refreshOllamaModels: jest.fn(async () => [] as string[]),
+    testConnection: jest.fn(async () => ({ ok: true })),
+    requestConfigRefresh: jest.fn(),
+    setConfigFromServer: jest.fn(),
+    onChatDone: jest.fn(),
+    onChatError: jest.fn(),
+    onOllamaModels: jest.fn(),
+    ownsCallId: jest.fn(() => false),
+    cancelChat: jest.fn(),
     _setSnapshot: (next: typeof snapshot) => {
       snapshot = next;
       emit();
@@ -132,6 +187,7 @@ export function buildManagers(overrides: Partial<Managers> = {}): Managers {
     fileManager: null,
     fileTreeManager: null,
     bridgeManager: null,
+    assistantManager: null,
     providers: {
       bridge: null,
       commands: null,
@@ -169,17 +225,19 @@ export function renderWithProviders(
     <ManagersProvider value={managers}>
       <SettingsContextProvider>
         <ExportSettingsContextProvider>
-          <ModalsProvider>
-            <PromptsProvider>
-              <PropertiesProvider>
-                <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
-                  <FilesProvider>
-                    <FileTreeProvider>{children}</FileTreeProvider>
-                  </FilesProvider>
-                </UIStateProvider>
-              </PropertiesProvider>
-            </PromptsProvider>
-          </ModalsProvider>
+          <AssistantContextProvider>
+            <ModalsProvider>
+              <PromptsProvider>
+                <PropertiesProvider>
+                  <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
+                    <FilesProvider>
+                      <FileTreeProvider>{children}</FileTreeProvider>
+                    </FilesProvider>
+                  </UIStateProvider>
+                </PropertiesProvider>
+              </PromptsProvider>
+            </ModalsProvider>
+          </AssistantContextProvider>
         </ExportSettingsContextProvider>
       </SettingsContextProvider>
     </ManagersProvider>

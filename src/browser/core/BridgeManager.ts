@@ -3,6 +3,7 @@ import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { BridgeProviders } from '../interfaces/Providers';
 import type { SettingsFile } from '../interfaces/Editor';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
+import { AssistantManager } from './AssistantManager';
 import { registerBridgeListeners } from './BridgeListeners';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
@@ -37,6 +38,15 @@ export class BridgeManager {
   /** File tree helper (exposed for FileTreeContext). */
   public fileTreeManager: FileTreeManager;
 
+  /**
+   * AI Assistant manager (P3+). Owns the sanitized config snapshot
+   * the settings UI subscribes to and the outbound `to:ai:*` mutators.
+   * Hydrated immediately after `registerBridgeListeners` runs so a
+   * `from:ai:config` push from main reaches the registered
+   * `onConfigPush` handler.
+   */
+  public assistantManager: AssistantManager;
+
   /** Window-control state. Mutated by `BridgeListeners.from:window:state`
    *  on every main-process maximize / unmaximize event. React's
    *  `WindowContext` reads this via `subscribeWindowState` +
@@ -65,6 +75,7 @@ export class BridgeManager {
     this.fileTreeManager = new FileTreeManager(this.bridge, (path) =>
       this.fileManager.openFileFromPath(path),
     );
+    this.assistantManager = new AssistantManager(this.bridge);
     // Let FileManager.serializeSession read the workspace root without
     // taking a direct dependency on FileTreeManager.
     this.fileManager.setWorkspaceRootGetter(
@@ -81,6 +92,14 @@ export class BridgeManager {
       this.fileTreeManager,
       this,
     );
+
+    // Explicitly request a config push now that listeners are in
+    // place. Main also sends one on `did-finish-load`, but the
+    // timing race (listener-registration vs. did-finish-load) makes
+    // an explicit pull from this side cheap insurance — the handler
+    // is idempotent and the snapshot diff'ing in AssistantManager
+    // collapses any duplicate emit.
+    this.assistantManager.requestConfigRefresh();
   }
 
   /**

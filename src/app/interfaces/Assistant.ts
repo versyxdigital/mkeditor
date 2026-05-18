@@ -96,6 +96,12 @@ export interface ChatRequest {
   messages: ChatMessage[];
   /** Empty / omitted = plain text turn. */
   tools?: ToolDescriptor[];
+  /**
+   * Optional cap on the model's output. Forwarded to streamText's
+   * `maxOutputTokens`. P3 uses `1` for the connection-test ping so the
+   * round-trip stays cheap; chat calls (P4) leave it unset.
+   */
+  maxOutputTokens?: number;
 }
 
 /** Payload of `to:ai:cancel`. */
