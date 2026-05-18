@@ -69,7 +69,7 @@ export const TabBar: React.FC = () => {
   return (
     <div
       data-testid="editor-tabs-strip"
-      className="flex items-stretch border-b border-border bg-muted/40 select-none"
+      className="flex items-stretch min-h-7 border-b border-border bg-muted/40 select-none"
     >
       <ul
         ref={listRef}

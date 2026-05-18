@@ -42,12 +42,15 @@ describe('BridgeListeners session handlers', () => {
     openingFile: boolean;
     untitledCounter: number;
     models: Map<string, unknown>;
+    tabs: Map<string, unknown>;
     activeFile: string | null;
     activateFile: jest.Mock;
     addTab: jest.Mock;
     renameTab: jest.Mock;
     replaceUntitled: jest.Mock;
+    seedUntitled: jest.Mock;
   };
+  let mkeditor: { getValue: jest.Mock } & Record<string, jest.Mock>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -69,11 +72,13 @@ describe('BridgeListeners session handlers', () => {
       openingFile: false,
       untitledCounter: 1,
       models: new Map(),
+      tabs: new Map(),
       activeFile: null,
       activateFile: jest.fn(),
       addTab: jest.fn(),
       renameTab: jest.fn(),
       replaceUntitled: jest.fn(),
+      seedUntitled: jest.fn(),
     };
 
     const tree = {
@@ -82,8 +87,8 @@ describe('BridgeListeners session handlers', () => {
       buildFileTree: jest.fn(),
       addFileToTree: jest.fn(),
     };
-    const mkeditor = {
-      getValue: jest.fn(() => ''),
+    mkeditor = {
+      getValue: jest.fn(() => 'welcome-markdown-content'),
       updateOptions: jest.fn(),
       setModel: jest.fn(),
       focus: jest.fn(),
@@ -159,6 +164,40 @@ describe('BridgeListeners session handlers', () => {
     };
     handlers['from:session:restore'](envelope);
     expect(files.restoreSession).toHaveBeenCalledWith(envelope);
+  });
+
+  it('from:session:restore seeds an untitled tab when no tabs landed', () => {
+    // restoreSession is a no-op against an empty envelope, so the
+    // tabs map stays empty. The handler should fall back to a seed
+    // using the current Monaco buffer (the welcome markdown).
+    handlers['from:session:restore']({
+      session: null,
+      missing: [],
+      contents: {},
+    });
+    expect(files.seedUntitled).toHaveBeenCalledTimes(1);
+    expect(files.seedUntitled).toHaveBeenCalledWith('welcome-markdown-content');
+  });
+
+  it('from:session:restore does NOT seed when restoreSession produced tabs', () => {
+    // Simulate restoreSession installing a tab — the handler must
+    // not double-seed on top of it.
+    files.restoreSession.mockImplementation(() => {
+      files.tabs.set('/abs/keep.md', { path: '/abs/keep.md', name: 'keep.md' });
+    });
+
+    handlers['from:session:restore']({
+      session: {
+        version: 1,
+        tabs: [{ path: '/abs/keep.md', name: 'keep.md', viewState: null }],
+        activeFile: '/abs/keep.md',
+        workspaceRoot: null,
+      },
+      missing: [],
+      contents: { '/abs/keep.md': 'kept' },
+    });
+
+    expect(files.seedUntitled).not.toHaveBeenCalled();
   });
 
   it('from:session:flush-request ships a synchronous to:session:save', () => {

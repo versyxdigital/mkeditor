@@ -197,6 +197,15 @@ export function registerBridgeListeners(
       );
     }
     if (envelope) files.restoreSession(envelope);
+    // If nothing landed (no session and no CLI-arg file is queued to
+    // open), seed an `untitled-1` from the welcome markdown that
+    // Monaco was created with. Mirrors the web boot pattern and
+    // avoids "editor has content, but no tab" first-launch UX.
+    // If a CLI file *is* about to open, the `from:file:opened`
+    // handler's `replaceUntitled` swap absorbs this seed in place.
+    if (files.tabs.size === 0) {
+      files.seedUntitled(mkeditor.getValue());
+    }
     const root = envelope?.session?.workspaceRoot;
     if (root) {
       // Mark openingFolder so `from:folder:opened` treats this as a
