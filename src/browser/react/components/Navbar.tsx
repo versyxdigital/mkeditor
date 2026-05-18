@@ -50,7 +50,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <nav className="flex items-center justify-between border-b border-border bg-background px-2 py-1">
+      <nav className="flex items-center justify-between border-b border-border bg-background">
         <div className="flex items-center gap-2">
           <Button
             id="sidebar-toggle"
@@ -59,13 +59,13 @@ export const Navbar: React.FC = () => {
             type="button"
             title={t('navbar:toggle_sidebar')}
             onClick={toggleSidebar}
-            className="h-7 w-7"
+            className="h-7 w-7 text-xs"
           >
             <Icon name="bars" />
           </Button>
           <span
             id="active-file"
-            className="truncate text-sm text-muted-foreground"
+            className="truncate text-xs text-muted-foreground"
             title={activeFileLabel ?? undefined}
           >
             {activeFileLabel ?? t('app:brand_name')}
@@ -78,7 +78,7 @@ export const Navbar: React.FC = () => {
                   size="icon"
                   variant="ghost"
                   onClick={handleCopyPath}
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground text-xs"
                   aria-label={t('navbar:copy_path_tooltip')}
                 >
                   <Icon name="copy" />

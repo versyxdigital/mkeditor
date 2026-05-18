@@ -9,10 +9,3 @@
   padding-bottom: 44px !important;
   background-color: #fff;
 }
-
-// hljs github theme uses an off-white surface that disappears against
-// our light preview background. Force the soft grey so fenced code
-// blocks visually pop in the live preview.
-body[data-theme='light'] .hljs {
-  background: #f5f5f5 !important;
-}
