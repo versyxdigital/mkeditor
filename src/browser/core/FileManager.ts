@@ -1,6 +1,7 @@
 import { editor } from 'monaco-editor';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type {
+  AssistantViewState,
   SessionPayload,
   SessionRestoreEnvelope,
   SessionTab,
@@ -125,6 +126,17 @@ export class FileManager {
    * FileManager having to know about FileTreeManager directly.
    */
   private workspaceRootGetter: (() => string | null) | null = null;
+
+  /**
+   * Optional callback that returns the current AI Assistant right-
+   * sidebar view state (open + size). Injected by the composition root
+   * so `serializeSession()` can include the `assistant` block without
+   * FileManager taking a direct dependency on UIStateContext.
+   * Returns `null` to opt out (FileManager omits the block in that
+   * case, mirroring v1 payloads).
+   */
+  private assistantStateGetter: (() => AssistantViewState | null) | null =
+    null;
 
   /**
    * Optional callback returning whether the user has session restore
@@ -704,6 +716,28 @@ export class FileManager {
   }
 
   /**
+   * Inject a getter for the AI Assistant right-sidebar view state
+   * (open + size). The composition root wires this to UIStateContext
+   * so `serializeSession()` can include the `assistant` block without
+   * FileManager holding a direct reference to React state.
+   */
+  public setAssistantStateGetter(
+    fn: () => AssistantViewState | null,
+  ): void {
+    this.assistantStateGetter = fn;
+  }
+
+  /**
+   * Public trigger used by UIStateContext when the right-sidebar
+   * open/size changes. Re-uses the existing debounced session save
+   * pipeline so AI Assistant view-state churn coalesces with tab
+   * churn rather than racing it.
+   */
+  public notifyAssistantStateChanged(): void {
+    this.scheduleSessionSave();
+  }
+
+  /**
    * Inject a getter for the user's `sessionRestore` setting. Wired by
    * the composition root to `SettingsProvider.getSetting('sessionRestore')`.
    * When the getter returns `false`, `scheduleSessionSave` and
@@ -762,12 +796,15 @@ export class FileManager {
       tabs.push(tab);
     }
 
-    return {
-      version: 1,
+    const payload: SessionPayload = {
+      version: 2,
       tabs,
       activeFile: this.activeFile,
       workspaceRoot: this.workspaceRootGetter?.() ?? null,
     };
+    const assistant = this.assistantStateGetter?.();
+    if (assistant) payload.assistant = assistant;
+    return payload;
   }
 
   /**

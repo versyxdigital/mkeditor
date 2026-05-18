@@ -131,11 +131,52 @@ describe('FileManager.serializeSession', () => {
 
     const payload = fm.serializeSession();
     expect(payload).toEqual({
-      version: 1,
+      version: 2,
       tabs: [],
       activeFile: null,
       workspaceRoot: null,
     });
+  });
+
+  it('includes the assistant block from the injected getter', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.setAssistantStateGetter(() => ({ sidebarOpen: true, size: 27.5 }));
+    const payload = fm.serializeSession();
+    expect(payload.assistant).toEqual({ sidebarOpen: true, size: 27.5 });
+  });
+
+  it('omits the assistant block when no getter is set', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    const payload = fm.serializeSession();
+    expect(payload.assistant).toBeUndefined();
+  });
+
+  it('omits the assistant block when the getter returns null', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.setAssistantStateGetter(() => null);
+    const payload = fm.serializeSession();
+    expect(payload.assistant).toBeUndefined();
   });
 
   it('includes the workspace root from the injected getter', async () => {
@@ -442,6 +483,29 @@ describe('FileManager.scheduleSessionSave', () => {
       tabs: { path: string }[];
     };
     expect(lastPayload.tabs.map((t) => t.path)).toEqual(['untitled-1']);
+  });
+
+  it('notifyAssistantStateChanged fires a to:session:save after the debounce', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge, sent } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.setAssistantStateGetter(() => ({ sidebarOpen: true, size: 30 }));
+    fm.notifyAssistantStateChanged();
+
+    jest.advanceTimersByTime(100);
+    expect(sent.filter((s) => s.channel === 'to:session:save')).toHaveLength(0);
+    jest.advanceTimersByTime(400);
+    const saves = sent.filter((s) => s.channel === 'to:session:save');
+    expect(saves.length).toBeGreaterThan(0);
+    const lastPayload = saves[saves.length - 1].data as {
+      assistant?: { sidebarOpen: boolean; size: number };
+    };
+    expect(lastPayload.assistant).toEqual({ sidebarOpen: true, size: 30 });
   });
 
   it('does not fire a save while suspendSessionSaves is in effect', async () => {

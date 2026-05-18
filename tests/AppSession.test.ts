@@ -18,7 +18,7 @@ import { join, normalize } from 'path';
 import type { SessionPayload } from '../src/app/interfaces/Session';
 
 const validPayload: SessionPayload = {
-  version: 1,
+  version: 2,
   activeFile: '/abs/path/foo.md',
   workspaceRoot: null,
   tabs: [
@@ -32,6 +32,19 @@ const validPayload: SessionPayload = {
       name: 'Untitled 1',
       viewState: null,
       untitledContent: 'scratch',
+    },
+  ],
+};
+
+const validV1Payload: SessionPayload = {
+  version: 1,
+  activeFile: '/abs/path/foo.md',
+  workspaceRoot: null,
+  tabs: [
+    {
+      path: '/abs/path/foo.md',
+      name: 'foo.md',
+      viewState: null,
     },
   ],
 };
@@ -89,6 +102,66 @@ describe('AppSession.load', () => {
 
       const AppSession = loadAppSession(tmpHome);
       expect(() => AppSession.load()).not.toThrow();
+      expect(AppSession.load()).toBeNull();
+    });
+  });
+
+  it('loads a v1 payload unchanged (backward-compat after the P2 bump)', () => {
+    withTempHome((tmpHome) => {
+      const dir = normalize(tmpHome + '/.mkeditor/');
+      const file = dir + 'session.json';
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require('fs') as typeof import('fs');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(file, JSON.stringify(validV1Payload), 'utf-8');
+
+      const AppSession = loadAppSession(tmpHome);
+      const loaded = AppSession.load();
+      expect(loaded).not.toBeNull();
+      expect(loaded?.version).toBe(1);
+      // Assistant block is optional and absent in v1 payloads —
+      // UIStateContext supplies defaults in that case.
+      expect(loaded?.assistant).toBeUndefined();
+    });
+  });
+
+  it('loads a v2 payload carrying the optional assistant block', () => {
+    withTempHome((tmpHome) => {
+      const dir = normalize(tmpHome + '/.mkeditor/');
+      const file = dir + 'session.json';
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require('fs') as typeof import('fs');
+      fs.mkdirSync(dir, { recursive: true });
+      const payload: SessionPayload = {
+        ...validPayload,
+        assistant: { sidebarOpen: true, size: 25.5 },
+      };
+      fs.writeFileSync(file, JSON.stringify(payload), 'utf-8');
+
+      const AppSession = loadAppSession(tmpHome);
+      const loaded = AppSession.load();
+      expect(loaded?.assistant).toEqual({ sidebarOpen: true, size: 25.5 });
+    });
+  });
+
+  it('rejects a payload whose assistant block has the wrong shape', () => {
+    withTempHome((tmpHome) => {
+      const dir = normalize(tmpHome + '/.mkeditor/');
+      const file = dir + 'session.json';
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require('fs') as typeof import('fs');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        file,
+        JSON.stringify({
+          ...validPayload,
+          // size missing — must invalidate the whole payload.
+          assistant: { sidebarOpen: true },
+        }),
+        'utf-8',
+      );
+
+      const AppSession = loadAppSession(tmpHome);
       expect(AppSession.load()).toBeNull();
     });
   });
@@ -231,7 +304,8 @@ describe('AppSession.save', () => {
   it('stamps the current schema version on every write', () => {
     withTempHome((tmpHome) => {
       const AppSession = loadAppSession(tmpHome);
-      // Forced bogus version on input — save() should normalise to 1.
+      // Forced bogus version on input — save() should normalise to the
+      // current canonical SCHEMA_VERSION (2 since AI Assistant P2).
       AppSession.save({
         ...validPayload,
         version: 999,
@@ -239,7 +313,7 @@ describe('AppSession.save', () => {
 
       const file = normalize(tmpHome + '/.mkeditor/session.json');
       const written = JSON.parse(readFileSync(file, { encoding: 'utf-8' }));
-      expect(written.version).toBe(1);
+      expect(written.version).toBe(2);
     });
   });
 
@@ -346,6 +420,35 @@ describe('AppSession.buildRestoreEnvelope', () => {
       });
 
       expect(envelope.session?.activeFile).toBeNull();
+    });
+  });
+
+  it('propagates the optional assistant block verbatim through the envelope', () => {
+    withTempHome((tmpHome) => {
+      const AppSession = loadAppSession(tmpHome);
+      const envelope = AppSession.buildRestoreEnvelope({
+        ...validPayload,
+        tabs: [],
+        activeFile: null,
+        workspaceRoot: null,
+        assistant: { sidebarOpen: true, size: 42 },
+      });
+      expect(envelope.session?.assistant).toEqual({
+        sidebarOpen: true,
+        size: 42,
+      });
+    });
+  });
+
+  it('leaves session.assistant undefined when the payload omits it (v1 path)', () => {
+    withTempHome((tmpHome) => {
+      const AppSession = loadAppSession(tmpHome);
+      const envelope = AppSession.buildRestoreEnvelope({
+        ...validV1Payload,
+        tabs: [],
+        activeFile: null,
+      });
+      expect(envelope.session?.assistant).toBeUndefined();
     });
   });
 

@@ -9,6 +9,7 @@ import { faClipboard } from '@fortawesome/free-solid-svg-icons/faClipboard';
 import { faCode } from '@fortawesome/free-solid-svg-icons/faCode';
 import { faCog } from '@fortawesome/free-solid-svg-icons/faCog';
 import { faCogs } from '@fortawesome/free-solid-svg-icons/faCogs';
+import { faComments } from '@fortawesome/free-solid-svg-icons/faComments';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faDatabase } from '@fortawesome/free-solid-svg-icons/faDatabase';
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons/faExclamationCircle';
@@ -44,6 +45,7 @@ library.add(
   faCode,
   faCog,
   faCogs,
+  faComments,
   faCopy,
   faDatabase,
   faExclamationCircle,

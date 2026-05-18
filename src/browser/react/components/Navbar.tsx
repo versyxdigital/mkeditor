@@ -19,7 +19,7 @@ import {
  * Top navbar.
  */
 export const Navbar: React.FC = () => {
-  const { toggleSidebar } = useUIState();
+  const { toggleSidebar, toggleRightSidebar, rightSidebarOpen } = useUIState();
   const { openModal } = useModals();
   const { t } = useTranslation();
   const { activeFile, tabs } = useFiles();
@@ -125,6 +125,24 @@ export const Navbar: React.FC = () => {
               </a>
             </TooltipTrigger>
             <TooltipContent>{t('navbar:shortcuts_tooltip')}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                id="assistant-toggle"
+                size="icon"
+                variant="ghost"
+                type="button"
+                aria-pressed={rightSidebarOpen}
+                onClick={toggleRightSidebar}
+                className="h-7 w-7 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Icon name="comments" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {t('navbar:toggle_assistant_tooltip')}
+            </TooltipContent>
           </Tooltip>
         </div>
       </nav>

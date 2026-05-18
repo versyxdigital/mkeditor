@@ -10,6 +10,10 @@ import { showSplashScreen } from './splash';
 
 import { App } from './react/App';
 import type { Managers } from './react/contexts/ManagersContext';
+import {
+  getCurrentAssistantState,
+  registerAssistantStateChangeListener,
+} from './react/contexts/UIStateContext';
 
 // The bi-directional synchronous bridge to the main execution context.
 // Exposed on the window object through the preloader.
@@ -237,6 +241,17 @@ function onEditorReadyInner() {
   bridgeManager.fileManager.setSessionEnabledGetter(
     () =>
       editorManager.providers.settings?.getSetting('sessionRestore') ?? true,
+  );
+
+  // AI Assistant P2: round-trip the right-sidebar view-state through
+  // the existing session payload. UIStateContext keeps a live mirror
+  // of `{ sidebarOpen, size }`; FileManager reads it at save time.
+  // Changes inside UIStateContext fire the change listener wired
+  // here, which goes through FileManager's existing 300ms-debounced
+  // save pipeline so AI Assistant churn coalesces with tab churn.
+  bridgeManager.fileManager.setAssistantStateGetter(getCurrentAssistantState);
+  registerAssistantStateChangeListener(() =>
+    bridgeManager.fileManager.notifyAssistantStateChanged(),
   );
 
   // Source the active file from FileManager (renderer-side, always

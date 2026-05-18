@@ -27,7 +27,15 @@ jest.mock('../src/browser/react/contexts/PropertiesContext', () => ({
   showPropertiesExternal: jest.fn(),
 }));
 
+// AI Assistant P2: BridgeListeners forwards the restored
+// `envelope.session.assistant` block into UIStateContext via this seam.
+// Mocked so the test runs without pulling React in.
+jest.mock('../src/browser/react/contexts/UIStateContext', () => ({
+  applyRestoredAssistantState: jest.fn(),
+}));
+
 import { sonnerToast } from '../src/browser/notify';
+import { applyRestoredAssistantState } from '../src/browser/react/contexts/UIStateContext';
 import { registerBridgeListeners } from '../src/browser/core/BridgeListeners';
 import type { SessionRestoreEnvelope } from '../src/browser/interfaces/Session';
 
@@ -123,6 +131,36 @@ describe('BridgeListeners session handlers', () => {
     };
     handlers['from:session:restore'](envelope);
     expect(files.restoreSession).toHaveBeenCalledWith(envelope);
+  });
+
+  it('from:session:restore forwards the assistant block to UIStateContext when present', () => {
+    const envelope: SessionRestoreEnvelope = {
+      session: {
+        version: 2,
+        tabs: [],
+        activeFile: null,
+        workspaceRoot: null,
+        assistant: { sidebarOpen: true, size: 33.3 },
+      },
+      missing: [],
+      contents: {},
+    };
+    handlers['from:session:restore'](envelope);
+    expect(applyRestoredAssistantState).toHaveBeenCalledTimes(1);
+    expect(applyRestoredAssistantState).toHaveBeenCalledWith({
+      sidebarOpen: true,
+      size: 33.3,
+    });
+  });
+
+  it('from:session:restore skips the assistant seam when the block is absent (v1 payload)', () => {
+    const envelope: SessionRestoreEnvelope = {
+      session: { version: 1, tabs: [], activeFile: null, workspaceRoot: null },
+      missing: [],
+      contents: {},
+    };
+    handlers['from:session:restore'](envelope);
+    expect(applyRestoredAssistantState).not.toHaveBeenCalled();
   });
 
   it('from:session:restore does not fire a toast when nothing is missing', () => {

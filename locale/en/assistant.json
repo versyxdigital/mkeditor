@@ -1,0 +1,6 @@
+{
+  "title": "AI Assistant",
+  "tabs_label": "AI provider",
+  "empty_state": "Connect your {{provider}} account to start chatting.",
+  "open_settings": "Open Settings"
+}

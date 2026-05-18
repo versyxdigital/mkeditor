@@ -4,6 +4,12 @@
     "app_name": "mkeditor",
     "brand_name": "MKEditor"
   },
+  "assistant": {
+    "title": "AI Assistant",
+    "tabs_label": "AI provider",
+    "empty_state": "Connect your {{provider}} account to start chatting.",
+    "open_settings": "Open Settings"
+  },
   "menus-alerts": {
     "primary": "Primary",
     "secondary": "Secondary",
@@ -211,6 +217,7 @@
   },
   "navbar": {
     "toggle_sidebar": "Toggle sidebar",
+    "toggle_assistant_tooltip": "Toggle AI Assistant",
     "character_count": "Character Count:",
     "word_count": "Word Count:",
     "settings_tooltip": "Configure editor settings",

@@ -5,6 +5,7 @@ import {
   Separator,
   type GroupImperativeHandle,
   type PanelImperativeHandle,
+  type PanelSize,
 } from 'react-resizable-panels';
 import { Toaster } from 'sonner';
 
@@ -36,6 +37,7 @@ import { ExportSettingsContextProvider } from './contexts/ExportSettingsContext'
 import { Navbar } from './components/Navbar';
 import { TabBar } from './components/TabBar';
 import { TitleBar } from './components/TitleBar';
+import { AssistantSidebar } from './components/AssistantSidebar';
 import { Sidebar } from './components/Sidebar';
 import { Workspace } from './components/Workspace';
 import { EditorToolbar } from './components/EditorToolbar';
@@ -350,16 +352,27 @@ const LazyModals: React.FC = () => {
 };
 
 /**
- * Sidebar | Workspace split. The outer Group sits below the Navbar +
- * TabBar in #react-root's flex column and flex-grows to fill the
- * remaining vertical space (`#mkeditor-layout { flex: 1 }`).
+ * Sidebar | Workspace | AssistantSidebar split. The outer Group sits
+ * below the Navbar + TabBar in #react-root's flex column and flex-grows
+ * to fill the remaining vertical space (`#mkeditor-layout { flex: 1 }`).
+ *
+ * AI Assistant P2: the right-hand `assistant-pane` mirrors the left
+ * sidebar's collapse/expand effect. Its size is read from + written
+ * to UIStateContext and persisted through the session payload so
+ * `{ open, size }` survives relaunch.
  */
 const Shell: React.FC<{
   onEditorReady?: () => void;
   workspaceGroupRef: React.RefObject<GroupImperativeHandle | null>;
 }> = ({ onEditorReady, workspaceGroupRef }) => {
-  const { sidebarOpen } = useUIState();
+  const {
+    sidebarOpen,
+    rightSidebarOpen,
+    rightSidebarSize,
+    setRightSidebarSize,
+  } = useUIState();
   const sidebarPanelRef = React.useRef<PanelImperativeHandle>(null);
+  const assistantPanelRef = React.useRef<PanelImperativeHandle>(null);
 
   React.useEffect(() => {
     const panel = sidebarPanelRef.current;
@@ -367,6 +380,29 @@ const Shell: React.FC<{
     if (sidebarOpen && panel.isCollapsed()) panel.expand();
     else if (!sidebarOpen && !panel.isCollapsed()) panel.collapse();
   }, [sidebarOpen]);
+
+  React.useEffect(() => {
+    const panel = assistantPanelRef.current;
+    if (!panel) return;
+    if (rightSidebarOpen && panel.isCollapsed()) panel.expand();
+    else if (!rightSidebarOpen && !panel.isCollapsed()) panel.collapse();
+  }, [rightSidebarOpen]);
+
+  // Push every drag tick into UIStateContext so the size persists
+  // through the session save pipeline (debounced 300ms by
+  // FileManager.scheduleSessionSave). The panel reports size as a
+  // percentage of the outer Group, matching how we persist it. We
+  // suppress zero-size events fired while the panel is collapsed so
+  // collapsing doesn't clobber the user's last-chosen expanded size.
+  const handleAssistantResize = React.useCallback(
+    (panelSize: PanelSize) => {
+      const size = panelSize.asPercentage;
+      if (size > 0 && size !== rightSidebarSize) {
+        setRightSidebarSize(size);
+      }
+    },
+    [rightSidebarSize, setRightSidebarSize],
+  );
 
   return (
     <Group orientation="horizontal" id="mkeditor-layout">
@@ -382,6 +418,17 @@ const Shell: React.FC<{
       <Separator className="gutter sidebar-gutter-horizontal" />
       <Panel id="workspace-pane">
         <Workspace groupRef={workspaceGroupRef} onEditorReady={onEditorReady} />
+      </Panel>
+      <Separator className="gutter sidebar-gutter-horizontal" />
+      <Panel
+        id="assistant-pane"
+        panelRef={assistantPanelRef}
+        collapsible
+        defaultSize={`${rightSidebarSize}%`}
+        minSize="15%"
+        onResize={handleAssistantResize}
+      >
+        <AssistantSidebar />
       </Panel>
     </Group>
   );

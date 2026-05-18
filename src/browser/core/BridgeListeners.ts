@@ -12,6 +12,7 @@ import {
   openModalExternal,
   type ModalKey,
 } from '../react/contexts/ModalsContext';
+import { applyRestoredAssistantState } from '../react/contexts/UIStateContext';
 import { sonnerToast } from '../notify';
 import { showPropertiesExternal } from '../react/contexts/PropertiesContext';
 import { basename } from '../util';
@@ -212,6 +213,13 @@ export function registerBridgeListeners(
       // root populate rather than a lazy-load.
       tree.openingFolder = true;
       bridge.send('to:file:openpath', { path: root });
+    }
+    // AI Assistant P2: forward the right-sidebar view-state (open + size)
+    // into UIStateContext via the module-level seam. v1 payloads omit
+    // the block; UIStateContext keeps its initial defaults in that case.
+    const assistant = envelope?.session?.assistant;
+    if (assistant) {
+      applyRestoredAssistantState(assistant);
     }
   });
 
