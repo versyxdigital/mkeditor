@@ -26,3 +26,17 @@ if (typeof g.ReadableStream === 'undefined') {
 if (typeof g.WritableStream === 'undefined') {
   g.WritableStream = NodeWritableStream;
 }
+
+// jsdom doesn't expose `TextEncoder` / `TextDecoder` either. The
+// Markdown singleton's code-fence renderer base64s the source via
+// `TextEncoder` for a copy-source data attribute — so any test that
+// renders a fenced code block (AI Assistant P4 onward via
+// `renderAssistantMarkdown`) needs these globals present.
+import { TextEncoder, TextDecoder } from 'node:util';
+type TextCodecs = {
+  TextEncoder?: typeof TextEncoder;
+  TextDecoder?: typeof TextDecoder;
+};
+const tg = globalThis as unknown as TextCodecs;
+if (typeof tg.TextEncoder === 'undefined') tg.TextEncoder = TextEncoder;
+if (typeof tg.TextDecoder === 'undefined') tg.TextDecoder = TextDecoder;

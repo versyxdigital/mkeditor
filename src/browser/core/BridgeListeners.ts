@@ -5,6 +5,7 @@ import type { BridgeProviders } from '../interfaces/Providers';
 import type { SettingsFile } from '../interfaces/Editor';
 import type { SessionRestoreEnvelope } from '../interfaces/Session';
 import type {
+  ChatChunkEvent,
   ChatDoneEvent,
   ChatErrorEvent,
   ConfigPushPayload,
@@ -260,17 +261,23 @@ export function registerBridgeListeners(
     manager.assistantManager.onOllamaModels(payload);
   });
 
-  // Chat completion / error events. In P3 only the connection-test
-  // call path consumes these (other callIds will be claimed by the
-  // chat surface in P4 — AssistantManager.ownsCallId distinguishes).
+  // Chat streaming chunks (P4). AssistantManager.appendChunk no-ops
+  // when the callId doesn't belong to a tracked chat (e.g. a stray
+  // text-delta from a connection-test ping) so we route every chunk
+  // through unconditionally.
+  bridge.receive('from:ai:chunk', (payload: ChatChunkEvent) => {
+    manager.assistantManager.appendChunk(payload.callId, payload.text);
+  });
+
+  // Chat completion / error events. P3 partitioned these between the
+  // test path and "future P4 chat" via `ownsCallId`; with P4 in
+  // place, AssistantManager.onChatDone/onChatError handle both paths
+  // internally (test pending first, then in-flight chat). Foreign
+  // callIds are silently ignored by the manager.
   bridge.receive('from:ai:done', (payload: ChatDoneEvent) => {
-    if (manager.assistantManager.ownsCallId(payload.callId)) {
-      manager.assistantManager.onChatDone(payload.callId);
-    }
+    manager.assistantManager.onChatDone(payload.callId);
   });
   bridge.receive('from:ai:error', (payload: ChatErrorEvent) => {
-    if (manager.assistantManager.ownsCallId(payload.callId)) {
-      manager.assistantManager.onChatError(payload);
-    }
+    manager.assistantManager.onChatError(payload);
   });
 }

@@ -5,6 +5,7 @@ import { useAssistantConfig } from '../contexts/AssistantContext';
 import { useModals } from '../contexts/ModalsContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
+import { ProviderTab } from './assistant/ProviderTab';
 import { Button } from './ui/button';
 import { Icon } from './Icon';
 
@@ -112,14 +113,9 @@ export const AssistantSidebar: React.FC = () => {
           <div
             role="tabpanel"
             aria-label={activeTab ? PROVIDER_LABEL[activeTab] : undefined}
-            className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center"
+            className="flex flex-1 flex-col overflow-hidden"
           >
-            <Icon name="comments" className="text-3xl text-muted-foreground" />
-            <p className="text-xs text-muted-foreground">
-              {t('assistant:provider_ready_placeholder', {
-                provider: activeTab ? PROVIDER_LABEL[activeTab] : '',
-              })}
-            </p>
+            {activeTab ? <ProviderTab provider={activeTab} /> : null}
           </div>
         </>
       )}

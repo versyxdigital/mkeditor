@@ -2,11 +2,19 @@ import * as React from 'react';
 
 import type { AssistantManager } from '../../core/AssistantManager';
 import type { AssistantConfigSnapshot } from '../../core/AssistantManager';
+import type { AssistantChatSnapshot } from '../../../app/interfaces/Assistant';
 import { useManagers } from './ManagersContext';
 
 const DEFAULT_SNAPSHOT: AssistantConfigSnapshot = {
   config: null,
   encryptionAvailable: false,
+};
+
+const EMPTY_CHAT_SNAPSHOT: AssistantChatSnapshot = {
+  conversations: { anthropic: [], openai: [], ollama: [] },
+  activeConversation: { anthropic: null, openai: null, ollama: null },
+  drafts: {},
+  inflight: {},
 };
 
 interface AssistantContextValue {
@@ -68,4 +76,37 @@ export const AssistantContextProvider: React.FC<{
 
 export function useAssistantConfig(): AssistantContextValue {
   return React.useContext(AssistantContext);
+}
+
+/**
+ * Reactive view of `AssistantManager`'s chat snapshot. Separate from
+ * `useAssistantConfig` so settings-only consumers don't re-render on
+ * chat churn (chunks fire multiple times per second during streaming).
+ *
+ * The hook subscribes / unsubscribes against the live manager
+ * reference each render — when the manager finally arrives via
+ * `setReactManagers`, `useSyncExternalStore`'s subscribe re-runs and
+ * the consumer wires up automatically.
+ */
+export function useAssistantChat(): {
+  chat: AssistantChatSnapshot;
+  manager: AssistantManager | null;
+} {
+  const { assistantManager } = useManagers();
+
+  const subscribe = React.useCallback(
+    (listener: () => void) => {
+      if (!assistantManager) return () => {};
+      return assistantManager.subscribeChat(listener);
+    },
+    [assistantManager],
+  );
+
+  const getSnapshot = React.useCallback(
+    () => assistantManager?.getChatSnapshot() ?? EMPTY_CHAT_SNAPSHOT,
+    [assistantManager],
+  );
+
+  const chat = React.useSyncExternalStore(subscribe, getSnapshot);
+  return { chat, manager: assistantManager };
 }

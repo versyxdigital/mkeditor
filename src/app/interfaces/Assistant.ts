@@ -239,3 +239,96 @@ export const DEFAULT_PROVIDER_CONFIG: ProviderConfigMap = {
 
 /** The provider ids that carry an API key. */
 export type ApiProviderId = 'anthropic' | 'openai';
+
+/* -------------------------------------------------------------------- */
+/*  Chat state shapes (P4 — renderer-side only, no IPC wire role)        */
+/* -------------------------------------------------------------------- */
+
+/**
+ * The lifecycle state of a single assistant turn. P4 only deals with
+ * pure text turns; tool-call states arrive in P5 (extended via the
+ * `ToolCallRecord` shape in the doc's Persistence Schema).
+ */
+export type ChatMessageStatus =
+  | 'streaming'
+  | 'complete'
+  | 'cancelled'
+  | 'failed';
+
+/**
+ * Renderer-side view of a single message in a chat conversation.
+ *
+ * Deliberately distinct from the doc's persistence `ChatMessage`
+ * (the P7 wire shape): `UiChatMessage` adds `status` / `errorCode` /
+ * `errorMessage` for the streaming + error visuals and narrows
+ * `role` to the two values P4 actually emits. When P7 lands, it will
+ * introduce a `ConversationRecord`-shaped persistence type and a
+ * `toUiMessage` / `fromUiMessage` translation pair — `UiChatMessage`
+ * is intentionally not written to disk verbatim.
+ */
+export interface UiChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  status: ChatMessageStatus;
+  /** Stable error code (matches `ChatErrorEvent.code`) when status === 'failed'. */
+  errorCode?: ChatErrorEvent['code'];
+  /** Human-readable error detail when status === 'failed' (for logs / debugging). */
+  errorMessage?: string;
+  createdAt: number;
+}
+
+/** A single conversation tracked under one provider tab. */
+export interface ChatConversation {
+  id: string;
+  providerId: ProviderId;
+  title: string;
+  /**
+   * The model used for the next send. Initialised to the provider's
+   * `defaultModel` at creation time; user can edit per-conversation
+   * through the chat header.
+   */
+  model: string;
+  messages: UiChatMessage[];
+  /**
+   * Per-conversation override for write-class tool confirmations (P5).
+   * Carried through P4 so the schema matches the doc's persistence
+   * shape without breaking forward-compat when P7 lands.
+   */
+  autoAcceptWrites: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Snapshot the React side reads via `useSyncExternalStore`. Stable
+ * reference between emits — `AssistantManager` rebuilds it on any
+ * structural or per-message change. Drafts live alongside
+ * conversations so input state survives tab/conversation switches.
+ */
+export interface AssistantChatSnapshot {
+  /** Conversations grouped by provider, in recency-descending order. */
+  conversations: Record<ProviderId, ChatConversation[]>;
+  /** Currently-selected conversation per provider tab (null if none yet). */
+  activeConversation: Record<ProviderId, string | null>;
+  /**
+   * In-progress input drafts. Key shape: `${provider}:${conversationId}`.
+   * Empty string when no draft.
+   */
+  drafts: Record<string, string>;
+  /**
+   * CallIds with chat streams currently in flight. Empty between
+   * turns. The chat UI uses this to toggle the send/stop button.
+   */
+  inflight: Record<string, InflightChatCall>;
+}
+
+/** Per-call bookkeeping kept while a chat turn streams. */
+export interface InflightChatCall {
+  callId: string;
+  provider: ProviderId;
+  conversationId: string;
+  /** Id of the placeholder assistant message that chunks append to. */
+  assistantMessageId: string;
+  startedAt: number;
+}

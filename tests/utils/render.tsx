@@ -70,6 +70,28 @@ export function fakeFileManager(
  * Exposes `_setSnapshot` so tests can drive subsequent emits (e.g.
  * "user enables a provider" → snapshot update → sidebar re-renders).
  */
+type ChatSnapshot = {
+  conversations: {
+    anthropic: unknown[];
+    openai: unknown[];
+    ollama: unknown[];
+  };
+  activeConversation: {
+    anthropic: string | null;
+    openai: string | null;
+    ollama: string | null;
+  };
+  drafts: Record<string, string>;
+  inflight: Record<string, unknown>;
+};
+
+const EMPTY_CHAT_SNAPSHOT: ChatSnapshot = {
+  conversations: { anthropic: [], openai: [], ollama: [] },
+  activeConversation: { anthropic: null, openai: null, ollama: null },
+  drafts: {},
+  inflight: {},
+};
+
 export function fakeAssistantManager(
   init: {
     initialSnapshot?: {
@@ -85,16 +107,21 @@ export function fakeAssistantManager(
       } | null;
       encryptionAvailable: boolean;
     };
+    initialChatSnapshot?: ChatSnapshot;
   } = {},
 ) {
   let snapshot =
     init.initialSnapshot ?? { config: null, encryptionAvailable: false };
-  const listeners = new Set<() => void>();
-  const emit = () => listeners.forEach((l) => l());
+  let chatSnapshot = init.initialChatSnapshot ?? EMPTY_CHAT_SNAPSHOT;
+  const configListeners = new Set<() => void>();
+  const chatListeners = new Set<() => void>();
+  const emitConfig = () => configListeners.forEach((l) => l());
+  const emitChat = () => chatListeners.forEach((l) => l());
   return {
+    // P3 config surface
     subscribeConfig: jest.fn((listener: () => void) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
+      configListeners.add(listener);
+      return () => configListeners.delete(listener);
     }),
     getConfigSnapshot: jest.fn(() => snapshot),
     setProviderConfig: jest.fn(),
@@ -104,14 +131,36 @@ export function fakeAssistantManager(
     testConnection: jest.fn(async () => ({ ok: true })),
     requestConfigRefresh: jest.fn(),
     setConfigFromServer: jest.fn(),
-    onChatDone: jest.fn(),
-    onChatError: jest.fn(),
     onOllamaModels: jest.fn(),
     ownsCallId: jest.fn(() => false),
     cancelChat: jest.fn(),
+
+    // P4 chat surface
+    subscribeChat: jest.fn((listener: () => void) => {
+      chatListeners.add(listener);
+      return () => chatListeners.delete(listener);
+    }),
+    getChatSnapshot: jest.fn(() => chatSnapshot),
+    getDraft: jest.fn(() => ''),
+    setDraft: jest.fn(),
+    createConversation: jest.fn(() => 'conv-new'),
+    deleteConversation: jest.fn(),
+    renameConversation: jest.fn(),
+    setConversationModel: jest.fn(),
+    setActiveConversation: jest.fn(),
+    startCall: jest.fn(() => 'chat-new'),
+    cancelCall: jest.fn(() => true),
+    appendChunk: jest.fn(),
+    onChatDone: jest.fn(),
+    onChatError: jest.fn(),
+
     _setSnapshot: (next: typeof snapshot) => {
       snapshot = next;
-      emit();
+      emitConfig();
+    },
+    _setChatSnapshot: (next: ChatSnapshot) => {
+      chatSnapshot = next;
+      emitChat();
     },
   };
 }

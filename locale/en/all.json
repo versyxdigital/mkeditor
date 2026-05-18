@@ -4,6 +4,28 @@
     "app_name": "mkeditor",
     "brand_name": "MKEditor"
   },
+  "assistant-chat": {
+    "new_conversation": "New chat",
+    "no_conversations": "No conversations yet.",
+    "no_conversations_cta": "Start your first {{provider}} conversation.",
+    "start_conversation": "Start a conversation",
+    "select_conversation": "Select a conversation from the list, or start a new one.",
+    "empty_conversation": "Say something to get started.",
+    "input_placeholder": "Message the assistant…",
+    "input_aria": "Message input",
+    "send": "Send",
+    "stop": "Stop",
+    "streaming": "Streaming…",
+    "model_label": "Model",
+    "model_aria": "Conversation model",
+    "message_cancelled": "Cancelled.",
+    "rename_aria": "Rename conversation",
+    "delete_conversation": "Delete {{title}}",
+    "delete_confirm_title": "Delete conversation?",
+    "delete_confirm_text": "\"{{title}}\" will be removed from this provider's history.",
+    "delete_confirm_button": "Delete",
+    "delete_cancel_button": "Cancel"
+  },
   "assistant-settings": {
     "loading": "Loading provider config…",
     "web_warning": "API keys you enter here are stored in this browser's localStorage. Any script that runs on this page can read them. Use the desktop build for stronger key isolation.",

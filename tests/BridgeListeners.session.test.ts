@@ -58,6 +58,7 @@ describe('BridgeListeners session handlers', () => {
     onChatDone: jest.Mock;
     onChatError: jest.Mock;
     ownsCallId: jest.Mock;
+    appendChunk: jest.Mock;
   };
   let manager: { setWindowState: jest.Mock; assistantManager: typeof assistantManager };
   let files: {
@@ -135,6 +136,7 @@ describe('BridgeListeners session handlers', () => {
       onChatDone: jest.fn(),
       onChatError: jest.fn(),
       ownsCallId: jest.fn(() => true),
+      appendChunk: jest.fn(),
     };
     manager = {
       setWindowState: jest.fn(),
@@ -343,35 +345,39 @@ describe('BridgeListeners session handlers', () => {
     expect(assistantManager.onOllamaModels).toHaveBeenCalledWith(payload);
   });
 
-  it('from:ai:done routes to onChatDone only when the manager owns the callId', () => {
+  it('from:ai:done routes to onChatDone unconditionally (P4: manager partitions test vs chat internally)', () => {
     const payload: ChatDoneEvent = { callId: 'test-abc', finishReason: 'stop' };
-    assistantManager.ownsCallId.mockReturnValueOnce(true);
     handlers['from:ai:done'](payload);
     expect(assistantManager.onChatDone).toHaveBeenCalledWith('test-abc');
 
     assistantManager.onChatDone.mockClear();
-    assistantManager.ownsCallId.mockReturnValueOnce(false);
     handlers['from:ai:done']({ callId: 'chat-from-p4' });
-    expect(assistantManager.onChatDone).not.toHaveBeenCalled();
+    expect(assistantManager.onChatDone).toHaveBeenCalledWith('chat-from-p4');
   });
 
-  it('from:ai:error routes to onChatError only when the manager owns the callId', () => {
+  it('from:ai:error routes to onChatError unconditionally (P4: manager partitions internally)', () => {
     const payload: ChatErrorEvent = {
       callId: 'test-abc',
       code: 'invalid_key',
       message: '401',
     };
-    assistantManager.ownsCallId.mockReturnValueOnce(true);
     handlers['from:ai:error'](payload);
     expect(assistantManager.onChatError).toHaveBeenCalledWith(payload);
 
     assistantManager.onChatError.mockClear();
-    assistantManager.ownsCallId.mockReturnValueOnce(false);
-    handlers['from:ai:error']({
+    const chatPayload: ChatErrorEvent = {
       callId: 'chat-from-p4',
       code: 'unknown',
       message: 'foo',
-    });
-    expect(assistantManager.onChatError).not.toHaveBeenCalled();
+    };
+    handlers['from:ai:error'](chatPayload);
+    expect(assistantManager.onChatError).toHaveBeenCalledWith(chatPayload);
+  });
+
+  it('from:ai:chunk routes to appendChunk with the callId and text (P4)', () => {
+    const appendChunk = jest.fn();
+    assistantManager.appendChunk = appendChunk;
+    handlers['from:ai:chunk']({ callId: 'chat-x', text: 'Hello' });
+    expect(appendChunk).toHaveBeenCalledWith('chat-x', 'Hello');
   });
 });
