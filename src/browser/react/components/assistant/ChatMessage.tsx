@@ -35,14 +35,18 @@ export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
       data-testid={`chat-message-${message.id}`}
       data-role={message.role}
       data-status={message.status}
+      // `min-w-0` is critical inside a flex column — without it the
+      // bubble's intrinsic content min-width (driven by long code lines
+      // or URLs) bubbles up and expands the entire chat pane, pushing
+      // the right sidebar wider than the user dragged it.
       className={cn(
-        'flex w-full',
+        'flex w-full min-w-0',
         isUser ? 'justify-end' : 'justify-start',
       )}
     >
       <div
         className={cn(
-          'max-w-[85%] rounded-md px-3 py-2 text-sm',
+          'max-w-[85%] min-w-0 rounded-md px-3 py-2 text-sm',
           isUser
             ? 'bg-primary text-primary-foreground'
             : 'bg-muted text-foreground',
@@ -52,16 +56,13 @@ export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
         )}
       >
         {isUser ? (
-          <p className="whitespace-pre-wrap">{message.content}</p>
+          <p className="whitespace-pre-wrap break-words">{message.content}</p>
         ) : (
           <AssistantBody message={message} />
         )}
 
         {message.status === 'streaming' && message.content.length === 0 && (
-          <span
-            className="streaming-dot inline-block h-2 w-2 animate-pulse rounded-full bg-current"
-            aria-label={t('assistant-chat:streaming')}
-          />
+          <ThinkingIndicator />
         )}
 
         {message.status === 'cancelled' && (
@@ -176,13 +177,82 @@ const AssistantBody: React.FC<{ message: UiChatMessage }> = React.memo(
     if (!message.content) return null;
     return (
       <div
-        className="prose prose-sm dark:prose-invert max-w-none [&_pre]:my-2 [&_p]:my-1"
+        // Selectors keep markdown content from busting the bubble's
+        // `max-w-[85%]`:
+        //   - `break-words` + `[&_code]:break-words` wrap long URLs /
+        //     inline tokens at character boundaries when needed.
+        //   - `[&_pre]:overflow-x-auto [&_pre]:max-w-full` gives code
+        //     blocks a horizontal scrollbar instead of expanding the
+        //     bubble.
+        //   - `[&_table]:block` + overflow-x-auto does the same for
+        //     wide markdown tables.
+        className="prose prose-sm dark:prose-invert max-w-none break-words [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_p]:my-1 [&_code]:break-words [&_a]:break-words [&_table]:block [&_table]:overflow-x-auto [&_table]:max-w-full"
         dangerouslySetInnerHTML={{ __html: html }}
       />
     );
   },
 );
 AssistantBody.displayName = 'AssistantBody';
+
+/* -------------------------------------------------------------------- */
+/*  ThinkingIndicator — "Thinking…" gerund that rotates while streaming   */
+/* -------------------------------------------------------------------- */
+
+/**
+ * Replaces the bare pulsing dot with a playful rotating gerund so the
+ * user has something to read while the assistant is preparing its
+ * first chunk. The dot stays for visual continuity. The gerund list is
+ * sourced from i18n (`assistant-chat:thinking_gerunds`, pipe-separated)
+ * so translators can substitute equivalents.
+ *
+ * Rotation cadence is intentionally just slow enough to read (~2.2s) —
+ * faster than that and it feels jittery on a freshly-opened stream
+ * that lands its first chunk inside ~500ms.
+ */
+const THINKING_ROTATION_MS = 2200;
+
+const ThinkingIndicator: React.FC = () => {
+  const { t } = useTranslation();
+  const gerunds = React.useMemo(() => {
+    const raw = t('assistant-chat:thinking_gerunds');
+    const parts = raw
+      .split('|')
+      .map((g) => g.trim())
+      .filter((g) => g.length > 0);
+    // Fallback when the locale key is missing or empty — avoids ever
+    // rendering an empty span.
+    return parts.length > 0 ? parts : ['Thinking'];
+  }, [t]);
+  const [idx, setIdx] = React.useState(() =>
+    Math.floor(Math.random() * gerunds.length),
+  );
+  React.useEffect(() => {
+    if (gerunds.length <= 1) return;
+    const id = window.setInterval(() => {
+      setIdx((prev) => {
+        // Always pick a different word so the same gerund doesn't
+        // appear to "hang" between ticks.
+        const next = Math.floor(Math.random() * (gerunds.length - 1));
+        return next >= prev ? next + 1 : next;
+      });
+    }, THINKING_ROTATION_MS);
+    return () => window.clearInterval(id);
+  }, [gerunds.length]);
+  return (
+    <span
+      className="inline-flex items-center gap-2 text-xs italic text-muted-foreground"
+      data-testid="thinking-indicator"
+    >
+      <span
+        className="streaming-dot inline-block h-2 w-2 animate-pulse rounded-full bg-current"
+        aria-hidden="true"
+      />
+      <span aria-live="polite" aria-label={t('assistant-chat:streaming')}>
+        {gerunds[idx]}…
+      </span>
+    </span>
+  );
+};
 
 function subscribeRenderer(listener: () => void): () => void {
   readyListeners.add(listener);

@@ -321,7 +321,11 @@ const MessageList: React.FC<{ messages: ChatConversation['messages'] }> = ({
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className="flex flex-1 flex-col gap-2 overflow-y-auto p-2"
+      // `min-w-0` on this flex column prevents wide message content
+      // (long code lines, URLs) from forcing the column to its
+      // intrinsic min-content width, which would push the surrounding
+      // sidebar Panel wider than the user dragged it.
+      className="flex min-w-0 flex-1 flex-col gap-2 overflow-y-auto p-2"
       data-testid="chat-message-list"
     >
       {messages.map((m) => (

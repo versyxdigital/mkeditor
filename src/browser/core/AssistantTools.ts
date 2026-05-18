@@ -744,12 +744,11 @@ const CATALOG: Record<string, ToolSpec> = {
       const parent = lastSlash > 0 ? path.slice(0, lastSlash) : '';
       const name = lastSlash > 0 ? path.slice(lastSlash + 1) : path;
       ctx.bridge.bridge.send('to:file:create', { parent, name, content });
-      // Open the new file as a tab so the user sees it. Fire-and-
-      // forget — failure to land isn't fatal (the file is already on
-      // disk with the right content). We don't await landing in
-      // models because `to:file:create` doesn't fire `from:file:opened`
-      // and `to:file:openpath` is racy against the create.
-      ctx.bridge.bridge.send('to:file:openpath', { path });
+      // Main's `createFile` now opens the new file as a tab itself
+      // (via `setActiveFile` → `from:file:opened`) once the write
+      // completes — so we don't fire a separate `to:file:openpath`
+      // here. The previous round-trip raced `fs.writeFile` and
+      // surfaced a spurious "Unable to open path" toast.
       return { ok: true, path };
     },
   },

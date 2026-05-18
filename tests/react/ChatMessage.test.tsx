@@ -83,19 +83,24 @@ describe('<ChatMessage>', () => {
     });
   });
 
-  it('shows the streaming dot when an assistant message is empty but in flight', () => {
+  it('renders the ThinkingIndicator (rotating gerund + dot) when an assistant message is empty but streaming', () => {
     render(<ChatMessage message={msg({ status: 'streaming', content: '' })} />);
+    // The indicator owns the streaming aria-label now (previously the
+    // bare dot did). The gerund text reads "Thinking…" / "Pondering…"
+    // etc. — sourced from the i18n key the test mock returns verbatim.
+    expect(screen.getByTestId('thinking-indicator')).toBeInTheDocument();
     expect(
       screen.getByLabelText('assistant-chat:streaming'),
     ).toBeInTheDocument();
   });
 
-  it('does NOT show the streaming dot once content has arrived', () => {
+  it('does NOT show the thinking indicator once content has arrived', () => {
     render(
       <ChatMessage
         message={msg({ status: 'streaming', content: 'partial output' })}
       />,
     );
+    expect(screen.queryByTestId('thinking-indicator')).toBeNull();
     expect(screen.queryByLabelText('assistant-chat:streaming')).toBeNull();
   });
 

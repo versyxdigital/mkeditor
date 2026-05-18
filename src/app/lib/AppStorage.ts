@@ -380,6 +380,12 @@ export class AppStorage {
       await fs.writeFile(file, content, 'utf-8');
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
+      // Open the newly-written file as a tab. Inlined here (instead of
+      // a separate `to:file:openpath` round-trip from the renderer)
+      // because the renderer-side `openPath` previously raced
+      // `fs.writeFile` and surfaced a spurious "Unable to open path"
+      // toast when stat ran before the write finished.
+      AppStorage.setActiveFile(context, file);
       context.webContents.send('from:notification:display', {
         status: 'success',
         key: 'notifications:file_created',

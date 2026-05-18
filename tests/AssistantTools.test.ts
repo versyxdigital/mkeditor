@@ -891,17 +891,22 @@ describe('AssistantTools — write-class execution', () => {
     });
   });
 
-  it('create_file also fires to:file:openpath so the new file lands as a tab', async () => {
+  it('create_file does NOT fire to:file:openpath (main opens the new tab itself, avoiding the create→openpath race)', async () => {
+    // Regression: previously fired `to:file:openpath` right after
+    // `to:file:create`, but main's `fs.stat` could run before
+    // `fs.writeFile` completed and emit a spurious "Unable to open
+    // path" toast. Main's `createFile` now opens the new file via
+    // `setActiveFile` once the write resolves, so the renderer doesn't
+    // need a second round-trip.
     const bm = makeBridgeManager();
     const tools = new AssistantTools(bm as never);
     await tools.execute('create_file', {
       path: '/workspace/notes/todo.md',
       content: 'todo',
     });
-    expect(bm.sent).toContainEqual({
-      channel: 'to:file:openpath',
-      data: { path: '/workspace/notes/todo.md' },
-    });
+    expect(bm.sent).not.toContainEqual(
+      expect.objectContaining({ channel: 'to:file:openpath' }),
+    );
   });
 
   it('create_file resolves a workspace-relative path before shipping IPC', async () => {
