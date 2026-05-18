@@ -49,6 +49,9 @@ const senderWhitelist = [
   'to:ai:key:set',
   'to:ai:key:clear',
   'to:ai:ollama:list',
+  // AI Assistant (P7)
+  'to:ai:conversations:save',
+  'to:ai:conversations:flush',
 ];
 
 // Can be sent from the main process and received
@@ -79,6 +82,9 @@ const receiverWhitelist = [
   'from:ai:error',
   'from:ai:config',
   'from:ai:ollama:models',
+  // AI Assistant (P7)
+  'from:ai:conversations',
+  'from:ai:conversations:flush-request',
 ];
 
 /**

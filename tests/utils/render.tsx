@@ -169,6 +169,13 @@ export function fakeAssistantManager(
     contextTokenEstimate: jest.fn(() => 0),
     contextFor: jest.fn(async () => null),
 
+    // P7 persistence surface
+    serialize: jest.fn(() => null),
+    restore: jest.fn(),
+    flushPersist: jest.fn(),
+    setActiveProvider: jest.fn(),
+    getActiveProvider: jest.fn(() => null),
+
     _setSnapshot: (next: typeof snapshot) => {
       snapshot = next;
       emitConfig();

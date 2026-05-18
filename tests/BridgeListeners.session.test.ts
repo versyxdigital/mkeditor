@@ -61,6 +61,8 @@ describe('BridgeListeners session handlers', () => {
     ownsCallId: jest.Mock;
     appendChunk: jest.Mock;
     onToolCall: jest.Mock;
+    restore: jest.Mock;
+    flushPersist: jest.Mock;
   };
   let manager: { setWindowState: jest.Mock; assistantManager: typeof assistantManager };
   let files: {
@@ -140,6 +142,8 @@ describe('BridgeListeners session handlers', () => {
       ownsCallId: jest.fn(() => true),
       appendChunk: jest.fn(),
       onToolCall: jest.fn(),
+      restore: jest.fn(),
+      flushPersist: jest.fn(),
     };
     manager = {
       setWindowState: jest.fn(),
@@ -396,5 +400,34 @@ describe('BridgeListeners session handlers', () => {
     handlers['from:ai:tool-call'](payload);
     expect(assistantManager.onToolCall).toHaveBeenCalledTimes(1);
     expect(assistantManager.onToolCall).toHaveBeenCalledWith(payload);
+  });
+
+  // ----- AI Assistant P7 forwarding ---------------------------------
+
+  it('from:ai:conversations delegates the persisted-snapshot payload to assistantManager.restore (P7 boot hydration)', () => {
+    const restore = jest.fn();
+    assistantManager.restore = restore;
+    const payload = {
+      activeProvider: 'anthropic' as const,
+      activeConversation: { anthropic: 'c-1', openai: null, ollama: null },
+      conversations: { anthropic: [], openai: [], ollama: [] },
+      drafts: {},
+    };
+    handlers['from:ai:conversations'](payload);
+    expect(restore).toHaveBeenCalledWith(payload);
+  });
+
+  it('from:ai:conversations with null payload triggers restore(null) (P7 migration path for pre-P7 files)', () => {
+    const restore = jest.fn();
+    assistantManager.restore = restore;
+    handlers['from:ai:conversations'](null);
+    expect(restore).toHaveBeenCalledWith(null);
+  });
+
+  it('from:ai:conversations:flush-request fires assistantManager.flushPersist (P7 quit-flush)', () => {
+    const flushPersist = jest.fn();
+    assistantManager.flushPersist = flushPersist;
+    handlers['from:ai:conversations:flush-request']();
+    expect(flushPersist).toHaveBeenCalledTimes(1);
   });
 });

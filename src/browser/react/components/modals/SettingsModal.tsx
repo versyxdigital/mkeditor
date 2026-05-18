@@ -42,6 +42,12 @@ export const SettingsModal: React.FC = () => {
   const { settings, updateSetting } = useSettings();
   const { t } = useTranslation();
 
+  // P7: AI Assistant is desktop-only. On web we still render the
+  // Settings modal (general settings remain) but the AI Providers
+  // tab itself is hidden — and any externally-requested `tab:'assistant'`
+  // payload falls back to 'general'.
+  const showAssistantTab = mode !== 'web';
+
   // Controlled tabs so the title + intro can switch with the active
   // tab. Initial value picks up `payload.tab` when the AssistantSidebar
   // empty-state CTA opens us straight on the AI Providers tab.
@@ -49,9 +55,11 @@ export const SettingsModal: React.FC = () => {
   React.useEffect(() => {
     if (open === 'settings') {
       const requested = payload && 'tab' in payload ? payload.tab : undefined;
-      setActiveTab(requested === 'assistant' ? 'assistant' : 'general');
+      setActiveTab(
+        requested === 'assistant' && showAssistantTab ? 'assistant' : 'general',
+      );
     }
-  }, [open, payload]);
+  }, [open, payload, showAssistantTab]);
 
   const [locales, setLocales] = React.useState<LocaleInfo[]>([]);
   React.useEffect(() => {
@@ -143,12 +151,14 @@ export const SettingsModal: React.FC = () => {
               >
                 {t('modals-settings:tab_general')}
               </TabsTrigger>
-              <TabsTrigger
-                value="assistant"
-                className="h-6 px-2 py-0.5 text-xs"
-              >
-                {t('modals-settings:tab_assistant')}
-              </TabsTrigger>
+              {showAssistantTab && (
+                <TabsTrigger
+                  value="assistant"
+                  className="h-6 px-2 py-0.5 text-xs"
+                >
+                  {t('modals-settings:tab_assistant')}
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="general">
@@ -268,9 +278,11 @@ export const SettingsModal: React.FC = () => {
               </Section>
             </TabsContent>
 
-            <TabsContent value="assistant">
-              <AssistantSettings />
-            </TabsContent>
+            {showAssistantTab && (
+              <TabsContent value="assistant">
+                <AssistantSettings />
+              </TabsContent>
+            )}
           </Tabs>
 
           <div className="mt-6 flex items-center gap-3">

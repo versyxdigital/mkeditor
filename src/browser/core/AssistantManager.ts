@@ -15,6 +15,8 @@ import type {
   OllamaModelsEvent,
   ProviderId,
   SanitizedProviderConfig,
+  PersistedChatMessage,
+  PersistedConversations,
   ToolInvocation,
   ToolResultRequest,
   UiChatMessage,
@@ -114,6 +116,7 @@ const FALLBACK_MODEL_BY_PROVIDER: Record<ProviderId, string> = {
 const EMPTY_CHAT_SNAPSHOT: AssistantChatSnapshot = {
   conversations: { anthropic: [], openai: [], ollama: [] },
   activeConversation: { anthropic: null, openai: null, ollama: null },
+  activeProvider: null,
   drafts: {},
   inflight: {},
 };
@@ -181,6 +184,12 @@ export class AssistantManager {
     openai: null,
     ollama: null,
   };
+  /**
+   * Last provider tab the user selected. Persisted (P7) so reopening
+   * the app lands on the same tab. Mutated by `setActiveProvider`
+   * (called by the sidebar's tab strip) and `restore()`.
+   */
+  private activeProviderTab: ProviderId | null = null;
   /** Key shape: `${provider}:${conversationId}`. */
   private drafts = new Map<string, string>();
   private inflightChats = new Map<string, InflightChatCall>();
@@ -201,6 +210,23 @@ export class AssistantManager {
    * returns null and chip/indicator surfaces collapse.
    */
   private contextProvider: AssistantContextProvider | null = null;
+
+  /**
+   * P7 — debounced save trigger. `rebuildChatSnapshot` schedules a
+   * persist on every state change; the trailing-edge debounce means a
+   * burst of mutations (e.g. quick chunk arrivals) collapses into a
+   * single `to:ai:conversations:save` write. `flushPersist` cancels
+   * the pending timer and fires the save synchronously — used by the
+   * `from:ai:conversations:flush-request` handler before quit.
+   */
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
+  private static readonly PERSIST_DEBOUNCE_MS = 500;
+
+  /**
+   * Disabled during `restore()` so the replay itself doesn't trigger
+   * a write. The main side already has the data on disk.
+   */
+  private persistEnabled = true;
 
   /**
    * Cached content snapshots for `@`-mentioned files. Keyed by
@@ -500,6 +526,21 @@ export class AssistantManager {
     if (this.activeConv[provider] === conversationId) return;
     this.activeConv[provider] = conversationId;
     this.rebuildChatSnapshot();
+  }
+
+  /**
+   * Set the currently-selected provider tab (P7 persistence). Called
+   * by `<AssistantSidebar>`'s tab strip on user click. Persisted so
+   * reopening the app lands on the same tab the user left on.
+   */
+  public setActiveProvider(provider: ProviderId | null): void {
+    if (this.activeProviderTab === provider) return;
+    this.activeProviderTab = provider;
+    this.rebuildChatSnapshot();
+  }
+
+  public getActiveProvider(): ProviderId | null {
+    return this.activeProviderTab;
   }
 
   // ---- Chat send + lifecycle ----------------------------------------
@@ -1070,6 +1111,178 @@ export class AssistantManager {
     };
   }
 
+  // ---- P7 — Persistence (serialize / restore) -----------------------
+
+  /**
+   * Capture a snapshot of the chat state suitable for writing to disk.
+   *
+   * Runtime-only state is filtered out:
+   *   - `inflightChats` (cancelled on quit; not persisted)
+   *   - assistant messages with `status: 'streaming'` (quit mid-stream
+   *     drops the partial bubble — the user sees a clean reload, not
+   *     a half-written sentence)
+   *   - tool invocations in `pending-confirm` / `executing` (they
+   *     can't resume across a restart; dropping them keeps the
+   *     persisted record honest about what actually happened)
+   *
+   * Returns null when there's nothing worth persisting (no conversations
+   * across any provider). Callers can short-circuit the IPC write in
+   * that case.
+   */
+  public serialize(): PersistedConversations | null {
+    const conversations: PersistedConversations['conversations'] = {
+      anthropic: [],
+      openai: [],
+      ollama: [],
+    };
+    let anyConversation = false;
+    for (const provider of PROVIDER_IDS) {
+      const map = this.conversations[provider];
+      // Order by recency-descending to match the snapshot ordering
+      // and the doc's persistence schema.
+      const ordered = Array.from(map.values()).sort(
+        (a, b) => b.updatedAt - a.updatedAt,
+      );
+      for (const conv of ordered) {
+        anyConversation = true;
+        const messages: PersistedChatMessage[] = [];
+        for (const m of conv.messages) {
+          if (m.role !== 'user' && m.role !== 'assistant') continue;
+          // Streaming messages are mid-flight; the corresponding
+          // in-flight call is cancelled on quit, so the message body
+          // can't be recovered. Drop it.
+          if (m.status === 'streaming') continue;
+          const persistedStatus =
+            m.status === 'complete' ||
+            m.status === 'cancelled' ||
+            m.status === 'failed'
+              ? m.status
+              : 'complete';
+          // Keep only fully-resolved tool invocations. Pending /
+          // executing entries can't pick back up across a restart.
+          const persistedToolCalls = m.toolCalls?.filter(
+            (tc) => tc.status === 'succeeded' || tc.status === 'failed',
+          );
+          messages.push({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            status: persistedStatus,
+            ...(m.errorCode ? { errorCode: m.errorCode } : {}),
+            ...(m.errorMessage ? { errorMessage: m.errorMessage } : {}),
+            ...(persistedToolCalls && persistedToolCalls.length > 0
+              ? { toolCalls: persistedToolCalls }
+              : {}),
+            createdAt: m.createdAt,
+          });
+        }
+        conversations[provider].push({
+          id: conv.id,
+          providerId: conv.providerId,
+          title: conv.title,
+          model: conv.model,
+          messages,
+          autoAcceptWrites: conv.autoAcceptWrites,
+          shareActiveFile: conv.shareActiveFile,
+          shareSelection: conv.shareSelection,
+          mentions: [...conv.mentions],
+          createdAt: conv.createdAt,
+          updatedAt: conv.updatedAt,
+        });
+      }
+    }
+    if (!anyConversation) return null;
+    const drafts: Record<string, string> = {};
+    for (const [k, v] of this.drafts) drafts[k] = v;
+    return {
+      activeProvider: this.activeProviderTab,
+      activeConversation: { ...this.activeConv },
+      conversations,
+      drafts,
+    };
+  }
+
+  /**
+   * Replay a serialized snapshot back into in-memory state. Idempotent
+   * (replays clear any existing state first). Re-emits a single chat
+   * snapshot at the end so React subscribers re-render once instead
+   * of once-per-conversation.
+   *
+   * Treats `null` / a malformed snapshot as "no history" — the manager
+   * is left empty rather than throwing.
+   */
+  public restore(snapshot: PersistedConversations | null): void {
+    // Disable the persist hook for the duration of the replay so the
+    // many rebuildChatSnapshot calls below don't ricochet back to
+    // main as a write of the data we just read.
+    const wasEnabled = this.persistEnabled;
+    this.persistEnabled = false;
+    try {
+      // Clear any in-memory state first so restore is idempotent.
+      this.conversations = {
+        anthropic: new Map(),
+        openai: new Map(),
+        ollama: new Map(),
+      };
+      this.activeConv = { anthropic: null, openai: null, ollama: null };
+      this.drafts.clear();
+      this.activeProviderTab = null;
+      if (!snapshot) {
+        this.rebuildChatSnapshot();
+        return;
+      }
+      this.applyRestoreSnapshot(snapshot);
+    } finally {
+      this.persistEnabled = wasEnabled;
+    }
+  }
+
+  private applyRestoreSnapshot(snapshot: PersistedConversations): void {
+    for (const provider of PROVIDER_IDS) {
+      const persistedList = snapshot.conversations?.[provider] ?? [];
+      for (const persisted of persistedList) {
+        // Re-hydrate as a runtime ChatConversation. Messages get
+        // their runtime status mapped 1:1 (persisted statuses are
+        // already in the runtime vocabulary minus 'streaming').
+        const messages: UiChatMessage[] = persisted.messages.map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          status: m.status,
+          ...(m.errorCode ? { errorCode: m.errorCode } : {}),
+          ...(m.errorMessage ? { errorMessage: m.errorMessage } : {}),
+          ...(m.toolCalls && m.toolCalls.length > 0
+            ? { toolCalls: m.toolCalls }
+            : {}),
+          createdAt: m.createdAt,
+        }));
+        const conv: ChatConversation = {
+          id: persisted.id,
+          providerId: persisted.providerId,
+          title: persisted.title,
+          model: persisted.model,
+          messages,
+          autoAcceptWrites: persisted.autoAcceptWrites,
+          shareActiveFile: persisted.shareActiveFile,
+          shareSelection: persisted.shareSelection,
+          mentions: [...persisted.mentions],
+          createdAt: persisted.createdAt,
+          updatedAt: persisted.updatedAt,
+        };
+        this.conversations[provider].set(conv.id, conv);
+      }
+      this.activeConv[provider] =
+        snapshot.activeConversation?.[provider] ?? null;
+    }
+    this.activeProviderTab = snapshot.activeProvider ?? null;
+    if (snapshot.drafts) {
+      for (const [k, v] of Object.entries(snapshot.drafts)) {
+        if (typeof v === 'string' && v.length > 0) this.drafts.set(k, v);
+      }
+    }
+    this.rebuildChatSnapshot();
+  }
+
   // ---- Done / error routing (shared with the P3 test path) -----------
 
   /**
@@ -1223,10 +1436,52 @@ export class AssistantManager {
     this.chatSnapshot = {
       conversations,
       activeConversation,
+      activeProvider: this.activeProviderTab,
       drafts,
       inflight,
     };
     this.chatListeners.forEach((l) => l());
+    // P7 — every snapshot rebuild is a state change worth eventually
+    // persisting. The debounce coalesces a streaming burst (many
+    // appendChunk → rebuildChatSnapshot calls in a single second)
+    // into one write.
+    this.schedulePersist();
+  }
+
+  /**
+   * P7 — kick off (or reset) the debounced persist timer. Skips
+   * scheduling while `persistEnabled` is false (during `restore`).
+   */
+  private schedulePersist(): void {
+    if (!this.persistEnabled) return;
+    if (this.persistTimer) clearTimeout(this.persistTimer);
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null;
+      this.writePersistNow();
+    }, AssistantManager.PERSIST_DEBOUNCE_MS);
+  }
+
+  /**
+   * P7 — synchronously flush whatever's pending in the debounce
+   * window. Called by `BridgeListeners.from:ai:conversations:flush-request`
+   * before quit. Idempotent — if nothing's pending, ships the
+   * current serialized snapshot anyway so the renderer's reply
+   * unblocks main's quit timer.
+   */
+  public flushPersist(): void {
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+    this.writePersistNow('to:ai:conversations:flush');
+  }
+
+  private writePersistNow(
+    channel: 'to:ai:conversations:save' | 'to:ai:conversations:flush' = 'to:ai:conversations:save',
+  ): void {
+    if (!this.persistEnabled) return;
+    const snapshot = this.serialize();
+    this.bridge.send(channel, snapshot);
   }
 
   /**

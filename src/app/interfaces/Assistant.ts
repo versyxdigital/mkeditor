@@ -218,6 +218,67 @@ export interface AssistantStoreFile {
    */
   providers: ProviderConfigMap;
   keys: Partial<Record<'anthropic' | 'openai', string>>;
+  /**
+   * P7 — persisted chat history. Absent on v1 files written before
+   * P7 landed; loaders treat undefined as "no history" (the first
+   * post-upgrade save writes the new block). Conversation records
+   * carry the doc's `ConversationRecord` shape minus runtime-only
+   * fields (no `status`, no `toolCalls` mid-stream — `serialize()`
+   * strips those before write).
+   */
+  conversations?: PersistedConversations;
+}
+
+/**
+ * Persisted chat history shape — what `AssistantManager.serialize()`
+ * produces and `AssistantManager.restore(...)` consumes. Lives next
+ * to `providers` + `keys` inside `~/.mkeditor/assistant.json`.
+ */
+export interface PersistedConversations {
+  /** Last selected provider tab. */
+  activeProvider: ProviderId | null;
+  /** Per-provider last-open conversation id. */
+  activeConversation: Record<ProviderId, string | null>;
+  /** Conversations grouped by provider id; insertion order = recency-descending. */
+  conversations: Record<ProviderId, PersistedConversation[]>;
+  /** Per-`${provider}:${conversationId}` draft input that survived shutdown. */
+  drafts: Record<string, string>;
+}
+
+/**
+ * On-disk conversation record — narrower than the runtime
+ * `ChatConversation` (no streaming placeholder messages, no in-flight
+ * tool-call cards). `serialize()` filters runtime-only state out.
+ */
+export interface PersistedConversation {
+  id: string;
+  providerId: ProviderId;
+  title: string;
+  model: string;
+  messages: PersistedChatMessage[];
+  autoAcceptWrites: boolean;
+  shareActiveFile: boolean;
+  shareSelection: boolean;
+  mentions: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PersistedChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  /** Persisted lifecycle. Streaming messages are dropped at serialize time. */
+  status: 'complete' | 'cancelled' | 'failed';
+  errorCode?: ChatErrorEvent['code'];
+  errorMessage?: string;
+  /**
+   * Resolved tool invocations (succeeded / failed). Pending / executing
+   * cards are filtered out at serialize time — they wouldn't make
+   * sense after restart.
+   */
+  toolCalls?: ToolInvocation[];
+  createdAt: number;
 }
 
 /** Defaults applied when no config file exists. User overrides in P3. */
@@ -390,6 +451,12 @@ export interface AssistantChatSnapshot {
   conversations: Record<ProviderId, ChatConversation[]>;
   /** Currently-selected conversation per provider tab (null if none yet). */
   activeConversation: Record<ProviderId, string | null>;
+  /**
+   * Currently-selected provider tab (P7). Persisted so reopening the
+   * app lands the sidebar on the same tab. Null when no tab has been
+   * picked yet (boot before restore, or every provider disabled).
+   */
+  activeProvider: ProviderId | null;
   /**
    * In-progress input drafts. Key shape: `${provider}:${conversationId}`.
    * Empty string when no draft.

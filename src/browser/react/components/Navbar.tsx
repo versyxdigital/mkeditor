@@ -3,6 +3,7 @@ import * as React from 'react';
 import { useFiles } from '../contexts/FilesContext';
 import { useModals } from '../contexts/ModalsContext';
 import { useUIState } from '../contexts/UIStateContext';
+import { useManagers } from '../contexts/ManagersContext';
 import { sonnerToast } from '../../notify';
 import { useCounts } from '../hooks/useCounts';
 import { useTranslation } from '../hooks/useTranslation';
@@ -21,8 +22,14 @@ import {
 export const Navbar: React.FC = () => {
   const { toggleSidebar, toggleRightSidebar, rightSidebarOpen } = useUIState();
   const { openModal } = useModals();
+  const { mode } = useManagers();
   const { t } = useTranslation();
   const { activeFile, tabs } = useFiles();
+
+  // P7: hide the AI sidebar toggle on web — AI Assistant is
+  // desktop-only (see docs/AI_ASSISTANT.md "Decisions" → "API call
+  // location").
+  const showAssistantToggle = mode !== 'web';
   const counts = useCounts();
 
   // Navbar shows the full path of the active file (the tab itself
@@ -126,24 +133,26 @@ export const Navbar: React.FC = () => {
             </TooltipTrigger>
             <TooltipContent>{t('navbar:shortcuts_tooltip')}</TooltipContent>
           </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                id="assistant-toggle"
-                size="icon"
-                variant="ghost"
-                type="button"
-                aria-pressed={rightSidebarOpen}
-                onClick={toggleRightSidebar}
-                className="h-7 w-7 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <Icon name="comments" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {t('navbar:toggle_assistant_tooltip')}
-            </TooltipContent>
-          </Tooltip>
+          {showAssistantToggle && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  id="assistant-toggle"
+                  size="icon"
+                  variant="ghost"
+                  type="button"
+                  aria-pressed={rightSidebarOpen}
+                  onClick={toggleRightSidebar}
+                  className="h-7 w-7 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <Icon name="comments" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {t('navbar:toggle_assistant_tooltip')}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </nav>
     </TooltipProvider>

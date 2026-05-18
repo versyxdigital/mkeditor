@@ -13,6 +13,7 @@ const DEFAULT_SNAPSHOT: AssistantConfigSnapshot = {
 const EMPTY_CHAT_SNAPSHOT: AssistantChatSnapshot = {
   conversations: { anthropic: [], openai: [], ollama: [] },
   activeConversation: { anthropic: null, openai: null, ollama: null },
+  activeProvider: null,
   drafts: {},
   inflight: {},
 };

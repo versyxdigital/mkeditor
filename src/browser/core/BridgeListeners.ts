@@ -11,6 +11,7 @@ import type {
   ChatToolCallEvent,
   ConfigPushPayload,
   OllamaModelsEvent,
+  PersistedConversations,
 } from '../../app/interfaces/Assistant';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import type { BridgeManager } from './BridgeManager';
@@ -287,5 +288,26 @@ export function registerBridgeListeners(
   // (or auto-accepts based on per-conversation toggle).
   bridge.receive('from:ai:tool-call', (payload: ChatToolCallEvent) => {
     manager.assistantManager.onToolCall(payload);
+  });
+
+  // P7: persisted conversation hydration. Fired once by main on
+  // `did-finish-load` after the AI config push. Pre-P7 store files
+  // arrive as `null` (no conversations block); restore handles that
+  // as "no history".
+  bridge.receive(
+    'from:ai:conversations',
+    (payload: PersistedConversations | null) => {
+      manager.assistantManager.restore(payload);
+    },
+  );
+
+  // P7: quit-flush request. Main fires this before-quit so any
+  // in-flight 500ms debounce window doesn't lose the last
+  // conversation mutation. AssistantManager.flushPersist() cancels
+  // the pending timer and synchronously ships the latest serialize()
+  // via the `to:ai:conversations:flush` channel, which main awaits
+  // (paired with the session flush) before app.quit().
+  bridge.receive('from:ai:conversations:flush-request', () => {
+    manager.assistantManager.flushPersist();
   });
 }

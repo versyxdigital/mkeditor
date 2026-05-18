@@ -11,12 +11,17 @@ import type {
   KeyClearRequest,
   KeySetRequest,
   OllamaListRequest,
+  PersistedConversations,
   ToolResultRequest,
 } from '../interfaces/Assistant';
 import { AppSession } from './AppSession';
 import { AppStorage } from './AppStorage';
 import { AssistantConfig } from './AssistantConfig';
 import { AssistantKeyStore } from './AssistantKeyStore';
+import {
+  loadPersistedConversations,
+  writePersistedConversations,
+} from './assistantStoreFile';
 import { normalizeLanguage } from '../util';
 /**
  * AppBridge
@@ -351,6 +356,43 @@ export class AppBridge {
     ipcMain.on('to:ai:ollama:list', (_e, payload: OllamaListRequest) => {
       void this.providers.assistant?.listOllamaModels(payload);
     });
+
+    // P7 — persisted conversation save. Renderer ships the latest
+    // `AssistantManager.serialize()` output (debounced 500 ms on its
+    // side); we drop it onto disk atomically. `null` payloads clear
+    // the on-disk block.
+    ipcMain.on(
+      'to:ai:conversations:save',
+      (_e, payload: PersistedConversations | null) => {
+        try {
+          writePersistedConversations(payload);
+        } catch (e) {
+          this.providers.logger?.log.error(
+            '[to:ai:conversations:save]',
+            e,
+          );
+        }
+      },
+    );
+
+    // P7 — synchronous flush ack from the renderer in response to a
+    // `from:ai:conversations:flush-request`. Main fires the request
+    // before-quit so any in-flight debounce window doesn't lose the
+    // last conversation mutation; the renderer answers synchronously
+    // with the latest serialize() output.
+    ipcMain.on(
+      'to:ai:conversations:flush',
+      (_e, payload: PersistedConversations | null) => {
+        try {
+          writePersistedConversations(payload);
+        } catch (e) {
+          this.providers.logger?.log.error(
+            '[to:ai:conversations:flush]',
+            e,
+          );
+        }
+      },
+    );
   }
 
   /**
@@ -369,6 +411,45 @@ export class AppBridge {
       );
     } catch (e) {
       this.providers.logger?.log.error('[from:ai:config]', e);
+    }
+  }
+
+  /**
+   * P7 — push the persisted conversation block to the renderer over
+   * `from:ai:conversations`. Called by main.ts on `did-finish-load`
+   * (after `pushAssistantConfig`) so the sidebar hydrates with
+   * history on first paint. Pre-P7 files surface as `null`.
+   */
+  pushPersistedConversations(): void {
+    try {
+      if (this.context.isDestroyed()) return;
+      this.context.webContents.send(
+        'from:ai:conversations',
+        loadPersistedConversations(),
+      );
+    } catch (e) {
+      this.providers.logger?.log.error('[from:ai:conversations]', e);
+    }
+  }
+
+  /**
+   * P7 — broadcast a flush request to the renderer over
+   * `from:ai:conversations:flush-request`. Called by `main.ts`
+   * `before-quit` so the renderer ships the latest debounce-buffered
+   * serialize() output before the process exits.
+   */
+  requestPersistedConversationsFlush(): void {
+    try {
+      if (this.context.isDestroyed()) return;
+      this.context.webContents.send(
+        'from:ai:conversations:flush-request',
+        null,
+      );
+    } catch (e) {
+      this.providers.logger?.log.error(
+        '[from:ai:conversations:flush-request]',
+        e,
+      );
     }
   }
 

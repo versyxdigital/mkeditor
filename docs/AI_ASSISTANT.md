@@ -9,9 +9,9 @@ Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 | Area                      | Decision                                                                                                                                                                                                                                                                                                                                           |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Provider abstraction      | [Vercel AI SDK](https://sdk.vercel.ai) (`ai` + `@ai-sdk/openai` + `@ai-sdk/anthropic` + `ollama-ai-provider-v2`). One `streamText`/`generateText` surface, one tool-call shape, one message schema across all three providers. Adding a fourth provider later is one adapter and a settings row. The `-v2` suffix on the Ollama adapter is the package's actual name on npm — the original `ollama-ai-provider` package was abandoned at SDK spec v1 and a fresh package was published once the SDK moved to spec v3. |
-| API call location         | **Desktop**: main-process proxy. Renderer sends `to:ai:chat` with the conversation + tools; main owns the SDK, the API keys, and the upstream stream; chunks flow back as `from:ai:chunk`. **Web**: renderer calls the providers directly through the same SDK (no main process exists). The renderer-side `AssistantManager` hides the split.     |
-| API key storage           | **Desktop**: Electron `safeStorage`-encrypted, stored in `~/.mkeditor/assistant.json` (sibling of `settings.json` and `session.json`). Keys never enter the renderer process. **Web**: plaintext `localStorage` (`mkeditor-assistant-keys`) with a visible "stored in your browser" warning in the settings UI.                                    |
-| Conversation organisation | Right sidebar has a tab strip across the top — one tab per **enabled** provider (Anthropic / OpenAI / Ollama). Each tab owns a list of past conversations + a "new chat" button. Switching tabs preserves draft input per provider. Conversations persist to `~/.mkeditor/assistant.json` (desktop) / `mkeditor-assistant` localStorage (web).     |
+| API call location         | **Desktop-only** (P7 scope-down). Renderer sends `to:ai:chat` with the conversation + tools; main owns the SDK, the API keys, and the upstream stream; chunks flow back as `from:ai:chunk`. **Web build**: the AI Assistant sidebar / settings panel / Navbar toggle are hidden — there is no in-renderer SDK path. Future revisits could re-introduce web support behind a server-proxy design that doesn't put keys in localStorage.                                                                                          |
+| API key storage           | **Desktop**: Electron `safeStorage`-encrypted, stored in `~/.mkeditor/assistant.json` (sibling of `settings.json` and `session.json`). Keys never enter the renderer process. **Web**: no key storage — feature is hidden (see "API call location" above).                                                                                       |
+| Conversation organisation | Right sidebar has a tab strip across the top — one tab per **enabled** provider (Anthropic / OpenAI / Ollama). Each tab owns a list of past conversations + a "new chat" button. Switching tabs preserves draft input per provider. Conversations persist to `~/.mkeditor/assistant.json` (desktop only).                                         |
 | Tool catalog (v1)         | Full toolset: `read_file`, `write_file`, `edit_file`, `create_file`, `list_files`, `get_active_file`, `get_selection`, `replace_selection`, `insert_at_cursor`, `open_tab`. Defined once in `src/browser/core/AssistantTools.ts`; description + Zod schema shared between desktop (sent over IPC) and web (used directly).                         |
 | Tool execution policy     | Read-class tools auto-execute. Write-class tools (`write_file`, `edit_file`, `create_file`, `replace_selection`, `insert_at_cursor`) open a confirm prompt via the existing `openPromptExternal` seam before running. Each chat has an "auto-accept writes for this conversation" toggle, defaulting **off**. No global auto-accept setting in v1. |
 | Streaming                 | Chunks ferried by call id. Renderer holds an in-flight call map; main holds the upstream stream + cancel handle. `to:ai:cancel` with the call id aborts. Concurrent calls (one per provider tab) are supported; the SDK's `AbortController` plus per-call ids keep them isolated.                                                                  |
@@ -20,7 +20,7 @@ Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 | Models                    | Per-provider model picker in settings, persisted as the chat default. The chat header has a quick-switch dropdown to override the model for the next message. Ollama models populate from a one-shot `to:ai:ollama:list` (main calls `localhost:11434/api/tags`).                                                                                  |
 | Cost / token telemetry    | Out of scope for v1. The SDK reports `usage` on stream end; we log it via `window.logger.info` (desktop) but don't surface it in the UI. Revisit in a polish phase.                                                                                                                                                                                |
 | Concurrent providers      | Each provider tab has at most one in-flight call. A second send while a call is in flight either cancels-and-replaces (with explicit "Stop" affordance) or queues — pick during P4 once the UX is concrete.                                                                                                                                        |
-| Ollama on web             | Ollama on web works only if the user runs the daemon with `OLLAMA_ORIGINS=*` (or a matching origin). The settings UI shows a notice; we don't try to detect.                                                                                                                                                                                       |
+| Ollama on web             | N/A — AI is desktop-only (see "API call location" row).                                                                                                                                                                                                                                                                                            |
 | State ownership           | `AssistantManager` (renderer) owns chat state, in-flight calls, conversation history. `AppAssistant` (main) owns the SDK, key storage, upstream streams. `AssistantTools` (renderer) owns tool dispatch into the existing managers (no new IPC surface for tool execution — it just calls `FileManager` / `FileTreeManager` / `EditorManager`).    |
 
 ### State ownership rule
@@ -29,7 +29,7 @@ Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
 [AssistantManager](../src/browser/core/AssistantManager.ts) is the renderer-side data owner — it tracks tabs, conversations, in-flight calls, streaming buffers, settings snapshots, and the active provider. It exposes the standard `subscribe(listener)` / `getSnapshot()` pair so React reads through `useSyncExternalStore`. It does **not** import React. Tool calls dispatch through [AssistantTools](../src/browser/core/AssistantTools.ts), which calls into [FileManager](../src/browser/core/FileManager.ts), [FileTreeManager](../src/browser/core/FileTreeManager.ts), [EditorManager](../src/browser/core/EditorManager.ts), and [BridgeManager](../src/browser/core/BridgeManager.ts) — no React imports there either. Confirmation prompts cross the manager → React boundary through the existing `confirmExternal` seam.
 
-[AppAssistant](../src/app/lib/AppAssistant.ts) (main) owns the Vercel AI SDK instance and `safeStorage`-encrypted key file. Web mode replaces the IPC hop with a direct in-renderer SDK call via a small adapter so `AssistantManager`'s public surface stays identical.
+[AppAssistant](../src/app/lib/AppAssistant.ts) (main) owns the Vercel AI SDK instance and `safeStorage`-encrypted key file. The AI Assistant is **desktop-only**; the web build hides the sidebar, the Settings → AI Providers tab, and the Navbar toggle entirely (see Decisions table). There is no in-renderer SDK path.
 
 ## Target Architecture
 
@@ -46,7 +46,7 @@ src/browser/
 ├── core/
 │   ├── AssistantManager.ts            NEW — chat state, tabs, in-flight calls, observable surface
 │   ├── AssistantTools.ts              NEW — tool catalog + dispatcher into File/Tree/Editor managers
-│   ├── AssistantTransport.ts          NEW — abstracts IPC vs direct SDK call (desktop vs web)
+│   ├── AssistantTransport.ts          DROPPED — original plan abstracted IPC vs in-renderer SDK; AI is now desktop-only so the IPC path is the only path
 │   └── BridgeListeners.ts             MODIFIED — route from:ai:* events into AssistantManager
 ├── react/
 │   ├── contexts/
@@ -88,7 +88,7 @@ tests/
 ## Persistence Schema
 
 ```ts
-/** ~/.mkeditor/assistant.json (desktop) / mkeditor-assistant (web). */
+/** ~/.mkeditor/assistant.json (desktop only — AI not available on web). */
 interface AssistantPayload {
   version: 1;
   providers: ProviderConfigMap;
@@ -98,6 +98,8 @@ interface AssistantPayload {
   activeProvider: ProviderId | null;
   /** Per-provider last-open conversation id. */
   activeConversation: Record<ProviderId, string | null>;
+  /** Per-`${provider}:${conversationId}` draft input that survived shutdown (P7). */
+  drafts: Record<string, string>;
 }
 
 type ProviderId = 'anthropic' | 'openai' | 'ollama';
@@ -165,9 +167,9 @@ API keys live in a separate, encrypted-at-rest section managed by [AssistantKeyS
 - **Streaming back-pressure.** Chunks are sent with `webContents.send` as fast as the SDK yields. The renderer batches DOM appends inside `requestAnimationFrame`; chunk events themselves stay 1:1 with SDK deltas so cancellation precision survives.
 - **Cancel semantics.** `to:ai:cancel { callId }` aborts the upstream stream via the SDK's `AbortController`. Mid-flight tool calls are abandoned on the renderer side; tool-result acks for cancelled calls are ignored by main.
 - **Tool confirmation reuses `confirmExternal`.** Same dialog seam as `FileManager.closeTab`. The dialog body uses `<ConfirmToolCall>` which renders a diff preview for `edit_file` / `write_file`.
-- **Bundle weight (renderer).** Desktop renderer doesn't pay for the SDK — it lives in `src/app/`. Web bundle picks up `ai` + the provider adapters when the user enables a provider; the assistant code path is itself lazy-loaded (`React.lazy`) the first time the sidebar opens. Markdown rendering reuses the existing `Markdown` manager — no second markdown-it instance.
+- **Bundle weight (renderer).** Desktop renderer doesn't pay for the SDK — it lives in `src/app/`. Web build doesn't either: the AI surface is hidden in web mode (see Decisions). Markdown rendering reuses the existing `Markdown` manager — no second markdown-it instance.
 - **i18n.** New `locale/<lng>/assistant.json` namespace covering provider names, UI strings, error messages, tool-call labels. English added in P3; mirrored to the other 12 locales in P8.
-- **No localStorage outside `WebFileBridge` / `AssistantTransport`.** Web mode persistence goes through `AssistantTransport` (which owns the `mkeditor-assistant*` keys). The existing rule from the session-restore architecture audit (no scattered localStorage access) carries over.
+- **No localStorage for AI Assistant.** AI is desktop-only — there is no `mkeditor-assistant*` localStorage key. The existing rule from the session-restore architecture audit (no scattered localStorage access) carries over: the only AI persistence path is `~/.mkeditor/assistant.json` written from `AppAssistant`.
 - **Restore ordering.** `AppAssistant.loadConfig()` runs on `did-finish-load` _after_ `from:session:restore` but _before_ the splash fades — the right sidebar hydrates with conversations on first paint. A missing/corrupt config file falls back to "no providers enabled" without breaking boot.
 - **Session-restore handshake.** Right-sidebar open state and the last active provider tab live in the existing session payload (we extend `SessionPayload` with an optional `assistant` block rather than creating a third persistence file for view state). Conversation content stays in `assistant.json`.
 - **Tray + menu.** A `Help → AI Assistant` / `View → Toggle Assistant` menu entry is added in P8 through the existing `menuModel.ts`. No new IPC channel for the toggle — same `from:command:run` plumbing the title bar already uses.
@@ -183,7 +185,7 @@ API keys live in a separate, encrypted-at-rest section managed by [AssistantKeyS
 | 4   | Chat surface + streaming (send, stream, cancel, model switch)      | 🟢 2026-05-18 |
 | 5   | Agent tools (read/write/edit/list + confirm flow)                  | 🟢 2026-05-18 |
 | 6   | Context controls (@-mentions, active-file chip, selection sharing) | 🟢 2026-05-18 |
-| 7   | Persistence + web parity (assistant.json + localStorage mirror)    | 🔵     |
+| 7   | Desktop persistence + web hide-out (assistant.json)                | 🟢 2026-05-19 |
 | 8   | Polish (i18n mirror, menu entries, docs, smoke)                    | 🔵     |
 
 A phase is **complete** only when its exit criteria are met _and_ `npm test`, `npm run lint`, and a manual smoke (desktop + web for P7) pass. **Each phase ends with a focused commit (or small commit series) on a `feature/assistant-phase-N-<slug>` branch.**
@@ -415,38 +417,36 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
 
 ---
 
-## Phase 7 — Persistence + web parity
+## Phase 7 — Desktop persistence + web hide-out
 
-**Goal:** conversations survive relaunch. Web mode reaches feature parity with desktop (minus what's physically impossible — Ollama is constrained, keys are plaintext localStorage).
+**Goal:** conversations survive relaunch on desktop. AI Assistant is hidden in the web build — no in-renderer SDK, no localStorage key store, no sidebar, no settings tab. (Scope change vs the original plan; see the Decisions table for the rationale and the future revisit path.)
 
 ### Tasks
 
-1. **`AssistantManager.serialize() → AssistantPayload`** — captures conversations, drafts, active provider/conversation. Excludes in-flight calls (cancelled on quit).
-2. **`AssistantManager.restore(payload)`** — replays into in-memory state. Idempotent.
-3. **Desktop persistence** — `AppAssistant` writes/reads the `conversations` + `config` blocks of `~/.mkeditor/assistant.json` (atomic tmp+rename, same as `AppSession`). Save cadence: debounced 500 ms after `addMessage` / `addConversation` / `renameConversation` / `deleteConversation`. Quit flush via the existing `before-quit` machinery (extend the existing flush-request fanout to include AssistantManager).
-4. **`src/browser/core/AssistantTransport.ts`** — adapter with two implementations:
-   - `DesktopTransport` — routes everything through IPC (existing P1 channels).
-   - `WebTransport` — instantiates the Vercel AI SDK clients directly in the renderer; persists keys to `mkeditor-assistant-keys` localStorage; persists conversations to `mkeditor-assistant`.
-     `AssistantManager` is constructed with one or the other based on `mode`.
-5. **Web mode key handling** — `AssistantSettings` shows the warning banner permanently on web; key field reads/writes localStorage directly through `WebTransport`.
-6. **Web mode Ollama notice** — if user enables Ollama, settings shows: "Make sure Ollama runs with `OLLAMA_ORIGINS=*` (or your origin). If the test connection fails, set the env var and restart Ollama."
-7. **Migration** — existing v1 `SessionPayload` files load with no `assistant` block; no migration needed for the assistant payload itself (first run with this feature writes a fresh `assistant.json`).
-8. **`tests/AssistantManager.persistence.test.ts`** — round-trip serialise/restore; deleting a conversation persists; rename persists.
-9. **`tests/WebTransport.test.ts`** — localStorage round-trip; missing keys mean disabled providers; direct SDK call wires `streamText` correctly.
-10. **Reviewers + commit approval.**
+1. **`AssistantManager.serialize() → AssistantStateSnapshot`** — captures conversations (per provider), drafts, active provider, per-provider active conversation. Skips in-flight `inflight` map (cancelled on quit). Filters out streaming messages and tool calls that never resolved so a quit during a stream doesn't leave a half-written message on disk.
+2. **`AssistantManager.restore(snapshot)`** — replays into in-memory state. Idempotent. Re-emits one chat snapshot at the end so subscribers (sidebar + settings) re-render.
+3. **Desktop persistence — main side** — extend `AppAssistant` (or a sibling `AssistantStore` if cleaner) with `loadConversations()` / `saveConversations(snapshot)`. Atomic tmp+rename to `~/.mkeditor/assistant.json` next to the existing `config` + `keys` blocks; the file gains a `conversations` block alongside the P1 `config` block. New `to:ai:conversations:save` and `from:ai:conversations` IPC channels; renderer ships `serialize()` output debounced 500 ms after any conversation mutation; main writes atomically.
+4. **Quit flush** — extend the existing `before-quit` flush-request fanout (the one `FileManager` already participates in) to include `AssistantManager`. Renderer answers the flush request synchronously with the latest serialize() output; main writes before exiting.
+5. **Hide the AI Assistant on web** — in `src/browser/index.ts` / `App.tsx` / `Navbar.tsx`: when `mode === 'web'`, skip mounting the `<AssistantSidebar>` Panel, the right-sidebar toggle button in the Navbar, and the AI Providers tab in `SettingsModal`. The `AssistantManager` itself is not constructed on web (saves the bundle weight of importing the manager + its dependencies).
+6. **Migration** — existing v1 `assistant.json` files (no `conversations` block) load with `conversations: undefined`; we treat undefined as "no history" and `restore()` no-ops. First save after upgrade writes the new block.
+7. **`tests/AssistantManager.persistence.test.ts`** — round-trip serialise/restore; deleting a conversation persists; rename persists; in-flight + streaming messages are stripped from serialize() output.
+8. **`tests/AppAssistant.persistence.test.ts`** — round-trip via `loadConversations()` / `saveConversations()`; missing file returns empty; corrupt JSON returns empty without throwing; atomic write produces tmp file then rename.
+9. **Reviewers + commit approval.**
 
 ### Out of scope
 
 - Multi-device sync (single machine only).
 - Encrypted export / import (out of v1; a later "export conversation" feature would need a wrapper format).
 - Conversation search.
+- **Web build AI support** — explicitly out of scope (decision recorded in the Decisions table). Future revisits would require a server-proxy design that doesn't put keys in localStorage.
 
 ### Exit criteria
 
-- ✅ Closing and relaunching the desktop app reopens the same provider tab and the same active conversation at the same scroll position.
-- ✅ The same is true on web after a browser refresh, _provided_ the user has previously connected an account in this browser.
+- ✅ Closing and relaunching the desktop app reopens the same provider tab and the same active conversation with messages intact.
+- ✅ The web build does not render the assistant sidebar, the right-sidebar toggle button, or the AI Providers settings tab.
 - ✅ Cancelled in-flight calls don't persist as broken messages.
 - ✅ Quit during a streaming response either drops the partial assistant message or persists it as cancelled (deterministic, not crashing).
+- ✅ Existing v1 `assistant.json` files load with empty conversation history without errors.
 - ✅ `npm test` green, `npm run lint` green, desktop + web build green.
 
 ---

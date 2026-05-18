@@ -388,7 +388,7 @@ const LazyModals: React.FC = () => {
  * to UIStateContext and persisted through the session payload so
  * `{ open, size }` survives relaunch.
  */
-const Shell: React.FC<{
+export const Shell: React.FC<{
   onEditorReady?: () => void;
   workspaceGroupRef: React.RefObject<GroupImperativeHandle | null>;
 }> = ({ onEditorReady, workspaceGroupRef }) => {
@@ -398,6 +398,12 @@ const Shell: React.FC<{
     rightSidebarSize,
     setRightSidebarSize,
   } = useUIState();
+  const { mode } = useManagers();
+  // P7: AI Assistant is desktop-only. On web the assistant pane is
+  // not rendered at all — see the Decisions table in
+  // docs/AI_ASSISTANT.md for the rationale (no localStorage key
+  // storage, no in-renderer SDK path).
+  const showAssistant = mode !== 'web';
   const sidebarPanelRef = React.useRef<PanelImperativeHandle>(null);
   const assistantPanelRef = React.useRef<PanelImperativeHandle>(null);
 
@@ -409,11 +415,12 @@ const Shell: React.FC<{
   }, [sidebarOpen]);
 
   React.useEffect(() => {
+    if (!showAssistant) return;
     const panel = assistantPanelRef.current;
     if (!panel) return;
     if (rightSidebarOpen && panel.isCollapsed()) panel.expand();
     else if (!rightSidebarOpen && !panel.isCollapsed()) panel.collapse();
-  }, [rightSidebarOpen]);
+  }, [rightSidebarOpen, showAssistant]);
 
   // Push every drag tick into UIStateContext so the size persists
   // through the session save pipeline (debounced 300ms by
@@ -446,17 +453,21 @@ const Shell: React.FC<{
       <Panel id="workspace-pane">
         <Workspace groupRef={workspaceGroupRef} onEditorReady={onEditorReady} />
       </Panel>
-      <Separator className="gutter sidebar-gutter-horizontal" />
-      <Panel
-        id="assistant-pane"
-        panelRef={assistantPanelRef}
-        collapsible
-        defaultSize={`${rightSidebarSize}%`}
-        minSize="15%"
-        onResize={handleAssistantResize}
-      >
-        <AssistantSidebar />
-      </Panel>
+      {showAssistant && (
+        <>
+          <Separator className="gutter sidebar-gutter-horizontal" />
+          <Panel
+            id="assistant-pane"
+            panelRef={assistantPanelRef}
+            collapsible
+            defaultSize={`${rightSidebarSize}%`}
+            minSize="15%"
+            onResize={handleAssistantResize}
+          >
+            <AssistantSidebar />
+          </Panel>
+        </>
+      )}
     </Group>
   );
 };

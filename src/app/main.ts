@@ -20,6 +20,7 @@ import { AppSession } from './lib/AppSession';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { AppWindow } from './lib/AppWindow';
+import { runQuitFlush } from './lib/quitFlush';
 import { iconBase64 } from './assets/icon';
 import type { LogConfig } from './interfaces/Logging';
 
@@ -196,6 +197,11 @@ function main(file: string | null = null) {
       // uses this to decide which provider tabs to show.
       bridge.pushAssistantConfig();
 
+      // P7 — hydrate the renderer with persisted conversation history.
+      // Goes second (after config) so AssistantManager exists and is
+      // wired before `restore()` is called from the channel handler.
+      bridge.pushPersistedConversations();
+
       AppStorage.openActiveFile(context, file);
     }
   });
@@ -292,18 +298,25 @@ app.on('before-quit', (event) => {
   event.preventDefault();
   isFlushingSession = true;
 
-  let done = false;
-  const finish = () => {
-    if (done) return;
-    done = true;
-    ipcMain.removeListener('to:session:save', onAck);
-    app.quit();
-  };
-  const onAck = () => finish();
-
-  ipcMain.on('to:session:save', onAck);
-  context.webContents.send('from:session:flush-request');
-  setTimeout(finish, 250);
+  // Two flush requests fan out in parallel — session (FileManager
+  // tabs + cursor) and AI conversations. We resolve when BOTH ack
+  // OR the 250ms safety timeout fires. Missing one ack just costs
+  // a few hundred ms of unpersisted activity, not data loss; the
+  // renderer's debounced saves cover everything else. Logic lives
+  // in `quitFlush.ts` so it can be unit-tested without spinning up
+  // Electron's app lifecycle.
+  runQuitFlush({
+    on: (channel, listener) => ipcMain.on(channel, listener),
+    off: (channel, listener) => ipcMain.removeListener(channel, listener),
+    send: (channel, payload) => {
+      if (!context || context.isDestroyed()) return;
+      // `from:session:flush-request` historically went without a
+      // payload; preserve that signature for the renderer.
+      if (payload === undefined) context.webContents.send(channel);
+      else context.webContents.send(channel, payload);
+    },
+    onDone: () => app.quit(),
+  });
 });
 
 app.on('window-all-closed', () => {

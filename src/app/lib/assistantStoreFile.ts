@@ -21,7 +21,11 @@ import {
   writeFileSync,
 } from 'fs';
 import { normalize } from 'path';
-import type { AssistantStoreFile, ProviderId } from '../interfaces/Assistant';
+import type {
+  AssistantStoreFile,
+  PersistedConversations,
+  ProviderId,
+} from '../interfaces/Assistant';
 import { DEFAULT_PROVIDER_CONFIG } from '../interfaces/Assistant';
 
 export const ASSISTANT_STORE_VERSION = 1;
@@ -95,6 +99,41 @@ export function writeAssistantStore(store: AssistantStoreFile): boolean {
     }
     return false;
   }
+}
+
+/**
+ * P7 — read the persisted conversation block from the store file.
+ * Returns null when the file is fresh / pre-P7 / malformed. Never
+ * throws.
+ *
+ * Pre-P7 files (just `version` + `providers` + `keys`) come back from
+ * `loadAssistantStore` with `conversations: undefined`, which this
+ * helper surfaces as `null` so the caller can short-circuit the
+ * restore.
+ */
+export function loadPersistedConversations(): PersistedConversations | null {
+  const store = loadAssistantStore();
+  return store.conversations ?? null;
+}
+
+/**
+ * P7 — write the persisted conversation block to the store file.
+ * Reads the current file (so `providers` / `keys` are preserved),
+ * replaces `conversations`, writes atomically. Passing `null`
+ * removes the block (used by tests / a future "clear history"
+ * affordance — `serialize()` itself never produces null after the
+ * first conversation is created).
+ */
+export function writePersistedConversations(
+  conversations: PersistedConversations | null,
+): boolean {
+  const store = loadAssistantStore();
+  if (conversations === null) {
+    delete store.conversations;
+  } else {
+    store.conversations = conversations;
+  }
+  return writeAssistantStore(store);
 }
 
 /**
