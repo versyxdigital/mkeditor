@@ -130,14 +130,10 @@ describe('<TitleBar>', () => {
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 
-  it('hides window-control buttons on web', () => {
-    renderTitleBar({ mode: 'web' });
-    expect(
-      screen.queryByRole('button', { name: 'Minimize' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Close' }),
-    ).not.toBeInTheDocument();
+  it('renders nothing on web (desktop-only surface)', () => {
+    const { container } = renderTitleBar({ mode: 'web', platform: 'web' });
+    expect(screen.queryByTestId('title-bar' as never)).not.toBeInTheDocument();
+    expect(container.firstChild).toBeNull();
   });
 
   it('window-control clicks call BridgeManager methods', () => {
@@ -306,16 +302,6 @@ describe('<TitleBar>', () => {
       input.remove();
     });
 
-    it('does not steal Alt on web (no menu nav)', () => {
-      renderTitleBar({ mode: 'web', platform: 'web' });
-      const file = screen.queryByRole('button', { name: 'File' });
-      // No focus snap on web — verify by firing Alt and asserting the
-      // active element didn't change.
-      const before = document.activeElement;
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt' }));
-      expect(document.activeElement).toBe(before);
-      expect(file).toBeInTheDocument(); // File menu still rendered on web
-    });
   });
 
   describe('double-click drag region', () => {
@@ -330,13 +316,6 @@ describe('<TitleBar>', () => {
       const { bridge } = renderTitleBar();
       const closeBtn = screen.getByRole('button', { name: 'Close' });
       fireEvent.doubleClick(closeBtn);
-      expect(bridge.windowMaximize).not.toHaveBeenCalled();
-    });
-
-    it('is inert on web (no maximize concept)', () => {
-      const { bridge } = renderTitleBar({ mode: 'web', platform: 'web' });
-      const bar = screen.getByTestId('title-bar');
-      fireEvent.doubleClick(bar);
       expect(bridge.windowMaximize).not.toHaveBeenCalled();
     });
   });

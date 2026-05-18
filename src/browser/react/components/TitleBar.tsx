@@ -16,8 +16,10 @@ import { TitleBarMenu } from './TitleBar.menu';
  *   - macOS desktop: not rendered. The native menu lives on the system bar
  *     and the traffic lights handle window controls.
  *   - Windows/Linux desktop: full bar with drag region + window controls.
- *   - Web: logo + menu only. The browser already supplies window chrome,
- *     and `-webkit-app-region` is a no-op outside Electron anyway.
+ *   - Web: not rendered. The browser supplies its own window chrome, and
+ *     File/Edit/View/Help are a desktop-only concept — web users reach the
+ *     equivalent actions via the Navbar, Sidebar, EditorToolbar, and
+ *     Monaco keybindings.
  */
 export const TitleBar: React.FC = () => {
   const { mode, platform } = useManagers();
@@ -28,6 +30,9 @@ export const TitleBar: React.FC = () => {
   // stay the source of truth. `titleBarStyle: 'hiddenInset'` already
   // reserved the vertical space; the rest of the app sits below.
   if (platform === 'darwin' && mode === 'desktop') return null;
+
+  // Web: no in-window title bar at all.
+  if (mode === 'web') return null;
 
   const isDesktop = mode === 'desktop';
 
