@@ -6,9 +6,9 @@ Markdown with _style_.
 
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
-| Windows     | v3.8.1  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v3.8.1/mkeditor-setup-3.8.1.exe) |
+| Windows     | v3.9.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v3.9.0/mkeditor-setup-3.9.0.exe) |
 | MacOS       | v3.6.0  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v3.6.0/mkeditor-setup-3.6.0.pkg) |
-| Linux       | v3.8.1  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v3.8.1/mkeditor-setup-3.8.1.deb)  |
+| Linux       | v3.9.0  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v3.9.0/mkeditor-setup-3.9.0.deb)  |
 
 > [!NOTE] 
 > Supported languages:
