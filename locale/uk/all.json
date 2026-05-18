@@ -220,6 +220,7 @@
     "unable_export_preview": "Не вдалося експортувати попередній перегляд",
     "unable_save_markdown": "Не вдалося зберегти Markdown",
     "exported_html_success": "Попередній перегляд експортовано в HTML",
+    "exported_pdf_success": "Попередній перегляд експортовано в PDF",
     "saved_markdown_success": "Файл Markdown збережено",
     "generic_error_try_again": "Сталася помилка. Будь ласка, спробуйте ще раз.",
     "unable_open_file": "Не вдалося відкрити файл.",

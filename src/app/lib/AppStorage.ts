@@ -226,13 +226,27 @@ export class AppStorage {
       defaultPath: `${defaultPath}.pdf`,
     });
 
-    if (!filePath) return;
+    if (!filePath) {
+      offscreen.destroy();
+      return;
+    }
 
-    writeFileSync(filePath, pdf, {
-      encoding: options.encoding ?? 'utf-8',
-    });
-
-    offscreen.destroy();
+    try {
+      writeFileSync(filePath, pdf, {
+        encoding: options.encoding ?? 'utf-8',
+      });
+      context.webContents.send('from:notification:display', {
+        status: 'success',
+        key: 'notifications:exported_pdf_success',
+      });
+    } catch {
+      context.webContents.send('from:notification:display', {
+        status: 'error',
+        key: 'notifications:unable_export_preview',
+      });
+    } finally {
+      offscreen.destroy();
+    }
   }
 
   /**

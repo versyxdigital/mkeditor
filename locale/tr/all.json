@@ -220,6 +220,7 @@
     "unable_export_preview": "Önizleme dışa aktarılamıyor",
     "unable_save_markdown": "Markdown kaydedilemiyor",
     "exported_html_success": "Önizleme HTML olarak dışa aktarıldı",
+    "exported_pdf_success": "Önizleme PDF olarak dışa aktarıldı",
     "saved_markdown_success": "Markdown dosyası kaydedildi",
     "generic_error_try_again": "Bir hata oluştu. Lütfen tekrar deneyin.",
     "unable_open_file": "Dosya açılamıyor.",

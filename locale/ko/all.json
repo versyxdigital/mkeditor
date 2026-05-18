@@ -220,6 +220,7 @@
     "unable_export_preview": "미리보기를 내보낼 수 없습니다",
     "unable_save_markdown": "Markdown을 저장할 수 없습니다",
     "exported_html_success": "미리보기가 HTML로 내보내졌습니다",
+    "exported_pdf_success": "미리보기가 PDF로 내보내졌습니다",
     "saved_markdown_success": "Markdown 파일이 저장되었습니다",
     "generic_error_try_again": "오류가 발생했습니다. 다시 시도해 주세요.",
     "unable_open_file": "파일을 열 수 없습니다.",
