@@ -16,6 +16,7 @@
   "default_model_label": "デフォルトモデル",
   "ollama_baseurl_label": "デーモン URL",
   "ollama_baseurl_help": "デフォルト: http://localhost:11434",
+  "ollama_tool_support_hint": "ツール呼び出しの精度は Ollama のモデルによって異なります。アシスタントがツール呼び出しを捏造したり、ファイルの読み書きが安定しない場合は、ツール対応が強いモデルをお試しください — llama3.1、qwen2.5、mistral-nemo は信頼できる選択肢です。",
   "ollama_model_placeholder": "モデルを選択",
   "ollama_refresh": "モデルを更新",
   "ollama_refresh_success": "{{count}} 個のモデルが見つかりました。",

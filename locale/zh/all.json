@@ -58,6 +58,7 @@
     "default_model_label": "默认模型",
     "ollama_baseurl_label": "守护进程 URL",
     "ollama_baseurl_help": "默认: http://localhost:11434",
+    "ollama_tool_support_hint": "不同 Ollama 模型对工具调用的支持质量各异。如果助手凭空捏造工具调用或无法稳定读取/编辑文件，请改用工具支持更强的模型 — llama3.1、qwen2.5 和 mistral-nemo 是可靠的选择。",
     "ollama_model_placeholder": "选择一个模型",
     "ollama_refresh": "刷新模型",
     "ollama_refresh_success": "找到 {{count}} 个模型。",

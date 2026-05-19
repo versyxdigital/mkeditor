@@ -58,6 +58,7 @@
     "default_model_label": "Модель по умолчанию",
     "ollama_baseurl_label": "URL демона",
     "ollama_baseurl_help": "По умолчанию: http://localhost:11434",
+    "ollama_tool_support_hint": "Качество вызовов инструментов отличается у разных моделей Ollama. Если ассистент придумывает несуществующие вызовы или не может надёжно читать/редактировать файлы, попробуйте модель с лучшей поддержкой инструментов — llama3.1, qwen2.5 и mistral-nemo надёжные варианты.",
     "ollama_model_placeholder": "Выберите модель",
     "ollama_refresh": "Обновить модели",
     "ollama_refresh_success": "Найдено моделей: {{count}}.",

@@ -58,6 +58,7 @@
     "default_model_label": "Modelo predeterminado",
     "ollama_baseurl_label": "URL del demonio",
     "ollama_baseurl_help": "Predeterminado: http://localhost:11434",
+    "ollama_tool_support_hint": "La calidad de las llamadas a herramientas varía entre los modelos de Ollama. Si el asistente alucina llamadas o no puede leer/editar archivos de forma fiable, prueba un modelo con mejor soporte de herramientas — llama3.1, qwen2.5 y mistral-nemo son opciones fiables.",
     "ollama_model_placeholder": "Elija un modelo",
     "ollama_refresh": "Actualizar modelos",
     "ollama_refresh_success": "Se encontraron {{count}} modelo(s).",

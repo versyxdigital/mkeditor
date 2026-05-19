@@ -58,6 +58,7 @@
     "default_model_label": "Varsayılan model",
     "ollama_baseurl_label": "Daemon URL'si",
     "ollama_baseurl_help": "Varsayılan: http://localhost:11434",
+    "ollama_tool_support_hint": "Araç çağrılarının kalitesi Ollama modellerine göre değişir. Asistan araç çağrılarını uyduruyorsa veya dosyaları güvenilir biçimde okuyup düzenleyemiyorsa, araç desteği daha güçlü bir model deneyin — llama3.1, qwen2.5 ve mistral-nemo güvenilir tercihlerdir.",
     "ollama_model_placeholder": "Model seçin",
     "ollama_refresh": "Modelleri yenile",
     "ollama_refresh_success": "{{count}} model bulundu.",

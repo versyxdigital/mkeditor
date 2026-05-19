@@ -58,6 +58,7 @@
     "default_model_label": "기본 모델",
     "ollama_baseurl_label": "데몬 URL",
     "ollama_baseurl_help": "기본값: http://localhost:11434",
+    "ollama_tool_support_hint": "도구 호출 품질은 Ollama 모델에 따라 다릅니다. 어시스턴트가 도구 호출을 지어내거나 파일을 안정적으로 읽거나 편집하지 못한다면, 도구 지원이 더 강한 모델을 시도해 보세요 — llama3.1, qwen2.5, mistral-nemo가 신뢰할 만한 선택입니다.",
     "ollama_model_placeholder": "모델 선택",
     "ollama_refresh": "모델 새로 고침",
     "ollama_refresh_success": "{{count}}개의 모델을 찾았습니다.",

@@ -16,6 +16,7 @@
   "default_model_label": "Standaardmodel",
   "ollama_baseurl_label": "Daemon-URL",
   "ollama_baseurl_help": "Standaard: http://localhost:11434",
+  "ollama_tool_support_hint": "De kwaliteit van tool-aanroepen verschilt per Ollama-model. Als de assistent tool-aanroepen verzint of bestanden niet betrouwbaar kan lezen/bewerken, probeer dan een model met sterkere tool-ondersteuning — llama3.1, qwen2.5 en mistral-nemo zijn betrouwbare keuzes.",
   "ollama_model_placeholder": "Kies een model",
   "ollama_refresh": "Modellen vernieuwen",
   "ollama_refresh_success": "{{count}} model(len) gevonden.",

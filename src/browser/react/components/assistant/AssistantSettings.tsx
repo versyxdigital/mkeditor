@@ -450,6 +450,10 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
         </div>
       </div>
 
+      <p className="text-xs text-muted-foreground">
+        {t('assistant-settings:ollama_tool_support_hint')}
+      </p>
+
       <div>
         <Button
           type="button"
