@@ -21,7 +21,10 @@ import {
   openModalExternal,
   type ModalKey,
 } from '../react/contexts/ModalsContext';
-import { applyRestoredAssistantState } from '../react/contexts/UIStateContext';
+import {
+  applyRestoredAssistantState,
+  toggleRightSidebarExternal,
+} from '../react/contexts/UIStateContext';
 import { sonnerToast } from '../notify';
 import { showPropertiesExternal } from '../react/contexts/PropertiesContext';
 import { basename } from '../util';
@@ -154,9 +157,23 @@ export function registerBridgeListeners(
 
   // Opens a React shadcn-Dialog modal triggered from the main process
   // (e.g., a tray/menu item).
-  bridge.receive('from:modal:open', (modal: ModalKey) => {
-    openModalExternal(modal);
-  });
+  bridge.receive(
+    'from:modal:open',
+    (modal: ModalKey | { modal: ModalKey; tab?: 'general' | 'assistant' }) => {
+      // P8 — payload may be either the bare modal key (existing
+      // callers) or `{ modal, tab? }` for the Help → Configure AI
+      // Providers menu item that needs to open the Settings modal
+      // directly on the AI Providers tab.
+      if (typeof modal === 'string') {
+        openModalExternal(modal);
+      } else if (modal && typeof modal.modal === 'string') {
+        openModalExternal(
+          modal.modal,
+          modal.tab ? { tab: modal.tab } : undefined,
+        );
+      }
+    },
+  );
 
   // Enable notifications from the main context. Translation is deferred
   // behind `whenLanguageReady()` so a "settings saved" toast that
@@ -309,5 +326,13 @@ export function registerBridgeListeners(
   // (paired with the session flush) before app.quit().
   bridge.receive('from:ai:conversations:flush-request', () => {
     manager.assistantManager.flushPersist();
+  });
+
+  // P8 — application menu (View → Toggle Assistant Sidebar,
+  // Cmd/Ctrl+Shift+A) and the system tray entry fire this channel.
+  // Routes through the UIStateContext seam so non-React main /
+  // menu code can flip the sidebar.
+  bridge.receive('from:assistant:toggle', () => {
+    toggleRightSidebarExternal();
   });
 }

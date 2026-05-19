@@ -181,6 +181,7 @@ export interface ChatErrorEvent {
     | 'context_window_exceeded'
     | 'network_error'
     | 'ollama_unreachable'
+    | 'model_unsupported_tools'
     | 'cancelled'
     | 'unknown';
   /** Free-text detail for logging. The renderer should rely on `code` for UX strings. */

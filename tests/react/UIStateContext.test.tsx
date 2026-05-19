@@ -22,6 +22,8 @@ import {
   getCurrentAssistantState,
   registerAssistantStateChangeListener,
   clearAssistantStateChangeListener,
+  registerToggleRightSidebar,
+  toggleRightSidebarExternal,
 } from '../../src/browser/react/contexts/UIStateContext';
 
 interface Capture {
@@ -130,5 +132,41 @@ describe('getCurrentAssistantState', () => {
     first.size = 999;
     const second = getCurrentAssistantState();
     expect(second.size).not.toBe(999);
+  });
+});
+
+// P8 — `from:assistant:toggle` (menu/tray) routes through this seam
+// to flip the sidebar without importing React from BridgeListeners.
+describe('toggleRightSidebarExternal seam (P8)', () => {
+  afterEach(() => {
+    // Reset the module-level holder so other suites aren't polluted.
+    registerToggleRightSidebar(() => {});
+  });
+
+  it('is a no-op before any provider mounts', () => {
+    // Fresh registration is mounted lazily by UIStateProvider; calling
+    // before mount must NOT throw — matches the pre-mount safety the
+    // sibling `applyRestoredAssistantState` test covers.
+    expect(() => toggleRightSidebarExternal()).not.toThrow();
+  });
+
+  it('flips rightSidebarOpen when invoked after the provider mounts', () => {
+    const capture: Capture = { current: null };
+    render(
+      <UIStateProvider initialSidebarOpen>
+        <Probe capture={capture} />
+      </UIStateProvider>,
+    );
+    expect(capture.current?.rightSidebarOpen).toBe(false);
+
+    act(() => {
+      toggleRightSidebarExternal();
+    });
+    expect(capture.current?.rightSidebarOpen).toBe(true);
+
+    act(() => {
+      toggleRightSidebarExternal();
+    });
+    expect(capture.current?.rightSidebarOpen).toBe(false);
   });
 });

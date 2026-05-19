@@ -10,7 +10,7 @@
     "no_conversations_cta": "Start your first {{provider}} conversation.",
     "start_conversation": "Start a conversation",
     "select_conversation": "Select a conversation from the list, or start a new one.",
-    "empty_conversation": "Say something to get started.",
+    "empty_conversation": "Say hi — the assistant can read, edit, or summarise your files.",
     "input_placeholder": "Message the assistant…",
     "input_aria": "Message input",
     "send": "Send",
@@ -75,8 +75,9 @@
     "error_context_window_exceeded": "Context window exceeded.",
     "error_network_error": "Network error reaching the provider.",
     "error_ollama_unreachable": "Couldn't reach the Ollama daemon.",
+    "error_model_unsupported_tools": "This model doesn't support tool calls. Try a model that does (e.g. llama3.1 or qwen2.5).",
     "error_cancelled": "Cancelled.",
-    "error_unknown": "Connection failed."
+    "error_unknown": "The request failed."
   },
   "assistant-tools": {
     "confirm_title": "Allow {{toolName}}?",
@@ -101,7 +102,12 @@
     "toggle_card": "Toggle {{toolName}} details",
     "error_rejected": "The user declined this tool call.",
     "error_execution_failed": "The tool execution failed.",
-    "error_unknown_tool": "Unknown tool."
+    "error_unknown_tool": "Unknown tool.",
+    "show_more": "Show more ({{chars}} more chars)",
+    "show_less": "Show less",
+    "retry": "Retry",
+    "retry_prompt": "Please retry the {{toolName}} call.",
+    "retry_prompt_with_args": "Please retry {{toolName}} with arguments: {{args}}"
   },
   "assistant": {
     "title": "AI Assistant",

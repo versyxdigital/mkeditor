@@ -433,6 +433,83 @@ describe('<ChatPane> — P6 context chips + token estimate', () => {
   });
 });
 
+describe('<ChatPane> — P8 keyboard shortcuts', () => {
+  it('Escape cancels the in-flight call when one is running', () => {
+    const { conv, snapshot } = snapshotWith({
+      inflightCallId: 'chat-esc',
+      messages: [
+        { id: 'm1', role: 'user', content: 'hi', status: 'complete' },
+        { id: 'm2', role: 'assistant', content: '...', status: 'streaming' },
+      ],
+    });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    // Pane-root listener is attached via addEventListener — fire a
+    // native KeyboardEvent at the root so the capture-phase handler
+    // sees it (RTL's fireEvent.keyDown on a child also bubbles to the
+    // root and works, but going straight to the root keeps the test
+    // honest to the production wiring).
+    const pane = screen.getByTestId('chat-pane');
+    pane.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    expect(am.cancelCall).toHaveBeenCalledWith('chat-esc');
+  });
+
+  it('Escape is a no-op when nothing is in-flight (other components keep their dismiss key)', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    const pane = screen.getByTestId('chat-pane');
+    pane.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    expect(am.cancelCall).not.toHaveBeenCalled();
+  });
+
+  it('Ctrl+K creates a new conversation for the active provider', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    const pane = screen.getByTestId('chat-pane');
+    pane.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'k',
+        ctrlKey: true,
+        bubbles: true,
+      }),
+    );
+    expect(am.createConversation).toHaveBeenCalledWith('anthropic');
+  });
+
+  it('Ctrl+/ focuses the textarea from anywhere in the pane', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    const pane = screen.getByTestId('chat-pane');
+    const input = screen.getByTestId('chat-input');
+    // Blur first so we can observe the focus change.
+    (input as HTMLTextAreaElement).blur();
+    expect(document.activeElement).not.toBe(input);
+    pane.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: '/',
+        ctrlKey: true,
+        bubbles: true,
+      }),
+    );
+    expect(document.activeElement).toBe(input);
+  });
+});
+
 describe('<ChatPane> — draft sync', () => {
   it('seeds the input from manager.getDraft on mount', () => {
     const { conv, snapshot } = snapshotWith({ messages: [] });

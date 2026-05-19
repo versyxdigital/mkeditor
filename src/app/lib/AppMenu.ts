@@ -191,6 +191,18 @@ export class AppMenu {
         },
       },
       {
+        // P8 — fires the same `from:assistant:toggle` channel the
+        // application menu's View → Toggle Assistant Sidebar uses,
+        // which routes through BridgeListeners → UIStateContext
+        // `toggleRightSidebarExternal`.
+        label: 'Toggle Assistant',
+        click: () => {
+          if (!context.isDestroyed()) {
+            context.webContents.send('from:assistant:toggle');
+          }
+        },
+      },
+      {
         label: 'Open Recent',
         role: 'recentDocuments',
         submenu: [

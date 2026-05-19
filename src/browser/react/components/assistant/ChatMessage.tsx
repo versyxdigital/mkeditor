@@ -75,14 +75,27 @@ export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
         )}
 
         {message.status === 'failed' && (
-          <p className="mt-2 flex items-center gap-1 text-xs">
-            <Icon name="exclamation-circle" />
-            <span>
-              {t(
-                `assistant-settings:error_${message.errorCode ?? 'unknown'}`,
-              )}
-            </span>
-          </p>
+          <div className="mt-2 flex flex-col gap-0.5 text-xs">
+            <p className="flex items-center gap-1">
+              <Icon name="exclamation-circle" />
+              <span>
+                {t(
+                  `assistant-settings:error_${message.errorCode ?? 'unknown'}`,
+                )}
+              </span>
+            </p>
+            {message.errorMessage && (
+              // Upstream detail (e.g. Ollama's "gemma3:4b does not
+              // support tools") — useful for debugging even when the
+              // translated code already names the class of failure.
+              <p
+                className="ml-4 break-words text-muted-foreground"
+                data-testid="chat-message-error-detail"
+              >
+                {message.errorMessage}
+              </p>
+            )}
+          </div>
         )}
 
         {/* Legacy fallback: when `segments` isn't set (early P5 chats,

@@ -25,5 +25,11 @@
 
   "error_rejected": "The user declined this tool call.",
   "error_execution_failed": "The tool execution failed.",
-  "error_unknown_tool": "Unknown tool."
+  "error_unknown_tool": "Unknown tool.",
+
+  "show_more": "Show more ({{chars}} more chars)",
+  "show_less": "Show less",
+  "retry": "Retry",
+  "retry_prompt": "Please retry the {{toolName}} call.",
+  "retry_prompt_with_args": "Please retry {{toolName}} with arguments: {{args}}"
 }

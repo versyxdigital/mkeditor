@@ -264,6 +264,41 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     [handleSend, pickerOpen],
   );
 
+  // P8 — chat-wide keyboard shortcuts. Attached to the pane root via
+  // capture-phase listener so they work when the textarea OR the
+  // message list / chip row / header is focused:
+  //
+  //   Esc        — cancel the in-flight call (no-op when nothing
+  //                is streaming; we don't swallow Esc otherwise so
+  //                Radix popovers / dialogs keep their dismiss key).
+  //   Cmd/Ctrl+K — open a new conversation on this provider tab.
+  //   Cmd/Ctrl+/ — focus the input from anywhere in the pane.
+  const paneRef = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    const el = paneRef.current;
+    if (!el) return;
+    const handler = (e: KeyboardEvent) => {
+      const meta = e.metaKey || e.ctrlKey;
+      if (e.key === 'Escape' && inflight && !pickerOpen) {
+        e.preventDefault();
+        manager?.cancelCall(inflight.callId);
+        return;
+      }
+      if (meta && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (manager) manager.createConversation(provider);
+        return;
+      }
+      if (meta && e.key === '/') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        return;
+      }
+    };
+    el.addEventListener('keydown', handler);
+    return () => el.removeEventListener('keydown', handler);
+  }, [manager, inflight, pickerOpen, provider]);
+
   const handleModelBlur = React.useCallback(() => {
     if (!manager) return;
     manager.setConversationModel(provider, conversation.id, modelEditor);
@@ -315,7 +350,12 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   );
 
   return (
-    <div className="flex h-full min-w-0 flex-col" data-testid="chat-pane">
+    <div
+      ref={paneRef}
+      className="flex h-full min-w-0 flex-col"
+      data-testid="chat-pane"
+      tabIndex={-1}
+    >
       <ChatHeader
         conversation={conversation}
         modelEditor={modelEditor}

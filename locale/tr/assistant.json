@@ -1,0 +1,7 @@
+{
+  "title": "Yapay Zekâ Asistanı",
+  "tabs_label": "YZ sağlayıcısı",
+  "no_providers_enabled": "Henüz bağlı sağlayıcı yok. Sohbete başlamak için Ayarlar'dan birini etkinleştirin.",
+  "provider_ready_placeholder": "{{provider}} hazır — sohbet arayüzü sonraki aşamada geliyor.",
+  "open_settings": "Ayarları Aç"
+}

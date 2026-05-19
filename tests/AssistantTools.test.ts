@@ -533,12 +533,111 @@ describe('AssistantTools — read-class execution', () => {
     const result = (await tools.execute('list_files', {})) as {
       root: string;
       paths: string[];
+      directories: string[];
     };
     expect(result.root).toBe('/workspace');
     expect(result.paths.sort()).toEqual([
       '/workspace/a.md',
       '/workspace/sub/b.md',
       '/workspace/sub/c.md',
+    ]);
+    // Directories must be returned too — the agent asks "list folders"
+    // and the tool previously returned [] for that question.
+    expect(result.directories).toEqual(['/workspace/sub']);
+  });
+
+  it('list_files returns directories alongside files (regression for agent asking "list folders")', async () => {
+    // Reported user case: the agent (Anthropic) asked "list all
+    // folders that extend from root" and got back only markdown
+    // file paths — directories were silently dropped from the walk.
+    // This pins the contract so directories appear under their own
+    // field and the description's promise actually holds.
+    const bm = makeBridgeManager({
+      treeSnapshot: {
+        treeRoot: '/workspace',
+        nodes: [
+          {
+            type: 'directory',
+            name: '.claude',
+            path: '/workspace/.claude',
+            loaded: true,
+            children: [],
+          },
+          {
+            type: 'directory',
+            name: '.github',
+            path: '/workspace/.github',
+            loaded: true,
+            children: [],
+          },
+          {
+            type: 'directory',
+            name: 'docs',
+            path: '/workspace/docs',
+            loaded: true,
+            children: [
+              {
+                type: 'file',
+                name: 'arch.md',
+                path: '/workspace/docs/arch.md',
+              },
+            ],
+          },
+          {
+            type: 'directory',
+            name: 'src',
+            path: '/workspace/src',
+            loaded: true,
+            children: [
+              {
+                type: 'directory',
+                name: 'app',
+                path: '/workspace/src/app',
+                loaded: true,
+                children: [
+                  {
+                    type: 'file',
+                    name: 'README.md',
+                    path: '/workspace/src/app/README.md',
+                  },
+                ],
+              },
+              {
+                type: 'directory',
+                name: 'browser',
+                path: '/workspace/src/browser',
+                loaded: true,
+                children: [
+                  {
+                    type: 'file',
+                    name: 'README.md',
+                    path: '/workspace/src/browser/README.md',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const tools = new AssistantTools(bm as never);
+    const result = (await tools.execute('list_files', {})) as {
+      root: string;
+      paths: string[];
+      directories: string[];
+    };
+    expect(result.directories.sort()).toEqual([
+      '/workspace/.claude',
+      '/workspace/.github',
+      '/workspace/docs',
+      '/workspace/src',
+      '/workspace/src/app',
+      '/workspace/src/browser',
+    ]);
+    expect(result.paths.sort()).toEqual([
+      '/workspace/docs/arch.md',
+      '/workspace/src/app/README.md',
+      '/workspace/src/browser/README.md',
     ]);
   });
 

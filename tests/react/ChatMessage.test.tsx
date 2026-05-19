@@ -9,17 +9,29 @@
  */
 
 import * as React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 
 import { ChatMessage } from '../../src/browser/react/components/assistant/ChatMessage';
 import type {
   ToolInvocation,
   UiChatMessage,
 } from '../../src/app/interfaces/Assistant';
+import { renderWithProviders } from '../utils/render';
+
+// P8: ToolCallCard (rendered inline when message.segments contains
+// tool-call entries) now reads useAssistantChat() for the retry-
+// button gate. Tests use renderWithProviders so the manager context
+// is available; non-tool-call cases work the same as before.
+const render = (ui: React.ReactElement) => renderWithProviders(ui);
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string, vars?: Record<string, unknown>) =>
     vars ? `${key}:${JSON.stringify(vars)}` : key,
+  normalizeLanguage: (lng: string) => lng,
+  whenLanguageReady: () => Promise.resolve(),
+  getAvailableLocales: jest.fn(async () => []),
+  initI18n: jest.fn(),
+  changeLanguage: jest.fn(),
 }));
 
 jest.mock('../../src/browser/core/Markdown', () => ({
@@ -136,6 +148,29 @@ describe('<ChatMessage>', () => {
     expect(
       screen.getByText('assistant-settings:error_unknown'),
     ).toBeInTheDocument();
+  });
+
+  it('renders the upstream errorMessage detail under the translated code (P8 polish)', () => {
+    // Regression for the Ollama smoke: the user saw "Connection
+    // failed." with no inner detail. The translated code stays for
+    // the headline, but the upstream "gemma3:4b does not support
+    // tools" line now appears below it so the user can act on it.
+    render(
+      <ChatMessage
+        message={msg({
+          status: 'failed',
+          content: '',
+          errorCode: 'model_unsupported_tools',
+          errorMessage:
+            'registry.ollama.ai/library/gemma3:4b does not support tools',
+        })}
+      />,
+    );
+    expect(
+      screen.getByText('assistant-settings:error_model_unsupported_tools'),
+    ).toBeInTheDocument();
+    const detail = screen.getByTestId('chat-message-error-detail');
+    expect(detail.textContent).toContain('does not support tools');
   });
 
   // ----- P5: tool-call render branch ---------------------------------

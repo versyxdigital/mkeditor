@@ -457,17 +457,17 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
 
 ### Tasks
 
-1. **i18n mirror** — translate `locale/en/assistant.json` into the other 12 locales (de, es, fr, it, ja, ko, nl, pt, ru, tr, uk, zh). Strings cover provider names, settings UI, chat UI, tool-call cards, error messages, confirmation dialogs.
-2. **Menu entries** — extend [src/app/lib/menuModel.ts](../src/app/lib/menuModel.ts) with `View → Toggle Assistant Sidebar` (accelerator: `CmdOrCtrl+Shift+A`) and `Help → Configure AI Providers...` (opens Settings → Assistant tab). Both go through the existing `command` action kind.
+1. **i18n mirror** — translate all four English assistant namespace files (`locale/en/assistant.json`, `assistant-chat.json`, `assistant-settings.json`, `assistant-tools.json`) into the other 12 locales from `locale/manifest.json` (de, es, fr, it, ja, ko, nl, pt, ru, tr, uk, zh). Each file gets a `// machine-translated, pending native review` provenance note where the JSON format allows it (or a parallel comment in the doc-of-record).
+2. **Menu entries** — extend [src/app/lib/menuModel.ts](../src/app/lib/menuModel.ts) with `View → Toggle Assistant Sidebar` (accelerator: `CmdOrCtrl+Shift+A`, fires `from:assistant:toggle`) and `Help → Configure AI Providers...` (fires `from:modal:open` with payload `{ modal: 'settings', tab: 'assistant' }`). Both use the `channel` action kind to match the existing pattern for modal-opening items like `help.about` / `help.shortcuts` — `command` kind is reserved for items that need a main-process `commandId` dispatch (e.g., `view.devtools`). **Web build**: `<TitleBar>` returns null on web, so both entries are inert without needing a model-level flag.
 3. **Tray menu** — add "Toggle Assistant" entry to the tray's `Show Window` group on desktop.
-4. **Keyboard shortcuts within the chat** — `Esc` cancels in-flight call · `Cmd/Ctrl+K` opens a new conversation · `Cmd/Ctrl+/` focuses the input from anywhere.
-5. **Empty-state copy** — final, friendly copy for "no providers connected", "no conversations yet", "agent is thinking".
-6. **Tool-card refinements** — diff preview uses the editor's current theme tokens; long results truncate with "Show more"; failed cards gain a retry button that re-issues the same tool call in a new turn (deferred from P5).
-7. **Visible streaming indicator** — small pulsing dot in the provider tab while a call is in flight (useful when the tab isn't the active one).
-8. **Error taxonomy** — map the SDK's common errors to user-friendly translatable messages: missing key, invalid key, rate limited, context window exceeded, network failure, Ollama unreachable.
-9. **Smoke tests** — manual checklist covering: enable + connect each provider; chat with each; cancel mid-stream; ask the agent to edit the active file; confirm + apply; reject; ask the agent to create a new file; relaunch and verify history; do the same on web.
+4. **Keyboard shortcuts within the chat** — `Esc` cancels in-flight call · `Cmd/Ctrl+K` opens a new conversation · `Cmd/Ctrl+/` focuses the input from anywhere (in the chat sidebar — not a global accelerator).
+5. **Empty-state copy** — review + polish "no providers connected", "no conversations yet". The "agent is thinking" rotating-gerund indicator already shipped in P6 polish.
+6. **Tool-card refinements** — long results truncate with "Show more / Show less". Failed cards gain a retry button that fires a new chat turn re-stating the failed call (the original SDK loop has long since closed — retry means a fresh user-facing turn that prompts the agent to try again, NOT a low-level SDK retry).
+7. **Visible streaming indicator** — small pulsing dot on the provider tab while that provider has a call in flight (useful when the tab isn't the active one).
+8. **Error taxonomy** — map the SDK's common errors to translatable keys: `missing_key`, `invalid_key`, `rate_limited`, `context_window_exceeded`, `network_error`, `ollama_unreachable`, `unknown`. AppAssistant's `mapError` already handles a subset; complete the table + ensure every code has a translation in `assistant-settings.json` `error_*` keys.
+9. **Smoke checklist** — manual checklist in the doc covering: enable + connect each provider; chat with each; cancel mid-stream; ask the agent to edit the active file; confirm + apply; reject; ask the agent to create a new file; relaunch and verify history. (Web smoke dropped — web AI is gone per P7 Decisions.)
 10. **Documentation** —
-    - **[ARCHITECTURE.md](ARCHITECTURE.md)** — new §4.14 "AI Assistant" covering IPC channels, key storage, conversation persistence, tool dispatch, mode parity.
+    - **[ARCHITECTURE.md](ARCHITECTURE.md)** — new §4.14 "AI Assistant" covering IPC channels, key storage, conversation persistence, tool dispatch, the desktop-only constraint.
     - **[CLAUDE.md](../CLAUDE.md)** — add the AI Assistant managers + IPC channels to the relevant sections (Core Subsystems renderer, IPC Bridge Model).
     - **[ROADMAP.md](ROADMAP.md)** — move the milestone row into **Recently Landed** with the date.
 11. **Reviewers + commit approval.**
@@ -480,7 +480,72 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
 - ✅ All error states render a translated, actionable message.
 - ✅ `ARCHITECTURE.md`, `CLAUDE.md`, and `ROADMAP.md` reflect the shipped surface.
 - ✅ `npm test`, `npm run lint`, `npm run build-editor`, `npm run build-app` all green.
-- ✅ Smoke checklist passes on Windows desktop + Chromium web build.
+- ✅ Smoke checklist passes on Windows desktop (web smoke dropped — web AI is gone per P7).
+
+### Manual smoke checklist (desktop)
+
+Run through this list on Windows after every P8-touching change. Each step is small enough to fit in one launch of the editor; mark ✅ in your PR notes if the headline flow is intact.
+
+**Setup — providers**
+- [ ] Open **Settings → AI Providers**. Tab shows three rows (Anthropic / OpenAI / Ollama), all disabled.
+- [ ] Enable Anthropic, paste a valid key, save. Sidebar tab strip now shows "Anthropic".
+- [ ] Enable OpenAI, paste a valid key, save. Tab strip now shows "Anthropic | OpenAI".
+- [ ] Enable Ollama (point at `http://localhost:11434`), click *Refresh models*, pick a local model, save.
+- [ ] Disable OpenAI; its tab disappears but the saved config survives.
+- [ ] Quit & relaunch: enabled providers + keys reload (no re-paste needed); disabled providers stay disabled.
+
+**Chat — basic round-trips**
+- [ ] Anthropic tab: send "hi". Response streams in; the thinking-indicator shows until the first token, then disappears.
+- [ ] OpenAI tab: same.
+- [ ] Ollama tab: same (slower first token is fine).
+- [ ] Streaming dot pulses on the provider tab while a call is in-flight from a different tab.
+- [ ] Send a long prompt mid-stream → previous call cancels-and-replaces cleanly (no orphaned bubble).
+
+**Cancel / Stop**
+- [ ] Send "write me a 1000-word essay about markdown". While streaming, click *Stop* — bubble shows the cancelled footer.
+- [ ] Same flow but press `Esc` instead — same result.
+
+**Tools — read-class (auto-execute)**
+- [ ] "Read README.md and summarise it." → `read_file` card auto-runs, expand shows args + result, assistant follows up with a summary.
+- [ ] "List files in src/browser/core" → `list_files` card auto-runs.
+- [ ] "Show me what's selected" with a selection → `get_selection` card auto-runs.
+
+**Tools — write-class (confirm gate)**
+- [ ] "Edit README.md, add a line saying 'Hello smoke test' at the top." → confirm dialog appears with diff preview. **Reject** — card shows `error_rejected`.
+- [ ] Same prompt again — **Accept** — edit applies, card succeeds.
+- [ ] "Create a new file scratch.md with content 'smoke test'." → confirm dialog → Accept → file appears in tree + opens in a new tab.
+- [ ] Toggle the conversation's "auto-accept writes" → ask for another edit → applies without prompting.
+
+**Tool-card UX**
+- [ ] Trigger a long-result tool (e.g. `read_file` on a large doc). Card body shows "Show more ({{chars}} more chars)" — click → expands, "Show less" — click → collapses.
+- [ ] Force a tool failure (e.g. ask agent to read a non-existent file). Card shows error code + message + **Retry** button. Click *Retry* → fresh user turn re-stating the call; assistant tries again.
+
+**Context controls**
+- [ ] Open a file. Active-file chip shows at the bottom of the input with the file name + line count.
+- [ ] Toggle "share active file" off → chip disappears → ask the agent what file you're looking at → it doesn't know.
+- [ ] Type `@` in the input → mention picker opens with files from the tree.
+- [ ] Pick a file → it appears as a context chip; send "what does this file do?" → agent reads it.
+
+**Keyboard shortcuts**
+- [ ] `Cmd/Ctrl+Shift+A` from anywhere → toggles sidebar.
+- [ ] Tray → "Toggle Assistant" → same.
+- [ ] **Help → Configure AI Providers...** → opens Settings on the AI tab.
+- [ ] In the chat sidebar: `Cmd/Ctrl+K` → starts a new conversation for the active provider.
+- [ ] In the chat sidebar: `Cmd/Ctrl+/` → focuses the textarea from anywhere within the sidebar.
+
+**Persistence**
+- [ ] Have at least one conversation per enabled provider with a few messages.
+- [ ] Quit & relaunch → all conversations restore with messages, tool cards, and timestamps intact.
+- [ ] Delete a conversation → confirm prompt → gone from list → relaunch → still gone.
+
+**Error taxonomy**
+- [ ] Set an invalid Anthropic key → send a message → bubble shows the translated `invalid_key` error.
+- [ ] Stop Ollama → send to Ollama → translated `ollama_unreachable` error.
+- [ ] Disconnect network → translated `network_error`.
+- [ ] Send an oversized prompt (paste a huge file) → translated `context_window_exceeded`.
+
+**i18n spot-check**
+- [ ] Switch locale (e.g. `de`, `ja`, `fr`) → relaunch → assistant title, tab labels, empty-state copy, tool-card labels, confirm dialog text all render in the chosen locale.
 
 ---
 
@@ -493,6 +558,7 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
 - **Inline assist.** Highlight a line, press a shortcut, get a single-turn suggestion that streams into the editor as a phantom edit. Out of v1 because it needs its own dedicated UX.
 - **Multi-tool/parallel calls.** v1 lets the SDK loop tool calls sequentially; parallel-tool-call support depends on provider parity.
 - **Workspace search tool.** A `search_workspace(query)` tool fed by a ripgrep child process (desktop) or a JS scan (web). Useful for "find all references to X in the docs".
+- **Broader workspace visibility for the agent.** All workspace tools (`list_files`, `read_file`, `write_file`, `edit_file`, `create_file`) intentionally inherit `FileTreeManager`'s markdown-only filter — the editor is markdown-focused and we don't want the assistant sidebar to drift into a general-purpose file browser. If users start consistently asking the agent to reason about `package.json`, `.github/workflows/*.yml`, etc., add a parallel set of tools (e.g. `list_files_all`, `read_file_all`) that bypass the filter with their own confirmation policy. Until then, the markdown-only scope is honest, narrow, and matches what users see in the explorer.
 - **Slash commands in the input.** `/summarise`, `/translate`, `/refactor` as templated prompts.
 - **Conversation export.** Markdown / JSON export of a conversation (including tool calls) for sharing.
 

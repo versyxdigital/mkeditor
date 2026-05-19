@@ -1,0 +1,35 @@
+{
+  "confirm_title": "允许 {{toolName}}?",
+  "confirm_title_fallback": "允许工具调用?",
+  "confirm_intro": "助手想要运行此工具。请在接受前审查更改。",
+  "confirm_accept": "允许",
+  "confirm_reject": "拒绝",
+  "args_label": "参数",
+  "result_label": "结果",
+  "error_label": "错误",
+
+  "preview_create": "创建文件 {{path}}",
+  "preview_write": "替换 {{path}}",
+  "preview_edit": "编辑 {{path}}",
+  "preview_replace": "替换 {{path}} 中的选区",
+  "preview_insert": "插入到 {{path}}",
+  "preview_before": "之前",
+  "preview_after": "之后",
+
+  "status_pending-confirm": "等待确认",
+  "status_executing": "执行中",
+  "status_succeeded": "完成",
+  "status_failed": "失败",
+
+  "toggle_card": "切换 {{toolName}} 详情",
+
+  "error_rejected": "用户已拒绝此工具调用。",
+  "error_execution_failed": "工具执行失败。",
+  "error_unknown_tool": "未知工具。",
+
+  "show_more": "显示更多(还有 {{chars}} 个字符)",
+  "show_less": "显示更少",
+  "retry": "重试",
+  "retry_prompt": "请重试 {{toolName}} 调用。",
+  "retry_prompt_with_args": "请使用以下参数重试 {{toolName}}: {{args}}"
+}

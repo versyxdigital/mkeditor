@@ -1,0 +1,35 @@
+{
+  "confirm_title": "Permitir {{toolName}}?",
+  "confirm_title_fallback": "Permitir chamada da ferramenta?",
+  "confirm_intro": "O assistente quer executar esta ferramenta. Reveja a alteração antes de aceitar.",
+  "confirm_accept": "Permitir",
+  "confirm_reject": "Rejeitar",
+  "args_label": "Argumentos",
+  "result_label": "Resultado",
+  "error_label": "Erro",
+
+  "preview_create": "Criar ficheiro {{path}}",
+  "preview_write": "Substituir {{path}}",
+  "preview_edit": "Editar {{path}}",
+  "preview_replace": "Substituir seleção em {{path}}",
+  "preview_insert": "Inserir em {{path}}",
+  "preview_before": "Antes",
+  "preview_after": "Depois",
+
+  "status_pending-confirm": "A aguardar confirmação",
+  "status_executing": "Em execução",
+  "status_succeeded": "Concluído",
+  "status_failed": "Falhou",
+
+  "toggle_card": "Mostrar/ocultar detalhes de {{toolName}}",
+
+  "error_rejected": "O utilizador rejeitou esta chamada da ferramenta.",
+  "error_execution_failed": "A execução da ferramenta falhou.",
+  "error_unknown_tool": "Ferramenta desconhecida.",
+
+  "show_more": "Mostrar mais ({{chars}} caracteres adicionais)",
+  "show_less": "Mostrar menos",
+  "retry": "Tentar novamente",
+  "retry_prompt": "Por favor tente novamente a chamada {{toolName}}.",
+  "retry_prompt_with_args": "Por favor tente novamente {{toolName}} com os argumentos: {{args}}"
+}

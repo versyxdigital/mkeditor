@@ -1,10 +1,14 @@
 import * as React from 'react';
 
 import type { ProviderId } from '../../../app/interfaces/Assistant';
-import { useAssistantConfig } from '../contexts/AssistantContext';
+import {
+  useAssistantChat,
+  useAssistantConfig,
+} from '../contexts/AssistantContext';
 import { useModals } from '../contexts/ModalsContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
+import { ProviderLogo } from './assistant/ProviderLogo';
 import { ProviderTab } from './assistant/ProviderTab';
 import { Button } from './ui/button';
 import { Icon } from './Icon';
@@ -44,8 +48,21 @@ const PROVIDER_LABEL: Record<ProviderId, string> = {
  */
 export const AssistantSidebar: React.FC = () => {
   const { snapshot } = useAssistantConfig();
+  const { chat } = useAssistantChat();
   const { openModal } = useModals();
   const { t } = useTranslation();
+
+  // P8 — per-provider streaming indicator. Pulses on the tab when
+  // that provider has any in-flight call (useful when the user is
+  // viewing a different provider tab and won't see the streaming
+  // dot inside the bubble).
+  const streamingProviders = React.useMemo(() => {
+    const set = new Set<ProviderId>();
+    for (const call of Object.values(chat.inflight)) {
+      set.add(call.provider);
+    }
+    return set;
+  }, [chat.inflight]);
 
   const enabledProviders = React.useMemo<ProviderId[]>(() => {
     if (!snapshot.config) return [];
@@ -89,6 +106,7 @@ export const AssistantSidebar: React.FC = () => {
           >
             {enabledProviders.map((provider) => {
               const isActive = activeTab === provider;
+              const isStreaming = streamingProviders.has(provider);
               return (
                 <button
                   key={provider}
@@ -97,15 +115,27 @@ export const AssistantSidebar: React.FC = () => {
                   aria-selected={isActive}
                   data-state={isActive ? 'active' : 'inactive'}
                   data-provider={provider}
+                  data-streaming={isStreaming || undefined}
                   onClick={() => setActiveTab(provider)}
                   className={cn(
-                    'flex-1 px-2 py-1.5 text-xs transition-colors',
+                    'flex flex-1 items-center justify-center gap-1.5 px-2 py-1.5 text-xs transition-colors',
                     isActive
                       ? 'border-b-2 border-primary text-foreground font-medium'
                       : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground',
                   )}
                 >
-                  {PROVIDER_LABEL[provider]}
+                  <ProviderLogo
+                    provider={provider}
+                    className="h-3.5 w-3.5"
+                  />
+                  <span>{PROVIDER_LABEL[provider]}</span>
+                  {isStreaming && (
+                    <span
+                      className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary"
+                      aria-label={t('assistant-chat:streaming')}
+                      data-testid={`provider-tab-streaming-${provider}`}
+                    />
+                  )}
                 </button>
               );
             })}

@@ -1,0 +1,35 @@
+{
+  "confirm_title": "{{toolName}} を許可しますか?",
+  "confirm_title_fallback": "ツール呼び出しを許可しますか?",
+  "confirm_intro": "アシスタントがこのツールの実行を要求しています。承認前に変更内容を確認してください。",
+  "confirm_accept": "許可",
+  "confirm_reject": "拒否",
+  "args_label": "引数",
+  "result_label": "結果",
+  "error_label": "エラー",
+
+  "preview_create": "ファイル {{path}} を作成",
+  "preview_write": "{{path}} を置き換え",
+  "preview_edit": "{{path}} を編集",
+  "preview_replace": "{{path}} 内の選択を置き換え",
+  "preview_insert": "{{path}} に挿入",
+  "preview_before": "前",
+  "preview_after": "後",
+
+  "status_pending-confirm": "確認待ち",
+  "status_executing": "実行中",
+  "status_succeeded": "完了",
+  "status_failed": "失敗",
+
+  "toggle_card": "{{toolName}} の詳細を切り替え",
+
+  "error_rejected": "ユーザーがこのツール呼び出しを拒否しました。",
+  "error_execution_failed": "ツールの実行に失敗しました。",
+  "error_unknown_tool": "不明なツール。",
+
+  "show_more": "もっと表示({{chars}} 文字)",
+  "show_less": "折りたたむ",
+  "retry": "再試行",
+  "retry_prompt": "{{toolName}} の呼び出しを再試行してください。",
+  "retry_prompt_with_args": "次の引数で {{toolName}} を再試行してください: {{args}}"
+}

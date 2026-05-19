@@ -1,0 +1,35 @@
+{
+  "confirm_title": "{{toolName}} toestaan?",
+  "confirm_title_fallback": "Tool-aanroep toestaan?",
+  "confirm_intro": "De assistent wil deze tool uitvoeren. Controleer de wijziging voordat je accepteert.",
+  "confirm_accept": "Toestaan",
+  "confirm_reject": "Weigeren",
+  "args_label": "Argumenten",
+  "result_label": "Resultaat",
+  "error_label": "Fout",
+
+  "preview_create": "Bestand {{path}} aanmaken",
+  "preview_write": "{{path}} vervangen",
+  "preview_edit": "{{path}} bewerken",
+  "preview_replace": "Selectie in {{path}} vervangen",
+  "preview_insert": "Invoegen in {{path}}",
+  "preview_before": "Voor",
+  "preview_after": "Na",
+
+  "status_pending-confirm": "Wacht op bevestiging",
+  "status_executing": "Wordt uitgevoerd",
+  "status_succeeded": "Klaar",
+  "status_failed": "Mislukt",
+
+  "toggle_card": "Details van {{toolName}} tonen/verbergen",
+
+  "error_rejected": "De gebruiker heeft deze tool-aanroep geweigerd.",
+  "error_execution_failed": "Het uitvoeren van de tool is mislukt.",
+  "error_unknown_tool": "Onbekende tool.",
+
+  "show_more": "Meer tonen ({{chars}} extra tekens)",
+  "show_less": "Minder tonen",
+  "retry": "Opnieuw proberen",
+  "retry_prompt": "Probeer de {{toolName}}-aanroep opnieuw.",
+  "retry_prompt_with_args": "Probeer {{toolName}} opnieuw met argumenten: {{args}}"
+}

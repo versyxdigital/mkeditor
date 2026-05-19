@@ -396,7 +396,14 @@ export class AppAssistant {
   private buildModel(provider: ProviderId, modelId: string): LanguageModel {
     if (provider === 'ollama') {
       const cfg = AssistantConfig.load().ollama;
-      return this.factories.ollama(cfg.baseUrl, modelId);
+      // `ollama-ai-provider-v2` builds chat URLs as `${baseURL}/chat`,
+      // so the baseURL must end at `/api`. The settings UI exposes
+      // "Daemon URL" (host root) and `listOllamaModels` builds its
+      // own `/api/tags` path — normalise here so users can paste
+      // either `http://localhost:11434` or `…/api` and chat works.
+      const stripped = cfg.baseUrl.replace(/\/+$/, '');
+      const apiBase = /\/api$/.test(stripped) ? stripped : `${stripped}/api`;
+      return this.factories.ollama(apiBase, modelId);
     }
     const apiProvider = provider as ApiProviderId;
     const key = AssistantKeyStore.getKey(apiProvider);
@@ -473,19 +480,139 @@ export class AppAssistant {
     return set as ToolSet;
   }
 
-  /** Coarse error → stable ChatErrorEvent. Refined in P4 with provider specifics. */
+  /**
+   * Coarse error → stable ChatErrorEvent (P8 — completed taxonomy).
+   *
+   * The renderer's `assistant-settings.json` has translated copy for
+   * every code in `ChatErrorEvent['code']`; this method picks the
+   * right one from common SDK / provider error shapes. Pattern
+   * matching is conservative — when nothing matches, `unknown`
+   * carries the raw message so logs (and the failed-message
+   * detail) keep enough context to debug.
+   *
+   * The matchers below are ordered cheap-first (instanceof / name
+   * checks before regex) and specific-first (key/rate before the
+   * broader 401 / 429 fallbacks).
+   */
   private static mapError(err: unknown): Omit<ChatErrorEvent, 'callId'> {
     if (err instanceof MissingKeyError) {
       return { code: 'missing_key', message: `No key set for ${err.provider}` };
     }
-    const message = err instanceof Error ? err.message : String(err);
     if (err instanceof Error && err.name === 'AbortError') {
-      return { code: 'cancelled', message };
+      return { code: 'cancelled', message: err.message };
     }
-    if (/ECONNREFUSED|ENOTFOUND|fetch failed/i.test(message)) {
+    // Vercel AI SDK `APICallError` carries the raw upstream response
+    // body. For Ollama (and most JSON APIs) the useful detail lives
+    // inside `responseBody` as `{ "error": "…" }` — the top-level
+    // `err.message` is just the HTTP status text ("Bad Request"),
+    // which on its own surfaces as a misleading "unknown" code.
+    // Parse the inner message and prefer it for both code-matching
+    // and the renderer's `errorMessage` detail.
+    const apiErr = AppAssistant.toApiCallError(err);
+    let message = err instanceof Error ? err.message : String(err);
+    if (apiErr) {
+      const inner = AppAssistant.parseUpstreamError(apiErr.responseBody);
+      if (inner) message = inner;
+      // Ollama 400: model exists but doesn't expose tool calling
+      // (gemma3, phi3, most small models). This is the single
+      // most common failure mode for users wiring up a local
+      // model, so it gets its own code.
+      if (
+        apiErr.statusCode === 400 &&
+        /\bdoes not support tools?\b/i.test(message)
+      ) {
+        return { code: 'model_unsupported_tools', message };
+      }
+    }
+    const lowered = message.toLowerCase();
+    // Invalid key — explicit auth-failure shapes from Anthropic /
+    // OpenAI plus a generic 401 fallback.
+    if (
+      /invalid[_\s-]?api[_\s-]?key/.test(lowered) ||
+      /invalid[_\s-]?(?:bearer|authentication)/.test(lowered) ||
+      /401(?:\b|[^0-9])/.test(message) ||
+      /\bunauthor(?:i[sz]ed)\b/.test(lowered) ||
+      /\bauthentication.+(?:failed|error)\b/.test(lowered)
+    ) {
+      return { code: 'invalid_key', message };
+    }
+    // Rate limiting — 429 + the providers' textual forms.
+    if (
+      /429(?:\b|[^0-9])/.test(message) ||
+      /\brate[_\s-]?limit/.test(lowered) ||
+      /\btoo many requests\b/.test(lowered) ||
+      /\bquota (?:exceeded|reached)\b/.test(lowered)
+    ) {
+      return { code: 'rate_limited', message };
+    }
+    // Context-window overflow.
+    if (
+      /\bcontext[_\s-]?(?:length|window).+(?:exceed|too)/.test(lowered) ||
+      /\bmaximum context length\b/.test(lowered) ||
+      /\btoo many tokens\b/.test(lowered) ||
+      /\bprompt is too long\b/.test(lowered)
+    ) {
+      return { code: 'context_window_exceeded', message };
+    }
+    // Ollama-specific: connection refused / refused / no daemon on
+    // localhost:11434. Falls under network_error semantically but
+    // surfaces a friendlier "start your Ollama daemon" message.
+    if (
+      /\bollama\b/.test(lowered) &&
+      /(?:ECONNREFUSED|fetch failed|refused|unreachable)/i.test(message)
+    ) {
+      return { code: 'ollama_unreachable', message };
+    }
+    // Generic network fallback.
+    if (/ECONNREFUSED|ENOTFOUND|EAI_AGAIN|fetch failed|ETIMEDOUT/i.test(message)) {
       return { code: 'network_error', message };
     }
     return { code: 'unknown', message };
+  }
+
+  /**
+   * Duck-type check for Vercel AI SDK `APICallError`. Avoids the
+   * import-cycle / instanceof-across-module-boundaries risk by going
+   * structural: any object with both `statusCode` and `responseBody`
+   * fields (plus the right constructor name) qualifies.
+   */
+  private static toApiCallError(
+    err: unknown,
+  ): { statusCode?: number; responseBody?: string } | null {
+    if (!err || typeof err !== 'object') return null;
+    const e = err as {
+      name?: string;
+      statusCode?: unknown;
+      responseBody?: unknown;
+    };
+    if (e.name !== 'AI_APICallError') return null;
+    const out: { statusCode?: number; responseBody?: string } = {};
+    if (typeof e.statusCode === 'number') out.statusCode = e.statusCode;
+    if (typeof e.responseBody === 'string') out.responseBody = e.responseBody;
+    return out;
+  }
+
+  /**
+   * Parse `{ "error": "…" }` (Ollama) or `{ "error": { "message": "…" } }`
+   * (OpenAI-compatible) out of a JSON response body. Returns null when
+   * the body isn't JSON or doesn't expose either shape.
+   */
+  private static parseUpstreamError(body: string | undefined): string | null {
+    if (!body) return null;
+    try {
+      const parsed = JSON.parse(body) as {
+        error?: unknown;
+      };
+      const e = parsed.error;
+      if (typeof e === 'string') return e;
+      if (e && typeof e === 'object' && 'message' in e) {
+        const m = (e as { message?: unknown }).message;
+        if (typeof m === 'string') return m;
+      }
+    } catch {
+      /* not JSON — fall through */
+    }
+    return null;
   }
 }
 

@@ -4,7 +4,7 @@
   "no_conversations_cta": "Start your first {{provider}} conversation.",
   "start_conversation": "Start a conversation",
   "select_conversation": "Select a conversation from the list, or start a new one.",
-  "empty_conversation": "Say something to get started.",
+  "empty_conversation": "Say hi — the assistant can read, edit, or summarise your files.",
   "input_placeholder": "Message the assistant…",
   "input_aria": "Message input",
   "send": "Send",

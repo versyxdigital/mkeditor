@@ -361,7 +361,7 @@ const CATALOG: Record<string, ToolSpec> = {
 
   list_files: {
     description:
-      'List markdown files visible in the workspace file tree. Lazy-loaded subdirectories are loaded on demand. Returns up to 500 paths.',
+      'List the workspace contents. Returns two arrays: `paths` (markdown files) and `directories` (folders). The file tree is markdown-focused by design — only `.md` files and the directories that contain them (anywhere in their subtree) are indexed. Folders with no markdown anywhere beneath them (e.g. `node_modules/`, `dist/`) will NOT appear; do not infer their absence as proof they are missing from the filesystem. Lazy-loaded subdirectories are loaded on demand. Returns up to 500 files and 500 directories.',
     parameters: {
       type: 'object',
       properties: {
@@ -378,7 +378,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const { subpath } = (args ?? {}) as { subpath?: string };
       const ftm = ctx.bridge.fileTreeManager;
       if (!ftm.getSnapshot().treeRoot) {
-        return { root: null, paths: [] };
+        return { root: null, paths: [], directories: [] };
       }
 
       // Resolve subpath to an absolute directory prefix. Search the
@@ -395,9 +395,11 @@ const CATALOG: Record<string, ToolSpec> = {
       // Cap MAX_LOADS so a pathological workspace can't stall the
       // agent. Cap MAX_FILES so the response stays bounded.
       const MAX_FILES = 500;
+      const MAX_DIRS = 500;
       const MAX_LOADS = 100;
       let loadCount = 0;
       const paths: string[] = [];
+      const directories: string[] = [];
 
       type Node = {
         type: 'file' | 'directory';
@@ -415,11 +417,20 @@ const CATALOG: Record<string, ToolSpec> = {
 
       const visit = async (nodes: Node[]): Promise<void> => {
         for (const n of nodes) {
-          if (paths.length >= MAX_FILES) return;
+          if (paths.length >= MAX_FILES && directories.length >= MAX_DIRS) {
+            return;
+          }
           if (!couldReachScope(n.path)) continue;
           if (n.type === 'file') {
-            if (inScope(n.path)) paths.push(n.path);
+            if (inScope(n.path) && paths.length < MAX_FILES) {
+              paths.push(n.path);
+            }
             continue;
+          }
+          // Record the directory itself (the agent asked for folders
+          // too) before recursing into its children.
+          if (inScope(n.path) && directories.length < MAX_DIRS) {
+            directories.push(n.path);
           }
           // Directory: ensure children are loaded before recursing.
           let dir = n;
@@ -457,7 +468,9 @@ const CATALOG: Record<string, ToolSpec> = {
       return {
         root: scope ?? ftm.getSnapshot().treeRoot,
         paths,
-        truncated: paths.length >= MAX_FILES,
+        directories,
+        truncated:
+          paths.length >= MAX_FILES || directories.length >= MAX_DIRS,
       };
     },
   },

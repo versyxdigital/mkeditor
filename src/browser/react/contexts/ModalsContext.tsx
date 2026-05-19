@@ -77,16 +77,23 @@ export function useModals(): ModalsState {
  * trigger a modal without holding a React ref.
  *
  * Updated by <App> on the first render via `registerOpenModal`. The
- * external surface intentionally stays payload-free — non-React
- * callers always open modals at their default state; the React-side
- * `openModal` is the only path that carries a payload.
+ * external surface accepts an optional `payload` (P8) so callers like
+ * the Help → "Configure AI Providers..." menu item can open the
+ * Settings modal directly on the AI Providers tab via
+ * `openModalExternal('settings', { tab: 'assistant' })`. Non-React
+ * callers that don't need it pass nothing — the React `openModal`
+ * function ignores undefined payloads cleanly.
  */
-let externalOpenModal: ((key: ModalKey) => void) | null = null;
+let externalOpenModal:
+  | ((key: ModalKey, payload?: ModalPayload) => void)
+  | null = null;
 
-export function registerOpenModal(fn: (key: ModalKey) => void) {
+export function registerOpenModal(
+  fn: (key: ModalKey, payload?: ModalPayload) => void,
+) {
   externalOpenModal = fn;
 }
 
-export function openModalExternal(key: ModalKey) {
-  externalOpenModal?.(key);
+export function openModalExternal(key: ModalKey, payload?: ModalPayload) {
+  externalOpenModal?.(key, payload);
 }

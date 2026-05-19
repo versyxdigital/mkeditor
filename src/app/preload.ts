@@ -85,6 +85,8 @@ const receiverWhitelist = [
   // AI Assistant (P7)
   'from:ai:conversations',
   'from:ai:conversations:flush-request',
+  // AI Assistant (P8) — application menu / tray
+  'from:assistant:toggle',
 ];
 
 /**

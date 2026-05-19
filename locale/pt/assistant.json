@@ -1,0 +1,7 @@
+{
+  "title": "Assistente de IA",
+  "tabs_label": "Fornecedor de IA",
+  "no_providers_enabled": "Nenhum fornecedor ligado ainda. Ative um nas Definições para começar a conversar.",
+  "provider_ready_placeholder": "{{provider}} está pronto — a interface de chat chega na próxima fase.",
+  "open_settings": "Abrir Definições"
+}

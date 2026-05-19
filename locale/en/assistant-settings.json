@@ -33,6 +33,7 @@
   "error_context_window_exceeded": "Context window exceeded.",
   "error_network_error": "Network error reaching the provider.",
   "error_ollama_unreachable": "Couldn't reach the Ollama daemon.",
+  "error_model_unsupported_tools": "This model doesn't support tool calls. Try a model that does (e.g. llama3.1 or qwen2.5).",
   "error_cancelled": "Cancelled.",
-  "error_unknown": "Connection failed."
+  "error_unknown": "The request failed."
 }

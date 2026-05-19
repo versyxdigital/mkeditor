@@ -484,6 +484,90 @@ Each `MenuItem` carries `{ id, label, accelerator?, darwinAccelerator?, action }
 | `to:command:run`       | renderer → main | `commandId: string` | Run an AppMenu.runCommand handler  |
 | `from:window:state`    | main → renderer | `{ isMaximized }`   | Maximize-state sync (boot + event) |
 
+### 4.14 AI Assistant
+
+The right-hand sidebar that hosts per-provider chat surfaces (Anthropic / OpenAI / Ollama), gives an agent first-class read/write access to the workspace, and persists conversations across launches. Full design + per-phase notes: [AI_ASSISTANT.md](AI_ASSISTANT.md).
+
+**Desktop-only.** The assistant is hidden in the web build — the Navbar toggle, the sidebar shell, and the Settings → AI Providers tab all return `null` when `mode === 'web'`. API keys never enter the renderer process in any mode; on desktop they live in an Electron `safeStorage`-encrypted blob.
+
+**Process split.**
+
+- [AppAssistant](../src/app/lib/AppAssistant.ts) (main) owns the Vercel AI SDK instance (`streamText` / `generateText` from `ai` + `@ai-sdk/openai` + `@ai-sdk/anthropic` + `ollama-ai-provider-v2`). It holds the upstream `AbortController`s, maps SDK errors to a `ChatErrorEvent['code']` enum (`missing_key`, `invalid_key`, `rate_limited`, `context_window_exceeded`, `network_error`, `ollama_unreachable`, `model_unsupported_tools`, `cancelled`, `unknown`), and streams chunks back over IPC keyed by call id. For `APICallError` failures the inner upstream message (`{ "error": "…" }` for Ollama, `{ "error": { "message": "…" } }` for OpenAI-shape errors) is parsed out of `responseBody` and forwarded as `ChatErrorEvent.message` so the renderer can render actionable detail beneath the translated code.
+- [AssistantKeyStore](../src/app/lib/AssistantKeyStore.ts) (main) wraps `safeStorage` over the `keys` section of `~/.mkeditor/assistant.json`. Plaintext keys never leave main — sanitized snapshots stripped of `apiKey` are what the renderer sees.
+- [AssistantConfig](../src/app/lib/AssistantConfig.ts) (main) owns the non-secret half (`enabled`, `model`, `baseUrl`, the conversations array). Atomic tmp + rename writes, debounced 500 ms to coalesce streaming bursts.
+- [AssistantManager](../src/browser/core/AssistantManager.ts) (renderer) owns chat state: provider tabs, conversation lists, in-flight call map, streaming buffers, draft input per tab. Exposes the standard `subscribe(listener)` / `getSnapshot()` pair for `useSyncExternalStore`; never imports React.
+- [AssistantTools](../src/browser/core/AssistantTools.ts) (renderer) is the tool catalog + dispatcher. Tools call directly into [FileManager](../src/browser/core/FileManager.ts) / [FileTreeManager](../src/browser/core/FileTreeManager.ts) / [EditorManager](../src/browser/core/EditorManager.ts) — there is no new IPC surface for tool execution. Write-class tools (`write_file`, `edit_file`, `create_file`, `replace_selection`, `insert_at_cursor`) route through `confirmExternal` first unless the conversation's per-chat "auto-accept writes" toggle is on.
+- React lives under [src/browser/react/components/AssistantSidebar.tsx](../src/browser/react/components/AssistantSidebar.tsx) and [src/browser/react/components/assistant/](../src/browser/react/components/assistant/). The sidebar reads `useAssistantConfig` (sanitized snapshot) and `useAssistantChat` (live chat state) from [AssistantContext](../src/browser/react/contexts/AssistantContext.tsx).
+
+**Storage.** `~/.mkeditor/assistant.json` is the on-disk file. Shape:
+
+```json
+{
+  "version": 1,
+  "providers": {
+    "anthropic": { "enabled": true, "model": "claude-sonnet-4-6", "apiKey": "<encrypted>" },
+    "openai":    { "enabled": false, "model": "gpt-4o", "apiKey": null },
+    "ollama":    { "enabled": true, "model": "llama3.2", "baseUrl": "http://localhost:11434", "apiKey": null }
+  },
+  "conversations": [
+    {
+      "id": "conv-…",
+      "provider": "anthropic",
+      "title": "…",
+      "createdAt": 0,
+      "updatedAt": 0,
+      "autoAcceptWrites": false,
+      "messages": [ /* UiChatMessage[] */ ]
+    }
+  ]
+}
+```
+
+The `apiKey` value is a `safeStorage`-encrypted base64 blob. On corrupted decrypt it nulls out the key and disables the provider (rather than throwing on boot).
+
+**IPC channels** (whitelisted in [preload.ts](../src/app/preload.ts)). The `:ai:` namespace is the chat/config plane (chosen for brevity — `assistant` reads as a heavier word when scanning IPC tables); `from:assistant:toggle` lives under `:assistant:` because it's a UI-shell event, not a chat-plane message:
+
+| Channel                              | Direction       | Payload                                                         | Purpose                                            |
+| ------------------------------------ | --------------- | --------------------------------------------------------------- | -------------------------------------------------- |
+| `to:ai:config:get`                   | renderer → main | none                                                            | Initial sanitized config snapshot                  |
+| `to:ai:config:set`                   | renderer → main | `{ provider, patch }`                                           | Mutate `enabled` / `model` / `baseUrl` (no key)    |
+| `to:ai:key:set`                      | renderer → main | `{ provider, apiKey }`                                          | Store an API key (encrypts via `safeStorage`)      |
+| `to:ai:key:clear`                    | renderer → main | `{ provider }`                                                  | Drop the stored key for a provider                 |
+| `to:ai:chat`                         | renderer → main | `{ callId, provider, model, messages, tools }`                  | Begin a streaming completion                       |
+| `to:ai:cancel`                       | renderer → main | `{ callId }`                                                    | Abort an in-flight call                            |
+| `to:ai:tool-result`                  | renderer → main | `{ callId, toolCallId, result }`                                | Push a tool dispatch result back to the SDK loop   |
+| `to:ai:conversations:save`           | renderer → main | `{ conversations }`                                             | Persist (debounced 500 ms)                         |
+| `to:ai:conversations:flush`          | renderer → main | none                                                            | Force-flush pending writes (used on quit)          |
+| `to:ai:ollama:list`                  | renderer → main | none                                                            | One-shot `localhost:11434/api/tags` proxy          |
+| `from:ai:config`                     | main → renderer | sanitized `AssistantConfig`                                     | Snapshot push (boot + after every update)          |
+| `from:ai:chunk`                      | main → renderer | `{ callId, delta }`                                             | Streamed text / tool-call delta                    |
+| `from:ai:tool-call`                  | main → renderer | `{ callId, toolCall }`                                          | SDK requests a tool dispatch                       |
+| `from:ai:done`                       | main → renderer | `{ callId, usage? }`                                            | Stream finished cleanly                            |
+| `from:ai:error`                      | main → renderer | `{ callId, code, message? }`                                    | Mapped error code (see taxonomy above)             |
+| `from:ai:ollama:models`              | main → renderer | `{ models[] }`                                                  | Reply to `to:ai:ollama:list`                       |
+| `from:ai:conversations`              | main → renderer | `{ conversations }`                                             | Initial conversation snapshot (boot)               |
+| `from:ai:conversations:flush-request`| main → renderer | none                                                            | Main asks renderer to flush pending state on quit  |
+| `from:assistant:toggle`              | main → renderer | none                                                            | Menu/tray → toggle the sidebar                     |
+
+**Menu integration.** [menuModel.ts](../src/app/lib/menuModel.ts) carries `view.assistant.toggle` (`CmdOrCtrl+Shift+A`, fires `from:assistant:toggle`) and `help.assistant.configure` (`channel` action with payload `{ modal: 'settings', tab: 'assistant' }`). [AppMenu.buildTrayContextMenu](../src/app/lib/AppMenu.ts) adds a "Toggle Assistant" entry that fires the same `from:assistant:toggle` channel. `from:assistant:toggle` is handled by [BridgeListeners](../src/browser/core/BridgeListeners.ts) which calls `toggleRightSidebarExternal()` — the module-level seam registered by [UIStateContext](../src/browser/react/contexts/UIStateContext.tsx).
+
+**Tool catalog (v1).** Defined once in [AssistantTools.ts](../src/browser/core/AssistantTools.ts) with JSON Schema parameter descriptors:
+
+| Tool                  | Class | Effect                                              |
+| --------------------- | ----- | --------------------------------------------------- |
+| `read_file`           | read  | Returns file content by absolute or workspace path  |
+| `list_files`          | read  | Lists `.md` files + folders under a directory       |
+| `get_active_file`     | read  | Returns the currently-focused tab's path + content  |
+| `get_selection`       | read  | Returns the editor selection (or empty)             |
+| `open_tab`            | read  | Opens a file in a new tab                           |
+| `write_file`          | write | Overwrites a file (confirm gate)                    |
+| `edit_file`           | write | Targeted line/range edit (confirm gate)             |
+| `create_file`         | write | New file (confirm gate)                             |
+| `replace_selection`   | write | Replace the current selection (confirm gate)        |
+| `insert_at_cursor`    | write | Insert at the cursor (confirm gate)                 |
+
+Write-class tools render a [ConfirmToolCall](../src/browser/react/components/assistant/ConfirmToolCall.tsx) `AlertDialog` with a diff preview before running, unless the conversation's `autoAcceptWrites` flag is on (default off, per-conversation toggle in the chat header).
+
 ## 5. Settings Schema
 
 [`SettingsFile`](../src/app/interfaces/Settings.ts) (and the renderer mirror in [src/browser/interfaces/Editor.ts](../src/browser/interfaces/Editor.ts)):

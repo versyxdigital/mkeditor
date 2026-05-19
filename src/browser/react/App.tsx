@@ -14,7 +14,11 @@ import {
   useManagers,
   type Managers,
 } from './contexts/ManagersContext';
-import { UIStateProvider, useUIState } from './contexts/UIStateContext';
+import {
+  UIStateProvider,
+  toggleRightSidebarExternal,
+  useUIState,
+} from './contexts/UIStateContext';
 import { FilesProvider } from './contexts/FilesContext';
 import { FileTreeProvider } from './contexts/FileTreeContext';
 import {
@@ -197,7 +201,28 @@ const MenuActionBridge: React.FC = () => {
         case 'channel': {
           const editor = editorManager?.getMkEditor() ?? null;
           if (action.channel === 'from:modal:open') {
-            openModal(action.payload as ModalKey);
+            // Payload may be a bare modal key OR `{modal, tab?}` for
+            // the P8 Help → Configure AI Providers menu item that
+            // opens Settings on a specific tab.
+            const payload = action.payload as
+              | ModalKey
+              | { modal: ModalKey; tab?: 'general' | 'assistant' };
+            if (typeof payload === 'string') {
+              openModal(payload);
+            } else if (payload && typeof payload.modal === 'string') {
+              openModal(
+                payload.modal,
+                payload.tab ? { tab: payload.tab } : undefined,
+              );
+            }
+            return;
+          }
+          if (action.channel === 'from:assistant:toggle') {
+            // P8 — View → Toggle Assistant Sidebar (also fired from
+            // the system tray on desktop). Route through the same
+            // UIStateContext seam BridgeListeners uses for the
+            // main-process / native macOS menu firing.
+            toggleRightSidebarExternal();
             return;
           }
           if (action.channel === 'from:command:palette') {

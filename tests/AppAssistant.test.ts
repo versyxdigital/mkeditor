@@ -404,6 +404,113 @@ describe('AppAssistant.chat — error mapping', () => {
       expect.objectContaining({ callId: 'call-net', code: 'network_error' }),
     );
   });
+
+  // P8 — mapError extension. Each new code gets one representative
+  // pattern; the regexes inside `mapError` cover the rest.
+  it.each<[string, string, string]>([
+    ['invalid_key', 'invalid-key-1', 'HTTP 401 Unauthorized: invalid api key'],
+    ['rate_limited', 'rate-1', 'HTTP 429: Too Many Requests'],
+    [
+      'context_window_exceeded',
+      'ctx-1',
+      'Error: context length exceeded — too many tokens for this model',
+    ],
+    [
+      'ollama_unreachable',
+      'ollama-1',
+      'ollama request to http://localhost:11434/api/chat failed: ECONNREFUSED',
+    ],
+  ])('maps %s when streamText throws with a matching message', async (code, callId, message) => {
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    // For ollama_unreachable, the request needs to target ollama.
+    seedKey('anthropic', 'sk-x');
+    seedKey('openai', 'sk-x');
+
+    mockStreamText.mockImplementationOnce(() => {
+      throw new Error(message);
+    });
+
+    const req =
+      code === 'ollama_unreachable'
+        ? baseRequest(callId, 'hello', 'ollama')
+        : baseRequest(callId);
+    assistant.chat(req);
+    await flush();
+
+    expect(findSend(ctx, 'from:ai:error')).toEqual(
+      expect.objectContaining({ callId, code }),
+    );
+  });
+
+  it('maps an Ollama 400 "does not support tools" APICallError to model_unsupported_tools', async () => {
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+
+    // Shape mirrors what `ollama-ai-provider-v2` throws — a Vercel
+    // AI SDK `APICallError` with `name === 'AI_APICallError'`,
+    // statusCode, and a JSON responseBody that wraps the upstream
+    // error string under `{ error: "…" }`.
+    const apiErr = Object.assign(
+      new Error('Bad Request'),
+      {
+        name: 'AI_APICallError',
+        statusCode: 400,
+        responseBody: JSON.stringify({
+          error: 'registry.ollama.ai/library/gemma3:4b does not support tools',
+        }),
+      },
+    );
+    mockStreamText.mockImplementationOnce(() => {
+      throw apiErr;
+    });
+
+    assistant.chat(baseRequest('oll-no-tools', 'hi', 'ollama'));
+    await flush();
+
+    expect(findSend(ctx, 'from:ai:error')).toEqual(
+      expect.objectContaining({
+        callId: 'oll-no-tools',
+        code: 'model_unsupported_tools',
+        // The inner Ollama message is preferred over the SDK's
+        // top-level "Bad Request" so the renderer's `errorMessage`
+        // field carries debuggable detail.
+        message: expect.stringContaining('does not support tools'),
+      }),
+    );
+  });
+
+  it('surfaces upstream `{ error: "…" }` from APICallError.responseBody on a generic failure', async () => {
+    // Even when the code falls through to `unknown`, the parsed
+    // upstream message should replace the bare "Bad Request" so
+    // the failed-bubble detail in the chat tells the user what
+    // actually went wrong.
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    seedKey('anthropic', 'sk-x');
+
+    const apiErr = Object.assign(new Error('Bad Request'), {
+      name: 'AI_APICallError',
+      statusCode: 400,
+      responseBody: JSON.stringify({
+        error: { message: 'unhandled provider quirk' },
+      }),
+    });
+    mockStreamText.mockImplementationOnce(() => {
+      throw apiErr;
+    });
+
+    assistant.chat(baseRequest('call-unwrap'));
+    await flush();
+
+    expect(findSend(ctx, 'from:ai:error')).toEqual(
+      expect.objectContaining({
+        callId: 'call-unwrap',
+        code: 'unknown',
+        message: 'unhandled provider quirk',
+      }),
+    );
+  });
 });
 
 describe('AppAssistant — tool-call → tool-result loop', () => {
@@ -720,6 +827,36 @@ describe('AppAssistant.buildSanitizedConfig', () => {
     expect(payload.encryptionAvailable).toBe(false);
     expect(payload.config.anthropic.hasKey).toBe(false);
     expect(payload.config.openai.hasKey).toBe(false);
+  });
+});
+
+describe('AppAssistant.chat — Ollama baseURL normalisation', () => {
+  // Regression: `ollama-ai-provider-v2` builds chat URLs as
+  // `${baseURL}/chat`, so the baseURL must end at `/api`. The Daemon
+  // URL the user pastes into Settings is the host root
+  // (`http://localhost:11434`) — `buildModel` must canonicalise to
+  // `http://localhost:11434/api` or chat 404s with "Not Found".
+  it.each<[string, string]>([
+    ['http://localhost:11434', 'http://localhost:11434/api'],
+    ['http://localhost:11434/', 'http://localhost:11434/api'],
+    ['http://localhost:11434/api', 'http://localhost:11434/api'],
+    ['http://localhost:11434/api/', 'http://localhost:11434/api'],
+  ])('normalises Daemon URL %s → %s before handing to ollama-ai-provider-v2', async (input, expected) => {
+    const ctx = makeContext();
+    const { assistant, factories } = buildAssistant(ctx);
+    // Seed the on-disk config with the user-supplied Daemon URL.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { AssistantConfig } = require('../src/app/lib/AssistantConfig');
+    AssistantConfig.update({
+      provider: 'ollama',
+      config: { enabled: true, model: 'llama3.2', baseUrl: input },
+    });
+
+    mockStreamText.mockReturnValueOnce(makeStreamResult([]));
+    assistant.chat(baseRequest('oll-norm', 'hello', 'ollama'));
+    await flush();
+
+    expect(factories.ollama).toHaveBeenCalledWith(expected, 'llama3.2');
   });
 });
 

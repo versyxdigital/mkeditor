@@ -1,0 +1,35 @@
+{
+  "confirm_title": "Consentire {{toolName}}?",
+  "confirm_title_fallback": "Consentire la chiamata allo strumento?",
+  "confirm_intro": "L'assistente vuole eseguire questo strumento. Rivedi la modifica prima di accettare.",
+  "confirm_accept": "Consenti",
+  "confirm_reject": "Rifiuta",
+  "args_label": "Argomenti",
+  "result_label": "Risultato",
+  "error_label": "Errore",
+
+  "preview_create": "Crea file {{path}}",
+  "preview_write": "Sostituisci {{path}}",
+  "preview_edit": "Modifica {{path}}",
+  "preview_replace": "Sostituisci la selezione in {{path}}",
+  "preview_insert": "Inserisci in {{path}}",
+  "preview_before": "Prima",
+  "preview_after": "Dopo",
+
+  "status_pending-confirm": "In attesa di conferma",
+  "status_executing": "In esecuzione",
+  "status_succeeded": "Fatto",
+  "status_failed": "Fallito",
+
+  "toggle_card": "Mostra/nascondi dettagli di {{toolName}}",
+
+  "error_rejected": "L'utente ha rifiutato questa chiamata allo strumento.",
+  "error_execution_failed": "L'esecuzione dello strumento è fallita.",
+  "error_unknown_tool": "Strumento sconosciuto.",
+
+  "show_more": "Mostra altro ({{chars}} caratteri in più)",
+  "show_less": "Mostra meno",
+  "retry": "Riprova",
+  "retry_prompt": "Per favore riprova la chiamata {{toolName}}.",
+  "retry_prompt_with_args": "Per favore riprova {{toolName}} con gli argomenti: {{args}}"
+}

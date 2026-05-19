@@ -1,0 +1,35 @@
+{
+  "confirm_title": "Autoriser {{toolName}} ?",
+  "confirm_title_fallback": "Autoriser l'appel d'outil ?",
+  "confirm_intro": "L'assistant souhaite exécuter cet outil. Vérifiez le changement avant d'accepter.",
+  "confirm_accept": "Autoriser",
+  "confirm_reject": "Refuser",
+  "args_label": "Arguments",
+  "result_label": "Résultat",
+  "error_label": "Erreur",
+
+  "preview_create": "Créer le fichier {{path}}",
+  "preview_write": "Remplacer {{path}}",
+  "preview_edit": "Modifier {{path}}",
+  "preview_replace": "Remplacer la sélection dans {{path}}",
+  "preview_insert": "Insérer dans {{path}}",
+  "preview_before": "Avant",
+  "preview_after": "Après",
+
+  "status_pending-confirm": "En attente de confirmation",
+  "status_executing": "En cours d'exécution",
+  "status_succeeded": "Terminé",
+  "status_failed": "Échec",
+
+  "toggle_card": "Afficher/masquer les détails de {{toolName}}",
+
+  "error_rejected": "L'utilisateur a refusé cet appel d'outil.",
+  "error_execution_failed": "L'exécution de l'outil a échoué.",
+  "error_unknown_tool": "Outil inconnu.",
+
+  "show_more": "Afficher plus ({{chars}} caractères supplémentaires)",
+  "show_less": "Afficher moins",
+  "retry": "Réessayer",
+  "retry_prompt": "Veuillez réessayer l'appel {{toolName}}.",
+  "retry_prompt_with_args": "Veuillez réessayer {{toolName}} avec les arguments : {{args}}"
+}

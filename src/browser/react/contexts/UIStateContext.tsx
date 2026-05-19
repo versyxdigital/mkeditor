@@ -87,6 +87,23 @@ export function clearAssistantStateChangeListener(): void {
   assistantStateChangeListener = null;
 }
 
+/**
+ * P8 — module-level seam used by the application menu (View →
+ * Toggle Assistant Sidebar, accelerator Cmd/Ctrl+Shift+A) to flip
+ * the assistant sidebar from non-React code. Registered by
+ * `UIStateProvider` and consumed by `BridgeListeners.from:assistant:toggle`.
+ * Null until the provider mounts — no-op in that window (boot).
+ */
+let externalToggleRightSidebar: (() => void) | null = null;
+
+export function registerToggleRightSidebar(fn: () => void): void {
+  externalToggleRightSidebar = fn;
+}
+
+export function toggleRightSidebarExternal(): void {
+  externalToggleRightSidebar?.();
+}
+
 export const UIStateProvider: React.FC<UIStateProviderProps> = ({
   initialSidebarOpen,
   initialRightSidebarOpen = false,
@@ -137,6 +154,15 @@ export const UIStateProvider: React.FC<UIStateProviderProps> = ({
     setRightSidebarOpenState((open) => !open);
     assistantStateChangeListener?.();
   }, []);
+
+  // P8 — register the toggle with the module-level seam used by the
+  // application menu (View → Toggle Assistant Sidebar, Cmd/Ctrl+Shift+A)
+  // and the system tray entry. Effect-registered so the latest
+  // closure wins after a re-render.
+  React.useEffect(() => {
+    registerToggleRightSidebar(toggleRightSidebar);
+    return () => registerToggleRightSidebar(() => {});
+  }, [toggleRightSidebar]);
 
   const setRightSidebarSize = React.useCallback((size: number) => {
     setRightSidebarSizeState(size);

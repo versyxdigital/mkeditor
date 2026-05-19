@@ -7,14 +7,27 @@
  */
 
 import * as React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { screen, fireEvent, within } from '@testing-library/react';
 
 import { ToolCallCard } from '../../src/browser/react/components/assistant/ToolCallCard';
 import type { ToolInvocation } from '../../src/app/interfaces/Assistant';
+import { renderWithProviders } from '../utils/render';
+
+// P8: ToolCallCard now reads useAssistantChat() (for the retry
+// button's manager / activeConversation context). Tests use
+// renderWithProviders so the full context tree is mounted; the
+// default fake AssistantManager covers the chat snapshot the
+// retry-button gate consults.
+const render = (ui: React.ReactElement) => renderWithProviders(ui);
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string, vars?: Record<string, unknown>) =>
     vars ? `${key}:${JSON.stringify(vars)}` : key,
+  normalizeLanguage: (lng: string) => lng,
+  whenLanguageReady: () => Promise.resolve(),
+  getAvailableLocales: jest.fn(async () => []),
+  initI18n: jest.fn(),
+  changeLanguage: jest.fn(),
 }));
 
 function invocation(overrides: Partial<ToolInvocation>): ToolInvocation {
