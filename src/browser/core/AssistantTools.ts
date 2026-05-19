@@ -288,6 +288,31 @@ function resolveSubdirPath(ctx: ToolContext, subpath: string): string {
   return joinUnderRoot(snap.treeRoot, subpath);
 }
 
+/**
+ * Resolve a create-time path WITHOUT the fuzzy basename matching
+ * `resolveWorkspacePath` does for read paths. For `create_file` /
+ * `create_folder` the agent is naming something that doesn't exist
+ * yet — falling back to "a file with the same basename in some
+ * other folder" is exactly wrong and was the cause of a real bug
+ * where `create_file('ollama/introduction.md')` got rewritten to
+ * `openai/introduction.md` because that file already existed.
+ *
+ * Absolute paths pass through. Relative paths join literally under
+ * the workspace root. Workspace-scope enforcement still happens in
+ * main (`AppStorage.assertInWorkspace`) so a `../escape` attempt
+ * gets caught regardless.
+ */
+function resolveCreatePath(ctx: ToolContext, path: string): string {
+  if (isAbsolutePath(path)) return path;
+  const snap = ctx.bridge.fileTreeManager.getSnapshot();
+  if (!snap.treeRoot) {
+    throw new Error(
+      `Path "${path}" is relative but no workspace folder is open. Use an absolute path.`,
+    );
+  }
+  return joinUnderRoot(snap.treeRoot, path);
+}
+
 function joinUnderRoot(root: string, rel: string): string {
   const sep = root.includes('\\') ? '\\' : '/';
   const cleaned = rel
@@ -755,7 +780,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const { path: input, content } = args as { path: string; content: string };
       let path = input;
       try {
-        path = resolveWorkspacePath(ctx, input);
+        path = resolveCreatePath(ctx, input);
       } catch {
         /* preview is non-fatal */
       }
@@ -767,9 +792,11 @@ const CATALOG: Record<string, ToolSpec> = {
     },
     async execute(args, ctx) {
       const { path: input, content } = args as { path: string; content: string };
-      // resolveWorkspacePath will fall through to a naive join under
-      // treeRoot since the destination doesn't exist in the tree yet.
-      const path = resolveWorkspacePath(ctx, input);
+      // Literal join only — `resolveWorkspacePath`'s fuzzy basename
+      // match would silently rewrite e.g. `ollama/intro.md` to
+      // `openai/intro.md` if the latter already existed. Create
+      // paths must be honoured verbatim.
+      const path = resolveCreatePath(ctx, input);
       const lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
       const parent = lastSlash > 0 ? path.slice(0, lastSlash) : '';
       const name = lastSlash > 0 ? path.slice(lastSlash + 1) : path;
@@ -815,7 +842,10 @@ const CATALOG: Record<string, ToolSpec> = {
     toolClass: 'read',
     async execute(args, ctx) {
       const { path: input } = args as { path: string };
-      const path = resolveWorkspacePath(ctx, input);
+      // Literal join (no fuzzy basename match) — same reasoning as
+      // `create_file`: an existing folder with the same name in a
+      // different parent must NOT silently rewrite this path.
+      const path = resolveCreatePath(ctx, input);
       const lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
       const parent = lastSlash > 0 ? path.slice(0, lastSlash) : '';
       const name = lastSlash > 0 ? path.slice(lastSlash + 1) : path;

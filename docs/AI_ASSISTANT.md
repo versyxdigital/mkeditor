@@ -186,7 +186,7 @@ API keys live in a separate, encrypted-at-rest section managed by [AssistantKeyS
 | 5   | Agent tools (read/write/edit/list + confirm flow)                  | 🟢 2026-05-18 |
 | 6   | Context controls (@-mentions, active-file chip, selection sharing) | 🟢 2026-05-18 |
 | 7   | Desktop persistence + web hide-out (assistant.json)                | 🟢 2026-05-19 |
-| 8   | Polish (i18n mirror, menu entries, docs, smoke)                    | 🔵     |
+| 8   | Polish (i18n mirror, menu entries, docs, smoke)                    | 🟢 2026-05-19 |
 
 A phase is **complete** only when its exit criteria are met _and_ `npm test`, `npm run lint`, and a manual smoke (desktop + web for P7) pass. **Each phase ends with a focused commit (or small commit series) on a `feature/assistant-phase-N-<slug>` branch.**
 

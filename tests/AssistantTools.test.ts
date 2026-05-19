@@ -865,9 +865,14 @@ describe('AssistantTools — write-class execution', () => {
       name: string,
       content: string,
     ) => Promise<{ ok: true; path: string } | { ok: false; error: string }>;
+    createFolder?: (
+      parent: string,
+      name: string,
+    ) => Promise<{ ok: true; path: string } | { ok: false; error: string }>;
   };
   let saveFile: jest.Mock;
   let createFile: jest.Mock;
+  let createFolder: jest.Mock;
   let restoreMked: (() => void) | null = null;
   beforeEach(() => {
     saveFile = jest.fn(async (path: string) => ({ ok: true as const, path }));
@@ -875,9 +880,13 @@ describe('AssistantTools — write-class execution', () => {
       ok: true as const,
       path: `${parent}/${name}`,
     }));
+    createFolder = jest.fn(async (parent: string, name: string) => ({
+      ok: true as const,
+      path: `${parent}/${name}`,
+    }));
     const w = window as Window & { mked?: WriteShim };
     const prev = w.mked;
-    w.mked = { saveFile, createFile };
+    w.mked = { saveFile, createFile, createFolder };
     restoreMked = () => {
       if (prev === undefined) delete w.mked;
       else w.mked = prev;
@@ -1166,6 +1175,82 @@ describe('AssistantTools — write-class execution', () => {
       '/workspace/notes',
       'todo.md',
       'body',
+    );
+  });
+
+  it('create_file uses LITERAL path resolution — same-basename file in another folder must NOT silently capture the create (regression)', async () => {
+    // Reported user case: the agent asked to create
+    // `ollama/introduction.md` while an `openai/introduction.md`
+    // already existed in a sibling folder. The old read-style
+    // resolver did fuzzy basename matching, so it silently
+    // redirected the create to `openai/introduction.md`.
+    // create paths must be honoured verbatim.
+    const bm = makeBridgeManager({
+      treeSnapshot: {
+        treeRoot: '/workspace',
+        nodes: [
+          {
+            type: 'directory',
+            name: 'openai',
+            path: '/workspace/openai',
+            children: [
+              {
+                type: 'file',
+                name: 'introduction.md',
+                path: '/workspace/openai/introduction.md',
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const tools = new AssistantTools(bm as never);
+    await tools.execute('create_file', {
+      path: 'ollama/introduction.md',
+      content: 'hi from ollama',
+    });
+    // The bug: createFile used to be called with
+    // ('/workspace/openai', 'introduction.md', ...). The fix
+    // honours the literal `ollama/` parent the agent specified.
+    expect(createFile).toHaveBeenCalledWith(
+      '/workspace/ollama',
+      'introduction.md',
+      'hi from ollama',
+    );
+    expect(createFile).not.toHaveBeenCalledWith(
+      '/workspace/openai',
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it('create_folder also uses literal resolution — same-basename folder elsewhere is not picked up', async () => {
+    const bm = makeBridgeManager({
+      treeSnapshot: {
+        treeRoot: '/workspace',
+        nodes: [
+          {
+            type: 'directory',
+            name: 'parent-a',
+            path: '/workspace/parent-a',
+            children: [
+              {
+                type: 'directory',
+                name: 'shared',
+                path: '/workspace/parent-a/shared',
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const tools = new AssistantTools(bm as never);
+    await tools.execute('create_folder', {
+      path: 'parent-b/shared',
+    });
+    expect(createFolder).toHaveBeenCalledWith(
+      '/workspace/parent-b',
+      'shared',
     );
   });
 
