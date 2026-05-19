@@ -117,7 +117,21 @@ export class FileTreeManager {
     }
 
     const target = this.directoryIndex.get(parentPath);
-    if (!target) return;
+    if (!target) {
+      // The target doesn't exist in the tree yet — e.g. main just
+      // wrote a file inside `workspace/poems/poems/`, sent the
+      // listing for that new subfolder, but `workspace/poems/poems`
+      // isn't in our index because nothing has ever expanded the
+      // parent. Walk up to the nearest known ancestor (or the
+      // root, which is always known) and ask main to repopulate
+      // that subtree — the missing intermediate directory will
+      // appear in the refreshed listing.
+      if (parentPath.startsWith(this.treeRoot)) {
+        const ancestor = this.findKnownAncestor(parentPath);
+        if (ancestor) this.requestDirectoryContents(ancestor);
+      }
+      return;
+    }
 
     // Lazy-load completed: replace children, mark loaded, and emit. If
     // the directory turned out empty, flip hasChildren=false so the
@@ -128,6 +142,28 @@ export class FileTreeManager {
     target.loaded = true;
     if (target.children.length === 0) target.hasChildren = false;
     this.emitChange();
+  }
+
+  /**
+   * Walk up from `path` toward `treeRoot` and return the first
+   * ancestor that's either in the directory index or equal to the
+   * root. Returns null only when `path` is outside the workspace.
+   */
+  private findKnownAncestor(path: string): string | null {
+    if (!this.treeRoot || !path.startsWith(this.treeRoot)) return null;
+    const sep = this.treeRoot.includes('\\') ? '\\' : '/';
+    let current = path;
+    // Strip one segment at a time. Bounded by the root check
+    // below — `treeRoot` is always considered known.
+    while (current.length > this.treeRoot.length) {
+      const lastSep = current.lastIndexOf(sep);
+      if (lastSep < this.treeRoot.length) break;
+      current = current.slice(0, lastSep);
+      if (current === this.treeRoot || this.directoryIndex.has(current)) {
+        return current;
+      }
+    }
+    return this.treeRoot;
   }
 
   /**
@@ -150,7 +186,16 @@ export class FileTreeManager {
     for (let i = 0; i < rel.length - 1; i++) {
       currentPath += sep + rel[i];
       const dir = this.directoryIndex.get(currentPath);
-      if (!dir) return;
+      if (!dir) {
+        // The intermediate directory hasn't been loaded yet — same
+        // failure mode `buildFileTree` guards against. Walk up to
+        // the nearest known ancestor and ask main to repopulate
+        // it so the missing intermediate directory + the new file
+        // both become visible after the refresh.
+        const ancestor = this.findKnownAncestor(path);
+        if (ancestor) this.requestDirectoryContents(ancestor);
+        return;
+      }
       if (!dir.children) dir.children = [];
       children = dir.children;
     }
