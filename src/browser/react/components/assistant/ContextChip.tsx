@@ -35,7 +35,7 @@ export const ContextChipsRow: React.FC<ContextChipsRowProps> = ({
   if (chips.length === 0) return null;
   return (
     <div
-      className="flex flex-wrap gap-1 border-t border-border px-2 pt-1.5"
+      className="flex flex-wrap gap-1 border-t border-border px-2 py-1.5"
       data-testid="context-chips"
     >
       {chips.map((chip) => {
