@@ -95,7 +95,7 @@ describe('<ChatMessage>', () => {
     });
   });
 
-  it('renders the ThinkingIndicator (rotating gerund + dot) when an assistant message is empty but streaming', () => {
+  it('renders the ThinkingIndicator (rotating gerund + dot) whenever the assistant message is streaming', () => {
     render(<ChatMessage message={msg({ status: 'streaming', content: '' })} />);
     // The indicator owns the streaming aria-label now (previously the
     // bare dot did). The gerund text reads "Thinking…" / "Pondering…"
@@ -106,14 +106,77 @@ describe('<ChatMessage>', () => {
     ).toBeInTheDocument();
   });
 
-  it('does NOT show the thinking indicator once content has arrived', () => {
+  it('keeps the indicator visible after content has started streaming (covers the tool-input generation gap)', () => {
+    // Previously the indicator hid as soon as one character of text
+    // arrived. For Anthropic write_file calls the model can spend
+    // 30+ seconds generating the tool's `content` argument (e.g. a
+    // 3000-word essay) AFTER the user-visible "I'll write that for
+    // you" text completes — during which the only signal of
+    // activity was the Stop button. The indicator now stays put
+    // for the entire `status === 'streaming'` window so users
+    // always have a "model is working" cue.
     render(
       <ChatMessage
-        message={msg({ status: 'streaming', content: 'partial output' })}
+        message={msg({
+          status: 'streaming',
+          content: "I'll write that for you.",
+        })}
+      />,
+    );
+    expect(screen.getByTestId('thinking-indicator')).toBeInTheDocument();
+  });
+
+  it('keeps the indicator visible while a tool call is executing mid-turn', () => {
+    render(
+      <ChatMessage
+        message={msg({
+          status: 'streaming',
+          content: "I'll save that for you. ",
+          toolCalls: [
+            {
+              toolCallId: 'tc-write',
+              toolName: 'write_file',
+              arguments: { path: '/a.md', content: 'hi' },
+              status: 'executing',
+            },
+          ],
+          segments: [
+            { type: 'text', text: "I'll save that for you. " },
+            { type: 'tool-call', toolCallId: 'tc-write' },
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByTestId('thinking-indicator')).toBeInTheDocument();
+  });
+
+  it('hides the indicator once the message is no longer streaming (status flips to complete)', () => {
+    // Final guard: the indicator's only gate is `status ===
+    // 'streaming'`. When the model finishes the turn — whether
+    // mid-text or post-tool — the bubble loses its activity cue.
+    render(
+      <ChatMessage
+        message={msg({
+          status: 'complete',
+          content: "I'll save that. Done!",
+          toolCalls: [
+            {
+              toolCallId: 'tc-write',
+              toolName: 'write_file',
+              arguments: {},
+              status: 'succeeded',
+              result: { ok: true },
+            },
+          ],
+          segments: [
+            { type: 'text', text: "I'll save that. " },
+            { type: 'tool-call', toolCallId: 'tc-write' },
+            { type: 'text', text: 'Done!' },
+          ],
+        })}
       />,
     );
     expect(screen.queryByTestId('thinking-indicator')).toBeNull();
-    expect(screen.queryByLabelText('assistant-chat:streaming')).toBeNull();
   });
 
   it('shows the cancelled footer when status is cancelled', () => {

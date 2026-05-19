@@ -64,9 +64,7 @@ export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
           <AssistantBody message={message} />
         )}
 
-        {message.status === 'streaming' && message.content.length === 0 && (
-          <ThinkingIndicator />
-        )}
+        {message.status === 'streaming' && <ThinkingIndicator />}
 
         {message.status === 'cancelled' && (
           <p className="mt-2 text-xs italic text-muted-foreground">
