@@ -129,10 +129,7 @@ export class EditorManager {
       // WebFileBridge bootstrap (kicked off from `onEditorReady`)
       // restores the persisted session — including any untitled
       // tabs — and FileManager.restoreSession overwrites this
-      // placeholder content with the session's saved value. The
-      // legacy `mkeditor-content` localStorage entry is migrated
-      // into the session by WebFileBridge on the user's first
-      // launch after Phase 3.
+      // placeholder content with the session's saved value.
       const editorContent = welcomeMarkdown;
 
       // Create the underlying monaco editor.

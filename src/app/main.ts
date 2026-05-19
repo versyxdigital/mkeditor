@@ -78,11 +78,11 @@ let context: BrowserWindow | null;
  */
 function main(file: string | null = null) {
   // Pick the window chrome per platform. Windows + Linux become frameless
-  // so the renderer's `<TitleBar>` (added in P2) can draw the logo, menu
-  // bar, and window-control buttons. macOS keeps the native traffic lights
-  // via `titleBarStyle: 'hiddenInset'` and continues to use the system
-  // menu bar — `trafficLightPosition` nudges the buttons down so they
-  // align with the title row P3 will tune.
+  // so the renderer's `<TitleBar>` can draw the logo, menu bar, and 
+  // window-control buttons. macOS keeps the native traffic lights via 
+  // `titleBarStyle: 'hiddenInset'` and continues to use the system menu 
+  // bar — `trafficLightPosition` nudges the buttons down so they align 
+  // with the title row P3 will tune.
   const isMac = process.platform === 'darwin';
   let chrome: Electron.BrowserWindowConstructorOptions;
   if (isMac) {
