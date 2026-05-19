@@ -147,6 +147,18 @@ const EMPTY_CHAT_SNAPSHOT: AssistantChatSnapshot = {
  * imports React. The composition root injects the bridge ref through
  * the constructor.
  */
+/**
+ * Construction-time tunables. Production passes nothing — defaults
+ * give the smoothed-streaming behaviour the UI expects. Tests opt out
+ * of paced reveal so synchronous `appendChunk → expect(content)`
+ * assertions still hold without driving a fake clock.
+ */
+export interface AssistantManagerOptions {
+  disablePacedReveal?: boolean;
+  requestFrame?: (cb: FrameRequestCallback) => number;
+  cancelFrame?: (id: number) => void;
+}
+
 export class AssistantManager {
   private snapshot: AssistantConfigSnapshot = {
     config: null,
@@ -237,7 +249,48 @@ export class AssistantManager {
    */
   private mentionContents = new Map<string, string>();
 
-  constructor(private bridge: ContextBridgeAPI) {}
+  // ---- P8 polish — smoothed streaming reveal --------------------------
+  //
+  // Upstream `from:ai:chunk` events arrive in lumps that match
+  // whatever boundary the SDK happens to emit on — sometimes a few
+  // characters, sometimes a full sentence. Painting each lump at
+  // arrival makes the bubble visibly "block in". To mimic the
+  // typing-like cadence that Claude Code uses, we buffer incoming
+  // deltas per call and drain them across `requestAnimationFrame`
+  // ticks, revealing `ceil(buffer.length / REVEAL_DRAIN_FRAMES)`
+  // characters per frame. Bursts get smoothed; small chunks reveal
+  // cleanly without piling up.
+  //
+  // Tests pass `disablePacedReveal: true` so 30+ synchronous
+  // assertions like `appendChunk(); expect(content).toBe('…')` keep
+  // working — the production path is the only one that paces.
+  private pendingChunkBuffers = new Map<string, string>();
+  private revealFrameHandle: number | null = null;
+  /** Roughly 120 ms at 60 fps — slow enough to be visibly smooth, fast enough not to lag the model. */
+  private static readonly REVEAL_DRAIN_FRAMES = 7;
+  private readonly pacedRevealEnabled: boolean;
+  private readonly requestFrame: (cb: FrameRequestCallback) => number;
+  private readonly cancelFrame: (id: number) => void;
+
+  constructor(
+    private bridge: ContextBridgeAPI,
+    opts: AssistantManagerOptions = {},
+  ) {
+    this.pacedRevealEnabled = opts.disablePacedReveal !== true;
+    // Default to the browser's rAF; opts.requestFrame is the fake-
+    // clock injection point for tests that need to drive the paced
+    // reveal deterministically.
+    this.requestFrame =
+      opts.requestFrame ??
+      (typeof globalThis.requestAnimationFrame === 'function'
+        ? globalThis.requestAnimationFrame.bind(globalThis)
+        : ((cb) => setTimeout(() => cb(performance.now()), 16) as unknown as number));
+    this.cancelFrame =
+      opts.cancelFrame ??
+      (typeof globalThis.cancelAnimationFrame === 'function'
+        ? globalThis.cancelAnimationFrame.bind(globalThis)
+        : ((id: number) => clearTimeout(id as unknown as NodeJS.Timeout)));
+  }
 
   // ---------------------------------------------------------------------
   // Config-snapshot surface (P3)
@@ -638,6 +691,10 @@ export class AssistantManager {
   public cancelCall(callId: string): boolean {
     const inflight = this.inflightChats.get(callId);
     if (!inflight) return false;
+    // Drain any buffered (un-revealed) text first so the cancelled
+    // bubble shows everything that actually arrived from upstream —
+    // the user already paid for those tokens.
+    this.drainPendingForCall(callId);
     const conv = this.conversations[inflight.provider].get(
       inflight.conversationId,
     );
@@ -665,16 +722,91 @@ export class AssistantManager {
     const inflight = this.inflightChats.get(callId);
     if (!inflight) return; // not a chat call (likely a test ping); silently drop
     if (!text) return;
+    if (!this.pacedRevealEnabled) {
+      this.flushChunkText(inflight, text);
+      return;
+    }
+    const existing = this.pendingChunkBuffers.get(callId) ?? '';
+    this.pendingChunkBuffers.set(callId, existing + text);
+    if (this.revealFrameHandle === null) {
+      this.revealFrameHandle = this.requestFrame(this.revealTick);
+    }
+  }
+
+  /**
+   * rAF tick — drains a fraction of every active call's pending
+   * buffer onto its assistant message, then re-arms itself if any
+   * buffer is still non-empty. One snapshot rebuild per tick covers
+   * however many concurrent streams are running.
+   */
+  private revealTick = (): void => {
+    this.revealFrameHandle = null;
+    let anyRemaining = false;
+    let anyEmitted = false;
+    for (const [callId, buffer] of this.pendingChunkBuffers) {
+      if (!buffer) continue;
+      const inflight = this.inflightChats.get(callId);
+      if (!inflight) {
+        // Call vanished mid-stream (cancel / done already cleared
+        // it). Drop the buffer; nothing to flush onto.
+        this.pendingChunkBuffers.delete(callId);
+        continue;
+      }
+      const reveal = Math.max(
+        1,
+        Math.ceil(buffer.length / AssistantManager.REVEAL_DRAIN_FRAMES),
+      );
+      const chunk = buffer.slice(0, reveal);
+      const remaining = buffer.slice(reveal);
+      this.pendingChunkBuffers.set(callId, remaining);
+      this.flushChunkText(inflight, chunk, /* skipRebuild */ true);
+      anyEmitted = true;
+      if (remaining.length > 0) anyRemaining = true;
+    }
+    if (anyEmitted) this.rebuildChatSnapshot();
+    if (anyRemaining) {
+      this.revealFrameHandle = this.requestFrame(this.revealTick);
+    }
+  };
+
+  /**
+   * Force any buffered text for `callId` onto the assistant message
+   * immediately. Used by `cancelCall` and `onChatDone` so the
+   * persisted / final-visible content matches everything received
+   * upstream — paced reveal must never silently drop the tail.
+   */
+  private drainPendingForCall(callId: string): void {
+    const buffer = this.pendingChunkBuffers.get(callId);
+    if (!buffer) return;
+    this.pendingChunkBuffers.delete(callId);
+    const inflight = this.inflightChats.get(callId);
+    if (inflight) {
+      this.flushChunkText(inflight, buffer);
+    }
+    // If no buffers remain, cancel the pending frame so we don't
+    // spin idly.
+    if (this.pendingChunkBuffers.size === 0 && this.revealFrameHandle !== null) {
+      this.cancelFrame(this.revealFrameHandle);
+      this.revealFrameHandle = null;
+    }
+  }
+
+  /**
+   * The "real" append. Mutates the trailing text segment in place (or
+   * starts a new one when the prior segment is a tool-call), then
+   * triggers a snapshot rebuild unless the caller is batching.
+   */
+  private flushChunkText(
+    inflight: InflightChatCall,
+    text: string,
+    skipRebuild = false,
+  ): void {
     const conv = this.conversations[inflight.provider].get(
       inflight.conversationId,
     );
     if (!conv) return;
     this.replaceAssistantMessage(conv, inflight.assistantMessageId, (msg) => {
       if (msg.status !== 'streaming') return msg;
-      // Append to the trailing text segment if there is one;
-      // otherwise start a new text segment (typical after a
-      // tool-call segment was just pushed). This keeps the
-      // interleaved order intact for the renderer.
       const segments = msg.segments ?? [];
       const last = segments[segments.length - 1];
       const nextSegments: UiMessageSegment[] =
@@ -690,7 +822,7 @@ export class AssistantManager {
         segments: nextSegments,
       };
     });
-    this.rebuildChatSnapshot();
+    if (!skipRebuild) this.rebuildChatSnapshot();
   }
 
   // ---- P5 — Tool calls -----------------------------------------------
@@ -1300,6 +1432,10 @@ export class AssistantManager {
     }
     const inflight = this.inflightChats.get(callId);
     if (!inflight) return;
+    // Flush any buffered (un-revealed) text before flipping status so
+    // the persisted / final-visible content matches everything the
+    // model emitted upstream.
+    this.drainPendingForCall(callId);
     const conv = this.conversations[inflight.provider].get(
       inflight.conversationId,
     );
@@ -1335,6 +1471,9 @@ export class AssistantManager {
     }
     const inflight = this.inflightChats.get(payload.callId);
     if (!inflight) return;
+    // Flush any buffered text first — if the model emitted "Sure! Let
+    // me…" then errored, we still want the partial body visible.
+    this.drainPendingForCall(payload.callId);
     const conv = this.conversations[inflight.provider].get(
       inflight.conversationId,
     );
