@@ -1,6 +1,6 @@
 import { app, dialog, type BrowserWindow } from 'electron';
 import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, relative, resolve, isAbsolute } from 'path';
 import type { SaveFileOptions } from '../interfaces/Storage';
 
 /**
@@ -9,6 +9,116 @@ import type { SaveFileOptions } from '../interfaces/Storage';
 export class AppStorage {
   /** The active file path */
   private static activeFilePath: string | null = null;
+
+  /**
+   * The currently-open workspace root, or null when no folder is open.
+   *
+   * This is the **trust boundary** for the `mked:fs:*` IPC handlers
+   * exposed via `window.mked` to the renderer. Without scoping, those
+   * handlers would let a compromised renderer (XSS in a previewed
+   * doc, malicious mked:// link, agent-gone-wrong, future plugin)
+   * read or overwrite arbitrary user files. Every file-level invoke
+   * resolves the requested path to canonical form (`fs.realpath` so
+   * symlinks can't escape) and rejects anything that doesn't sit
+   * inside this root. When the root is null, fs invokes are denied
+   * outright — the user must open a folder first.
+   *
+   * Updated by the `to:workspace:set` IPC channel, which the renderer
+   * fires from `BridgeListeners.from:folder:opened` only when the
+   * tree adopts a new root (lazy sub-loads don't touch this).
+   */
+  private static workspaceRoot: string | null = null;
+
+  static getWorkspaceRoot(): string | null {
+    return AppStorage.workspaceRoot;
+  }
+
+  /**
+   * Set (or clear) the current workspace root. Renderer-driven; main
+   * normalises with `path.resolve` so trailing slashes / mixed
+   * separators are equivalent.
+   */
+  static setWorkspaceRoot(root: string | null): void {
+    AppStorage.workspaceRoot = root ? resolve(root) : null;
+  }
+
+  /**
+   * Throw if `target` is outside the open workspace (or no workspace
+   * is open). Returns the resolved (canonicalised, symlink-followed)
+   * absolute path when the check passes — callers should fs-op on
+   * the returned value, not the input, so symlink escapes can't
+   * race a TOCTOU between this check and the fs call.
+   *
+   * Pass `mustExist: false` for write/create paths whose target may
+   * not exist yet — the parent directory is canonicalised instead
+   * and the (un-realpath'd) basename is rejoined. The parent itself
+   * MUST exist for that mode; callers can `mkdir -p` separately.
+   */
+  static async assertInWorkspace(
+    target: string,
+    opts: { mustExist?: boolean } = { mustExist: true },
+  ): Promise<string> {
+    const root = AppStorage.workspaceRoot;
+    if (!root) {
+      throw new Error(
+        'No workspace is open. Open a folder before reading or writing files.',
+      );
+    }
+    if (!target || typeof target !== 'string') {
+      throw new Error('Invalid path');
+    }
+    let absolute = resolve(target);
+    if (opts.mustExist === false) {
+      // For write/create: canonicalise the PARENT (which must exist)
+      // and rejoin the basename. We don't realpath the basename
+      // because the file isn't there yet — a same-named symlink
+      // racing into place between check and write is unlikely in
+      // practice and main would need OS-level atomic ops to prevent.
+      const parent = dirname(absolute);
+      const base = absolute.slice(parent.length + 1);
+      let canonicalParent: string;
+      try {
+        canonicalParent = await fs.realpath(parent);
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT') {
+          // Parent doesn't exist yet — fall back to lexical
+          // resolution + scope check. mkdir -p in the caller will
+          // create it under the workspace root.
+          canonicalParent = parent;
+        } else {
+          throw err;
+        }
+      }
+      absolute = join(canonicalParent, base);
+    } else {
+      try {
+        absolute = await fs.realpath(absolute);
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT') {
+          throw new Error(`File not found: ${target}`, { cause: err });
+        }
+        throw err;
+      }
+    }
+    const rel = relative(root, absolute);
+    if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) {
+      // Empty relative means target === root, which is fine for
+      // directory ops but never for read/write of a file.
+      if (rel === '' && opts.mustExist !== false) {
+        throw new Error(
+          `Path is a directory (workspace root), not a file: ${target}`,
+        );
+      }
+      if (rel.startsWith('..') || isAbsolute(rel)) {
+        throw new Error(
+          `Path is outside the workspace: ${target} (workspace: ${root})`,
+        );
+      }
+    }
+    return absolute;
+  }
 
   /**
    * Get the path to the active file

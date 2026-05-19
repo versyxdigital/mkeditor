@@ -32,6 +32,7 @@ const senderWhitelist = [
   'to:file:delete',
   'to:file:properties',
   'to:i18n:set',
+  'to:workspace:set',
   'to:window:minimize',
   'to:window:maximize',
   'to:window:close',

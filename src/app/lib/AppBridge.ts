@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { promises as fsPromises } from 'fs';
-import { dirname, resolve } from 'path';
+import { dirname, join, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
 import type { Logger, LogMessage } from '../interfaces/Logging';
 import type { SessionPayload } from '../interfaces/Session';
@@ -306,32 +306,27 @@ export class AppBridge {
     // tool routes here when the requested file isn't already open as
     // a tab — opening every read in a new tab gets noisy fast when
     // the agent is gathering context across many files.
+    //
+    // **Trust boundary**: the renderer can supply any string here,
+    // so we MUST scope to the current workspace before touching the
+    // filesystem. `AppStorage.assertInWorkspace` resolves the path
+    // (canonicalising symlinks) and throws if it lands outside the
+    // open folder, or if no folder is open. See `AppStorage.ts` for
+    // the rationale.
     ipcMain.handle(
       'mked:fs:readfile',
       async (_e, path: string): Promise<{ content: string; lineCount: number }> => {
-        // Pre-flight stat so common confusions surface as
-        // actionable errors instead of raw EISDIR / ENOENT noise
-        // (the AI assistant's `read_file` tool routes here and the
-        // model otherwise just sees the bare OS code).
-        let stat;
-        try {
-          stat = await fsPromises.stat(path);
-        } catch (err) {
-          const code = (err as NodeJS.ErrnoException).code;
-          if (code === 'ENOENT') {
-            throw new Error(
-              `File not found: ${path}. Use list_files to enumerate what's available.`,
-              { cause: err },
-            );
-          }
-          throw err;
-        }
+        const safePath = await AppStorage.assertInWorkspace(path);
+        // Pre-flight stat so common confusions (directory passed
+        // where a file was expected) surface as actionable errors
+        // for the agent instead of raw EISDIR noise.
+        const stat = await fsPromises.stat(safePath);
         if (stat.isDirectory()) {
           throw new Error(
             `${path} is a directory, not a file. Use list_files to enumerate its contents; use create_file to write a new file inside it.`,
           );
         }
-        const content = await fsPromises.readFile(path, 'utf-8');
+        const content = await fsPromises.readFile(safePath, 'utf-8');
         // Count line breaks rather than splitting (avoids a large
         // intermediate array for big files). Empty string → 1 line.
         let lineCount = 1;
@@ -348,6 +343,10 @@ export class AppBridge {
     // honest feedback instead of an unconditional ok. The existing
     // fire-and-forget `to:file:save` channel continues to serve the
     // menu-driven save flow.
+    //
+    // **Trust boundary**: `assertInWorkspace(path, {mustExist:false})`
+    // resolves the parent (catching symlink escapes) and rejects
+    // any target outside the workspace root.
     ipcMain.handle(
       'mked:fs:savefile',
       async (
@@ -356,9 +355,12 @@ export class AppBridge {
         content: string,
       ): Promise<{ ok: true; path: string } | { ok: false; error: string }> => {
         try {
-          await fsPromises.mkdir(dirname(path), { recursive: true });
-          await fsPromises.writeFile(path, content, 'utf-8');
-          return { ok: true, path };
+          const safePath = await AppStorage.assertInWorkspace(path, {
+            mustExist: false,
+          });
+          await fsPromises.mkdir(dirname(safePath), { recursive: true });
+          await fsPromises.writeFile(safePath, content, 'utf-8');
+          return { ok: true, path: safePath };
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           return { ok: false, error: message };
@@ -367,26 +369,58 @@ export class AppBridge {
     );
 
     // Create a new file with awaited success/failure — used by the
-    // AI assistant's `create_file` tool. Delegates to
+    // AI assistant's `create_file` tool. Validates that
+    // `parent/name` lands inside the workspace, then delegates to
     // `AppStorage.createFile` (which mkdir -p's the parent, writes,
     // refreshes the tree, and opens the file as a tab); the
     // structured `{ok, error?}` result passes straight back to the
     // renderer so the tool can report honest status to the agent.
     ipcMain.handle(
       'mked:fs:createfile',
-      async (_e, parent: string, name: string, content: string) =>
-        AppStorage.createFile(this.context, parent, name, content),
+      async (_e, parent: string, name: string, content: string) => {
+        try {
+          const target = join(parent, name);
+          const safeTarget = await AppStorage.assertInWorkspace(target, {
+            mustExist: false,
+          });
+          return AppStorage.createFile(
+            this.context,
+            dirname(safeTarget),
+            // basename — name as the user supplied, joined under the
+            // canonicalised parent.
+            safeTarget.slice(dirname(safeTarget).length + 1),
+            content,
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { ok: false as const, error: message };
+        }
+      },
     );
 
     // Create a new (empty) directory with awaited success/failure —
     // used by the AI assistant's `create_folder` tool so the agent
     // stops resorting to `.gitkeep` placeholders to make folders
     // visible. mkdir -p so intermediate directories are created on
-    // demand.
+    // demand. Same workspace-scope check as createfile.
     ipcMain.handle(
       'mked:fs:createfolder',
-      async (_e, parent: string, name: string) =>
-        AppStorage.createFolder(this.context, parent, name),
+      async (_e, parent: string, name: string) => {
+        try {
+          const target = join(parent, name);
+          const safeTarget = await AppStorage.assertInWorkspace(target, {
+            mustExist: false,
+          });
+          return AppStorage.createFolder(
+            this.context,
+            dirname(safeTarget),
+            safeTarget.slice(dirname(safeTarget).length + 1),
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { ok: false as const, error: message };
+        }
+      },
     );
 
     ipcMain.on('mked:open-url', (_e, url: string) => {
@@ -404,6 +438,14 @@ export class AppBridge {
       } catch (e) {
         this.providers.logger?.log.error('[to:i18n:set]', e);
       }
+    });
+
+    // Renderer publishes the current workspace root whenever it
+    // adopts a new one (BridgeListeners.from:folder:opened detects
+    // the change). Main stores it as the trust boundary for all
+    // `mked:fs:*` invokes — see `AppStorage.assertInWorkspace`.
+    ipcMain.on('to:workspace:set', (_e, payload: { root: string | null }) => {
+      AppStorage.setWorkspaceRoot(payload?.root ?? null);
     });
 
     // ---- AI Assistant (P1) ----------------------------------------

@@ -97,7 +97,14 @@ export function registerBridgeListeners(
     // Persist the new workspace root if it changed. Sub-directory
     // expands (lazy-load) reuse the existing root, so they don't need
     // their own save trigger.
-    if (rootChanged) files.scheduleSessionSave();
+    if (rootChanged) {
+      files.scheduleSessionSave();
+      // Publish the new workspace root to main so the `mked:fs:*`
+      // handlers (AI assistant file ops) can enforce it as their
+      // trust boundary. Without this, any `mked:fs:*` invoke would
+      // be denied because main's workspaceRoot stays null.
+      bridge.send('to:workspace:set', { root: path });
+    }
   });
 
   // Enable opening files from outside of the renderer execution context.
