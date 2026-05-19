@@ -9,9 +9,9 @@ import { cn } from '../../lib/utils';
  * (Dialog, DropdownMenu, etc.) — minimal forwardRef + cn() over
  * the Radix primitive.
  *
- * Added in AI Assistant P3 so `SettingsModal` can split its
- * General Settings and AI Providers panels into two tabs without
- * hand-rolling keyboard nav + roving tabindex + ARIA wiring.
+ * Lets `SettingsModal` split its General Settings and AI Providers
+ * panels into two tabs without hand-rolling keyboard nav + roving
+ * tabindex + ARIA wiring.
  */
 const Tabs = TabsPrimitive.Root;
 

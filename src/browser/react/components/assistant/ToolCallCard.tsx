@@ -36,12 +36,12 @@ export const ToolCallCard: React.FC<{ invocation: ToolInvocation }> = ({
 
   const stateClass = STATUS_CLASS[invocation.status];
 
-  // P8 — "Retry" button on a failed card. The original SDK loop has
-  // long since closed, so retry isn't an SDK-level replay; we
-  // pipeline a fresh user-facing turn that prompts the agent to try
-  // again. The agent sees the previous failed tool-call card in the
-  // conversation history (P5 keeps failed tool calls visible) and
-  // can choose how to recover.
+  // "Retry" button on a failed card. The original SDK loop has long
+  // since closed, so retry isn't an SDK-level replay; we pipeline a
+  // fresh user-facing turn that prompts the agent to try again. The
+  // agent sees the previous failed tool-call card in the conversation
+  // history (failed tool calls stay visible) and can choose how to
+  // recover.
   const handleRetry = React.useCallback(() => {
     if (!manager) return;
     const activeProvider = chat.activeProvider;
@@ -125,7 +125,7 @@ export const ToolCallCard: React.FC<{ invocation: ToolInvocation }> = ({
                   ? ` — ${invocation.errorMessage}`
                   : ''}
               </p>
-              {/* P8 — retry affordance: fires a new chat turn that
+              {/* Retry affordance: fires a new chat turn that
                   prompts the agent to try the call again. Disabled
                   when the chat is mid-stream (a tool-call retry
                   collides with whatever's currently streaming). */}

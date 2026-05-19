@@ -2,7 +2,7 @@ import type { BridgeManager } from './BridgeManager';
 import type { AssistantContextProvider } from './AssistantManager';
 
 /**
- * P6 — implementation of `AssistantContextProvider` that reaches into
+ * Implementation of `AssistantContextProvider` that reaches into
  * the live `FileManager` / Monaco editor / `window.mked.readFile` via
  * the `BridgeManager` ref. Kept separate from `AssistantTools` because
  * the context surface is read-only and stateless — it doesn't deserve

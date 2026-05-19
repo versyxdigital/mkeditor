@@ -218,7 +218,7 @@ const MenuActionBridge: React.FC = () => {
             return;
           }
           if (action.channel === 'from:assistant:toggle') {
-            // P8 — View → Toggle Assistant Sidebar (also fired from
+            // View → Toggle Assistant Sidebar (also fired from
             // the system tray on desktop). Route through the same
             // UIStateContext seam BridgeListeners uses for the
             // main-process / native macOS menu firing.
@@ -408,9 +408,9 @@ const LazyModals: React.FC = () => {
  * below the Navbar + TabBar in #react-root's flex column and flex-grows
  * to fill the remaining vertical space (`#mkeditor-layout { flex: 1 }`).
  *
- * AI Assistant P2: the right-hand `assistant-pane` mirrors the left
- * sidebar's collapse/expand effect. Its size is read from + written
- * to UIStateContext and persisted through the session payload so
+ * The right-hand `assistant-pane` mirrors the left sidebar's
+ * collapse/expand effect. Its size is read from + written to
+ * UIStateContext and persisted through the session payload so
  * `{ open, size }` survives relaunch.
  */
 export const Shell: React.FC<{
@@ -424,8 +424,8 @@ export const Shell: React.FC<{
     setRightSidebarSize,
   } = useUIState();
   const { mode } = useManagers();
-  // P7: AI Assistant is desktop-only. On web the assistant pane is
-  // not rendered at all — see the Decisions table in
+  // AI Assistant is desktop-only. On web the assistant pane is not
+  // rendered at all — see the Decisions table in
   // docs/AI_ASSISTANT.md for the rationale (no localStorage key
   // storage, no in-renderer SDK path).
   const showAssistant = mode !== 'web';

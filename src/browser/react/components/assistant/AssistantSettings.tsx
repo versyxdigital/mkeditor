@@ -25,7 +25,7 @@ import { Icon } from '../Icon';
 import { ProviderLogo } from './ProviderLogo';
 
 /**
- * AI Assistant settings (P3). Mounted inside `<SettingsModal>` on the
+ * AI Assistant settings. Mounted inside `<SettingsModal>` on the
  * "AI Providers" tab.
  *
  * Layout: two-column grid for Anthropic + OpenAI (similar shapes); a

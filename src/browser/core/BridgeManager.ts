@@ -78,14 +78,14 @@ export class BridgeManager {
       this.fileManager.openFileFromPath(path),
     );
     this.assistantManager = new AssistantManager(this.bridge);
-    // AI Assistant P5: hand the tool catalog to the manager. The
-    // executor needs the BridgeManager instance (it reaches into
-    // FileManager / FileTreeManager / EditorManager through there),
-    // so it's constructed AFTER those exist on `this`.
+    // Hand the tool catalog to the manager. The executor needs the
+    // BridgeManager instance (it reaches into FileManager /
+    // FileTreeManager / EditorManager through there), so it's
+    // constructed AFTER those exist on `this`.
     this.assistantManager.setToolExecutor(new AssistantTools(this));
-    // AI Assistant P6: hand the context provider to the manager.
-    // Same pattern as above — the source reaches into FileManager /
-    // EditorManager / `window.mked` through the bridge ref.
+    // Hand the context provider to the manager. Same pattern as
+    // above — the source reaches into FileManager / EditorManager /
+    // `window.mked` through the bridge ref.
     this.assistantManager.setContextProvider(
       new AssistantContextSource(this),
     );

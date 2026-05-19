@@ -12,7 +12,7 @@ import {
 import { Icon } from '../Icon';
 
 /**
- * Tool-call confirmation dialog (AI Assistant P5).
+ * Tool-call confirmation dialog.
  *
  * Driven by `ToolConfirmContext`: whenever a write-class tool fires
  * (and the conversation doesn't have `autoAcceptWrites`), the

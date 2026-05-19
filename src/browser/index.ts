@@ -244,11 +244,11 @@ function onEditorReadyInner() {
       editorManager.providers.settings?.getSetting('sessionRestore') ?? true,
   );
 
-  // AI Assistant P2: round-trip the right-sidebar view-state through
-  // the existing session payload. UIStateContext keeps a live mirror
+  // Round-trip the assistant right-sidebar view-state through the
+  // existing session payload. UIStateContext keeps a live mirror
   // of `{ sidebarOpen, size }`; FileManager reads it at save time.
   // Changes inside UIStateContext fire the change listener wired
-  // here, which goes through FileManager's existing 300ms-debounced
+  // here, which goes through FileManager's existing 300 ms-debounced
   // save pipeline so AI Assistant churn coalesces with tab churn.
   bridgeManager.fileManager.setAssistantStateGetter(getCurrentAssistantState);
   registerAssistantStateChangeListener(() =>

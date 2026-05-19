@@ -145,7 +145,7 @@ export class AppMenu {
 
   /**
    * Dispatch table for `{ kind: 'command' }` menu actions. Public so the
-   * renderer-side in-window menu (P2) can reach the same handlers via
+   * renderer-side in-window TitleBar menu can reach the same handlers via
    * `to:command:run` — see `wireRendererCommandBridge()` below.
    *
    * Adding a new command means adding an entry here; both the native
@@ -181,7 +181,7 @@ export class AppMenu {
 
   /**
    * Register the `to:command:run` IPC listener so the renderer's
-   * in-window menu (P2) can fire main-process commands through the
+   * in-window TitleBar menu can fire main-process commands through the
    * same dispatch table the native macOS menu uses. Called from
    * `main.ts` once per BrowserWindow.
    *
@@ -222,7 +222,7 @@ export class AppMenu {
         },
       },
       {
-        // P8 — fires the same `from:assistant:toggle` channel the
+        // Fires the same `from:assistant:toggle` channel the
         // application menu's View → Toggle Assistant Sidebar uses,
         // which routes through BridgeListeners → UIStateContext
         // `toggleRightSidebarExternal`.

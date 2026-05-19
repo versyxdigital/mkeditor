@@ -37,14 +37,11 @@ const PROVIDER_LABEL: Record<ProviderId, string> = {
 /**
  * Right-hand AI Assistant sidebar.
  *
- * P3: now reads the sanitized config snapshot from `AssistantContext`.
- * Only enabled providers contribute tabs; the active tab automatically
+ * Reads the sanitized config snapshot from `AssistantContext`. Only
+ * enabled providers contribute tabs; the active tab automatically
  * falls back to the first enabled provider if the previously-selected
  * one is disabled. When no providers are enabled, a single CTA opens
  * the Settings modal.
- *
- * Chat UI lands in P4; this phase still renders the empty-state
- * placeholder per provider.
  */
 export const AssistantSidebar: React.FC = () => {
   const { snapshot } = useAssistantConfig();
@@ -52,7 +49,7 @@ export const AssistantSidebar: React.FC = () => {
   const { openModal } = useModals();
   const { t } = useTranslation();
 
-  // P8 — per-provider streaming indicator. Pulses on the tab when
+  // Per-provider streaming indicator. Pulses on the tab when
   // that provider has any in-flight call (useful when the user is
   // viewing a different provider tab and won't see the streaming
   // dot inside the bubble).

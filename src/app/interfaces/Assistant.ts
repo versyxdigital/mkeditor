@@ -72,7 +72,7 @@ export interface ChatMessage {
 
 /**
  * Tool descriptor as ferried over IPC. The renderer's `AssistantTools`
- * registry (P5) is the source of truth for tool implementations; main
+ * registry is the source of truth for tool implementations; main
  * treats the descriptors as opaque metadata it forwards to the SDK.
  *
  * `parameters` carries a JSON-schema-shaped object (the SDK accepts both
@@ -98,8 +98,8 @@ export interface ChatRequest {
   tools?: ToolDescriptor[];
   /**
    * Optional cap on the model's output. Forwarded to streamText's
-   * `maxOutputTokens`. P3 uses `1` for the connection-test ping so the
-   * round-trip stays cheap; chat calls (P4) leave it unset.
+   * `maxOutputTokens`. The connection-test ping uses `1` so the
+   * round-trip stays cheap; ordinary chat calls leave it unset.
    */
   maxOutputTokens?: number;
 }
@@ -226,12 +226,12 @@ export interface AssistantStoreFile {
   providers: ProviderConfigMap;
   keys: Partial<Record<'anthropic' | 'openai', string>>;
   /**
-   * P7 — persisted chat history. Absent on v1 files written before
-   * P7 landed; loaders treat undefined as "no history" (the first
-   * post-upgrade save writes the new block). Conversation records
-   * carry the doc's `ConversationRecord` shape minus runtime-only
-   * fields (no `status`, no `toolCalls` mid-stream — `serialize()`
-   * strips those before write).
+   * Persisted chat history. Absent on v1 files written before this
+   * block was added; loaders treat undefined as "no history" (the
+   * first post-upgrade save writes the new block). Conversation
+   * records carry the doc's `ConversationRecord` shape minus
+   * runtime-only fields (no `status`, no `toolCalls` mid-stream —
+   * `serialize()` strips those before write).
    */
   conversations?: PersistedConversations;
 }
@@ -309,7 +309,7 @@ export const DEFAULT_PROVIDER_CONFIG: ProviderConfigMap = {
 export type ApiProviderId = 'anthropic' | 'openai';
 
 /* -------------------------------------------------------------------- */
-/*  Chat state shapes (P4 — renderer-side only, no IPC wire role)        */
+/*  Chat state shapes (renderer-side only, no IPC wire role)             */
 /* -------------------------------------------------------------------- */
 
 /**
@@ -334,7 +334,7 @@ export type ChatMessageStatus =
  * `toUiMessage` / `fromUiMessage` translation pair — `UiChatMessage`
  * is intentionally not written to disk verbatim.
  *
- * P5: added `toolCalls` — invocations the model emitted during this
+ * `toolCalls` carries the invocations the model emitted during this
  * assistant turn (rendered as cards below the text body by
  * `<ChatMessage>` / `<ToolCallCard>`).
  */
@@ -379,7 +379,7 @@ export interface UiChatMessage {
 }
 
 /* -------------------------------------------------------------------- */
-/*  Tool invocation (P5 — renderer-side, no IPC wire role)               */
+/*  Tool invocation (renderer-side, no IPC wire role)                    */
 /* -------------------------------------------------------------------- */
 
 /**
@@ -423,13 +423,14 @@ export interface ChatConversation {
   model: string;
   messages: UiChatMessage[];
   /**
-   * Per-conversation override for write-class tool confirmations (P5).
-   * Carried through P4 so the schema matches the doc's persistence
-   * shape without breaking forward-compat when P7 lands.
+   * Per-conversation override for write-class tool confirmations.
+   * When true, write tools auto-execute without surfacing the
+   * confirm dialog. Persisted alongside the rest of the
+   * conversation record.
    */
   autoAcceptWrites: boolean;
   /**
-   * Context controls (P6). Defaults: `shareActiveFile: true`,
+   * Context controls. Defaults: `shareActiveFile: true`,
    * `shareSelection: false`. Per-conversation; persist alongside
    * `autoAcceptWrites`. Drive the chip row, the gear popover
    * switches, and the system message `AssistantManager.contextFor()`
@@ -438,8 +439,8 @@ export interface ChatConversation {
   shareActiveFile: boolean;
   shareSelection: boolean;
   /**
-   * Sticky explicit `@`-mention chips (P6). Absolute paths picked
-   * from the file tree via `<MentionPicker>`. Persist across sends
+   * Sticky explicit `@`-mention chips. Absolute paths picked from
+   * the file tree via `<MentionPicker>`. Persist across sends
    * within the conversation until the user × removes them.
    */
   mentions: string[];
@@ -459,8 +460,8 @@ export interface AssistantChatSnapshot {
   /** Currently-selected conversation per provider tab (null if none yet). */
   activeConversation: Record<ProviderId, string | null>;
   /**
-   * Currently-selected provider tab (P7). Persisted so reopening the
-   * app lands the sidebar on the same tab. Null when no tab has been
+   * Currently-selected provider tab. Persisted so reopening the app
+   * lands the sidebar on the same tab. Null when no tab has been
    * picked yet (boot before restore, or every provider disabled).
    */
   activeProvider: ProviderId | null;

@@ -140,9 +140,9 @@ function main(file: string | null = null) {
   bridge.provide('settings', settings);
   bridge.provide('logger', logconfig);
 
-  // AI Assistant (P1) — service the bridge delegates `to:ai:*` to. The
-  // SDK clients and `safeStorage`-encrypted keys live entirely inside
-  // this instance; the renderer reaches it only through the IPC surface
+  // AI Assistant — service the bridge delegates `to:ai:*` to. The SDK
+  // clients and `safeStorage`-encrypted keys live entirely inside this
+  // instance; the renderer reaches it only through the IPC surface
   // AppBridge whitelists.
   const assistant = new AppAssistant(context);
   bridge.provide('assistant', assistant);
@@ -158,13 +158,13 @@ function main(file: string | null = null) {
   const menu = new AppMenu(context);
   menu.provide('logger', logconfig);
   menu.register(); // Register all menu items
-  // Renderer's in-window menu (P2) reaches main-process commands
+  // Renderer's in-window TitleBar menu reaches main-process commands
   // (open-log, toggle-devtools) through this IPC channel — same
   // dispatch table the native macOS menu uses.
   menu.wireRendererCommandBridge();
 
-  // Window-control IPC + maximize-state emitter. The renderer's title bar
-  // (P2) sends `to:window:minimize/maximize/close` here; `from:window:state`
+  // Window-control IPC + maximize-state emitter. The renderer's title
+  // bar sends `to:window:minimize/maximize/close` here; `from:window:state`
   // hydrates the renderer with the initial maximize state on did-finish-load
   // and replays on every maximize/unmaximize.
   const window = new AppWindow(context, true);
@@ -211,13 +211,13 @@ function main(file: string | null = null) {
           : { session: null, missing: [], contents: {} },
       );
 
-      // Hydrate the renderer with the sanitized AI Assistant config
-      // (P1). The payload exposes per-provider `hasKey: boolean` only —
-      // never the key value. The renderer's AssistantManager (P2/P3)
-      // uses this to decide which provider tabs to show.
+      // Hydrate the renderer with the sanitized AI Assistant config.
+      // The payload exposes per-provider `hasKey: boolean` only —
+      // never the key value. AssistantManager uses this to decide
+      // which provider tabs to show.
       bridge.pushAssistantConfig();
 
-      // P7 — hydrate the renderer with persisted conversation history.
+      // Hydrate the renderer with persisted conversation history.
       // Goes second (after config) so AssistantManager exists and is
       // wired before `restore()` is called from the channel handler.
       bridge.pushPersistedConversations();

@@ -31,7 +31,7 @@ interface UIState {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
-  /** Right (AI Assistant) sidebar visibility (AI Assistant P2). */
+  /** Right (AI Assistant) sidebar visibility. */
   rightSidebarOpen: boolean;
   setRightSidebarOpen: (open: boolean) => void;
   toggleRightSidebar: () => void;
@@ -110,7 +110,7 @@ export const UIStateProvider: React.FC<UIStateProviderProps> = ({
     _notifyAssistantStateChange();
   }, []);
 
-  // P8 — register the toggle with the seam used by the
+  // Register the toggle with the seam used by the
   // application menu (View → Toggle Assistant Sidebar, Cmd/Ctrl+Shift+A)
   // and the system tray entry. Effect-registered so the latest
   // closure wins after a re-render.

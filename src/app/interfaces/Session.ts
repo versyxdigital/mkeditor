@@ -1,7 +1,7 @@
 /**
  * Persisted session shape. Mirrors the schema documented in
  * `docs/SESSION_RESTORE.md` and the renderer-side serializer in
- * `FileManager.serializeSession()` (added in Phase 2).
+ * `FileManager.serializeSession()`.
  *
  * Main process never interprets `viewState` — it's a JSON-serialisable
  * opaque blob owned by Monaco (`editor.ICodeEditorViewState`). Typed as
@@ -23,11 +23,11 @@ export interface SessionPayload {
   /**
    * Currently-open workspace folder path, or null. Main re-validates
    * this at restore time and drops it if the directory no longer
-   * exists. Desktop only; web mode handles its root via IDB (P3).
+   * exists. Desktop only; web mode handles its root via IDB.
    */
   workspaceRoot: string | null;
   /**
-   * AI Assistant right-sidebar view state, added in v2 (AI Assistant P2).
+   * AI Assistant right-sidebar view state, added in v2.
    * Optional so v1 payloads load unchanged; UIStateContext supplies
    * sensible defaults when absent. Conversation history lives in
    * `~/.mkeditor/assistant.json`, not here — this block is purely the

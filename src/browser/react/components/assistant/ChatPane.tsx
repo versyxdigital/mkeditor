@@ -121,7 +121,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     return undefined;
   }, [chat.inflight, provider, conversation.id]);
 
-  // P6 — chip row + token indicator re-render triggers.
+  // Chip row + token indicator re-render triggers.
   // `useFiles` keeps us in sync with active-file changes; `editorTick`
   // `files` snapshot drives re-derivation when the user switches tabs
   // (active file changes); `editorTick` bumps on Monaco selection
@@ -264,7 +264,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     [handleSend, pickerOpen],
   );
 
-  // P8 — chat-wide keyboard shortcuts. Attached to the pane root via
+  // Chat-wide keyboard shortcuts. Attached to the pane root via
   // capture-phase listener so they work when the textarea OR the
   // message list / chip row / header is focused:
   //

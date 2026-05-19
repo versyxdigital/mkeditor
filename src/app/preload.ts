@@ -41,7 +41,7 @@ const senderWhitelist = [
   'to:edit:cut',
   'to:edit:copy',
   'to:edit:paste',
-  // AI Assistant (P1)
+  // AI Assistant — chat / config / keys / Ollama
   'to:ai:chat',
   'to:ai:cancel',
   'to:ai:tool-result',
@@ -50,7 +50,7 @@ const senderWhitelist = [
   'to:ai:key:set',
   'to:ai:key:clear',
   'to:ai:ollama:list',
-  // AI Assistant (P7)
+  // AI Assistant — conversation persistence
   'to:ai:conversations:save',
   'to:ai:conversations:flush',
 ];
@@ -76,17 +76,17 @@ const receiverWhitelist = [
   'from:path:renamed',
   'from:i18n:set',
   'from:window:state',
-  // AI Assistant (P1)
+  // AI Assistant — streaming chunks / tool calls / done / error / config
   'from:ai:chunk',
   'from:ai:tool-call',
   'from:ai:done',
   'from:ai:error',
   'from:ai:config',
   'from:ai:ollama:models',
-  // AI Assistant (P7)
+  // AI Assistant — conversation persistence
   'from:ai:conversations',
   'from:ai:conversations:flush-request',
-  // AI Assistant (P8) — application menu / tray
+  // AI Assistant — application menu / tray sidebar toggle
   'from:assistant:toggle',
 ];
 

@@ -4,7 +4,7 @@ export type ModalKey = 'settings' | 'exportSettings' | 'about' | 'shortcuts';
 
 /**
  * Optional payload openers can hand to `openModal`. Only the settings
- * modal consumes one today (AI Assistant P3: the sidebar empty-state
+ * modal consumes one today (the AI Assistant sidebar empty-state
  * CTA opens the modal directly on the AI Providers tab); the others
  * are flag-only. Keep this union narrow so type-checking catches a
  * typo at the call site.
@@ -77,7 +77,7 @@ export function useModals(): ModalsState {
  * trigger a modal without holding a React ref.
  *
  * Updated by <App> on the first render via `registerOpenModal`. The
- * external surface accepts an optional `payload` (P8) so callers like
+ * external surface accepts an optional `payload` so callers like
  * the Help → "Configure AI Providers..." menu item can open the
  * Settings modal directly on the AI Providers tab via
  * `openModalExternal('settings', { tab: 'assistant' })`. Non-React

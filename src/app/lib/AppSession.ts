@@ -47,8 +47,8 @@ export class AppSession {
    * file written by the previous version without nuking the user's
    * tabs.
    *
-   * v1 → v2 (AI Assistant P2): added the optional `assistant`
-   * right-sidebar view-state block.
+   * v1 → v2: added the optional `assistant` right-sidebar
+   * view-state block.
    */
   private static readonly SCHEMA_VERSION = 2;
 
@@ -198,9 +198,9 @@ export class AppSession {
         tabs: kept,
         activeFile: activeStillPresent ? payload.activeFile : null,
         workspaceRoot: keptRoot,
-        // AI Assistant P2: right-sidebar view state passes through
-        // verbatim (optional). Filtering wouldn't make sense — it's a
-        // pure UI snapshot with no main-side validation to perform.
+        // Assistant right-sidebar view state passes through verbatim
+        // (optional). Filtering wouldn't make sense — it's a pure UI
+        // snapshot with no main-side validation to perform.
         assistant: payload.assistant,
       },
       missing,
@@ -242,9 +242,9 @@ export class AppSession {
     ) {
       return false;
     }
-    // `assistant` arrived in v2 (AI Assistant P2). Optional in both v1
-    // and v2 payloads — UIStateContext supplies defaults when absent.
-    // When present it must shape-match `AssistantViewState`.
+    // `assistant` arrived in v2. Optional in both v1 and v2 payloads —
+    // UIStateContext supplies defaults when absent. When present it
+    // must shape-match `AssistantViewState`.
     if ('assistant' in candidate && candidate.assistant !== undefined) {
       if (!AppSession.isValidAssistantState(candidate.assistant)) return false;
     }

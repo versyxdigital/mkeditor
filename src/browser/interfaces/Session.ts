@@ -10,8 +10,8 @@ import type { editor } from 'monaco-editor';
 export interface SessionPayload {
   /**
    * v1 was the original session-restore shape; v2 added the optional
-   * `assistant` view-state block (AI Assistant P2). Loader accepts
-   * either; writer always stamps the current canonical version.
+   * `assistant` view-state block. Loader accepts either; writer
+   * always stamps the current canonical version.
    */
   version: 1 | 2;
   tabs: SessionTab[];
@@ -21,7 +21,7 @@ export interface SessionPayload {
   /**
    * Right-sidebar view state. Optional so v1 payloads load unchanged.
    * UIStateContext supplies defaults when absent. Conversation history
-   * lives in `~/.mkeditor/assistant.json` (P7), not here.
+   * lives in `~/.mkeditor/assistant.json`, not here.
    */
   assistant?: AssistantViewState;
 }

@@ -42,10 +42,10 @@ export const SettingsModal: React.FC = () => {
   const { settings, updateSetting } = useSettings();
   const { t } = useTranslation();
 
-  // P7: AI Assistant is desktop-only. On web we still render the
+  // AI Assistant is desktop-only. On web we still render the
   // Settings modal (general settings remain) but the AI Providers
-  // tab itself is hidden — and any externally-requested `tab:'assistant'`
-  // payload falls back to 'general'.
+  // tab itself is hidden — and any externally-requested
+  // `tab: 'assistant'` payload falls back to 'general'.
   const showAssistantTab = mode !== 'web';
 
   // Controlled tabs so the title + intro can switch with the active

@@ -83,8 +83,8 @@ export function registerBridgeListeners(
   });
 
   // File / folder menu actions delegate to BridgeManager helpers so the
-  // in-window menu (P2) can reach the same effects without re-routing
-  // through `bridge.receive`.
+  // in-window TitleBar menu can reach the same effects without
+  // re-routing through `bridge.receive`.
   bridge.receive('from:file:new', () => manager.menuFileNew());
   bridge.receive('from:file:save', () => manager.menuFileSave());
   bridge.receive('from:file:saveas', () => manager.menuFileSaveAs());
@@ -171,10 +171,10 @@ export function registerBridgeListeners(
   bridge.receive(
     'from:modal:open',
     (modal: ModalKey | { modal: ModalKey; tab?: 'general' | 'assistant' }) => {
-      // P8 — payload may be either the bare modal key (existing
-      // callers) or `{ modal, tab? }` for the Help → Configure AI
-      // Providers menu item that needs to open the Settings modal
-      // directly on the AI Providers tab.
+      // Payload may be either the bare modal key (most callers)
+      // or `{ modal, tab? }` for the Help → Configure AI
+      // Providers menu item that needs to open the Settings
+      // modal directly on the AI Providers tab.
       if (typeof modal === 'string') {
         openModalExternal(modal);
       } else if (modal && typeof modal.modal === 'string') {
@@ -251,9 +251,10 @@ export function registerBridgeListeners(
       tree.openingFolder = true;
       bridge.send('to:file:openpath', { path: root });
     }
-    // AI Assistant P2: forward the right-sidebar view-state (open + size)
-    // into UIStateContext via the module-level seam. v1 payloads omit
-    // the block; UIStateContext keeps its initial defaults in that case.
+    // Forward the assistant right-sidebar view-state (open + size)
+    // into UIStateContext via the module-level seam. v1 session
+    // payloads omit this block; UIStateContext keeps its initial
+    // defaults in that case.
     const assistant = envelope?.session?.assistant;
     if (assistant) {
       applyRestoredAssistantState(assistant);
@@ -276,7 +277,7 @@ export function registerBridgeListeners(
     },
   );
 
-  // ---- AI Assistant (P3) ------------------------------------------
+  // ---- AI Assistant ----------------------------------------------
   //
   // Sanitized config snapshot the renderer reads — never carries any
   // key value, only `hasKey: boolean` per provider. `AssistantManager`
@@ -291,19 +292,18 @@ export function registerBridgeListeners(
     manager.assistantManager.onOllamaModels(payload);
   });
 
-  // Chat streaming chunks (P4). AssistantManager.appendChunk no-ops
-  // when the callId doesn't belong to a tracked chat (e.g. a stray
-  // text-delta from a connection-test ping) so we route every chunk
-  // through unconditionally.
+  // Chat streaming chunks. AssistantManager.appendChunk no-ops when
+  // the callId doesn't belong to a tracked chat (e.g. a stray
+  // text-delta from a connection-test ping) so we route every
+  // chunk through unconditionally.
   bridge.receive('from:ai:chunk', (payload: ChatChunkEvent) => {
     manager.assistantManager.appendChunk(payload.callId, payload.text);
   });
 
-  // Chat completion / error events. P3 partitioned these between the
-  // test path and "future P4 chat" via `ownsCallId`; with P4 in
-  // place, AssistantManager.onChatDone/onChatError handle both paths
-  // internally (test pending first, then in-flight chat). Foreign
-  // callIds are silently ignored by the manager.
+  // Chat completion / error events. AssistantManager.onChatDone /
+  // onChatError handle both the connection-test path and the
+  // in-flight chat path internally (test pending first, then chat).
+  // Foreign callIds are silently ignored.
   bridge.receive('from:ai:done', (payload: ChatDoneEvent) => {
     manager.assistantManager.onChatDone(payload.callId);
   });
@@ -311,17 +311,17 @@ export function registerBridgeListeners(
     manager.assistantManager.onChatError(payload);
   });
 
-  // P5: tool-call events. AssistantManager classifies read vs write,
+  // Tool-call events. AssistantManager classifies read vs write,
   // executes read-class immediately, prompts for write-class
   // (or auto-accepts based on per-conversation toggle).
   bridge.receive('from:ai:tool-call', (payload: ChatToolCallEvent) => {
     manager.assistantManager.onToolCall(payload);
   });
 
-  // P7: persisted conversation hydration. Fired once by main on
-  // `did-finish-load` after the AI config push. Pre-P7 store files
-  // arrive as `null` (no conversations block); restore handles that
-  // as "no history".
+  // Persisted conversation hydration. Fired once by main on
+  // `did-finish-load` after the AI config push. Pre-persistence
+  // store files arrive as `null` (no conversations block); restore
+  // handles that as "no history".
   bridge.receive(
     'from:ai:conversations',
     (payload: PersistedConversations | null) => {
@@ -329,8 +329,8 @@ export function registerBridgeListeners(
     },
   );
 
-  // P7: quit-flush request. Main fires this before-quit so any
-  // in-flight 500ms debounce window doesn't lose the last
+  // Quit-flush request. Main fires this before-quit so any
+  // in-flight 500 ms debounce window doesn't lose the last
   // conversation mutation. AssistantManager.flushPersist() cancels
   // the pending timer and synchronously ships the latest serialize()
   // via the `to:ai:conversations:flush` channel, which main awaits
@@ -339,7 +339,7 @@ export function registerBridgeListeners(
     manager.assistantManager.flushPersist();
   });
 
-  // P8 — application menu (View → Toggle Assistant Sidebar,
+  // Application menu (View → Toggle Assistant Sidebar,
   // Cmd/Ctrl+Shift+A) and the system tray entry fire this channel.
   // Routes through the UIStateContext seam so non-React main /
   // menu code can flip the sidebar.

@@ -27,7 +27,7 @@ import { encryptForMain } from './SecureChannelClient';
 import { confirmToolCallExternal } from '../toolConfirm';
 
 /**
- * P6 — surface AssistantManager uses to gather context at send time
+ * Surface AssistantManager uses to gather context at send time
  * (active file content, selection, mention file content). Implemented
  * by `AssistantContextSource` in `BridgeManager` and injected via
  * `setContextProvider`. Kept narrow so the manager doesn't grow a
@@ -51,7 +51,7 @@ export interface AssistantContextProvider {
 }
 
 /**
- * P6 — synchronous chip descriptor surfaced through the chat snapshot
+ * Synchronous chip descriptor surfaced through the chat snapshot
  * so the chip row + the token indicator can render without awaiting
  * disk reads. Mention chips carry an optional cached `byteCount` so
  * the indicator can include them in its estimate even though the
@@ -125,28 +125,32 @@ const EMPTY_CHAT_SNAPSHOT: AssistantChatSnapshot = {
 /**
  * Renderer-side AI Assistant manager.
  *
- * P3 surface: sanitized config snapshot, mutators for the three
- * `to:ai:*` config/key channels, Ollama model-list refresh, and a
- * one-shot connection test that piggy-backs `to:ai:chat` with
- * `maxOutputTokens: 1`.
+ * Owns two distinct surfaces:
  *
- * P4 surface (this file): chat state — conversations grouped by
- * provider, drafts, in-flight chat calls. `startCall` initiates a
- * streaming turn; chunks land via `appendChunk`; completion routes
- * through `finalizeCall` / `failCall`. Cancel via `cancelCall`. Tests
- * and chat share the same `from:ai:done` / `from:ai:error` channels —
- * the manager distinguishes by inspecting its own bookkeeping (tests
- * first, then in-flight chats).
+ *   - **Config**: sanitized provider snapshot (enabled / model /
+ *     hasKey), mutators for the three `to:ai:*` config/key
+ *     channels, Ollama model-list refresh, and a one-shot
+ *     connection test that piggy-backs `to:ai:chat` with
+ *     `maxOutputTokens: 1`.
  *
- * Two separate observable surfaces:
- *   - `subscribeConfig` / `getConfigSnapshot` (the P3 settings UI)
- *   - `subscribeChat` / `getChatSnapshot`   (the P4 chat UI)
- * Splitting them means config-only consumers don't re-render on chat
- * churn (chunks arrive multiple times per second during streaming).
+ *   - **Chat**: conversations grouped by provider, drafts,
+ *     in-flight chat calls. `startCall` initiates a streaming
+ *     turn; chunks land via `appendChunk`; completion routes
+ *     through `finalizeCall` / `failCall`. Cancel via
+ *     `cancelCall`. Connection-test pings and chat share the
+ *     `from:ai:done` / `from:ai:error` channels — the manager
+ *     distinguishes by inspecting its own bookkeeping (tests
+ *     first, then in-flight chats).
  *
- * Architectural responsibilities (CLAUDE.md): owns data + IPC; never
- * imports React. The composition root injects the bridge ref through
- * the constructor.
+ * The two surfaces are subscribed independently
+ * (`subscribeConfig` / `getConfigSnapshot` for the settings UI,
+ * `subscribeChat` / `getChatSnapshot` for the chat UI) so
+ * config-only consumers don't re-render on chat churn (chunks
+ * arrive multiple times per second during streaming).
+ *
+ * Architectural responsibilities (CLAUDE.md): owns data + IPC;
+ * never imports React. The composition root injects the bridge
+ * ref through the constructor.
  */
 /**
  * Construction-time tunables. Production passes nothing — defaults
@@ -198,8 +202,8 @@ export class AssistantManager {
     ollama: null,
   };
   /**
-   * Last provider tab the user selected. Persisted (P7) so reopening
-   * the app lands on the same tab. Mutated by `setActiveProvider`
+   * Last provider tab the user selected. Persisted so reopening the
+   * app lands on the same tab. Mutated by `setActiveProvider`
    * (called by the sidebar's tab strip) and `restore()`.
    */
   private activeProviderTab: ProviderId | null = null;
@@ -208,7 +212,7 @@ export class AssistantManager {
   private inflightChats = new Map<string, InflightChatCall>();
 
   /**
-   * Optional tool executor (P5). Null until `setToolExecutor` is
+   * Optional tool executor. Null until `setToolExecutor` is
    * called by `BridgeManager` after construction. When null,
    * `startCall` ships an empty `tools` array (the model behaves as if
    * no tools exist).
@@ -216,7 +220,7 @@ export class AssistantManager {
   private toolExecutor: ToolExecutor | null = null;
 
   /**
-   * P6 context provider — gives the manager access to the active file,
+   * Context provider — gives the manager access to the active file,
    * current selection, and arbitrary file content for `@`-mentions.
    * Injected by `BridgeManager` after construction (same pattern as
    * `setToolExecutor`). Null until set; when null, `contextFor`
@@ -225,7 +229,7 @@ export class AssistantManager {
   private contextProvider: AssistantContextProvider | null = null;
 
   /**
-   * P7 — debounced save trigger. `rebuildChatSnapshot` schedules a
+   * Debounced save trigger. `rebuildChatSnapshot` schedules a
    * persist on every state change; the trailing-edge debounce means a
    * burst of mutations (e.g. quick chunk arrivals) collapses into a
    * single `to:ai:conversations:save` write. `flushPersist` cancels
@@ -294,7 +298,7 @@ export class AssistantManager {
   }
 
   // ---------------------------------------------------------------------
-  // Config-snapshot surface (P3)
+  // Config-snapshot surface
   // ---------------------------------------------------------------------
 
   /** Subscribe to config-snapshot changes. Returns an unsubscribe. */
@@ -446,7 +450,7 @@ export class AssistantManager {
   }
 
   // ---------------------------------------------------------------------
-  // P4 — Chat snapshot surface
+  // Chat snapshot surface
   // ---------------------------------------------------------------------
 
   /** Subscribe to chat-state changes (conversations, drafts, inflight). */
@@ -621,7 +625,7 @@ export class AssistantManager {
     conversationId: string,
     userText: string,
     /**
-     * Optional pre-assembled system context message (P6). Caller is
+     * Optional pre-assembled system context message. Caller is
      * expected to `await manager.contextFor(...)` first and pass the
      * result here; we keep `startCall` synchronous so the IPC ship,
      * snapshot rebuild, and inflight bookkeeping all happen in one
@@ -837,10 +841,10 @@ export class AssistantManager {
     if (!skipRebuild) this.rebuildChatSnapshot();
   }
 
-  // ---- P5 — Tool calls -----------------------------------------------
+  // ---- Tool calls ----------------------------------------------------
 
   /**
-   * Inject the tool executor (P5). Called once by `BridgeManager`
+   * Inject the tool executor. Called once by `BridgeManager`
    * after `AssistantTools` is constructed. `startCall` reads from
    * this on each send so tools are available as soon as it's set;
    * before that, chat works fine without tools.
@@ -1038,10 +1042,10 @@ export class AssistantManager {
     this.rebuildChatSnapshot();
   }
 
-  // ---- P6 — Context controls ----------------------------------------
+  // ---- Context controls ----------------------------------------------
 
   /**
-   * Inject the context provider (P6). Called once by `BridgeManager`
+   * Inject the context provider. Called once by `BridgeManager`
    * after the other managers exist. Before this, `contextFor()`
    * returns null and the chip/indicator surfaces collapse to empty —
    * non-fatal, just means no system context until injection lands.
@@ -1255,7 +1259,7 @@ export class AssistantManager {
     };
   }
 
-  // ---- P7 — Persistence (serialize / restore) -----------------------
+  // ---- Persistence (serialize / restore) -----------------------------
 
   /**
    * Capture a snapshot of the chat state suitable for writing to disk.
@@ -1427,12 +1431,12 @@ export class AssistantManager {
     this.rebuildChatSnapshot();
   }
 
-  // ---- Done / error routing (shared with the P3 test path) -----------
+  // ---- Done / error routing (shared with the connection-test path) ---
 
   /**
    * Resolve a `from:ai:done` event. Checks the pending-test set first
-   * (the P3 connection-test path), then falls through to the in-flight
-   * chat set (P4). Foreign callIds are silently ignored.
+   * (the connection-test path), then falls through to the in-flight
+   * chat set. Foreign callIds are silently ignored.
    */
   public onChatDone(callId: string): void {
     const pendingTest = this.pendingTests.get(callId);
@@ -1592,7 +1596,7 @@ export class AssistantManager {
       inflight,
     };
     this.chatListeners.forEach((l) => l());
-    // P7 — every snapshot rebuild is a state change worth eventually
+    // Every snapshot rebuild is a state change worth eventually
     // persisting. The debounce coalesces a streaming burst (many
     // appendChunk → rebuildChatSnapshot calls in a single second)
     // into one write.
@@ -1600,7 +1604,7 @@ export class AssistantManager {
   }
 
   /**
-   * P7 — kick off (or reset) the debounced persist timer. Skips
+   * Kick off (or reset) the debounced persist timer. Skips
    * scheduling while `persistEnabled` is false (during `restore`).
    */
   private schedulePersist(): void {
@@ -1613,7 +1617,7 @@ export class AssistantManager {
   }
 
   /**
-   * P7 — synchronously flush whatever's pending in the debounce
+   * Synchronously flush whatever's pending in the debounce
    * window. Called by `BridgeListeners.from:ai:conversations:flush-request`
    * before quit. Idempotent — if nothing's pending, ships the
    * current serialized snapshot anyway so the renderer's reply
@@ -1683,7 +1687,7 @@ interface PendingOllama {
 }
 
 /* -------------------------------------------------------------------- */
-/*  P6 — context-message formatting helpers                              */
+/*  Context-message formatting helpers                                   */
 /* -------------------------------------------------------------------- */
 
 /**

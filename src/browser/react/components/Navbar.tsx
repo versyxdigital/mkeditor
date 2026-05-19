@@ -26,9 +26,8 @@ export const Navbar: React.FC = () => {
   const { t } = useTranslation();
   const { activeFile, tabs } = useFiles();
 
-  // P7: hide the AI sidebar toggle on web — AI Assistant is
-  // desktop-only (see docs/AI_ASSISTANT.md "Decisions" → "API call
-  // location").
+  // Hide the AI sidebar toggle on web — AI Assistant is desktop-only
+  // (see docs/AI_ASSISTANT.md "Decisions" → "API call location").
   const showAssistantToggle = mode !== 'web';
   const counts = useCounts();
 

@@ -117,8 +117,8 @@ export class AppBridge {
     });
 
     // Persist the renderer's open-tab / cursor / scroll session. Fired
-    // by the renderer's debounced session save trigger (P2) and by the
-    // renderer's flush-request handler during quit (P1 stub, P2 real).
+    // by the renderer's debounced session save trigger and by the
+    // renderer's flush-request handler during quit.
     ipcMain.on('to:session:save', (_event, payload: SessionPayload) => {
       AppSession.save(payload);
     });
@@ -465,7 +465,7 @@ export class AppBridge {
       AppStorage.setWorkspaceRoot(payload?.root ?? null);
     });
 
-    // ---- AI Assistant (P1) ----------------------------------------
+    // ---- AI Assistant ----------------------------------------------
     //
     // All `to:ai:*` channels delegate to the AppAssistant service the
     // composition root injects via `provide('assistant', ...)`. Each
@@ -526,7 +526,7 @@ export class AppBridge {
       void this.providers.assistant?.listOllamaModels(payload);
     });
 
-    // P7 — persisted conversation save. Renderer ships the latest
+    // Persisted conversation save. Renderer ships the latest
     // `AssistantManager.serialize()` output (debounced 500 ms on its
     // side); we drop it onto disk atomically. `null` payloads clear
     // the on-disk block.
@@ -544,7 +544,7 @@ export class AppBridge {
       },
     );
 
-    // P7 — synchronous flush ack from the renderer in response to a
+    // Synchronous flush ack from the renderer in response to a
     // `from:ai:conversations:flush-request`. Main fires the request
     // before-quit so any in-flight debounce window doesn't lose the
     // last conversation mutation; the renderer answers synchronously
@@ -584,7 +584,7 @@ export class AppBridge {
   }
 
   /**
-   * P7 — push the persisted conversation block to the renderer over
+   * Push the persisted conversation block to the renderer over
    * `from:ai:conversations`. Called by main.ts on `did-finish-load`
    * (after `pushAssistantConfig`) so the sidebar hydrates with
    * history on first paint. Pre-P7 files surface as `null`.
@@ -602,7 +602,7 @@ export class AppBridge {
   }
 
   /**
-   * P7 — broadcast a flush request to the renderer over
+   * Broadcast a flush request to the renderer over
    * `from:ai:conversations:flush-request`. Called by `main.ts`
    * `before-quit` so the renderer ships the latest debounce-buffered
    * serialize() output before the process exits.

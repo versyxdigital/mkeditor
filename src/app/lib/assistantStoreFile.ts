@@ -102,11 +102,12 @@ export function writeAssistantStore(store: AssistantStoreFile): boolean {
 }
 
 /**
- * P7 — read the persisted conversation block from the store file.
- * Returns null when the file is fresh / pre-P7 / malformed. Never
- * throws.
+ * Read the persisted conversation block from the store file.
+ * Returns null when the file is fresh, predates the conversations
+ * block, or is malformed. Never throws.
  *
- * Pre-P7 files (just `version` + `providers` + `keys`) come back from
+ * Files written before the conversations block existed (just
+ * `version` + `providers` + `keys`) come back from
  * `loadAssistantStore` with `conversations: undefined`, which this
  * helper surfaces as `null` so the caller can short-circuit the
  * restore.
@@ -117,7 +118,7 @@ export function loadPersistedConversations(): PersistedConversations | null {
 }
 
 /**
- * P7 — write the persisted conversation block to the store file.
+ * Write the persisted conversation block to the store file.
  * Reads the current file (so `providers` / `keys` are preserved),
  * replaces `conversations`, writes atomically. Passing `null`
  * removes the block (used by tests / a future "clear history"

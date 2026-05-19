@@ -207,8 +207,8 @@ export const menuModel: MenuModel = [
         label: 'Toggle Assistant Sidebar',
         accelerator: 'CmdOrCtrl+Shift+A',
         separatorBefore: true,
-        // P8 — desktop-only. The in-window `<TitleBar>` menu skips
-        // this entry on web (and main never builds an Electron menu
+        // Desktop-only. The in-window `<TitleBar>` menu skips this
+        // entry on web (and main never builds an Electron menu
         // there anyway). Channel routes through BridgeListeners →
         // UIStateContext.
         action: {
@@ -232,9 +232,8 @@ export const menuModel: MenuModel = [
       {
         id: 'help.about',
         label: 'About MKEditor',
-        // P8: accelerator removed — Cmd/Ctrl+/ is now the chat
-        // input-focus shortcut. About is still reachable from the
-        // menu but no longer holds the keyboard shortcut.
+        // No accelerator: Cmd/Ctrl+/ is the chat input-focus
+        // shortcut. About is still reachable from the menu.
         action: {
           kind: 'channel',
           channel: 'from:modal:open',
@@ -255,7 +254,7 @@ export const menuModel: MenuModel = [
         id: 'help.assistant.configure',
         label: 'Configure AI Providers...',
         separatorBefore: true,
-        // P8 — opens the Settings modal directly on the AI Providers
+        // Opens the Settings modal directly on the AI Providers
         // tab. Renderer (BridgeListeners + MenuActionBridge) reads
         // the payload's `tab` field and forwards it to
         // `openModalExternal('settings', { tab: 'assistant' })`.

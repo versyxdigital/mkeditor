@@ -191,7 +191,7 @@ export class AppAssistant {
   /**
    * List models the local Ollama daemon advertises. Replies with
    * `from:ai:ollama:models { callId, models?, error? }`. Used by the
-   * settings UI (P3) to populate the model picker. Pure GET — no key,
+   * settings UI to populate the model picker. Pure GET — no key,
    * no caching at this layer (the renderer can debounce as needed).
    */
   async listOllamaModels(req: OllamaListRequest): Promise<void> {
@@ -481,7 +481,7 @@ export class AppAssistant {
   }
 
   /**
-   * Coarse error → stable ChatErrorEvent (P8 — completed taxonomy).
+   * Coarse error → stable ChatErrorEvent.
    *
    * The renderer's `assistant-settings.json` has translated copy for
    * every code in `ChatErrorEvent['code']`; this method picks the
