@@ -4,3 +4,4 @@ dist/
 out/
 releases/
 .DS_Store
+coverage/
