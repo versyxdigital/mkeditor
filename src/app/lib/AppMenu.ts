@@ -19,10 +19,14 @@ import {
  *
  * Builds the Electron application menu from the shared `menuModel`.
  *
- * On macOS the menu lives on the system menu bar and stays in use; on
- * Windows and Linux we set `Menu.setApplicationMenu(null)` so the OS
- * strip disappears — the in-window `<TitleBar>` (added in P2) renders
- * the same model in the renderer.
+ * On macOS the menu lives on the system menu bar and is visible there.
+ * On Windows and Linux the in-window `<TitleBar>` (added in P2) renders
+ * the same model — but we still install the Electron application menu
+ * so global accelerators (Ctrl+S, Ctrl+O, etc.) keep working. The menu
+ * bar itself is suppressed by the BrowserWindow being frameless plus
+ * `autoHideMenuBar: true` / `setMenuBarVisibility(false)` in `main.ts`,
+ * so the menu is functional-but-invisible and the user only ever sees
+ * the renderer-drawn `<TitleBar>` strip.
  */
 export class AppMenu {
   /** The browser window */
@@ -61,17 +65,18 @@ export class AppMenu {
   }
 
   /**
-   * Build the Electron menu template from `menuModel` and install it.
+   * Build the Electron menu template from `menuModel` and install it
+   * on all platforms.
    *
-   * On Windows + Linux we explicitly clear the application menu — the
-   * in-window `<TitleBar>` (P2) is the new home for those entries.
+   * On macOS this populates the system menu bar (the visible UI).
+   * On Windows / Linux the menu bar is suppressed (frameless window +
+   * `setMenuBarVisibility(false)` in `main.ts`), but the menu itself
+   * is still registered so Electron's accelerator dispatcher fires
+   * the click handlers when the user presses Ctrl+S / Ctrl+O / etc.
+   * Without this the in-window `<TitleBar>` would show keybindings
+   * that don't actually do anything.
    */
   register() {
-    if (process.platform !== 'darwin') {
-      Menu.setApplicationMenu(null);
-      return;
-    }
-
     const template: MenuItemConstructorOptions[] = menuModel.map((group) =>
       this.buildGroup(group),
     );

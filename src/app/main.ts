@@ -91,7 +91,15 @@ function main(file: string | null = null) {
       trafficLightPosition: { x: 12, y: 12 },
     };
   } else {
-    chrome = { frame: false };
+    // Windows + Linux: frameless so the renderer-drawn `<TitleBar>`
+    // owns the chrome; `autoHideMenuBar` is belt-and-braces (some
+    // window managers — and certain Electron versions on Linux —
+    // can still try to render a menu strip inside the client area
+    // even when `frame: false` should suppress it). The Electron
+    // application menu IS still installed (see AppMenu.register())
+    // so global accelerators like Ctrl+S keep working; only the
+    // menu bar UI is suppressed.
+    chrome = { frame: false, autoHideMenuBar: true };
   }
   context = new BrowserWindow({
     show: false,
@@ -103,6 +111,15 @@ function main(file: string | null = null) {
       preload: join(__dirname, 'preload.js'),
     },
   });
+  // Hard-suppress the menu bar on Windows + Linux. With
+  // `autoHideMenuBar` alone, pressing Alt can momentarily reveal the
+  // menu (a default Electron UX) which would conflict with the
+  // TitleBar's own Alt-to-focus-first-menu handling. Explicitly
+  // setting visibility to false keeps the menu purely functional
+  // (accelerators) without any UI presence.
+  if (!isMac) {
+    context.setMenuBarVisibility(false);
+  }
 
   // Load the editor frontend
   context.loadFile(join(__dirname, '../index.html'));
@@ -132,9 +149,12 @@ function main(file: string | null = null) {
 
   bridge.register(); // Register all IPC event listeners
 
-  // Load the electron application menu. On Windows + Linux this calls
-  // `Menu.setApplicationMenu(null)` so the native strip disappears; on
-  // macOS it installs the model-driven application menu.
+  // Load the electron application menu. macOS uses it for the system
+  // menu bar; Windows + Linux install the same template too — even
+  // though the menu bar is hidden (see chrome opts above), Electron
+  // still dispatches accelerators (Ctrl+S, Ctrl+O, etc.) from it, so
+  // the keybindings the in-window `<TitleBar>` advertises actually
+  // work.
   const menu = new AppMenu(context);
   menu.provide('logger', logconfig);
   menu.register(); // Register all menu items

@@ -269,15 +269,13 @@ export class BridgeManager {
   }
 
   public menuFileSave(): void {
-    const active = this.fileManager.activeFile;
-    if (active && !active.startsWith('untitled')) {
-      const value = this.mkeditor.getValue();
-      this.bridge.send('to:file:save', { content: value, file: active });
-      this.fileManager.originals.set(active, value);
-      this.dispatcher.setTrackedContent({ content: value });
-    } else {
-      this.bridge.send('to:file:saveas', this.mkeditor.getValue());
-    }
+    // Delegate to FileManager so every save path (toolbar button,
+    // menu accelerator Ctrl+S, native macOS menu, in-window
+    // TitleBar) clears the tab's unsaved-changes dot via the same
+    // `markTabClean` call. Previously this branch duplicated the
+    // body but skipped `markTabClean`, so the file was saved on
+    // disk while the dot stayed lit.
+    this.fileManager.saveContentToFile();
   }
 
   public menuFileSaveAs(): void {

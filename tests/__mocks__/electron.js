@@ -25,6 +25,7 @@ const BrowserWindow = jest.fn().mockImplementation((opts) => {
     maximize: jest.fn(),
     show: jest.fn(),
     setTitle: jest.fn(),
+    setMenuBarVisibility: jest.fn(),
   };
 });
 
