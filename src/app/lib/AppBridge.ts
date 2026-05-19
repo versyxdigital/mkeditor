@@ -18,6 +18,7 @@ import { AppSession } from './AppSession';
 import { AppStorage } from './AppStorage';
 import { AssistantConfig } from './AssistantConfig';
 import { AssistantKeyStore } from './AssistantKeyStore';
+import { SecureChannel } from './SecureChannel';
 import {
   loadPersistedConversations,
   writePersistedConversations,
@@ -42,6 +43,13 @@ export class AppBridge {
     settings: null,
     assistant: null,
   };
+
+  /**
+   * RSA keypair used to receive secrets (API keys today, anything
+   * else later) without their plaintext ever crossing the IPC
+   * boundary. See `SecureChannel` for the rationale.
+   */
+  private secureChannel = new SecureChannel();
 
   /**
    * Create a new AppBridge instance to manage IPC traffic.
@@ -295,6 +303,15 @@ export class AppBridge {
       event.returnValue = locale;
     });
 
+    // Hand the renderer the SPKI base64 public key for this app
+    // session. Synchronous because the renderer needs it before
+    // the first key-encryption call and we'd otherwise need an
+    // awaited round-trip on the hot path. The public key is, by
+    // definition, public — no secret crosses here.
+    ipcMain.on('mked:secure:public-key', (event) => {
+      event.returnValue = this.secureChannel.publicKeySpkiBase64;
+    });
+
     // Provide path resolution through IPC to avoid having to set
     // nodeIntegration to true.
     ipcMain.handle('mked:path:dirname', (_e, p: string) => dirname(p));
@@ -477,10 +494,26 @@ export class AppBridge {
     });
 
     ipcMain.on('to:ai:key:set', (_e, payload: KeySetRequest) => {
-      // The key value lives in `payload.key`; never log it, never echo
-      // it back. AssistantKeyStore encrypts via safeStorage. The
-      // follow-up config push only carries `hasKey: boolean`.
-      AssistantKeyStore.setKey(payload.provider, payload.key);
+      // Payload carries RSA-OAEP ciphertext (base64) — never the
+      // raw API key. We decrypt with the per-session private key
+      // held inside `SecureChannel`, hand the plaintext directly to
+      // `AssistantKeyStore.setKey` (which re-encrypts via
+      // safeStorage for disk), and let the plaintext fall out of
+      // scope. The follow-up config push only carries
+      // `hasKey: boolean` so the renderer never sees plaintext
+      // come back either.
+      let plaintext: string;
+      try {
+        plaintext = this.secureChannel.decryptString(payload.ciphertext);
+      } catch (err) {
+        // Malformed / tampered ciphertext: refuse to act on it and
+        // leave the stored key untouched. Push the current config so
+        // the renderer sees the unchanged state.
+        this.providers.logger?.log.error('[to:ai:key:set] decrypt failed', err);
+        this.pushAssistantConfig();
+        return;
+      }
+      AssistantKeyStore.setKey(payload.provider, plaintext);
       this.pushAssistantConfig();
     });
 

@@ -136,6 +136,16 @@ contextBridge.exposeInMainWorld('mked', {
   platform: process.platform,
   getActiveFilePath: () => ipcRenderer.sendSync('mked:get-active-file'),
   getAppLocale: () => ipcRenderer.sendSync('mked:get-locale'),
+  /**
+   * SPKI base64 of main's per-session RSA-OAEP public key. The
+   * renderer imports this via Web Crypto and uses it to encrypt
+   * any secret (today: AI provider API keys) before sending over
+   * IPC. Synchronous because we want the very first key-set call
+   * to succeed without an awaited round-trip. The public key is
+   * not a secret — no compliance issue with how it crosses.
+   */
+  secureChannelPublicKey: (): string =>
+    ipcRenderer.sendSync('mked:secure:public-key'),
   openMkedUrl: (url: string) => ipcRenderer.send('mked:open-url', url),
   pathDirname: (p: string) => ipcRenderer.invoke('mked:path:dirname', p),
   resolvePath: (base: string, rel: string) =>

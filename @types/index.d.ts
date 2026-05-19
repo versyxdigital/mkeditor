@@ -23,6 +23,7 @@ declare global {
       pathDirname: (p: string) => Promise<string>;
       resolvePath: (base: string, rel: string) => Promise<string>;
       openMkedUrl: (url: string) => Promise<string>;
+      secureChannelPublicKey: () => string;
       readFile: (path: string) => Promise<{ content: string; lineCount: number }>;
       saveFile: (
         path: string,

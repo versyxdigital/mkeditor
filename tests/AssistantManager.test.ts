@@ -103,14 +103,72 @@ describe('AssistantManager outbound channels', () => {
     });
   });
 
-  it('setKey ships the plaintext key on to:ai:key:set (only direction it ever travels)', () => {
-    const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
-    mgr.setKey('openai', 'sk-secret-value');
-    expect(sent).toContainEqual({
-      channel: 'to:ai:key:set',
-      data: { provider: 'openai', key: 'sk-secret-value' },
+  it('setKey ships an RSA-OAEP ciphertext on to:ai:key:set (plaintext never crosses IPC — compliance)', async () => {
+    // Compliance: the API key MUST NOT cross renderer ↔ main IPC
+    // in plaintext. setKey RSA-encrypts via SecureChannelClient
+    // before shipping; this test stubs `crypto.subtle.encrypt` to
+    // verify (a) the plaintext is what gets encrypted, (b) the
+    // resulting payload carries the base64 ciphertext rather than
+    // the key, and (c) the bare word "sk-secret-value" never
+    // appears in the sent payload.
+    const w = window as Window & {
+      mked?: { secureChannelPublicKey?: () => string };
+    };
+    const prevMked = w.mked;
+    w.mked = {
+      ...prevMked,
+      secureChannelPublicKey: () => 'AAAA',
+    };
+    const cipherBuffer = new Uint8Array([1, 2, 3, 4]).buffer;
+    const origCrypto = (globalThis as { crypto?: Crypto }).crypto;
+    const fakeSubtle = {
+      importKey: jest.fn(async () => ({ type: 'public' }) as unknown),
+      encrypt: jest.fn(async () => cipherBuffer),
+    };
+    // Preserve the rest of `crypto` (`randomUUID` / `getRandomValues`)
+    // — wiping the namespace breaks every sibling test that calls
+    // `mintCallId`. We only need `subtle` swapped for this scenario.
+    Object.defineProperty(globalThis, 'crypto', {
+      value: { ...origCrypto, subtle: fakeSubtle },
+      configurable: true,
     });
+    // Drop the cached imported key so this test's stubbed
+    // importKey runs.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { _resetForTests } = require(
+      '../src/browser/core/SecureChannelClient',
+    );
+    _resetForTests();
+    try {
+      const { bridge, sent } = makeBridge();
+      const mgr = new AssistantManager(bridge as never, {
+        disablePacedReveal: true,
+      });
+      await mgr.setKey('openai', 'sk-secret-value');
+      const call = sent.find((s) => s.channel === 'to:ai:key:set');
+      expect(call).toBeDefined();
+      const data = call!.data as { provider: string; ciphertext: string };
+      expect(data.provider).toBe('openai');
+      expect(typeof data.ciphertext).toBe('string');
+      expect(data.ciphertext.length).toBeGreaterThan(0);
+      // Crucially: the plaintext key never appears in any sent
+      // payload as a substring of any string field. Stringify the
+      // whole payload list and grep for it.
+      expect(JSON.stringify(sent)).not.toContain('sk-secret-value');
+      // The Web Crypto encrypt call received the plaintext bytes.
+      const encryptArgs = fakeSubtle.encrypt.mock.calls[0];
+      const inputBytes = new Uint8Array(encryptArgs[2] as ArrayBuffer);
+      expect(new TextDecoder().decode(inputBytes)).toBe('sk-secret-value');
+    } finally {
+      if (prevMked === undefined) delete w.mked;
+      else w.mked = prevMked;
+      if (origCrypto) {
+        Object.defineProperty(globalThis, 'crypto', {
+          value: origCrypto,
+          configurable: true,
+        });
+      }
+    }
   });
 
   it('clearKey fires to:ai:key:clear with just the provider id', () => {

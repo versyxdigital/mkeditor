@@ -23,6 +23,7 @@ import type {
   UiMessageSegment,
 } from '../../app/interfaces/Assistant';
 import type { ToolExecutor } from './AssistantTools';
+import { encryptForMain } from './SecureChannelClient';
 import { confirmToolCallExternal } from '../react/contexts/ToolConfirmContext';
 
 /**
@@ -336,12 +337,23 @@ export class AssistantManager {
   }
 
   /**
-   * Encrypt + persist an API key for an API-key-bearing provider. The
-   * plaintext key crosses the bridge once and is never echoed back
-   * (`from:ai:config` carries `hasKey: boolean` only).
+   * Encrypt + persist an API key for an API-key-bearing provider.
+   *
+   * Compliance contract: the plaintext key MUST NOT cross the
+   * renderer ↔ main IPC boundary. We RSA-OAEP-encrypt locally with
+   * main's per-session public key (fetched once via
+   * `SecureChannelClient`) and ship only the base64 ciphertext.
+   * Main decrypts in `AppBridge.to:ai:key:set` and hands the
+   * plaintext to `AssistantKeyStore`, which then safeStorage-
+   * encrypts for disk. The subsequent `from:ai:config` push
+   * carries `hasKey: boolean` only — plaintext is never echoed.
+   *
+   * Async because Web Crypto is async; callers in the settings UI
+   * await this before clearing the input field.
    */
-  public setKey(provider: ApiProviderId, key: string): void {
-    this.bridge.send('to:ai:key:set', { provider, key });
+  public async setKey(provider: ApiProviderId, key: string): Promise<void> {
+    const ciphertext = await encryptForMain(key);
+    this.bridge.send('to:ai:key:set', { provider, ciphertext });
   }
 
   /** Remove the encrypted key for a provider. */

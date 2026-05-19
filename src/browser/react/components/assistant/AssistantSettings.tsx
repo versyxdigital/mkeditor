@@ -115,7 +115,12 @@ const ApiProviderRow: React.FC<{
 
   const commitKey = () => {
     if (!keyInput || disabledByEncryption) return;
-    manager.setKey(provider, keyInput);
+    // Fire-and-clear: setKey RSA-encrypts the plaintext in the
+    // renderer before shipping IPC (compliance), but we don't make
+    // the user wait on the await — the field clears immediately
+    // and any encryption failure surfaces via the unchanged
+    // `hasKey` state in the subsequent config push.
+    void manager.setKey(provider, keyInput);
     setKeyInput('');
     setShowKey(false);
     setStatus('unknown');

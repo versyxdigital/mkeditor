@@ -132,8 +132,14 @@ export type ConfigSetRequest =
 /** Payload of `to:ai:key:set`. */
 export interface KeySetRequest {
   provider: 'anthropic' | 'openai';
-  /** Plaintext API key. Encrypted server-side; never echoed back. */
-  key: string;
+  /**
+   * RSA-OAEP (SHA-256) ciphertext of the UTF-8 plaintext API key,
+   * base64-encoded. Encrypted in the renderer with the per-session
+   * public key fetched via `mked:secure:public-key`; decrypted in
+   * main by `SecureChannel.decryptString`. The plaintext key never
+   * crosses IPC.
+   */
+  ciphertext: string;
 }
 
 /** Payload of `to:ai:key:clear`. */
