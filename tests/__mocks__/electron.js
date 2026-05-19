@@ -13,19 +13,27 @@ const app = {
 };
 
 const BrowserWindow = jest.fn().mockImplementation((opts) => {
+  // Sender-id used by the AppWindow / AppMenu sender-scoping checks.
+  // Same value across windows is fine for tests — production
+  // recreations get distinct ids from Electron itself.
+  const senderId = 1;
   return {
     loadFile: jest.fn(),
     webContents: {
+      id: senderId,
       on: jest.fn(),
+      once: jest.fn(),
       loadFile: jest.fn(),
       setWindowOpenHandler: jest.fn(),
       send: jest.fn(),
     },
     on: jest.fn(),
+    once: jest.fn(),
     maximize: jest.fn(),
     show: jest.fn(),
     setTitle: jest.fn(),
     setMenuBarVisibility: jest.fn(),
+    isDestroyed: jest.fn(() => false),
   };
 });
 
@@ -58,6 +66,7 @@ const dialog = {
 const ipcMain = {
   on: jest.fn(),
   handle: jest.fn(),
+  removeListener: jest.fn(),
 };
 
 const protocol = {

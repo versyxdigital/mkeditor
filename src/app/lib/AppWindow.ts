@@ -1,4 +1,4 @@
-import { ipcMain, type BrowserWindow } from 'electron';
+import { ipcMain, type BrowserWindow, type IpcMainEvent } from 'electron';
 
 /**
  * AppWindow
@@ -14,9 +14,22 @@ import { ipcMain, type BrowserWindow } from 'electron';
  * (we keep `titleBarStyle: 'hiddenInset'` so they stay visible); the
  * channels are still registered, harmlessly, since the renderer never
  * sends to them on darwin.
+ *
+ * **Listener hygiene.** Each `ipcMain.on` registration is process-
+ * global, so on macOS where the window can be recreated via
+ * `app.on('activate')`, we have to do two things to avoid leaking and
+ * cross-window dispatch:
+ *   1. Sender-scope every handler — ignore events whose sender's
+ *      webContents id doesn't match this window's. Stops a second
+ *      window from acting on the first window's IPC traffic.
+ *   2. Track each registered handler and remove it via
+ *      `ipcMain.removeListener` when the window emits `closed`. Stops
+ *      orphan handlers from accumulating across recreations.
  */
 export class AppWindow {
   private context: BrowserWindow;
+  /** Tracked so `closed` can remove exactly the handlers we added. */
+  private listeners: Array<{ channel: string; handler: (...args: unknown[]) => void }> = [];
 
   constructor(context: BrowserWindow, register = false) {
     this.context = context;
@@ -24,12 +37,12 @@ export class AppWindow {
   }
 
   register() {
-    ipcMain.on('to:window:minimize', () => {
+    this.on('to:window:minimize', () => {
       if (this.context.isDestroyed()) return;
       this.context.minimize();
     });
 
-    ipcMain.on('to:window:maximize', () => {
+    this.on('to:window:maximize', () => {
       if (this.context.isDestroyed()) return;
       if (this.context.isMaximized()) {
         this.context.unmaximize();
@@ -38,7 +51,7 @@ export class AppWindow {
       }
     });
 
-    ipcMain.on('to:window:close', () => {
+    this.on('to:window:close', () => {
       if (this.context.isDestroyed()) return;
       this.context.close();
     });
@@ -46,7 +59,7 @@ export class AppWindow {
     // Native `role: 'togglefullscreen'` accelerators only fire when the
     // application menu is mounted — Windows/Linux clear the menu in P1,
     // so the renderer's in-window menu drives this IPC instead.
-    ipcMain.on('to:window:fullscreen', () => {
+    this.on('to:window:fullscreen', () => {
       if (this.context.isDestroyed()) return;
       this.context.setFullScreen(!this.context.isFullScreen());
     });
@@ -58,21 +71,26 @@ export class AppWindow {
     // gesture Chromium requires for clipboard ops. `webContents.cut()`
     // etc. dispatch the events natively without that constraint —
     // Monaco's textarea receives them and acts accordingly.
-    ipcMain.on('to:edit:cut', () => {
+    this.on('to:edit:cut', () => {
       if (this.context.isDestroyed()) return;
       this.context.webContents.cut();
     });
-    ipcMain.on('to:edit:copy', () => {
+    this.on('to:edit:copy', () => {
       if (this.context.isDestroyed()) return;
       this.context.webContents.copy();
     });
-    ipcMain.on('to:edit:paste', () => {
+    this.on('to:edit:paste', () => {
       if (this.context.isDestroyed()) return;
       this.context.webContents.paste();
     });
 
     this.context.on('maximize', () => this.emitState(true));
     this.context.on('unmaximize', () => this.emitState(false));
+
+    // Tear down IPC listeners when this window closes so we don't leak
+    // handlers (macOS recreates the window via `app.on('activate')`)
+    // or dispatch onto a destroyed BrowserWindow.
+    this.context.once('closed', () => this.dispose());
 
     // Hydrate the renderer with the current state once the renderer is
     // ready to receive (mirrors the other `did-finish-load` sends in
@@ -81,6 +99,28 @@ export class AppWindow {
     this.context.webContents.once('did-finish-load', () => {
       this.emitState(this.context.isMaximized());
     });
+  }
+
+  /**
+   * Register an IPC listener scoped to this window's webContents. The
+   * handler runs only when the event originated from our renderer —
+   * a second BrowserWindow's traffic is ignored. The wrapper is
+   * tracked so `dispose()` can remove the exact reference.
+   */
+  private on(channel: string, fn: (event: IpcMainEvent) => void): void {
+    const handler = (event: IpcMainEvent) => {
+      if (event.sender.id !== this.context.webContents.id) return;
+      fn(event);
+    };
+    ipcMain.on(channel, handler);
+    this.listeners.push({ channel, handler: handler as (...args: unknown[]) => void });
+  }
+
+  private dispose(): void {
+    for (const { channel, handler } of this.listeners) {
+      ipcMain.removeListener(channel, handler);
+    }
+    this.listeners = [];
   }
 
   private emitState(isMaximized: boolean): void {

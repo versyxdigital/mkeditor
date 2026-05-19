@@ -3,6 +3,7 @@ import {
   ipcMain,
   Menu,
   type BrowserWindow,
+  type IpcMainEvent,
   type MenuItemConstructorOptions,
 } from 'electron';
 import type { BridgeProviders } from '../interfaces/Providers';
@@ -151,6 +152,11 @@ export class AppMenu {
    * macOS menu and the in-window menu pick it up for free.
    */
   public runCommand(commandId: string): void {
+    // Bail if the window we'd dispatch onto has been destroyed (the
+    // listener cleanup in `wireRendererCommandBridge` covers the
+    // ordinary path, but late-firing events between `closed` and
+    // `removeListener` can still arrive here).
+    if (this.context.isDestroyed()) return;
     switch (commandId) {
       case 'open-log': {
         const logpath = this.providers.logger?.logpath;
@@ -168,15 +174,35 @@ export class AppMenu {
     }
   }
 
+  /** Track the `to:command:run` handler so we can detach it on close. */
+  private commandBridgeHandler:
+    | ((event: IpcMainEvent, commandId: string) => void)
+    | null = null;
+
   /**
    * Register the `to:command:run` IPC listener so the renderer's
    * in-window menu (P2) can fire main-process commands through the
    * same dispatch table the native macOS menu uses. Called from
    * `main.ts` once per BrowserWindow.
+   *
+   * The handler is sender-scoped (ignores IPC from any other
+   * BrowserWindow's webContents) and torn down when this window
+   * closes — both guards matter on macOS where the window can be
+   * recreated via `app.on('activate')` and a stale handler would
+   * otherwise dispatch commands onto the wrong / destroyed context.
    */
   wireRendererCommandBridge() {
-    ipcMain.on('to:command:run', (_event, commandId: string) => {
+    const handler = (event: IpcMainEvent, commandId: string) => {
+      if (event.sender.id !== this.context.webContents.id) return;
       this.runCommand(commandId);
+    };
+    ipcMain.on('to:command:run', handler);
+    this.commandBridgeHandler = handler;
+    this.context.once('closed', () => {
+      if (this.commandBridgeHandler) {
+        ipcMain.removeListener('to:command:run', this.commandBridgeHandler);
+        this.commandBridgeHandler = null;
+      }
     });
   }
 
