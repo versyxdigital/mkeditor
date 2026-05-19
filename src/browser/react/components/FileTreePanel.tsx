@@ -353,7 +353,21 @@ const NodeRow: React.FC<NodeRowProps> = ({
   onToggle,
   onOpen,
 }) => {
-  const expanded = node.type === 'directory' && expandedPaths.has(node.path);
+  // "Visually expanded" requires both the user intent (path in
+  // expandedPaths) AND that the directory's children have actually
+  // been loaded. Without the `loaded` gate, a tree refresh that
+  // replaces a previously-expanded directory's children with a
+  // fresh shallow listing (e.g. after a file/folder delete) would
+  // leave the chevron / folder-open icons in the expanded pose
+  // while the children block bails on the undefined `children`
+  // array — a visual mismatch the user reads as "tree collapsed
+  // but icons stuck". Gating on `loaded` keeps the icons honest;
+  // when the user re-clicks, the lazy-load repopulates and the
+  // icons flip back open.
+  const expanded =
+    node.type === 'directory' &&
+    expandedPaths.has(node.path) &&
+    node.loaded === true;
   const isActiveFile = node.type === 'file' && node.path === activeFile;
   const hasChevron = node.type === 'directory' && node.hasChildren;
 
