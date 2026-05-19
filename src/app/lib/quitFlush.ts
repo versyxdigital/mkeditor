@@ -15,17 +15,31 @@
 
 export interface QuitFlushDeps {
   /** Subscribe to an ack channel; returns an unsubscribe function. */
-  on: (channel: 'to:session:save' | 'to:ai:conversations:flush', listener: () => void) => void;
+  on: (
+    channel: 'to:session:save' | 'to:ai:conversations:flush',
+    listener: () => void,
+  ) => void;
   /** Remove a previously-registered listener. Mirrors `ipcMain.removeListener`. */
-  off: (channel: 'to:session:save' | 'to:ai:conversations:flush', listener: () => void) => void;
+  off: (
+    channel: 'to:session:save' | 'to:ai:conversations:flush',
+    listener: () => void,
+  ) => void;
   /** Send a notification channel to the renderer. */
-  send: (channel: 'from:session:flush-request' | 'from:ai:conversations:flush-request', payload?: unknown) => void;
+  send: (
+    channel:
+      | 'from:session:flush-request'
+      | 'from:ai:conversations:flush-request',
+    payload?: unknown,
+  ) => void;
   /** Fires once when both acks have landed OR the timeout has elapsed. Idempotent. */
   onDone: () => void;
   /** Safety timeout in ms (default 250). */
   timeoutMs?: number;
   /** Injected `setTimeout` so tests can use fake timers without polluting node globals. */
-  setTimer?: (fn: () => void, ms: number) => ReturnType<typeof setTimeout> | number;
+  setTimer?: (
+    fn: () => void,
+    ms: number,
+  ) => ReturnType<typeof setTimeout> | number;
   /** Injected `clearTimeout` paired with `setTimer`. */
   clearTimer?: (timer: ReturnType<typeof setTimeout> | number) => void;
 }

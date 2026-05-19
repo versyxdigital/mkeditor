@@ -7,10 +7,7 @@ import type {
   ProviderId,
 } from '../interfaces/Assistant';
 import { DEFAULT_PROVIDER_CONFIG } from '../interfaces/Assistant';
-import {
-  loadAssistantStore,
-  writeAssistantStore,
-} from './assistantStoreFile';
+import { loadAssistantStore, writeAssistantStore } from './assistantStoreFile';
 
 /**
  * AssistantConfig
@@ -69,10 +66,7 @@ export class AssistantConfig {
         );
         break;
       case 'openai':
-        merged.openai = AssistantConfig.mergeApi(
-          merged.openai,
-          request.config,
-        );
+        merged.openai = AssistantConfig.mergeApi(merged.openai, request.config);
         break;
       case 'ollama':
         merged.ollama = AssistantConfig.mergeOllama(

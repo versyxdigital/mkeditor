@@ -6,22 +6,22 @@ Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Decisions
 
-| Area                      | Decision                                                                                                                                                                                                                                                                                                                                           |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Area                      | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Provider abstraction      | [Vercel AI SDK](https://sdk.vercel.ai) (`ai` + `@ai-sdk/openai` + `@ai-sdk/anthropic` + `ollama-ai-provider-v2`). One `streamText`/`generateText` surface, one tool-call shape, one message schema across all three providers. Adding a fourth provider later is one adapter and a settings row. The `-v2` suffix on the Ollama adapter is the package's actual name on npm — the original `ollama-ai-provider` package was abandoned at SDK spec v1 and a fresh package was published once the SDK moved to spec v3. |
-| API call location         | **Desktop-only** (P7 scope-down). Renderer sends `to:ai:chat` with the conversation + tools; main owns the SDK, the API keys, and the upstream stream; chunks flow back as `from:ai:chunk`. **Web build**: the AI Assistant sidebar / settings panel / Navbar toggle are hidden — there is no in-renderer SDK path. Future revisits could re-introduce web support behind a server-proxy design that doesn't put keys in localStorage.                                                                                          |
-| API key storage           | **Desktop**: Electron `safeStorage`-encrypted, stored in `~/.mkeditor/assistant.json` (sibling of `settings.json` and `session.json`). Keys never enter the renderer process. **Web**: no key storage — feature is hidden (see "API call location" above).                                                                                       |
-| Conversation organisation | Right sidebar has a tab strip across the top — one tab per **enabled** provider (Anthropic / OpenAI / Ollama). Each tab owns a list of past conversations + a "new chat" button. Switching tabs preserves draft input per provider. Conversations persist to `~/.mkeditor/assistant.json` (desktop only).                                         |
-| Tool catalog (v1)         | Full toolset: `read_file`, `write_file`, `edit_file`, `create_file`, `list_files`, `get_active_file`, `get_selection`, `replace_selection`, `insert_at_cursor`, `open_tab`. Defined once in `src/browser/core/AssistantTools.ts`; description + Zod schema shared between desktop (sent over IPC) and web (used directly).                         |
-| Tool execution policy     | Read-class tools auto-execute. Write-class tools (`write_file`, `edit_file`, `create_file`, `replace_selection`, `insert_at_cursor`) open a confirm prompt via the existing `openPromptExternal` seam before running. Each chat has an "auto-accept writes for this conversation" toggle, defaulting **off**. No global auto-accept setting in v1. |
-| Streaming                 | Chunks ferried by call id. Renderer holds an in-flight call map; main holds the upstream stream + cancel handle. `to:ai:cancel` with the call id aborts. Concurrent calls (one per provider tab) are supported; the SDK's `AbortController` plus per-call ids keep them isolated.                                                                  |
-| Tool-call UX              | Each tool call renders as a collapsible card in the message stream (`▸ read_file workspace/README.md`). Expanded view shows arguments + result. Failures show inline error + a retry button. Pending confirmations float a `<ConfirmToolCall>` dialog (uses the existing `AlertDialog` primitive).                                                 |
-| Context controls          | Active file + current selection are included automatically as a tagged system message; user can toggle "share active file" per chat. `@` in the input opens a file picker built from `FileTreeManager.snapshot()` for explicit cross-file context. No silent workspace scanning.                                                                   |
-| Models                    | Per-provider model picker in settings, persisted as the chat default. The chat header has a quick-switch dropdown to override the model for the next message. Ollama models populate from a one-shot `to:ai:ollama:list` (main calls `localhost:11434/api/tags`).                                                                                  |
-| Cost / token telemetry    | Out of scope for v1. The SDK reports `usage` on stream end; we log it via `window.logger.info` (desktop) but don't surface it in the UI. Revisit in a polish phase.                                                                                                                                                                                |
-| Concurrent providers      | Each provider tab has at most one in-flight call. A second send while a call is in flight either cancels-and-replaces (with explicit "Stop" affordance) or queues — pick during P4 once the UX is concrete.                                                                                                                                        |
-| Ollama on web             | N/A — AI is desktop-only (see "API call location" row).                                                                                                                                                                                                                                                                                            |
-| State ownership           | `AssistantManager` (renderer) owns chat state, in-flight calls, conversation history. `AppAssistant` (main) owns the SDK, key storage, upstream streams. `AssistantTools` (renderer) owns tool dispatch into the existing managers (no new IPC surface for tool execution — it just calls `FileManager` / `FileTreeManager` / `EditorManager`).    |
+| API call location         | **Desktop-only** (P7 scope-down). Renderer sends `to:ai:chat` with the conversation + tools; main owns the SDK, the API keys, and the upstream stream; chunks flow back as `from:ai:chunk`. **Web build**: the AI Assistant sidebar / settings panel / Navbar toggle are hidden — there is no in-renderer SDK path. Future revisits could re-introduce web support behind a server-proxy design that doesn't put keys in localStorage.                                                                                |
+| API key storage           | **Desktop**: Electron `safeStorage`-encrypted, stored in `~/.mkeditor/assistant.json` (sibling of `settings.json` and `session.json`). Keys never enter the renderer process. **Web**: no key storage — feature is hidden (see "API call location" above).                                                                                                                                                                                                                                                            |
+| Conversation organisation | Right sidebar has a tab strip across the top — one tab per **enabled** provider (Anthropic / OpenAI / Ollama). Each tab owns a list of past conversations + a "new chat" button. Switching tabs preserves draft input per provider. Conversations persist to `~/.mkeditor/assistant.json` (desktop only).                                                                                                                                                                                                             |
+| Tool catalog (v1)         | Full toolset: `read_file`, `write_file`, `edit_file`, `create_file`, `list_files`, `get_active_file`, `get_selection`, `replace_selection`, `insert_at_cursor`, `open_tab`. Defined once in `src/browser/core/AssistantTools.ts`; description + Zod schema shared between desktop (sent over IPC) and web (used directly).                                                                                                                                                                                            |
+| Tool execution policy     | Read-class tools auto-execute. Write-class tools (`write_file`, `edit_file`, `create_file`, `replace_selection`, `insert_at_cursor`) open a confirm prompt via the existing `openPromptExternal` seam before running. Each chat has an "auto-accept writes for this conversation" toggle, defaulting **off**. No global auto-accept setting in v1.                                                                                                                                                                    |
+| Streaming                 | Chunks ferried by call id. Renderer holds an in-flight call map; main holds the upstream stream + cancel handle. `to:ai:cancel` with the call id aborts. Concurrent calls (one per provider tab) are supported; the SDK's `AbortController` plus per-call ids keep them isolated.                                                                                                                                                                                                                                     |
+| Tool-call UX              | Each tool call renders as a collapsible card in the message stream (`▸ read_file workspace/README.md`). Expanded view shows arguments + result. Failures show inline error + a retry button. Pending confirmations float a `<ConfirmToolCall>` dialog (uses the existing `AlertDialog` primitive).                                                                                                                                                                                                                    |
+| Context controls          | Active file + current selection are included automatically as a tagged system message; user can toggle "share active file" per chat. `@` in the input opens a file picker built from `FileTreeManager.snapshot()` for explicit cross-file context. No silent workspace scanning.                                                                                                                                                                                                                                      |
+| Models                    | Per-provider model picker in settings, persisted as the chat default. The chat header has a quick-switch dropdown to override the model for the next message. Ollama models populate from a one-shot `to:ai:ollama:list` (main calls `localhost:11434/api/tags`).                                                                                                                                                                                                                                                     |
+| Cost / token telemetry    | Out of scope for v1. The SDK reports `usage` on stream end; we log it via `window.logger.info` (desktop) but don't surface it in the UI. Revisit in a polish phase.                                                                                                                                                                                                                                                                                                                                                   |
+| Concurrent providers      | Each provider tab has at most one in-flight call. A second send while a call is in flight either cancels-and-replaces (with explicit "Stop" affordance) or queues — pick during P4 once the UX is concrete.                                                                                                                                                                                                                                                                                                           |
+| Ollama on web             | N/A — AI is desktop-only (see "API call location" row).                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| State ownership           | `AssistantManager` (renderer) owns chat state, in-flight calls, conversation history. `AppAssistant` (main) owns the SDK, key storage, upstream streams. `AssistantTools` (renderer) owns tool dispatch into the existing managers (no new IPC surface for tool execution — it just calls `FileManager` / `FileTreeManager` / `EditorManager`).                                                                                                                                                                       |
 
 ### State ownership rule
 
@@ -177,8 +177,8 @@ API keys live in a separate, encrypted-at-rest section managed by [AssistantKeyS
 
 ## Phase Index
 
-| #   | Phase                                                              | Status |
-| --- | ------------------------------------------------------------------ | ------ |
+| #   | Phase                                                              | Status        |
+| --- | ------------------------------------------------------------------ | ------------- |
 | 1   | Main-process infrastructure (AppAssistant + keystore + IPC)        | 🟢 2026-05-18 |
 | 2   | Right-sidebar shell (collapsible/resizable, empty tab strip)       | 🟢 2026-05-18 |
 | 3   | Provider settings UI (per-provider enable + key + model picker)    | 🟢 2026-05-18 |
@@ -487,14 +487,16 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
 Run through this list on Windows after every P8-touching change. Each step is small enough to fit in one launch of the editor; mark ✅ in your PR notes if the headline flow is intact.
 
 **Setup — providers**
+
 - [ ] Open **Settings → AI Providers**. Tab shows three rows (Anthropic / OpenAI / Ollama), all disabled.
 - [ ] Enable Anthropic, paste a valid key, save. Sidebar tab strip now shows "Anthropic".
 - [ ] Enable OpenAI, paste a valid key, save. Tab strip now shows "Anthropic | OpenAI".
-- [ ] Enable Ollama (point at `http://localhost:11434`), click *Refresh models*, pick a local model, save.
+- [ ] Enable Ollama (point at `http://localhost:11434`), click _Refresh models_, pick a local model, save.
 - [ ] Disable OpenAI; its tab disappears but the saved config survives.
 - [ ] Quit & relaunch: enabled providers + keys reload (no re-paste needed); disabled providers stay disabled.
 
 **Chat — basic round-trips**
+
 - [ ] Anthropic tab: send "hi". Response streams in; the thinking-indicator shows until the first token, then disappears.
 - [ ] OpenAI tab: same.
 - [ ] Ollama tab: same (slower first token is fine).
@@ -502,31 +504,37 @@ Run through this list on Windows after every P8-touching change. Each step is sm
 - [ ] Send a long prompt mid-stream → previous call cancels-and-replaces cleanly (no orphaned bubble).
 
 **Cancel / Stop**
-- [ ] Send "write me a 1000-word essay about markdown". While streaming, click *Stop* — bubble shows the cancelled footer.
+
+- [ ] Send "write me a 1000-word essay about markdown". While streaming, click _Stop_ — bubble shows the cancelled footer.
 - [ ] Same flow but press `Esc` instead — same result.
 
 **Tools — read-class (auto-execute)**
+
 - [ ] "Read README.md and summarise it." → `read_file` card auto-runs, expand shows args + result, assistant follows up with a summary.
 - [ ] "List files in src/browser/core" → `list_files` card auto-runs.
 - [ ] "Show me what's selected" with a selection → `get_selection` card auto-runs.
 
 **Tools — write-class (confirm gate)**
+
 - [ ] "Edit README.md, add a line saying 'Hello smoke test' at the top." → confirm dialog appears with diff preview. **Reject** — card shows `error_rejected`.
 - [ ] Same prompt again — **Accept** — edit applies, card succeeds.
 - [ ] "Create a new file scratch.md with content 'smoke test'." → confirm dialog → Accept → file appears in tree + opens in a new tab.
 - [ ] Toggle the conversation's "auto-accept writes" → ask for another edit → applies without prompting.
 
 **Tool-card UX**
+
 - [ ] Trigger a long-result tool (e.g. `read_file` on a large doc). Card body shows "Show more ({{chars}} more chars)" — click → expands, "Show less" — click → collapses.
-- [ ] Force a tool failure (e.g. ask agent to read a non-existent file). Card shows error code + message + **Retry** button. Click *Retry* → fresh user turn re-stating the call; assistant tries again.
+- [ ] Force a tool failure (e.g. ask agent to read a non-existent file). Card shows error code + message + **Retry** button. Click _Retry_ → fresh user turn re-stating the call; assistant tries again.
 
 **Context controls**
+
 - [ ] Open a file. Active-file chip shows at the bottom of the input with the file name + line count.
 - [ ] Toggle "share active file" off → chip disappears → ask the agent what file you're looking at → it doesn't know.
 - [ ] Type `@` in the input → mention picker opens with files from the tree.
 - [ ] Pick a file → it appears as a context chip; send "what does this file do?" → agent reads it.
 
 **Keyboard shortcuts**
+
 - [ ] `Cmd/Ctrl+Shift+A` from anywhere → toggles sidebar.
 - [ ] Tray → "Toggle Assistant" → same.
 - [ ] **Help → Configure AI Providers...** → opens Settings on the AI tab.
@@ -534,17 +542,20 @@ Run through this list on Windows after every P8-touching change. Each step is sm
 - [ ] In the chat sidebar: `Cmd/Ctrl+/` → focuses the textarea from anywhere within the sidebar.
 
 **Persistence**
+
 - [ ] Have at least one conversation per enabled provider with a few messages.
 - [ ] Quit & relaunch → all conversations restore with messages, tool cards, and timestamps intact.
 - [ ] Delete a conversation → confirm prompt → gone from list → relaunch → still gone.
 
 **Error taxonomy**
+
 - [ ] Set an invalid Anthropic key → send a message → bubble shows the translated `invalid_key` error.
 - [ ] Stop Ollama → send to Ollama → translated `ollama_unreachable` error.
 - [ ] Disconnect network → translated `network_error`.
 - [ ] Send an oversized prompt (paste a huge file) → translated `context_window_exceeded`.
 
 **i18n spot-check**
+
 - [ ] Switch locale (e.g. `de`, `ja`, `fr`) → relaunch → assistant title, tab labels, empty-state copy, tool-card labels, confirm dialog text all render in the chosen locale.
 
 ---

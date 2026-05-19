@@ -67,7 +67,11 @@ describe('<ConfirmToolCall>', () => {
       toolCallId: 'tc-1',
       toolName: 'write_file',
       arguments: { path: '/x.md', content: 'new' },
-      preview: { kind: 'write', path: '/x.md', after: 'new' } as ToolConfirmPreview,
+      preview: {
+        kind: 'write',
+        path: '/x.md',
+        after: 'new',
+      } as ToolConfirmPreview,
     });
 
     await screen.findByRole('dialog');

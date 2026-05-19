@@ -304,24 +304,26 @@ describe('AppAssistant.cancel', () => {
     seedKey('anthropic', 'sk-x');
 
     let capturedAbort: AbortSignal | undefined;
-    mockStreamText.mockImplementationOnce(({ abortSignal }: { abortSignal: AbortSignal }) => {
-      capturedAbort = abortSignal;
-      // A stream that pauses indefinitely after the first chunk until aborted.
-      return {
-        fullStream: (async function* () {
-          yield { type: 'text-delta', text: 'first' };
-          // Wait for abort. The for-await loop in AppAssistant breaks on
-          // `state.cancelled`, but this also exercises that we don't keep
-          // sending chunks after cancel.
-          await new Promise<void>((resolve) => {
-            abortSignal.addEventListener('abort', () => resolve());
-          });
-        })(),
-        response: Promise.resolve({ messages: [] }),
-        usage: Promise.resolve({}),
-        finishReason: Promise.resolve('stop'),
-      };
-    });
+    mockStreamText.mockImplementationOnce(
+      ({ abortSignal }: { abortSignal: AbortSignal }) => {
+        capturedAbort = abortSignal;
+        // A stream that pauses indefinitely after the first chunk until aborted.
+        return {
+          fullStream: (async function* () {
+            yield { type: 'text-delta', text: 'first' };
+            // Wait for abort. The for-await loop in AppAssistant breaks on
+            // `state.cancelled`, but this also exercises that we don't keep
+            // sending chunks after cancel.
+            await new Promise<void>((resolve) => {
+              abortSignal.addEventListener('abort', () => resolve());
+            });
+          })(),
+          response: Promise.resolve({ messages: [] }),
+          usage: Promise.resolve({}),
+          finishReason: Promise.resolve('stop'),
+        };
+      },
+    );
 
     assistant.chat(baseRequest('call-cancel'));
     await flush();
@@ -420,28 +422,31 @@ describe('AppAssistant.chat — error mapping', () => {
       'ollama-1',
       'ollama request to http://localhost:11434/api/chat failed: ECONNREFUSED',
     ],
-  ])('maps %s when streamText throws with a matching message', async (code, callId, message) => {
-    const ctx = makeContext();
-    const { assistant } = buildAssistant(ctx);
-    // For ollama_unreachable, the request needs to target ollama.
-    seedKey('anthropic', 'sk-x');
-    seedKey('openai', 'sk-x');
+  ])(
+    'maps %s when streamText throws with a matching message',
+    async (code, callId, message) => {
+      const ctx = makeContext();
+      const { assistant } = buildAssistant(ctx);
+      // For ollama_unreachable, the request needs to target ollama.
+      seedKey('anthropic', 'sk-x');
+      seedKey('openai', 'sk-x');
 
-    mockStreamText.mockImplementationOnce(() => {
-      throw new Error(message);
-    });
+      mockStreamText.mockImplementationOnce(() => {
+        throw new Error(message);
+      });
 
-    const req =
-      code === 'ollama_unreachable'
-        ? baseRequest(callId, 'hello', 'ollama')
-        : baseRequest(callId);
-    assistant.chat(req);
-    await flush();
+      const req =
+        code === 'ollama_unreachable'
+          ? baseRequest(callId, 'hello', 'ollama')
+          : baseRequest(callId);
+      assistant.chat(req);
+      await flush();
 
-    expect(findSend(ctx, 'from:ai:error')).toEqual(
-      expect.objectContaining({ callId, code }),
-    );
-  });
+      expect(findSend(ctx, 'from:ai:error')).toEqual(
+        expect.objectContaining({ callId, code }),
+      );
+    },
+  );
 
   it('maps an Ollama 400 "does not support tools" APICallError to model_unsupported_tools', async () => {
     const ctx = makeContext();
@@ -451,16 +456,13 @@ describe('AppAssistant.chat — error mapping', () => {
     // AI SDK `APICallError` with `name === 'AI_APICallError'`,
     // statusCode, and a JSON responseBody that wraps the upstream
     // error string under `{ error: "…" }`.
-    const apiErr = Object.assign(
-      new Error('Bad Request'),
-      {
-        name: 'AI_APICallError',
-        statusCode: 400,
-        responseBody: JSON.stringify({
-          error: 'registry.ollama.ai/library/gemma3:4b does not support tools',
-        }),
-      },
-    );
+    const apiErr = Object.assign(new Error('Bad Request'), {
+      name: 'AI_APICallError',
+      statusCode: 400,
+      responseBody: JSON.stringify({
+        error: 'registry.ollama.ai/library/gemma3:4b does not support tools',
+      }),
+    });
     mockStreamText.mockImplementationOnce(() => {
       throw apiErr;
     });
@@ -567,7 +569,12 @@ describe('AppAssistant — tool-call → tool-result loop', () => {
     await flush();
 
     const toolCall = findSend(ctx, 'from:ai:tool-call') as
-      | { callId: string; toolCallId: string; toolName: string; arguments: unknown }
+      | {
+          callId: string;
+          toolCallId: string;
+          toolName: string;
+          arguments: unknown;
+        }
       | undefined;
     expect(toolCall).toEqual({
       callId: 'call-tool',
@@ -841,23 +848,26 @@ describe('AppAssistant.chat — Ollama baseURL normalisation', () => {
     ['http://localhost:11434/', 'http://localhost:11434/api'],
     ['http://localhost:11434/api', 'http://localhost:11434/api'],
     ['http://localhost:11434/api/', 'http://localhost:11434/api'],
-  ])('normalises Daemon URL %s → %s before handing to ollama-ai-provider-v2', async (input, expected) => {
-    const ctx = makeContext();
-    const { assistant, factories } = buildAssistant(ctx);
-    // Seed the on-disk config with the user-supplied Daemon URL.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { AssistantConfig } = require('../src/app/lib/AssistantConfig');
-    AssistantConfig.update({
-      provider: 'ollama',
-      config: { enabled: true, model: 'llama3.2', baseUrl: input },
-    });
+  ])(
+    'normalises Daemon URL %s → %s before handing to ollama-ai-provider-v2',
+    async (input, expected) => {
+      const ctx = makeContext();
+      const { assistant, factories } = buildAssistant(ctx);
+      // Seed the on-disk config with the user-supplied Daemon URL.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { AssistantConfig } = require('../src/app/lib/AssistantConfig');
+      AssistantConfig.update({
+        provider: 'ollama',
+        config: { enabled: true, model: 'llama3.2', baseUrl: input },
+      });
 
-    mockStreamText.mockReturnValueOnce(makeStreamResult([]));
-    assistant.chat(baseRequest('oll-norm', 'hello', 'ollama'));
-    await flush();
+      mockStreamText.mockReturnValueOnce(makeStreamResult([]));
+      assistant.chat(baseRequest('oll-norm', 'hello', 'ollama'));
+      await flush();
 
-    expect(factories.ollama).toHaveBeenCalledWith(expected, 'llama3.2');
-  });
+      expect(factories.ollama).toHaveBeenCalledWith(expected, 'llama3.2');
+    },
+  );
 });
 
 describe('AppAssistant.listOllamaModels', () => {
@@ -868,13 +878,12 @@ describe('AppAssistant.listOllamaModels', () => {
     const origFetch = globalThis.fetch;
     const fetchMock = jest.fn();
     (globalThis as unknown as { fetch: jest.Mock }).fetch = fetchMock;
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          models: [{ name: 'llama3.2' }, { name: 'qwen2.5' }],
-        }),
-      } as never);
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        models: [{ name: 'llama3.2' }, { name: 'qwen2.5' }],
+      }),
+    } as never);
 
     await assistant.listOllamaModels({
       callId: 'oll-1',
@@ -895,8 +904,7 @@ describe('AppAssistant.listOllamaModels', () => {
     const origFetch = globalThis.fetch;
     const fetchMock = jest.fn();
     (globalThis as unknown as { fetch: jest.Mock }).fetch = fetchMock;
-    fetchMock
-      .mockResolvedValueOnce({ ok: false, status: 502 } as never);
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 502 } as never);
 
     await assistant.listOllamaModels({
       callId: 'oll-2',
@@ -919,8 +927,7 @@ describe('AppAssistant.listOllamaModels', () => {
     const origFetch = globalThis.fetch;
     const fetchMock = jest.fn();
     (globalThis as unknown as { fetch: jest.Mock }).fetch = fetchMock;
-    fetchMock
-      .mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    fetchMock.mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
     await assistant.listOllamaModels({
       callId: 'oll-3',

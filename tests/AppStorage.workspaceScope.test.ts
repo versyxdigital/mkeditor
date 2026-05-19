@@ -8,13 +8,7 @@
  * the symlink branch is exercised against the actual OS behaviour.
  */
 
-import {
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-  mkdirSync,
-  symlinkSync,
-} from 'fs';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 

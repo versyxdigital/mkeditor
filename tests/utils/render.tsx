@@ -110,8 +110,10 @@ export function fakeAssistantManager(
     initialChatSnapshot?: ChatSnapshot;
   } = {},
 ) {
-  let snapshot =
-    init.initialSnapshot ?? { config: null, encryptionAvailable: false };
+  let snapshot = init.initialSnapshot ?? {
+    config: null,
+    encryptionAvailable: false,
+  };
   let chatSnapshot = init.initialChatSnapshot ?? EMPTY_CHAT_SNAPSHOT;
   const configListeners = new Set<() => void>();
   const chatListeners = new Set<() => void>();

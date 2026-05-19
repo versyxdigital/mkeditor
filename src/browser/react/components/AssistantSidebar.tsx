@@ -121,10 +121,7 @@ export const AssistantSidebar: React.FC = () => {
                       : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground',
                   )}
                 >
-                  <ProviderLogo
-                    provider={provider}
-                    className="h-3.5 w-3.5"
-                  />
+                  <ProviderLogo provider={provider} className="h-3.5 w-3.5" />
                   <span>{PROVIDER_LABEL[provider]}</span>
                   {isStreaming && (
                     <span

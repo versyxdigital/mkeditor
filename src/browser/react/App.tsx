@@ -141,42 +141,44 @@ export const App: React.FC<AppProps> = ({
         <ExportSettingsContextProvider>
           <AssistantContextProvider>
             <ModalsProvider>
-            <PromptsProvider>
-              <PropertiesProvider>
-                <WindowProvider>
-                  <ToolConfirmProvider>
-                    <ModalsBridge />
-                    <PromptsBridge />
-                    <PropertiesBridge />
-                    <MenuActionBridge />
-                    <ToolConfirmBridge />
-                    <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
-                      <FilesProvider>
-                        <FileTreeProvider>
-                          <TitleBar />
-                          <Navbar />
-                          <TabBar />
-                          <Shell
-                            onEditorReady={onEditorReady}
-                            workspaceGroupRef={workspaceGroupRef}
-                          />
-                          <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
-                          <BottomToolbarRight />
-                          <LazyModals />
-                          <ConfirmToolCall />
-                          <Toaster
-                            position="bottom-right"
-                            richColors
-                            closeButton
-                            theme="system"
-                          />
-                        </FileTreeProvider>
-                      </FilesProvider>
-                    </UIStateProvider>
-                  </ToolConfirmProvider>
-                </WindowProvider>
-              </PropertiesProvider>
-            </PromptsProvider>
+              <PromptsProvider>
+                <PropertiesProvider>
+                  <WindowProvider>
+                    <ToolConfirmProvider>
+                      <ModalsBridge />
+                      <PromptsBridge />
+                      <PropertiesBridge />
+                      <MenuActionBridge />
+                      <ToolConfirmBridge />
+                      <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
+                        <FilesProvider>
+                          <FileTreeProvider>
+                            <TitleBar />
+                            <Navbar />
+                            <TabBar />
+                            <Shell
+                              onEditorReady={onEditorReady}
+                              workspaceGroupRef={workspaceGroupRef}
+                            />
+                            <EditorToolbar
+                              workspaceGroupRef={workspaceGroupRef}
+                            />
+                            <BottomToolbarRight />
+                            <LazyModals />
+                            <ConfirmToolCall />
+                            <Toaster
+                              position="bottom-right"
+                              richColors
+                              closeButton
+                              theme="system"
+                            />
+                          </FileTreeProvider>
+                        </FilesProvider>
+                      </UIStateProvider>
+                    </ToolConfirmProvider>
+                  </WindowProvider>
+                </PropertiesProvider>
+              </PromptsProvider>
             </ModalsProvider>
           </AssistantContextProvider>
         </ExportSettingsContextProvider>

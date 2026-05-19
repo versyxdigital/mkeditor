@@ -289,12 +289,13 @@ export class AssistantManager {
       opts.requestFrame ??
       (typeof globalThis.requestAnimationFrame === 'function'
         ? globalThis.requestAnimationFrame.bind(globalThis)
-        : ((cb) => setTimeout(() => cb(performance.now()), 16) as unknown as number));
+        : (cb) =>
+            setTimeout(() => cb(performance.now()), 16) as unknown as number);
     this.cancelFrame =
       opts.cancelFrame ??
       (typeof globalThis.cancelAnimationFrame === 'function'
         ? globalThis.cancelAnimationFrame.bind(globalThis)
-        : ((id: number) => clearTimeout(id as unknown as NodeJS.Timeout)));
+        : (id: number) => clearTimeout(id as unknown as NodeJS.Timeout));
   }
 
   // ---------------------------------------------------------------------
@@ -537,7 +538,10 @@ export class AssistantManager {
    * drops its draft, and falls back the active conversation pointer
    * to the next most-recent (or null when none remain).
    */
-  public deleteConversation(provider: ProviderId, conversationId: string): void {
+  public deleteConversation(
+    provider: ProviderId,
+    conversationId: string,
+  ): void {
     const map = this.conversations[provider];
     if (!map.has(conversationId)) return;
     // Cancel any in-flight chat against this conversation.
@@ -801,7 +805,10 @@ export class AssistantManager {
     }
     // If no buffers remain, cancel the pending frame so we don't
     // spin idly.
-    if (this.pendingChunkBuffers.size === 0 && this.revealFrameHandle !== null) {
+    if (
+      this.pendingChunkBuffers.size === 0 &&
+      this.revealFrameHandle !== null
+    ) {
       this.cancelFrame(this.revealFrameHandle);
       this.revealFrameHandle = null;
     }
@@ -827,10 +834,7 @@ export class AssistantManager {
       const last = segments[segments.length - 1];
       const nextSegments: UiMessageSegment[] =
         last && last.type === 'text'
-          ? [
-            ...segments.slice(0, -1),
-            { type: 'text', text: last.text + text },
-          ]
+          ? [...segments.slice(0, -1), { type: 'text', text: last.text + text }]
           : [...segments, { type: 'text', text }];
       return {
         ...msg,
@@ -925,7 +929,10 @@ export class AssistantManager {
     const inflight = this.inflightChats.get(payload.callId);
     if (!inflight) return;
     try {
-      const result = await executor.execute(payload.toolName, payload.arguments);
+      const result = await executor.execute(
+        payload.toolName,
+        payload.arguments,
+      );
       this.updateToolCall(inflight, payload.toolCallId, (tc) => ({
         ...tc,
         status: 'succeeded',
@@ -1010,7 +1017,10 @@ export class AssistantManager {
       );
       const nextSegments: UiMessageSegment[] = alreadyInSegments
         ? existing
-        : [...existing, { type: 'tool-call', toolCallId: invocation.toolCallId }];
+        : [
+            ...existing,
+            { type: 'tool-call', toolCallId: invocation.toolCallId },
+          ];
       return {
         ...msg,
         toolCalls: [...(msg.toolCalls ?? []), invocation],
@@ -1497,11 +1507,11 @@ export class AssistantManager {
       this.replaceAssistantMessage(conv, inflight.assistantMessageId, (msg) =>
         msg.status === 'streaming'
           ? {
-            ...msg,
-            status: 'failed',
-            errorCode: payload.code,
-            errorMessage: payload.message,
-          }
+              ...msg,
+              status: 'failed',
+              errorCode: payload.code,
+              errorMessage: payload.message,
+            }
           : msg,
       );
     }
@@ -1632,7 +1642,9 @@ export class AssistantManager {
   }
 
   private writePersistNow(
-    channel: 'to:ai:conversations:save' | 'to:ai:conversations:flush' = 'to:ai:conversations:save',
+    channel:
+      | 'to:ai:conversations:save'
+      | 'to:ai:conversations:flush' = 'to:ai:conversations:save',
   ): void {
     if (!this.persistEnabled) return;
     const snapshot = this.serialize();
@@ -1666,7 +1678,9 @@ export class AssistantManager {
       // RFC 4122 §4.4 — set version (4) + variant (10) bits.
       bytes[6] = (bytes[6] & 0x0f) | 0x40;
       bytes[8] = (bytes[8] & 0x3f) | 0x80;
-      const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      const hex = Array.from(bytes, (b) =>
+        b.toString(16).padStart(2, '0'),
+      ).join('');
       return `${prefix}-${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
     }
     throw new Error(

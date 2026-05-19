@@ -129,7 +129,9 @@ describe('<MentionPicker>', () => {
       />,
     );
     const picker = screen.getByTestId('mention-picker');
-    const options = Array.from(picker.querySelectorAll('[data-testid^="mention-option-"]'));
+    const options = Array.from(
+      picker.querySelectorAll('[data-testid^="mention-option-"]'),
+    );
     // notes.md (basename "no" prefix) should appear before other.md (path-only).
     expect(options[0].getAttribute('data-testid')).toBe(
       'mention-option-/w/notes/notes.md',

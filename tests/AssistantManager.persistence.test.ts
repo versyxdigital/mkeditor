@@ -36,13 +36,17 @@ function makeBridge() {
 describe('AssistantManager.serialize', () => {
   it('returns null when no conversations exist (empty manager → empty file)', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     expect(mgr.serialize()).toBeNull();
   });
 
   it('captures conversations, drafts, activeProvider, and per-provider activeConversation', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const a = mgr.createConversation('anthropic', 'Alpha');
     const o = mgr.createConversation('openai', 'Bravo');
     mgr.setActiveProvider('openai');
@@ -69,7 +73,9 @@ describe('AssistantManager.serialize', () => {
 
   it('orders conversations recency-descending so the file mirrors the snapshot view', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const older = mgr.createConversation('anthropic', 'Old');
     // Force timeline separation so renameConversation's updatedAt bump
     // is observably greater on coarse clocks.
@@ -85,7 +91,9 @@ describe('AssistantManager.serialize', () => {
 
   it('strips streaming messages (a quit mid-stream drops the half-written bubble)', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.appendChunk(callId, 'partial reply ');
@@ -103,7 +111,9 @@ describe('AssistantManager.serialize', () => {
     // entries can't resume across a restart, so they're dropped at
     // serialize time. Succeeded / failed entries survive.
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     // Manually inject the kind of message the manager would normally
@@ -180,7 +190,9 @@ describe('AssistantManager.restore', () => {
 
   it('is idempotent — calling restore twice yields the same state as once', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const snap: PersistedConversations = {
       activeProvider: 'openai',
       activeConversation: {
@@ -221,7 +233,9 @@ describe('AssistantManager.restore', () => {
 
   it('restore(null) clears state (migration path: pre-P7 files have no conversations block)', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.createConversation('anthropic', 'will be wiped');
     mgr.restore(null);
     const snap = mgr.getChatSnapshot();
@@ -231,7 +245,9 @@ describe('AssistantManager.restore', () => {
 
   it('does NOT trigger a save during the replay (no IPC ricochet of the data we just read)', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.restore({
       activeProvider: 'anthropic',
       activeConversation: { anthropic: 'c-1', openai: null, ollama: null },
@@ -258,9 +274,9 @@ describe('AssistantManager.restore', () => {
     });
     // The chat snapshot rebuild inside restore() must NOT have
     // scheduled a save — that would write the file we just read.
-    expect(
-      sent.some((s) => s.channel === 'to:ai:conversations:save'),
-    ).toBe(false);
+    expect(sent.some((s) => s.channel === 'to:ai:conversations:save')).toBe(
+      false,
+    );
   });
 });
 
@@ -274,7 +290,9 @@ describe('AssistantManager — debounced save', () => {
 
   it('mutating state (createConversation) schedules a save that fires after the 500ms debounce', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.createConversation('anthropic');
     // Before the debounce window elapses, no save has been shipped.
     expect(
@@ -292,7 +310,9 @@ describe('AssistantManager — debounced save', () => {
 
   it('a burst of mutations collapses into ONE save (debounce coalesces)', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     mgr.setDraft('anthropic', conv, 'a');
     mgr.setDraft('anthropic', conv, 'ab');
@@ -305,13 +325,13 @@ describe('AssistantManager — debounced save', () => {
 
   it('flushPersist() ships immediately via to:ai:conversations:flush and cancels the pending debounce', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.createConversation('anthropic');
     // Pending debounce.
     mgr.flushPersist();
-    const flush = sent.filter(
-      (s) => s.channel === 'to:ai:conversations:flush',
-    );
+    const flush = sent.filter((s) => s.channel === 'to:ai:conversations:flush');
     expect(flush).toHaveLength(1);
     // Advance past the debounce window — the cancelled timer must NOT fire.
     jest.advanceTimersByTime(2000);

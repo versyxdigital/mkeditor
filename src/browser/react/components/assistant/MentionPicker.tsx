@@ -210,10 +210,7 @@ function baseName(path: string): string {
  * request its children. Returns null when nothing matches OR the
  * candidate is already loaded.
  */
-function findUnloadedDir(
-  nodes: TreeNode[],
-  slashHint: string,
-): string | null {
+function findUnloadedDir(nodes: TreeNode[], slashHint: string): string | null {
   const cleanHint = slashHint.replace(/^\/+|\/+$/g, '');
   if (!cleanHint) return null;
   const stack: TreeNode[] = [...nodes];

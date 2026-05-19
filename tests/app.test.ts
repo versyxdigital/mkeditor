@@ -60,8 +60,8 @@ describe('Electron main app', () => {
       frame: false,
       autoHideMenuBar: true,
     });
-    const winInstance = (BrowserWindow as unknown as jest.Mock).mock
-      .results[0]?.value;
+    const winInstance = (BrowserWindow as unknown as jest.Mock).mock.results[0]
+      ?.value;
     expect(winInstance?.setMenuBarVisibility).toHaveBeenCalledWith(false);
   });
 });

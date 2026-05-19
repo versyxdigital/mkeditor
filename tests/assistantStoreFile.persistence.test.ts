@@ -12,7 +12,13 @@
  * with `null`; the loader doesn't reject them.
  */
 
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import {
+  mkdtempSync,
+  rmSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+} from 'fs';
 import { tmpdir } from 'os';
 import { join, normalize } from 'path';
 

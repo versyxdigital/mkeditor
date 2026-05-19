@@ -61,9 +61,13 @@ describe('<ToolCallCard>', () => {
     // Collapsed by default — no args label visible.
     expect(within(card).queryByText('assistant-tools:args_label')).toBeNull();
     fireEvent.click(within(card).getByRole('button'));
-    expect(within(card).getByText('assistant-tools:args_label')).toBeInTheDocument();
+    expect(
+      within(card).getByText('assistant-tools:args_label'),
+    ).toBeInTheDocument();
     // Result block also shown.
-    expect(within(card).getByText('assistant-tools:result_label')).toBeInTheDocument();
+    expect(
+      within(card).getByText('assistant-tools:result_label'),
+    ).toBeInTheDocument();
   });
 
   it('failed status shows the translated error code and message', () => {

@@ -103,7 +103,10 @@ describe('AssistantConfig.load', () => {
         JSON.stringify({
           version: 1,
           // ollama missing — should fail schema check
-          providers: { anthropic: { enabled: true }, openai: { enabled: false } },
+          providers: {
+            anthropic: { enabled: true },
+            openai: { enabled: false },
+          },
           keys: {},
         }),
         'utf-8',

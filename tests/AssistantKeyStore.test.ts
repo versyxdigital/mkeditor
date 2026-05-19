@@ -210,9 +210,9 @@ describe('AssistantKeyStore — file shape & atomic writes', () => {
     withTempHome((tmpHome) => {
       const { ks } = loadKeyStore(tmpHome);
       ks.setKey('anthropic', 'sk-x');
-      expect(
-        existsSync(normalize(tmpHome + '/.mkeditor/assistant.json')),
-      ).toBe(true);
+      expect(existsSync(normalize(tmpHome + '/.mkeditor/assistant.json'))).toBe(
+        true,
+      );
     });
   });
 

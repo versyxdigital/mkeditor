@@ -195,7 +195,9 @@ function resolveWorkspacePath(ctx: ToolContext, path: string): string {
   const basename = slashed.split('/').pop() ?? slashed;
   const exact: string[] = [];
   const byBasename: string[] = [];
-  const walk = (nodes: { path: string; type: 'file' | 'directory'; children?: unknown[] }[]): void => {
+  const walk = (
+    nodes: { path: string; type: 'file' | 'directory'; children?: unknown[] }[],
+  ): void => {
     for (const n of nodes) {
       if (n.type === 'file') {
         const norm = n.path.replace(/\\/g, '/');
@@ -493,10 +495,8 @@ const CATALOG: Record<string, ToolSpec> = {
             }
             // The snapshot has been mutated under our feet — re-find
             // the (now-loaded) node so we walk its fresh children.
-            dir = (findNode(
-              ftm.getSnapshot().nodes as Node[],
-              dir.path,
-            ) ?? dir) as Node;
+            dir = (findNode(ftm.getSnapshot().nodes as Node[], dir.path) ??
+              dir) as Node;
           }
           if (dir.children) await visit(dir.children);
         }
@@ -519,8 +519,7 @@ const CATALOG: Record<string, ToolSpec> = {
         root: scope ?? ftm.getSnapshot().treeRoot,
         paths,
         directories,
-        truncated:
-          paths.length >= MAX_FILES || directories.length >= MAX_DIRS,
+        truncated: paths.length >= MAX_FILES || directories.length >= MAX_DIRS,
       };
     },
   },
@@ -611,7 +610,10 @@ const CATALOG: Record<string, ToolSpec> = {
     },
     toolClass: 'write',
     preview(args, ctx) {
-      const { path: input, content } = args as { path: string; content: string };
+      const { path: input, content } = args as {
+        path: string;
+        content: string;
+      };
       // Best-effort resolution for the preview: if it throws (e.g. no
       // workspace) fall through to showing the path the agent sent.
       let path = input;
@@ -629,7 +631,10 @@ const CATALOG: Record<string, ToolSpec> = {
       };
     },
     async execute(args, ctx) {
-      const { path: input, content } = args as { path: string; content: string };
+      const { path: input, content } = args as {
+        path: string;
+        content: string;
+      };
       const path = resolveWorkspacePath(ctx, input);
       const fm = ctx.bridge.fileManager;
       if (!fm.models.has(path)) {
@@ -656,7 +661,7 @@ const CATALOG: Record<string, ToolSpec> = {
         oldText: {
           type: 'string',
           description:
-            'Exact text to replace. Must appear exactly once in the file. Include surrounding lines if needed for uniqueness. Line endings are normalised — write \\n; the editor reconciles to the file\'s own line endings.',
+            "Exact text to replace. Must appear exactly once in the file. Include surrounding lines if needed for uniqueness. Line endings are normalised — write \\n; the editor reconciles to the file's own line endings.",
         },
         newText: {
           type: 'string',
@@ -668,7 +673,11 @@ const CATALOG: Record<string, ToolSpec> = {
     },
     toolClass: 'write',
     preview(args, ctx) {
-      const { path: input, oldText, newText } = args as {
+      const {
+        path: input,
+        oldText,
+        newText,
+      } = args as {
         path: string;
         oldText: string;
         newText: string;
@@ -692,7 +701,11 @@ const CATALOG: Record<string, ToolSpec> = {
       };
     },
     async execute(args, ctx) {
-      const { path: input, oldText, newText } = args as {
+      const {
+        path: input,
+        oldText,
+        newText,
+      } = args as {
         path: string;
         oldText: string;
         newText: string;
@@ -777,7 +790,10 @@ const CATALOG: Record<string, ToolSpec> = {
     },
     toolClass: 'write',
     preview(args, ctx) {
-      const { path: input, content } = args as { path: string; content: string };
+      const { path: input, content } = args as {
+        path: string;
+        content: string;
+      };
       let path = input;
       try {
         path = resolveCreatePath(ctx, input);
@@ -791,7 +807,10 @@ const CATALOG: Record<string, ToolSpec> = {
       };
     },
     async execute(args, ctx) {
-      const { path: input, content } = args as { path: string; content: string };
+      const { path: input, content } = args as {
+        path: string;
+        content: string;
+      };
       // Literal join only — `resolveWorkspacePath`'s fuzzy basename
       // match would silently rewrite e.g. `ollama/intro.md` to
       // `openai/intro.md` if the latter already existed. Create
@@ -878,8 +897,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const editor = ctx.bridge.mkeditor;
       const selection = editor.getSelection();
       const model = editor.getModel();
-      const before =
-        selection && model ? model.getValueInRange(selection) : '';
+      const before = selection && model ? model.getValueInRange(selection) : '';
       return {
         kind: 'replace',
         path: ctx.bridge.fileManager.activeFile ?? undefined,

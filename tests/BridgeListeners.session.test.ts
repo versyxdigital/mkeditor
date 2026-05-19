@@ -65,7 +65,10 @@ describe('BridgeListeners session handlers', () => {
     restore: jest.Mock;
     flushPersist: jest.Mock;
   };
-  let manager: { setWindowState: jest.Mock; assistantManager: typeof assistantManager };
+  let manager: {
+    setWindowState: jest.Mock;
+    assistantManager: typeof assistantManager;
+  };
   let files: {
     restoreSession: jest.Mock;
     serializeSession: jest.Mock;

@@ -12,9 +12,7 @@
  */
 
 import { AssistantManager } from '../src/browser/core/AssistantManager';
-import type {
-  AssistantContextProvider,
-} from '../src/browser/core/AssistantManager';
+import type { AssistantContextProvider } from '../src/browser/core/AssistantManager';
 
 interface FakeBridge {
   send: jest.Mock;
@@ -66,14 +64,18 @@ function makeContextProvider(
 describe('AssistantManager — contextFor assembly', () => {
   it('returns null when no context provider is set (early boot)', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     expect(await mgr.contextFor('anthropic', conv)).toBeNull();
   });
 
   it('returns null when nothing is sharable (no active file, no selection, no mentions)', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(makeContextProvider({}));
     const conv = mgr.createConversation('anthropic');
     expect(await mgr.contextFor('anthropic', conv)).toBeNull();
@@ -81,7 +83,9 @@ describe('AssistantManager — contextFor assembly', () => {
 
   it('includes the active file as a tagged fenced block when shareActiveFile is on', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         active: { path: '/workspace/notes.md', content: '# Notes\nbody' },
@@ -96,7 +100,9 @@ describe('AssistantManager — contextFor assembly', () => {
 
   it('omits the active file when shareActiveFile is toggled off', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         active: { path: '/workspace/notes.md', content: 'body' },
@@ -109,7 +115,9 @@ describe('AssistantManager — contextFor assembly', () => {
 
   it('includes the selection as a fenced block with lines="" when shareSelection is on', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         selection: {
@@ -129,7 +137,9 @@ describe('AssistantManager — contextFor assembly', () => {
 
   it('skips the selection block when shareSelection is on but the editor selection is empty', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(makeContextProvider({ selection: null }));
     const conv = mgr.createConversation('anthropic');
     mgr.setShareSelection('anthropic', conv, true);
@@ -139,7 +149,9 @@ describe('AssistantManager — contextFor assembly', () => {
 
   it('includes every @-mention as its own fenced block in insertion order', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         fileContents: new Map([
@@ -164,7 +176,9 @@ describe('AssistantManager — contextFor assembly', () => {
 
   it('dedupes a mention whose path matches the active file (avoids two copies in the prompt)', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         active: { path: '/workspace/a.md', content: 'alpha v2' },
@@ -182,7 +196,9 @@ describe('AssistantManager — contextFor assembly', () => {
 
   it('widens the fence to 4 backticks when content contains a triple-backtick run', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         active: {
@@ -200,7 +216,9 @@ describe('AssistantManager — contextFor assembly', () => {
 
   it('skips a mention silently when its cached content is missing (broken file)', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const cp = makeContextProvider({
       fileContents: new Map([['/workspace/ok.md', 'real']]),
     });
@@ -224,7 +242,9 @@ describe('AssistantManager — contextFor assembly', () => {
 describe('AssistantManager — contextChips + tokenEstimate', () => {
   it('exposes an active chip with byteCount when shareActiveFile is on', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         active: { path: '/workspace/notes.md', content: 'x'.repeat(400) },
@@ -244,7 +264,9 @@ describe('AssistantManager — contextChips + tokenEstimate', () => {
 
   it('selection chip carries the line range in its label and the selection length as byteCount', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         selection: {
@@ -267,7 +289,9 @@ describe('AssistantManager — contextChips + tokenEstimate', () => {
 
   it('mention chip carries the file basename as label + byteCount from the cached content', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         fileContents: new Map([['/w/sub/longer.md', 'hello world']]),
@@ -287,7 +311,9 @@ describe('AssistantManager — contextChips + tokenEstimate', () => {
 
   it('chip row dedupes a mention whose path matches the active file', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         active: { path: '/w/a.md', content: 'live' },
@@ -303,7 +329,9 @@ describe('AssistantManager — contextChips + tokenEstimate', () => {
 
   it('tokenEstimate grows monotonically as the draft and mention contents grow', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         fileContents: new Map([['/w/big.md', 'x'.repeat(1200)]]),
@@ -312,7 +340,11 @@ describe('AssistantManager — contextChips + tokenEstimate', () => {
     const conv = mgr.createConversation('anthropic');
     mgr.setShareActiveFile('anthropic', conv, false);
     const empty = mgr.contextTokenEstimate('anthropic', conv, '');
-    const withDraft = mgr.contextTokenEstimate('anthropic', conv, 'x'.repeat(400));
+    const withDraft = mgr.contextTokenEstimate(
+      'anthropic',
+      conv,
+      'x'.repeat(400),
+    );
     expect(withDraft).toBeGreaterThan(empty);
     await mgr.addMention('anthropic', conv, '/w/big.md');
     const withMention = mgr.contextTokenEstimate(
@@ -327,7 +359,9 @@ describe('AssistantManager — contextChips + tokenEstimate', () => {
 describe('AssistantManager — mention CRUD', () => {
   it('addMention is idempotent on path (re-add refreshes cached content but does not duplicate the chip)', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const cp = makeContextProvider({
       fileContents: new Map([['/w/a.md', 'first']]),
     });
@@ -347,7 +381,9 @@ describe('AssistantManager — mention CRUD', () => {
 
   it('removeMention drops the chip + drops cached content when no other conversation still references the path', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         fileContents: new Map([['/w/a.md', 'body']]),
@@ -363,7 +399,9 @@ describe('AssistantManager — mention CRUD', () => {
 
   it('removeMention keeps cached content alive when another conversation still references it', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         fileContents: new Map([['/w/shared.md', 'shared body']]),
@@ -384,7 +422,9 @@ describe('AssistantManager — mention CRUD', () => {
 
   it('setShareActiveFile / setShareSelection / addMention bump conv.updatedAt for snapshot consumers', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setContextProvider(
       makeContextProvider({
         fileContents: new Map([['/w/x.md', 'body']]),
@@ -407,7 +447,9 @@ describe('AssistantManager — mention CRUD', () => {
 describe('AssistantManager — startCall integration (P6 system context)', () => {
   it('startCall prepends the systemContext arg before the message history', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hello', {
       role: 'system',
@@ -427,7 +469,9 @@ describe('AssistantManager — startCall integration (P6 system context)', () =>
 
   it('startCall omits the system turn when systemContext is null', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     mgr.startCall('anthropic', conv, 'hello', null);
     const chatSend = sent.find((s) => s.channel === 'to:ai:chat');

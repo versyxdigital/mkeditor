@@ -128,10 +128,7 @@ describe('AppBridge.pushPersistedConversations (P7)', () => {
     );
     const { bridge, send } = makeBridge();
     bridge.pushPersistedConversations();
-    expect(send).toHaveBeenCalledWith(
-      'from:ai:conversations',
-      SAMPLE_PAYLOAD,
-    );
+    expect(send).toHaveBeenCalledWith('from:ai:conversations', SAMPLE_PAYLOAD);
   });
 
   it('sends null when the store has no conversations block (pre-P7 migration path)', () => {

@@ -139,10 +139,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
-                    <span
-                      className="flex-1 truncate"
-                      title={conv.title}
-                    >
+                    <span className="flex-1 truncate" title={conv.title}>
                       {conv.title}
                     </span>
                   )}

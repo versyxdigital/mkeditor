@@ -167,7 +167,12 @@ describe('<ChatPane> — send/stop toggle', () => {
       inflightCallId: 'chat-x',
       messages: [
         { id: 'm1', role: 'user', content: 'hi', status: 'complete' },
-        { id: 'm2', role: 'assistant', content: 'partial', status: 'streaming' },
+        {
+          id: 'm2',
+          role: 'assistant',
+          content: 'partial',
+          status: 'streaming',
+        },
       ],
     });
     const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
@@ -183,7 +188,12 @@ describe('<ChatPane> — send/stop toggle', () => {
       inflightCallId: 'chat-x',
       messages: [
         { id: 'm1', role: 'user', content: 'hi', status: 'complete' },
-        { id: 'm2', role: 'assistant', content: 'partial', status: 'streaming' },
+        {
+          id: 'm2',
+          role: 'assistant',
+          content: 'partial',
+          status: 'streaming',
+        },
       ],
     });
     const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
@@ -424,10 +434,15 @@ describe('<ChatPane> — P6 context chips + token estimate', () => {
     });
     fireEvent.click(screen.getByTestId('chat-send'));
     await waitFor(() =>
-      expect(am.startCall).toHaveBeenCalledWith('anthropic', 'conv-1', 'hello', {
-        role: 'system',
-        content: 'system context payload',
-      }),
+      expect(am.startCall).toHaveBeenCalledWith(
+        'anthropic',
+        'conv-1',
+        'hello',
+        {
+          role: 'system',
+          content: 'system context payload',
+        },
+      ),
     );
     expect(am.contextFor).toHaveBeenCalledWith('anthropic', 'conv-1');
   });
@@ -518,9 +533,9 @@ describe('<ChatPane> — draft sync', () => {
     renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
       managers: { assistantManager: am as never },
     });
-    expect((screen.getByTestId('chat-input') as HTMLTextAreaElement).value).toBe(
-      'previous unsent draft',
-    );
+    expect(
+      (screen.getByTestId('chat-input') as HTMLTextAreaElement).value,
+    ).toBe('previous unsent draft');
   });
 
   it('pushes the current input back via setDraft on unmount', () => {

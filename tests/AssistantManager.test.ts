@@ -51,7 +51,9 @@ const SAMPLE_PUSH = {
 describe('AssistantManager.subscribeConfig + getConfigSnapshot', () => {
   it('starts with a null-config snapshot', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     expect(mgr.getConfigSnapshot()).toEqual({
       config: null,
       encryptionAvailable: false,
@@ -60,7 +62,9 @@ describe('AssistantManager.subscribeConfig + getConfigSnapshot', () => {
 
   it('replaces the snapshot and notifies subscribers on setConfigFromServer', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const listener = jest.fn();
     mgr.subscribeConfig(listener);
     mgr.setConfigFromServer(SAMPLE_PUSH);
@@ -70,7 +74,9 @@ describe('AssistantManager.subscribeConfig + getConfigSnapshot', () => {
 
   it('unsubscribe stops further notifications', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const listener = jest.fn();
     const off = mgr.subscribeConfig(listener);
     off();
@@ -82,14 +88,18 @@ describe('AssistantManager.subscribeConfig + getConfigSnapshot', () => {
 describe('AssistantManager outbound channels', () => {
   it('requestConfigRefresh fires to:ai:config:get', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.requestConfigRefresh();
     expect(sent).toContainEqual({ channel: 'to:ai:config:get', data: null });
   });
 
   it('setProviderConfig forwards the full request shape', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setProviderConfig({
       provider: 'anthropic',
       config: { enabled: true, defaultModel: 'claude-opus-4-7' },
@@ -135,9 +145,9 @@ describe('AssistantManager outbound channels', () => {
     // Drop the cached imported key so this test's stubbed
     // importKey runs.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { _resetForTests } = require(
-      '../src/browser/core/SecureChannelClient',
-    );
+    const {
+      _resetForTests,
+    } = require('../src/browser/core/SecureChannelClient');
     _resetForTests();
     try {
       const { bridge, sent } = makeBridge();
@@ -173,7 +183,9 @@ describe('AssistantManager outbound channels', () => {
 
   it('clearKey fires to:ai:key:clear with just the provider id', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.clearKey('anthropic');
     expect(sent).toContainEqual({
       channel: 'to:ai:key:clear',
@@ -183,7 +195,9 @@ describe('AssistantManager outbound channels', () => {
 
   it('cancelChat fires to:ai:cancel with the callId', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.cancelChat('call-X');
     expect(sent).toContainEqual({
       channel: 'to:ai:cancel',
@@ -195,7 +209,9 @@ describe('AssistantManager outbound channels', () => {
 describe('AssistantManager.refreshOllamaModels', () => {
   it('resolves with the model list on success', async () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const promise = mgr.refreshOllamaModels('http://localhost:11434');
 
     const sentCall = sent.find((s) => s.channel === 'to:ai:ollama:list');
@@ -214,7 +230,9 @@ describe('AssistantManager.refreshOllamaModels', () => {
 
   it('rejects when the upstream returns an error', async () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const promise = mgr.refreshOllamaModels('http://localhost:11434');
     const sentCall = sent.find((s) => s.channel === 'to:ai:ollama:list');
     const { callId } = sentCall!.data as { callId: string };
@@ -226,21 +244,24 @@ describe('AssistantManager.refreshOllamaModels', () => {
 
   it('silently drops a late delivery for a call that already resolved', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     void mgr.refreshOllamaModels('http://localhost:11434');
-    const { callId } = sent.find((s) => s.channel === 'to:ai:ollama:list')!.data as { callId: string };
+    const { callId } = sent.find((s) => s.channel === 'to:ai:ollama:list')!
+      .data as { callId: string };
 
     mgr.onOllamaModels({ callId, models: ['a'] });
-    expect(() =>
-      mgr.onOllamaModels({ callId, models: ['b'] }),
-    ).not.toThrow();
+    expect(() => mgr.onOllamaModels({ callId, models: ['b'] })).not.toThrow();
   });
 });
 
 describe('AssistantManager.testConnection', () => {
   it('sends to:ai:chat with maxOutputTokens=1 and a single user message', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     void mgr.testConnection('anthropic', 'claude-sonnet-4-6');
 
     const sentCall = sent.find((s) => s.channel === 'to:ai:chat');
@@ -255,7 +276,9 @@ describe('AssistantManager.testConnection', () => {
 
   it('resolves with ok:true when from:ai:done lands for the pending callId', async () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const promise = mgr.testConnection('openai', 'gpt-5');
     const { callId } = sent.find((s) => s.channel === 'to:ai:chat')!.data as {
       callId: string;
@@ -269,7 +292,9 @@ describe('AssistantManager.testConnection', () => {
 
   it('resolves with ok:false + code + message when from:ai:error lands', async () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const promise = mgr.testConnection('anthropic', 'claude-sonnet-4-6');
     const { callId } = sent.find((s) => s.channel === 'to:ai:chat')!.data as {
       callId: string;
@@ -292,7 +317,9 @@ describe('AssistantManager.testConnection', () => {
     jest.useFakeTimers();
     try {
       const { bridge, sent } = makeBridge();
-      const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+      const mgr = new AssistantManager(bridge as never, {
+        disablePacedReveal: true,
+      });
       const promise = mgr.testConnection('ollama', 'llama3.2');
       const { callId } = sent.find((s) => s.channel === 'to:ai:chat')!.data as {
         callId: string;
@@ -315,7 +342,9 @@ describe('AssistantManager.testConnection', () => {
 
   it('ignores done/error events for callIds it does not own', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     expect(mgr.ownsCallId('chat-from-elsewhere')).toBe(false);
     expect(() => mgr.onChatDone('chat-from-elsewhere')).not.toThrow();
     expect(() =>
@@ -335,7 +364,9 @@ describe('AssistantManager.testConnection', () => {
 describe('AssistantManager — conversation CRUD', () => {
   it('createConversation adds a fresh conversation and makes it active', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const id = mgr.createConversation('anthropic');
     const snap = mgr.getChatSnapshot();
     expect(snap.conversations.anthropic).toHaveLength(1);
@@ -346,10 +377,16 @@ describe('AssistantManager — conversation CRUD', () => {
 
   it('createConversation seeds the model from the hydrated config when available', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.setConfigFromServer({
       config: {
-        anthropic: { enabled: true, hasKey: true, defaultModel: 'claude-opus-4-7' },
+        anthropic: {
+          enabled: true,
+          hasKey: true,
+          defaultModel: 'claude-opus-4-7',
+        },
         openai: { enabled: true, hasKey: true, defaultModel: 'gpt-5' },
         ollama: {
           enabled: false,
@@ -361,34 +398,46 @@ describe('AssistantManager — conversation CRUD', () => {
       encryptionAvailable: true,
     });
     const id = mgr.createConversation('anthropic');
-    const conv = mgr.getChatSnapshot().conversations.anthropic.find((c) => c.id === id);
+    const conv = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === id);
     expect(conv?.model).toBe('claude-opus-4-7');
   });
 
   it('createConversation falls back to a sane default when config is null', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const id = mgr.createConversation('openai');
-    const conv = mgr.getChatSnapshot().conversations.openai.find((c) => c.id === id);
+    const conv = mgr
+      .getChatSnapshot()
+      .conversations.openai.find((c) => c.id === id);
     expect(conv?.model.length).toBeGreaterThan(0);
   });
 
   it('renameConversation updates the title and notifies subscribers', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const listener = jest.fn();
     mgr.subscribeChat(listener);
     const id = mgr.createConversation('anthropic');
     listener.mockClear();
     mgr.renameConversation('anthropic', id, '  Hello world  ');
     expect(listener).toHaveBeenCalledTimes(1);
-    const conv = mgr.getChatSnapshot().conversations.anthropic.find((c) => c.id === id);
+    const conv = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === id);
     expect(conv?.title).toBe('Hello world');
   });
 
   it('deleteConversation clears the active pointer when removing the active conversation', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const a = mgr.createConversation('anthropic');
     const b = mgr.createConversation('anthropic');
     mgr.setActiveConversation('anthropic', b);
@@ -400,10 +449,14 @@ describe('AssistantManager — conversation CRUD', () => {
 
   it('setConversationModel updates the conversation model in place', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const id = mgr.createConversation('openai');
     mgr.setConversationModel('openai', id, 'gpt-5-turbo');
-    const conv = mgr.getChatSnapshot().conversations.openai.find((c) => c.id === id);
+    const conv = mgr
+      .getChatSnapshot()
+      .conversations.openai.find((c) => c.id === id);
     expect(conv?.model).toBe('gpt-5-turbo');
   });
 });
@@ -411,7 +464,9 @@ describe('AssistantManager — conversation CRUD', () => {
 describe('AssistantManager — drafts', () => {
   it('setDraft / getDraft round-trip per (provider, conversationId)', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const a = mgr.createConversation('anthropic');
     const b = mgr.createConversation('openai');
     mgr.setDraft('anthropic', a, 'hello ');
@@ -423,7 +478,9 @@ describe('AssistantManager — drafts', () => {
 
   it('setDraft with empty string drops the entry from the snapshot', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const id = mgr.createConversation('anthropic');
     mgr.setDraft('anthropic', id, 'hi');
     expect(mgr.getChatSnapshot().drafts[`anthropic:${id}`]).toBe('hi');
@@ -435,13 +492,19 @@ describe('AssistantManager — drafts', () => {
 describe('AssistantManager.startCall + appendChunk + onChatDone', () => {
   it('appends user + assistant placeholder messages and ships to:ai:chat', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
-    const callId = mgr.startCall('anthropic', conv, 'What is the capital of France?');
+    const callId = mgr.startCall(
+      'anthropic',
+      conv,
+      'What is the capital of France?',
+    );
     expect(callId).not.toBeNull();
-    const messages = mgr.getChatSnapshot().conversations.anthropic.find(
-      (c) => c.id === conv,
-    )?.messages;
+    const messages = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)?.messages;
     expect(messages).toHaveLength(2);
     expect(messages?.[0]).toMatchObject({
       role: 'user',
@@ -470,14 +533,16 @@ describe('AssistantManager.startCall + appendChunk + onChatDone', () => {
 
   it('appendChunk concatenates text into the assistant placeholder for the matching callId', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.appendChunk(callId, 'Hello ');
     mgr.appendChunk(callId, 'world');
-    const messages = mgr.getChatSnapshot().conversations.anthropic.find(
-      (c) => c.id === conv,
-    )?.messages;
+    const messages = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)?.messages;
     expect(messages?.[1].content).toBe('Hello world');
     expect(messages?.[1].status).toBe('streaming');
   });
@@ -490,43 +555,49 @@ describe('AssistantManager.startCall + appendChunk + onChatDone', () => {
     // the underlying data was updated. The fix is to replace the
     // message at its index in `conv.messages` with a fresh object.
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
-    const before = mgr.getChatSnapshot().conversations.anthropic.find(
-      (c) => c.id === conv,
-    )!.messages[1];
+    const before = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)!.messages[1];
     mgr.appendChunk(callId, 'Hello');
-    const after = mgr.getChatSnapshot().conversations.anthropic.find(
-      (c) => c.id === conv,
-    )!.messages[1];
+    const after = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)!.messages[1];
     expect(after).not.toBe(before); // different reference
     expect(after.content).toBe('Hello');
     // The user message (index 0) keeps its reference — only the
     // streaming assistant message gets replaced.
     const userBefore = before; // placeholder — re-fetched below
     void userBefore;
-    const userAfter = mgr.getChatSnapshot().conversations.anthropic.find(
-      (c) => c.id === conv,
-    )!.messages[0];
+    const userAfter = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)!.messages[0];
     expect(userAfter.role).toBe('user');
   });
 
   it('appendChunk for an unknown callId is silently ignored (test pings drop here)', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     mgr.startCall('anthropic', conv, 'hi');
     expect(() => mgr.appendChunk('test-some-other', 'x')).not.toThrow();
-    const messages = mgr.getChatSnapshot().conversations.anthropic.find(
-      (c) => c.id === conv,
-    )?.messages;
+    const messages = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)?.messages;
     expect(messages?.[1].content).toBe('');
   });
 
   it('onChatDone marks the streaming placeholder complete and removes the inflight entry', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.appendChunk(callId, 'Hello');
@@ -542,7 +613,9 @@ describe('AssistantManager.startCall + appendChunk + onChatDone', () => {
 
   it('onChatError marks the streaming placeholder failed with code + message', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.onChatError({
@@ -562,7 +635,9 @@ describe('AssistantManager.startCall + appendChunk + onChatDone', () => {
 
   it('cancelCall marks the placeholder cancelled and fires to:ai:cancel', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.appendChunk(callId, 'partial');
@@ -584,7 +659,9 @@ describe('AssistantManager.startCall + appendChunk + onChatDone', () => {
 
   it('keeps parallel provider calls isolated (chunks land on the correct conversation)', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const a = mgr.createConversation('anthropic');
     const o = mgr.createConversation('openai');
     const callA = mgr.startCall('anthropic', a, 'A')!;
@@ -606,7 +683,9 @@ describe('AssistantManager.startCall + appendChunk + onChatDone', () => {
 
   it('clears the draft for that conversation when startCall fires', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     mgr.setDraft('anthropic', conv, 'unsent message');
     mgr.startCall('anthropic', conv, 'sent message');
@@ -681,13 +760,16 @@ describe('AssistantManager — paced streaming reveal (P8)', () => {
     });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
-    mgr.appendChunk(callId, 'A very long final answer that has not been revealed yet.');
+    mgr.appendChunk(
+      callId,
+      'A very long final answer that has not been revealed yet.',
+    );
     // Stream ends before the buffer has fully drained — done must
     // flush the rest so the persisted body is complete.
     mgr.onChatDone(callId);
-    const msg = mgr.getChatSnapshot().conversations.anthropic.find(
-      (c) => c.id === conv,
-    )!.messages[1];
+    const msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)!.messages[1];
     expect(msg.status).toBe('complete');
     expect(msg.content).toBe(
       'A very long final answer that has not been revealed yet.',
@@ -705,9 +787,9 @@ describe('AssistantManager — paced streaming reveal (P8)', () => {
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.appendChunk(callId, 'Partial response that the user cancelled.');
     mgr.cancelCall(callId);
-    const msg = mgr.getChatSnapshot().conversations.anthropic.find(
-      (c) => c.id === conv,
-    )!.messages[1];
+    const msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)!.messages[1];
     expect(msg.status).toBe('cancelled');
     expect(msg.content).toBe('Partial response that the user cancelled.');
   });
@@ -720,7 +802,9 @@ describe('AssistantManager — paced streaming reveal (P8)', () => {
 describe('AssistantManager.onToolCall — read-class auto-execute', () => {
   it('records the tool call as succeeded and ships to:ai:tool-result with the result', async () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     const executor = {
@@ -742,7 +826,9 @@ describe('AssistantManager.onToolCall — read-class auto-execute', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(executor.execute).toHaveBeenCalledWith('read_file', { path: '/x.md' });
+    expect(executor.execute).toHaveBeenCalledWith('read_file', {
+      path: '/x.md',
+    });
     const toolResultSend = sent.find((s) => s.channel === 'to:ai:tool-result');
     expect(toolResultSend).toBeDefined();
     expect(toolResultSend!.data).toEqual({
@@ -762,7 +848,9 @@ describe('AssistantManager.onToolCall — read-class auto-execute', () => {
 
   it('records failure when the tool throws and ships an error-shaped tool-result', async () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     const executor = {
@@ -792,12 +880,16 @@ describe('AssistantManager.onToolCall — read-class auto-execute', () => {
     expect(msg?.toolCalls?.[0].errorCode).toBe('execution_failed');
     expect(msg?.toolCalls?.[0].errorMessage).toBe('disk full');
     const toolResultSend = sent.find((s) => s.channel === 'to:ai:tool-result');
-    expect((toolResultSend!.data as { result: { ok: boolean } }).result.ok).toBe(false);
+    expect(
+      (toolResultSend!.data as { result: { ok: boolean } }).result.ok,
+    ).toBe(false);
   });
 
   it('marks the call failed with unknown_tool when the executor does not know the tool', async () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     const executor = {
@@ -819,7 +911,10 @@ describe('AssistantManager.onToolCall — read-class auto-execute', () => {
     expect(executor.execute).not.toHaveBeenCalled();
     const toolResultSend = sent.find((s) => s.channel === 'to:ai:tool-result');
     expect(toolResultSend).toBeDefined();
-    expect((toolResultSend!.data as { result: { ok: boolean; error: string } }).result).toEqual({
+    expect(
+      (toolResultSend!.data as { result: { ok: boolean; error: string } })
+        .result,
+    ).toEqual({
       ok: false,
       error: 'unknown_tool',
     });
@@ -833,14 +928,18 @@ describe('AssistantManager.onToolCall — read-class auto-execute', () => {
 
   it('silently drops onToolCall for foreign callIds (no message mutation, no IPC)', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     mgr.onToolCall({
       callId: 'never-existed',
       toolCallId: 'tc-x',
       toolName: 'read_file',
       arguments: {},
     });
-    expect(sent.filter((s) => s.channel === 'to:ai:tool-result')).toHaveLength(0);
+    expect(sent.filter((s) => s.channel === 'to:ai:tool-result')).toHaveLength(
+      0,
+    );
   });
 });
 
@@ -852,7 +951,9 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
   beforeEach(() => {
     resolveOpen = null;
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { registerToolConfirmOpener } = require('../src/browser/react/contexts/ToolConfirmContext');
+    const {
+      registerToolConfirmOpener,
+    } = require('../src/browser/react/contexts/ToolConfirmContext');
     registerToolConfirmOpener(
       () =>
         new Promise<boolean>((resolve) => {
@@ -863,7 +964,9 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
 
   it('opens the confirm dialog; on accept executes the tool', async () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     const executor = {
@@ -915,7 +1018,9 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
 
   it('opens the confirm dialog; on reject ships an error-shaped tool-result + marks failed/rejected', async () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     const executor = {
@@ -945,12 +1050,16 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
     expect(msg?.toolCalls?.[0].status).toBe('failed');
     expect(msg?.toolCalls?.[0].errorCode).toBe('rejected');
     const toolResultSend = sent.find((s) => s.channel === 'to:ai:tool-result');
-    expect((toolResultSend!.data as { result: { error: string } }).result.error).toBe('rejected');
+    expect(
+      (toolResultSend!.data as { result: { error: string } }).result.error,
+    ).toBe('rejected');
   });
 
   it('autoAcceptWrites bypasses the confirm dialog and executes immediately', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     mgr.setAutoAcceptWrites('anthropic', conv, true);
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
@@ -978,7 +1087,9 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
 describe('AssistantManager — startCall ships tools when an executor is set', () => {
   it('includes the executor.describe() result in ChatRequest.tools', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     mgr.setToolExecutor({
       hasTool: () => true,
@@ -1001,7 +1112,9 @@ describe('AssistantManager — startCall ships tools when an executor is set', (
 
   it('omits tools when no executor is set (chat-only fallback)', () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     mgr.startCall('anthropic', conv, 'hi');
     const chatSend = sent.find((s) => s.channel === 'to:ai:chat');
@@ -1013,7 +1126,9 @@ describe('AssistantManager — startCall ships tools when an executor is set', (
 describe('AssistantManager — interleaved segments (P6 polish)', () => {
   it('appendChunk extends the trailing text segment in place (no fragmentation)', () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.appendChunk(callId, 'Hello ');
@@ -1031,7 +1146,9 @@ describe('AssistantManager — interleaved segments (P6 polish)', () => {
     // visual: the manager must record segments in the emission order
     // text → tool → text → tool so the renderer can interleave them.
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.setToolExecutor({
@@ -1068,7 +1185,9 @@ describe('AssistantManager — interleaved segments (P6 polish)', () => {
 
   it('a tool-call segment is recorded once even though recordToolCall fires on every status transition', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conv = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.setToolExecutor({
@@ -1101,7 +1220,9 @@ describe('AssistantManager — interleaved segments (P6 polish)', () => {
 describe('AssistantManager — done/error routing (test path still works after P4)', () => {
   it('onChatDone resolves a pending testConnection before checking chats', async () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const promise = mgr.testConnection('anthropic', 'claude-sonnet-4-6');
     const { callId } = sent.find((s) => s.channel === 'to:ai:chat')!.data as {
       callId: string;

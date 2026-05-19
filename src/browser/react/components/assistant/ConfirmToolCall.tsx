@@ -3,12 +3,7 @@ import * as React from 'react';
 import { useToolConfirm } from '../../contexts/ToolConfirmContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { Button } from '../ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Icon } from '../Icon';
 
 /**
@@ -37,10 +32,7 @@ export const ConfirmToolCall: React.FC = () => {
         if (!o) resolve(false);
       }}
     >
-      <DialogContent
-        aria-describedby={undefined}
-        className="max-w-[640px]"
-      >
+      <DialogContent aria-describedby={undefined} className="max-w-[640px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon name="exclamation-circle" />
@@ -99,7 +91,9 @@ export const ConfirmToolCall: React.FC = () => {
 /* -------------------------------------------------------------------- */
 
 const PREVIEW_KIND_LABEL: Record<
-  NonNullable<NonNullable<ReturnType<typeof useToolConfirm>['request']>['preview']>['kind'],
+  NonNullable<
+    NonNullable<ReturnType<typeof useToolConfirm>['request']>['preview']
+  >['kind'],
   string
 > = {
   create: 'assistant-tools:preview_create',
@@ -117,7 +111,10 @@ const PreviewBlock: React.FC<{
   const { t } = useTranslation();
   const headingKey = PREVIEW_KIND_LABEL[preview.kind];
   return (
-    <div className="mt-3 flex flex-col gap-2" data-testid="tool-confirm-preview">
+    <div
+      className="mt-3 flex flex-col gap-2"
+      data-testid="tool-confirm-preview"
+    >
       <p className="text-xs font-semibold">
         {t(headingKey, { path: preview.path ?? '' })}
         {preview.detail ? ` · ${preview.detail}` : ''}

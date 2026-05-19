@@ -29,9 +29,7 @@ export interface ToolConfirmRequest {
   preview: ToolConfirmPreview | null;
 }
 
-let externalOpen:
-  | ((req: ToolConfirmRequest) => Promise<boolean>)
-  | null = null;
+let externalOpen: ((req: ToolConfirmRequest) => Promise<boolean>) | null = null;
 
 export function registerToolConfirmOpener(
   fn: (req: ToolConfirmRequest) => Promise<boolean>,

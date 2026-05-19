@@ -17,11 +17,7 @@ import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '../ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Switch } from '../ui/switch';
 import { Icon } from '../Icon';
 import { ChatMessage } from './ChatMessage';
@@ -62,8 +58,8 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   const { chat, manager } = useAssistantChat();
   const { t } = useTranslation();
 
-  const [draft, setDraft] = React.useState(() =>
-    manager?.getDraft(provider, conversation.id) ?? '',
+  const [draft, setDraft] = React.useState(
+    () => manager?.getDraft(provider, conversation.id) ?? '',
   );
   const [modelEditor, setModelEditor] = React.useState(conversation.model);
 
@@ -130,7 +126,10 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   // estimate will go stale on tab navigation / selection edits.
   const files = useFiles();
   const { editorManager, fileTreeManager } = useManagers();
-  const [editorTick, bumpEditorTick] = React.useReducer((n: number) => n + 1, 0);
+  const [editorTick, bumpEditorTick] = React.useReducer(
+    (n: number) => n + 1,
+    0,
+  );
   React.useEffect(() => {
     const ed = editorManager?.getMkEditor();
     if (!ed) return;
@@ -614,7 +613,8 @@ const MessageList: React.FC<{ messages: ChatConversation['messages'] }> = ({
   const handleScroll = React.useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight);
+    const distanceFromBottom =
+      el.scrollHeight - (el.scrollTop + el.clientHeight);
     stickToBottom.current = distanceFromBottom <= SCROLL_STICK_THRESHOLD;
   }, []);
 

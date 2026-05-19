@@ -135,8 +135,7 @@ export class FileManager {
    * Returns `null` to opt out (FileManager omits the block in that
    * case, mirroring v1 payloads).
    */
-  private assistantStateGetter: (() => AssistantViewState | null) | null =
-    null;
+  private assistantStateGetter: (() => AssistantViewState | null) | null = null;
 
   /**
    * Optional callback returning whether the user has session restore
@@ -721,9 +720,7 @@ export class FileManager {
    * so `serializeSession()` can include the `assistant` block without
    * FileManager holding a direct reference to React state.
    */
-  public setAssistantStateGetter(
-    fn: () => AssistantViewState | null,
-  ): void {
+  public setAssistantStateGetter(fn: () => AssistantViewState | null): void {
     this.assistantStateGetter = fn;
   }
 

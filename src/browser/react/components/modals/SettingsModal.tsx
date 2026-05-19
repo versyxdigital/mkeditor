@@ -112,10 +112,7 @@ export const SettingsModal: React.FC = () => {
 
   return (
     <Dialog open={open === 'settings'} onOpenChange={(o) => !o && closeModal()}>
-      <DialogContent
-        aria-describedby={undefined}
-        className="max-w-[820px]"
-      >
+      <DialogContent aria-describedby={undefined} className="max-w-[820px]">
         <DialogHeader>
           <DialogTitle>
             {activeTab === 'assistant'
@@ -151,10 +148,7 @@ export const SettingsModal: React.FC = () => {
             className="mt-4"
           >
             <TabsList className="h-7 gap-0.5 p-0.5 text-xs">
-              <TabsTrigger
-                value="general"
-                className="h-6 px-2 py-0.5 text-xs"
-              >
+              <TabsTrigger value="general" className="h-6 px-2 py-0.5 text-xs">
                 {t('modals-settings:tab_general')}
               </TabsTrigger>
               {showAssistantTab && (
@@ -324,11 +318,7 @@ const Section: React.FC<{
   separator?: boolean;
   children: React.ReactNode;
 }> = ({ label, separator = true, children }) => (
-  <div
-    className={
-      separator ? 'mt-4 border-t border-border pt-4' : undefined
-    }
-  >
+  <div className={separator ? 'mt-4 border-t border-border pt-4' : undefined}>
     <p className="mb-2 font-semibold text-muted-foreground">{label}</p>
     <div className="flex flex-col gap-3">{children}</div>
   </div>

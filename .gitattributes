@@ -1,0 +1,23 @@
+# Normalise text files to LF on commit AND on checkout, regardless of
+# contributor git config (e.g. Windows users with `core.autocrlf=true`).
+# Without this, Prettier (whose default `endOfLine` is `"lf"`) passes on
+# Linux CI but fails on Windows where files arrive as CRLF.
+
+* text=auto eol=lf
+
+# Mark common binary asset types explicitly so git never tries to diff
+# or line-normalise them. `text=auto` already handles most via content
+# sniffing; the explicit entries are belt-and-braces for the file types
+# the project ships in `src/browser/assets/` and `build/`.
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.ico      binary
+*.icns     binary
+*.pdf      binary
+*.ttf      binary
+*.woff     binary
+*.woff2    binary
+*.eot      binary
+*.zip      binary

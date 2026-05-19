@@ -17,7 +17,13 @@
  */
 
 import * as React from 'react';
-import { screen, fireEvent, act, waitFor, within } from '@testing-library/react';
+import {
+  screen,
+  fireEvent,
+  act,
+  waitFor,
+  within,
+} from '@testing-library/react';
 
 import { AssistantSettings } from '../../src/browser/react/components/assistant/AssistantSettings';
 import { fakeAssistantManager, renderWithProviders } from '../utils/render';

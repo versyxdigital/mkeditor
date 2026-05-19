@@ -57,7 +57,11 @@ describe('<ConversationList>', () => {
   it('renders the empty-state message when there are no conversations', () => {
     const am = fakeAssistantManager();
     renderWithProviders(
-      <ConversationList provider="anthropic" conversations={[]} activeId={null} />,
+      <ConversationList
+        provider="anthropic"
+        conversations={[]}
+        activeId={null}
+      />,
       { managers: { assistantManager: am as never } },
     );
     expect(
@@ -86,7 +90,11 @@ describe('<ConversationList>', () => {
   it('"New chat" button fires createConversation', () => {
     const am = fakeAssistantManager();
     renderWithProviders(
-      <ConversationList provider="anthropic" conversations={[]} activeId={null} />,
+      <ConversationList
+        provider="anthropic"
+        conversations={[]}
+        activeId={null}
+      />,
       { managers: { assistantManager: am as never } },
     );
     fireEvent.click(screen.getByTestId('conversation-new'));

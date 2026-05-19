@@ -70,10 +70,7 @@ export const ToolCallCard: React.FC<{ invocation: ToolInvocation }> = ({
     <div
       data-testid={`tool-call-${invocation.toolCallId}`}
       data-status={invocation.status}
-      className={cn(
-        'mt-2 rounded border px-2 py-1.5 text-xs',
-        stateClass,
-      )}
+      className={cn('mt-2 rounded border px-2 py-1.5 text-xs', stateClass)}
     >
       <button
         type="button"
@@ -121,9 +118,7 @@ export const ToolCallCard: React.FC<{ invocation: ToolInvocation }> = ({
                 {t(
                   `assistant-tools:error_${invocation.errorCode ?? 'execution_failed'}`,
                 )}
-                {invocation.errorMessage
-                  ? ` — ${invocation.errorMessage}`
-                  : ''}
+                {invocation.errorMessage ? ` — ${invocation.errorMessage}` : ''}
               </p>
               {/* Retry affordance: fires a new chat turn that
                   prompts the agent to try the call again. Disabled
@@ -215,19 +210,18 @@ const ResultBlock: React.FC<{
         {shown}
         {truncated ? '\n…' : ''}
       </pre>
-      {(truncated || expanded) &&
-        resultText.length > RESULT_TRUNCATE_AT && (
-          <button
-            type="button"
-            onClick={onToggle}
-            className="mt-1 text-xs underline opacity-80 hover:opacity-100"
-            data-testid="tool-result-toggle"
-          >
-            {truncated
-              ? t('assistant-tools:show_more', { chars: hiddenChars })
-              : t('assistant-tools:show_less')}
-          </button>
-        )}
+      {(truncated || expanded) && resultText.length > RESULT_TRUNCATE_AT && (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="mt-1 text-xs underline opacity-80 hover:opacity-100"
+          data-testid="tool-result-toggle"
+        >
+          {truncated
+            ? t('assistant-tools:show_more', { chars: hiddenChars })
+            : t('assistant-tools:show_less')}
+        </button>
+      )}
     </div>
   );
 };

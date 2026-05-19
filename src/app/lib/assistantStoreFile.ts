@@ -145,10 +145,7 @@ function isValidStore(value: unknown): value is AssistantStoreFile {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Partial<AssistantStoreFile>;
   if (candidate.version !== ASSISTANT_STORE_VERSION) return false;
-  if (
-    typeof candidate.providers !== 'object' ||
-    candidate.providers === null
-  ) {
+  if (typeof candidate.providers !== 'object' || candidate.providers === null) {
     return false;
   }
   if (typeof candidate.keys !== 'object' || candidate.keys === null) {

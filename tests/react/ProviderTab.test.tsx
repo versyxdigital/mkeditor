@@ -47,7 +47,10 @@ jest.mock('react-resizable-panels', () => ({
 import { ProviderTab } from '../../src/browser/react/components/assistant/ProviderTab';
 import { fakeAssistantManager, renderWithProviders } from '../utils/render';
 
-function snapshotWith(provider: 'anthropic' | 'openai' | 'ollama', count: number) {
+function snapshotWith(
+  provider: 'anthropic' | 'openai' | 'ollama',
+  count: number,
+) {
   const conversations = Array.from({ length: count }, (_, i) => ({
     id: `c-${i}`,
     providerId: provider,
@@ -124,7 +127,11 @@ describe('<ProviderTab> — split-panel render', () => {
     const am = fakeAssistantManager({
       initialChatSnapshot: {
         ...snapshotWith('anthropic', 1),
-        activeConversation: { anthropic: 'c-missing', openai: null, ollama: null },
+        activeConversation: {
+          anthropic: 'c-missing',
+          openai: null,
+          ollama: null,
+        },
       },
     });
     renderWithProviders(<ProviderTab provider="anthropic" />, {

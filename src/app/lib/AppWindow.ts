@@ -29,7 +29,10 @@ import { ipcMain, type BrowserWindow, type IpcMainEvent } from 'electron';
 export class AppWindow {
   private context: BrowserWindow;
   /** Tracked so `closed` can remove exactly the handlers we added. */
-  private listeners: Array<{ channel: string; handler: (...args: unknown[]) => void }> = [];
+  private listeners: Array<{
+    channel: string;
+    handler: (...args: unknown[]) => void;
+  }> = [];
 
   constructor(context: BrowserWindow, register = false) {
     this.context = context;
@@ -113,7 +116,10 @@ export class AppWindow {
       fn(event);
     };
     ipcMain.on(channel, handler);
-    this.listeners.push({ channel, handler: handler as (...args: unknown[]) => void });
+    this.listeners.push({
+      channel,
+      handler: handler as (...args: unknown[]) => void,
+    });
   }
 
   private dispose(): void {

@@ -1,9 +1,6 @@
 import { safeStorage } from 'electron';
 import type { ApiProviderId } from '../interfaces/Assistant';
-import {
-  loadAssistantStore,
-  writeAssistantStore,
-} from './assistantStoreFile';
+import { loadAssistantStore, writeAssistantStore } from './assistantStoreFile';
 
 /**
  * AssistantKeyStore

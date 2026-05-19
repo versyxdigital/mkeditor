@@ -52,7 +52,8 @@ function makeModel(content: string, eol: '\n' | '\r\n' = '\n'): FakeModel {
       let lineStart = 0;
       let i = 0;
       while (i < offset) {
-        const isCRLF = eol === '\r\n' && content[i] === '\r' && content[i + 1] === '\n';
+        const isCRLF =
+          eol === '\r\n' && content[i] === '\r' && content[i + 1] === '\n';
         const isLF = eol === '\n' && content[i] === '\n';
         if (isCRLF || isLF) {
           line += 1;
@@ -67,27 +68,33 @@ function makeModel(content: string, eol: '\n' | '\r\n' = '\n'): FakeModel {
   };
 }
 
-function makeBridgeManager(opts: {
-  activeFile?: string | null;
-  models?: Map<string, FakeModel>;
-  treeSnapshot?: {
-    treeRoot: string | null;
-    nodes: Array<{
-      type: 'file' | 'directory';
-      name: string;
-      path: string;
-      children?: Array<{ type: 'file' | 'directory'; name: string; path: string }>;
-    }>;
-  };
-  selection?: {
-    startLineNumber: number;
-    startColumn: number;
-    endLineNumber: number;
-    endColumn: number;
-  } | null;
-  selectionText?: string;
-  cursorPosition?: { lineNumber: number; column: number } | null;
-} = {}) {
+function makeBridgeManager(
+  opts: {
+    activeFile?: string | null;
+    models?: Map<string, FakeModel>;
+    treeSnapshot?: {
+      treeRoot: string | null;
+      nodes: Array<{
+        type: 'file' | 'directory';
+        name: string;
+        path: string;
+        children?: Array<{
+          type: 'file' | 'directory';
+          name: string;
+          path: string;
+        }>;
+      }>;
+    };
+    selection?: {
+      startLineNumber: number;
+      startColumn: number;
+      endLineNumber: number;
+      endColumn: number;
+    } | null;
+    selectionText?: string;
+    cursorPosition?: { lineNumber: number; column: number } | null;
+  } = {},
+) {
   const sent: Array<{ channel: string; data: unknown }> = [];
   const bridge: FakeBridge = {
     send: jest.fn((channel: string, data: unknown) => {
@@ -348,9 +355,7 @@ describe('AssistantTools — read-class execution', () => {
       const tools = new AssistantTools(bm as never);
       await expect(
         tools.execute('read_file', { path: '/workspace/poems' }),
-      ).rejects.toThrow(
-        /is a directory, not a file.*list_files.*create_file/,
-      );
+      ).rejects.toThrow(/is a directory, not a file.*list_files.*create_file/);
     } finally {
       restore();
     }
@@ -434,7 +439,10 @@ describe('AssistantTools — read-class execution', () => {
     // workspace was the parent. Exact-suffix match misses; basename
     // match recovers because "01-quickstart.md" is unique in the tree.
     const models = new Map<string, FakeModel>();
-    models.set('/workspace/omglang/docs/native/01-quickstart.md', makeModel('x'));
+    models.set(
+      '/workspace/omglang/docs/native/01-quickstart.md',
+      makeModel('x'),
+    );
     const bm = makeBridgeManager({
       models,
       treeSnapshot: {
@@ -535,7 +543,6 @@ describe('AssistantTools — read-class execution', () => {
       tools.execute('read_file', { path: 'foo.md' }),
     ).rejects.toThrow(/no workspace folder is open/);
   });
-
 
   it('list_files walks the tree and returns up to 500 paths', async () => {
     const bm = makeBridgeManager({
@@ -769,9 +776,7 @@ describe('AssistantTools — read-class execution', () => {
     // root reflects the resolved subdir, not the workspace root.
     expect(result.root).toBe('/workspace/docs/native');
     // Top-level file outside the scope is excluded.
-    expect(result.paths).toEqual([
-      '/workspace/docs/native/01-quickstart.md',
-    ]);
+    expect(result.paths).toEqual(['/workspace/docs/native/01-quickstart.md']);
   });
 
   it('list_files with subpath lazy-loads the targeted directory before listing', async () => {
@@ -791,9 +796,10 @@ describe('AssistantTools — read-class execution', () => {
     });
     bm.fileTreeManager._setLazyLoadHandler((path: string) => {
       const snap = bm.fileTreeManager.getSnapshot();
-      const dir = snap.nodes.find(
-        (n: { path: string }) => n.path === path,
-      ) as { loaded?: boolean; children?: unknown[] };
+      const dir = snap.nodes.find((n: { path: string }) => n.path === path) as {
+        loaded?: boolean;
+        children?: unknown[];
+      };
       dir.loaded = true;
       dir.children = [
         {
@@ -855,7 +861,9 @@ describe('AssistantTools — write-class execution', () => {
   // tripping the web-mode guard; tests that care about the IPC shape
   // override these to assert specific calls or simulate failure.
   type WriteShim = {
-    readFile?: (path: string) => Promise<{ content: string; lineCount: number }>;
+    readFile?: (
+      path: string,
+    ) => Promise<{ content: string; lineCount: number }>;
     saveFile?: (
       path: string,
       content: string,
@@ -909,7 +917,10 @@ describe('AssistantTools — write-class execution', () => {
   });
 
   it('write_file throws when mked.saveFile reports a failure (so the agent hears about it, not a misleading ok)', async () => {
-    saveFile.mockResolvedValueOnce({ ok: false, error: 'EACCES: permission denied' });
+    saveFile.mockResolvedValueOnce({
+      ok: false,
+      error: 'EACCES: permission denied',
+    });
     const model = makeModel('old');
     const models = new Map<string, FakeModel>();
     models.set('/x.md', model);
@@ -973,7 +984,10 @@ describe('AssistantTools — write-class execution', () => {
     expect(bm.mkeditor.executeEdits).toHaveBeenCalledTimes(1);
     const [, edits] = (bm.mkeditor.executeEdits as jest.Mock).mock.calls[0] as [
       string,
-      Array<{ range: { startLineNumber: number; endLineNumber: number }; text: string }>,
+      Array<{
+        range: { startLineNumber: number; endLineNumber: number };
+        text: string;
+      }>,
     ];
     expect(edits[0].text).toBe('Thank you\n\nIf you have');
     // Spans line 3 ("Thnk you") through line 5 ("If you hve").
@@ -1001,7 +1015,10 @@ describe('AssistantTools — write-class execution', () => {
     expect(bm.mkeditor.executeEdits).toHaveBeenCalledTimes(1);
     const [, edits] = (bm.mkeditor.executeEdits as jest.Mock).mock.calls[0] as [
       string,
-      Array<{ range: { startLineNumber: number; endLineNumber: number }; text: string }>,
+      Array<{
+        range: { startLineNumber: number; endLineNumber: number };
+        text: string;
+      }>,
     ];
     // CRLF haystack: line 3 "Thnk you", line 5 "If you hve".
     expect(edits[0].range.startLineNumber).toBe(3);
@@ -1248,10 +1265,7 @@ describe('AssistantTools — write-class execution', () => {
     await tools.execute('create_folder', {
       path: 'parent-b/shared',
     });
-    expect(createFolder).toHaveBeenCalledWith(
-      '/workspace/parent-b',
-      'shared',
-    );
+    expect(createFolder).toHaveBeenCalledWith('/workspace/parent-b', 'shared');
   });
 
   it('replace_selection fires executeEdits using the current selection range', async () => {

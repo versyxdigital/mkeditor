@@ -181,12 +181,7 @@ contextBridge.exposeInMainWorld('mked', {
    * to use the existing fire-and-forget `to:file:create` channel.
    */
   createFile: (parent: string, name: string, content: string) =>
-    ipcRenderer.invoke(
-      'mked:fs:createfile',
-      parent,
-      name,
-      content,
-    ) as Promise<
+    ipcRenderer.invoke('mked:fs:createfile', parent, name, content) as Promise<
       { ok: true; path: string } | { ok: false; error: string }
     >,
   /**

@@ -1,4 +1,3 @@
-
 # Welcome
 
 Thank you for choosing MKEditor 😊, I hope you find this tool useful for all your markdown needs!
@@ -19,8 +18,8 @@ MKEditor fully supports the [CommonMark](https://commonmark.org/) spec and comes
 
 ```javascript
 document.addEventListener('DOMContentLoaded', () => {
-    document.body.write('Syntax-highlighted codeblock!')
-})
+  document.body.write('Syntax-highlighted codeblock!');
+});
 ```
 
 Syntax highlighting is supported for lots of languages!
@@ -40,6 +39,7 @@ MKEditor comes with full support for writing expressions with LaTeX!
 MKEditor includes a built-in, fully configurable, resizable preview renderer. View your styled or unstyled output in real time.
 
 ## Customize to your preference
+
 Customize your settings, enable word-wrapping, toggle automatic indentation, switch between light mode or dark mode and more.
 
 ## Export to HTML & PDF

@@ -33,12 +33,14 @@ interface FakeBridgeManager {
   };
 }
 
-function makeBridge(opts: {
-  activeFile?: string | null;
-  models?: Record<string, string>;
-  selection?: FakeRange | null;
-  selectionText?: string;
-} = {}): FakeBridgeManager {
+function makeBridge(
+  opts: {
+    activeFile?: string | null;
+    models?: Record<string, string>;
+    selection?: FakeRange | null;
+    selectionText?: string;
+  } = {},
+): FakeBridgeManager {
   const models = new Map<string, FakeModel>();
   for (const [path, content] of Object.entries(opts.models ?? {})) {
     models.set(path, {
@@ -95,7 +97,10 @@ describe('AssistantContextSource.getActiveFile', () => {
     // and confuse themselves. Untitled buffers must be invisible to
     // the context surface.
     const src = new AssistantContextSource(
-      makeBridge({ activeFile: 'untitled-3', models: { 'untitled-3': 'x' } }) as never,
+      makeBridge({
+        activeFile: 'untitled-3',
+        models: { 'untitled-3': 'x' },
+      }) as never,
     );
     expect(src.getActiveFile()).toBeNull();
   });
@@ -123,7 +128,9 @@ describe('AssistantContextSource.getActiveFile', () => {
 
 describe('AssistantContextSource.getSelection', () => {
   it('returns null when there is no editor selection', () => {
-    const src = new AssistantContextSource(makeBridge({ selection: null }) as never);
+    const src = new AssistantContextSource(
+      makeBridge({ selection: null }) as never,
+    );
     expect(src.getSelection()).toBeNull();
   });
 
@@ -135,7 +142,12 @@ describe('AssistantContextSource.getSelection', () => {
       makeBridge({
         activeFile: '/w/a.md',
         models: { '/w/a.md': 'body' },
-        selection: { startLineNumber: 1, startColumn: 3, endLineNumber: 1, endColumn: 3 },
+        selection: {
+          startLineNumber: 1,
+          startColumn: 3,
+          endLineNumber: 1,
+          endColumn: 3,
+        },
         selectionText: '',
       }) as never,
     );
@@ -169,7 +181,12 @@ describe('AssistantContextSource.getSelection', () => {
       makeBridge({
         activeFile: 'untitled-1',
         models: { 'untitled-1': 'scratch' },
-        selection: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 4 },
+        selection: {
+          startLineNumber: 1,
+          startColumn: 1,
+          endLineNumber: 1,
+          endColumn: 4,
+        },
         selectionText: 'scr',
       }) as never,
     );

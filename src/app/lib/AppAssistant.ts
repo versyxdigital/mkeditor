@@ -1,10 +1,5 @@
 import { streamText, tool, jsonSchema, stepCountIs } from 'ai';
-import type {
-  LanguageModel,
-  ModelMessage,
-  Tool,
-  ToolSet,
-} from 'ai';
+import type { LanguageModel, ModelMessage, Tool, ToolSet } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOllama } from 'ollama-ai-provider-v2';
@@ -427,7 +422,10 @@ export class AppAssistant {
     this.safeSend('from:ai:done', payload);
   }
 
-  private sendError(callId: string, payload: Omit<ChatErrorEvent, 'callId'>): void {
+  private sendError(
+    callId: string,
+    payload: Omit<ChatErrorEvent, 'callId'>,
+  ): void {
     this.safeSend('from:ai:error', { callId, ...payload });
   }
 
@@ -473,7 +471,9 @@ export class AppAssistant {
     for (const d of descriptors) {
       set[d.name] = tool({
         description: d.description,
-        inputSchema: jsonSchema(d.parameters as Parameters<typeof jsonSchema>[0]),
+        inputSchema: jsonSchema(
+          d.parameters as Parameters<typeof jsonSchema>[0],
+        ),
         // No `execute` — the renderer drives execution externally.
       });
     }
@@ -564,7 +564,9 @@ export class AppAssistant {
       return { code: 'ollama_unreachable', message };
     }
     // Generic network fallback.
-    if (/ECONNREFUSED|ENOTFOUND|EAI_AGAIN|fetch failed|ETIMEDOUT/i.test(message)) {
+    if (
+      /ECONNREFUSED|ENOTFOUND|EAI_AGAIN|fetch failed|ETIMEDOUT/i.test(message)
+    ) {
       return { code: 'network_error', message };
     }
     return { code: 'unknown', message };

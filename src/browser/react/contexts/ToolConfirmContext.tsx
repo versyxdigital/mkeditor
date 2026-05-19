@@ -37,19 +37,22 @@ export const ToolConfirmProvider: React.FC<{ children: React.ReactNode }> = ({
   // call while a dialog is still up cancels the prior one cleanly).
   const resolverRef = React.useRef<((ok: boolean) => void) | null>(null);
 
-  const open = React.useCallback((req: ToolConfirmRequest): Promise<boolean> => {
-    // If a prior request is still showing, reject it as "dismiss"
-    // before swapping — the user's intent on the new request is what
-    // we care about.
-    if (resolverRef.current) {
-      resolverRef.current(false);
-      resolverRef.current = null;
-    }
-    setRequest(req);
-    return new Promise<boolean>((resolve) => {
-      resolverRef.current = resolve;
-    });
-  }, []);
+  const open = React.useCallback(
+    (req: ToolConfirmRequest): Promise<boolean> => {
+      // If a prior request is still showing, reject it as "dismiss"
+      // before swapping — the user's intent on the new request is what
+      // we care about.
+      if (resolverRef.current) {
+        resolverRef.current(false);
+        resolverRef.current = null;
+      }
+      setRequest(req);
+      return new Promise<boolean>((resolve) => {
+        resolverRef.current = resolve;
+      });
+    },
+    [],
+  );
 
   const resolve = React.useCallback((ok: boolean) => {
     const r = resolverRef.current;

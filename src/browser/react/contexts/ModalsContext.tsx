@@ -9,10 +9,7 @@ export type ModalKey = 'settings' | 'exportSettings' | 'about' | 'shortcuts';
  * are flag-only. Keep this union narrow so type-checking catches a
  * typo at the call site.
  */
-export type ModalPayload =
-  | { tab?: 'general' | 'assistant' }
-  | null
-  | undefined;
+export type ModalPayload = { tab?: 'general' | 'assistant' } | null | undefined;
 
 export interface ModalsState {
   open: ModalKey | null;
@@ -40,13 +37,10 @@ export const ModalsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [open, setOpen] = React.useState<ModalKey | null>(null);
   const [payload, setPayload] = React.useState<ModalPayload>(null);
 
-  const openModal = React.useCallback(
-    (key: ModalKey, next?: ModalPayload) => {
-      setOpen(key);
-      setPayload(next ?? null);
-    },
-    [],
-  );
+  const openModal = React.useCallback((key: ModalKey, next?: ModalPayload) => {
+    setOpen(key);
+    setPayload(next ?? null);
+  }, []);
   const closeModal = React.useCallback(() => {
     setOpen(null);
     setPayload(null);

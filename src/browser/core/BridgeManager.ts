@@ -86,9 +86,7 @@ export class BridgeManager {
     // Hand the context provider to the manager. Same pattern as
     // above — the source reaches into FileManager / EditorManager /
     // `window.mked` through the bridge ref.
-    this.assistantManager.setContextProvider(
-      new AssistantContextSource(this),
-    );
+    this.assistantManager.setContextProvider(new AssistantContextSource(this));
     // Let FileManager.serializeSession read the workspace root without
     // taking a direct dependency on FileTreeManager.
     this.fileManager.setWorkspaceRootGetter(

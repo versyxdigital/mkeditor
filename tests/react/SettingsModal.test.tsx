@@ -200,9 +200,7 @@ describe('<SettingsModal>', () => {
     expect(
       within(dialog).getByText('modals-settings:title_assistant'),
     ).toBeInTheDocument();
-    expect(
-      within(dialog).queryByText('modals-settings:title'),
-    ).toBeNull();
+    expect(within(dialog).queryByText('modals-settings:title')).toBeNull();
     // The AI Providers tab trigger is selected, not General.
     expect(
       within(dialog).getByRole('tab', {

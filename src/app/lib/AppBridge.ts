@@ -332,7 +332,10 @@ export class AppBridge {
     // the rationale.
     ipcMain.handle(
       'mked:fs:readfile',
-      async (_e, path: string): Promise<{ content: string; lineCount: number }> => {
+      async (
+        _e,
+        path: string,
+      ): Promise<{ content: string; lineCount: number }> => {
         const safePath = await AppStorage.assertInWorkspace(path);
         // Pre-flight stat so common confusions (directory passed
         // where a file was expected) surface as actionable errors
@@ -536,10 +539,7 @@ export class AppBridge {
         try {
           writePersistedConversations(payload);
         } catch (e) {
-          this.providers.logger?.log.error(
-            '[to:ai:conversations:save]',
-            e,
-          );
+          this.providers.logger?.log.error('[to:ai:conversations:save]', e);
         }
       },
     );
@@ -555,10 +555,7 @@ export class AppBridge {
         try {
           writePersistedConversations(payload);
         } catch (e) {
-          this.providers.logger?.log.error(
-            '[to:ai:conversations:flush]',
-            e,
-          );
+          this.providers.logger?.log.error('[to:ai:conversations:flush]', e);
         }
       },
     );

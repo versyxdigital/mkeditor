@@ -45,7 +45,13 @@ describe('FileTreeManager.buildFileTree — missing-ancestor recovery (regressio
     ftm.buildFileTree([], '/workspace/poems');
     // Now main reports the listing for the new subfolder.
     ftm.buildFileTree(
-      [{ type: 'file', name: 'spring.md', path: '/workspace/poems/poems/spring.md' }],
+      [
+        {
+          type: 'file',
+          name: 'spring.md',
+          path: '/workspace/poems/poems/spring.md',
+        },
+      ],
       '/workspace/poems/poems',
     );
     // The manager should have requested a refresh of the root via
