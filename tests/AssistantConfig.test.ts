@@ -128,7 +128,7 @@ describe('AssistantConfig.load', () => {
           version: 1,
           providers: {
             anthropic: { enabled: true },
-            openai: { enabled: false, defaultModel: 'gpt-4o' },
+            openai: { enabled: false, defaultModel: 'gpt-5' },
             ollama: {
               enabled: false,
               baseUrl: 'http://localhost:11434',

@@ -23,6 +23,15 @@
   #preview {
     background-color: #1e1e1e;
     color: #eee;
+
+    // Thumb colour for the thin preview scrollbar (geometry +
+    // transition live in `_preview.scss`).
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.18);
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.32);
+    }
   }
 
   #sidebar {

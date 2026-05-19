@@ -8,4 +8,21 @@
   overflow-y: auto;
   padding-bottom: 44px !important;
   background-color: #fff;
+
+  // Thin scrollbar — always visible. Overrides the global 10 px rule
+  // in `index.scss` for this pane only.
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 3px;
+    transition: background-color 150ms ease-in-out;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.4);
+  }
 }

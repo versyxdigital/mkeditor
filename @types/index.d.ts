@@ -24,6 +24,19 @@ declare global {
       resolvePath: (base: string, rel: string) => Promise<string>;
       openMkedUrl: (url: string) => Promise<string>;
       readFile: (path: string) => Promise<{ content: string; lineCount: number }>;
+      saveFile: (
+        path: string,
+        content: string,
+      ) => Promise<
+        { ok: true; path: string } | { ok: false; error: string }
+      >;
+      createFile: (
+        parent: string,
+        name: string,
+        content: string,
+      ) => Promise<
+        { ok: true; path: string } | { ok: false; error: string }
+      >;
     };
     setLanguage: (lng: string) => void;
   }

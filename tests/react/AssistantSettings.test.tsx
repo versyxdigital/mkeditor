@@ -53,7 +53,7 @@ function baseSnapshot() {
       openai: {
         enabled: false,
         hasKey: false,
-        defaultModel: 'gpt-4o',
+        defaultModel: 'gpt-5',
       },
       ollama: {
         enabled: false,

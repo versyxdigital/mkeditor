@@ -150,6 +150,34 @@ contextBridge.exposeInMainWorld('mked', {
       content: string;
       lineCount: number;
     }>,
+  /**
+   * Write `content` to an existing or new file at `path`. Resolves
+   * with `{ok: true, path}` on success or `{ok: false, error}` on
+   * failure — used by the AI assistant's write-class tools so they
+   * can report honest success/failure to the agent (the fire-and-
+   * forget `to:file:save` channel used by the menu UI returns
+   * nothing). Parent directories are created on demand.
+   */
+  saveFile: (path: string, content: string) =>
+    ipcRenderer.invoke('mked:fs:savefile', path, content) as Promise<
+      { ok: true; path: string } | { ok: false; error: string }
+    >,
+  /**
+   * Create a new file at `parent/name` with `content`. Resolves with
+   * `{ok: true, path}` on success or `{ok: false, error}` on failure.
+   * Parent directories are created on demand. Used by the AI
+   * assistant's `create_file` tool; the menu-driven flow continues
+   * to use the existing fire-and-forget `to:file:create` channel.
+   */
+  createFile: (parent: string, name: string, content: string) =>
+    ipcRenderer.invoke(
+      'mked:fs:createfile',
+      parent,
+      name,
+      content,
+    ) as Promise<
+      { ok: true; path: string } | { ok: false; error: string }
+    >,
 });
 
 contextBridge.exposeInMainWorld('logger', {

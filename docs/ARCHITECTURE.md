@@ -506,7 +506,7 @@ The right-hand sidebar that hosts per-provider chat surfaces (Anthropic / OpenAI
   "version": 1,
   "providers": {
     "anthropic": { "enabled": true, "model": "claude-sonnet-4-6", "apiKey": "<encrypted>" },
-    "openai":    { "enabled": false, "model": "gpt-4o", "apiKey": null },
+    "openai":    { "enabled": false, "model": "gpt-5", "apiKey": null },
     "ollama":    { "enabled": true, "model": "llama3.2", "baseUrl": "http://localhost:11434", "apiKey": null }
   },
   "conversations": [

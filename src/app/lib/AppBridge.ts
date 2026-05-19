@@ -236,7 +236,22 @@ export class AppBridge {
           content,
         }: { parent: string; name: string; content?: string },
       ) => {
-        await AppStorage.createFile(this.context, parent, name, content);
+        // Fire-and-forget channel used by the menu UI — convert
+        // `AppStorage.createFile`'s structured result back into a
+        // toast (it used to do this itself before being made honest
+        // for the AI assistant's invoke path).
+        const result = await AppStorage.createFile(
+          this.context,
+          parent,
+          name,
+          content,
+        );
+        this.context.webContents.send('from:notification:display', {
+          status: result.ok ? 'success' : 'error',
+          key: result.ok
+            ? 'notifications:file_created'
+            : 'notifications:unable_create_file',
+        });
       },
     );
 
@@ -284,6 +299,28 @@ export class AppBridge {
     ipcMain.handle(
       'mked:fs:readfile',
       async (_e, path: string): Promise<{ content: string; lineCount: number }> => {
+        // Pre-flight stat so common confusions surface as
+        // actionable errors instead of raw EISDIR / ENOENT noise
+        // (the AI assistant's `read_file` tool routes here and the
+        // model otherwise just sees the bare OS code).
+        let stat;
+        try {
+          stat = await fsPromises.stat(path);
+        } catch (err) {
+          const code = (err as NodeJS.ErrnoException).code;
+          if (code === 'ENOENT') {
+            throw new Error(
+              `File not found: ${path}. Use list_files to enumerate what's available.`,
+              { cause: err },
+            );
+          }
+          throw err;
+        }
+        if (stat.isDirectory()) {
+          throw new Error(
+            `${path} is a directory, not a file. Use list_files to enumerate its contents; use create_file to write a new file inside it.`,
+          );
+        }
         const content = await fsPromises.readFile(path, 'utf-8');
         // Count line breaks rather than splitting (avoids a large
         // intermediate array for big files). Empty string → 1 line.
@@ -293,6 +330,42 @@ export class AppBridge {
         }
         return { content, lineCount };
       },
+    );
+
+    // Write a file with awaited success/failure — used by the AI
+    // assistant's write-class tools (`write_file`, `edit_file`,
+    // `replace_selection`, `insert_at_cursor`) so the agent gets
+    // honest feedback instead of an unconditional ok. The existing
+    // fire-and-forget `to:file:save` channel continues to serve the
+    // menu-driven save flow.
+    ipcMain.handle(
+      'mked:fs:savefile',
+      async (
+        _e,
+        path: string,
+        content: string,
+      ): Promise<{ ok: true; path: string } | { ok: false; error: string }> => {
+        try {
+          await fsPromises.mkdir(dirname(path), { recursive: true });
+          await fsPromises.writeFile(path, content, 'utf-8');
+          return { ok: true, path };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { ok: false, error: message };
+        }
+      },
+    );
+
+    // Create a new file with awaited success/failure — used by the
+    // AI assistant's `create_file` tool. Delegates to
+    // `AppStorage.createFile` (which mkdir -p's the parent, writes,
+    // refreshes the tree, and opens the file as a tab); the
+    // structured `{ok, error?}` result passes straight back to the
+    // renderer so the tool can report honest status to the agent.
+    ipcMain.handle(
+      'mked:fs:createfile',
+      async (_e, parent: string, name: string, content: string) =>
+        AppStorage.createFile(this.context, parent, name, content),
     );
 
     ipcMain.on('mked:open-url', (_e, url: string) => {

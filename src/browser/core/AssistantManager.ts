@@ -109,7 +109,7 @@ const PROVIDER_IDS: readonly ProviderId[] = [
 /** Fallback model used when the user starts a conversation before config has hydrated. */
 const FALLBACK_MODEL_BY_PROVIDER: Record<ProviderId, string> = {
   anthropic: 'claude-sonnet-4-6',
-  openai: 'gpt-4o',
+  openai: 'gpt-5',
   ollama: 'llama3.2',
 };
 

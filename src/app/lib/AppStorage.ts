@@ -369,14 +369,29 @@ export class AppStorage {
    * @param parent - parent directory path
    * @param name - name of the new file
    */
+  /**
+   * Create a new file at `parent/name` with `content` and open it
+   * as the active tab. Returns `{ok: true, path}` on success or
+   * `{ok: false, error}` on failure so callers can react honestly —
+   * the menu-driven flow surfaces a toast based on the result, and
+   * the AI assistant's `create_file` tool reports the error back to
+   * the agent instead of pretending the write succeeded. Parent
+   * directories are auto-created.
+   */
   static async createFile(
     context: BrowserWindow,
     parent: string,
     name: string,
     content = '',
-  ) {
+  ): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
     try {
       const file = join(parent, name);
+      // mkdir -p the parent so creating `poems/spring.md` succeeds
+      // even when `poems/` doesn't exist yet — both the menu-driven
+      // "new file" flow and the AI assistant's `create_file` tool
+      // route through here. fs.mkdir with `recursive: true` is a
+      // no-op when the directory already exists.
+      await fs.mkdir(parent, { recursive: true });
       await fs.writeFile(file, content, 'utf-8');
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
@@ -386,15 +401,10 @@ export class AppStorage {
       // `fs.writeFile` and surfaced a spurious "Unable to open path"
       // toast when stat ran before the write finished.
       AppStorage.setActiveFile(context, file);
-      context.webContents.send('from:notification:display', {
-        status: 'success',
-        key: 'notifications:file_created',
-      });
-    } catch {
-      context.webContents.send('from:notification:display', {
-        status: 'error',
-        key: 'notifications:unable_create_file',
-      });
+      return { ok: true, path: file };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
     }
   }
 

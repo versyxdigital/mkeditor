@@ -290,7 +290,7 @@ export const DEFAULT_PROVIDER_CONFIG: ProviderConfigMap = {
   },
   openai: {
     enabled: false,
-    defaultModel: 'gpt-4o',
+    defaultModel: 'gpt-5',
   },
   ollama: {
     enabled: false,

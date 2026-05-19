@@ -195,7 +195,7 @@ describe('AssistantManager.restore', () => {
             id: 'c-1',
             providerId: 'openai',
             title: 'Once',
-            model: 'gpt-4o',
+            model: 'gpt-5',
             messages: [],
             autoAcceptWrites: false,
             shareActiveFile: true,

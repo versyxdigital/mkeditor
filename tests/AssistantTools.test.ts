@@ -329,6 +329,32 @@ describe('AssistantTools — read-class execution', () => {
     }
   });
 
+  it('read_file surfaces the directory-vs-file guard error so the agent has a clear recovery path (regression)', async () => {
+    // Main now stat-checks before fs.readFile and throws a structured
+    // message when handed a directory path. Previously the bare OS
+    // `EISDIR: illegal operation on a directory` reached the agent
+    // and gave it nothing actionable. The renderer wraps the inner
+    // message but must keep it readable in the outer error string.
+    const restore = setMked({
+      readFile: jest.fn(async () => {
+        throw new Error(
+          '/workspace/poems is a directory, not a file. Use list_files to enumerate its contents; use create_file to write a new file inside it.',
+        );
+      }),
+    });
+    try {
+      const bm = makeBridgeManager();
+      const tools = new AssistantTools(bm as never);
+      await expect(
+        tools.execute('read_file', { path: '/workspace/poems' }),
+      ).rejects.toThrow(
+        /is a directory, not a file.*list_files.*create_file/,
+      );
+    } finally {
+      restore();
+    }
+  });
+
   it('read_file throws a clear error when no main-process bridge is available (web mode)', async () => {
     const restore = setMked(undefined);
     try {
@@ -821,7 +847,47 @@ describe('AssistantTools — read-class execution', () => {
 });
 
 describe('AssistantTools — write-class execution', () => {
-  it('write_file replaces the model content and fires to:file:save', async () => {
+  // The write tools (P8 reliability pass) now await the disk write
+  // via `window.mked.saveFile` / `createFile` so they can report
+  // honest success/failure to the agent. Install no-op shims here so
+  // the tests can focus on the editor / model behaviour without
+  // tripping the web-mode guard; tests that care about the IPC shape
+  // override these to assert specific calls or simulate failure.
+  type WriteShim = {
+    readFile?: (path: string) => Promise<{ content: string; lineCount: number }>;
+    saveFile?: (
+      path: string,
+      content: string,
+    ) => Promise<{ ok: true; path: string } | { ok: false; error: string }>;
+    createFile?: (
+      parent: string,
+      name: string,
+      content: string,
+    ) => Promise<{ ok: true; path: string } | { ok: false; error: string }>;
+  };
+  let saveFile: jest.Mock;
+  let createFile: jest.Mock;
+  let restoreMked: (() => void) | null = null;
+  beforeEach(() => {
+    saveFile = jest.fn(async (path: string) => ({ ok: true as const, path }));
+    createFile = jest.fn(async (parent: string, name: string) => ({
+      ok: true as const,
+      path: `${parent}/${name}`,
+    }));
+    const w = window as Window & { mked?: WriteShim };
+    const prev = w.mked;
+    w.mked = { saveFile, createFile };
+    restoreMked = () => {
+      if (prev === undefined) delete w.mked;
+      else w.mked = prev;
+    };
+  });
+  afterEach(() => {
+    restoreMked?.();
+    restoreMked = null;
+  });
+
+  it('write_file replaces the model content and awaits the disk write via mked.saveFile', async () => {
     const model = makeModel('old');
     const models = new Map<string, FakeModel>();
     models.set('/x.md', model);
@@ -829,10 +895,19 @@ describe('AssistantTools — write-class execution', () => {
     const tools = new AssistantTools(bm as never);
     await tools.execute('write_file', { path: '/x.md', content: 'new' });
     expect(model.setValue).toHaveBeenCalledWith('new');
-    expect(bm.sent).toContainEqual({
-      channel: 'to:file:save',
-      data: { content: 'new', file: '/x.md', prompt: false },
-    });
+    expect(saveFile).toHaveBeenCalledWith('/x.md', 'new');
+  });
+
+  it('write_file throws when mked.saveFile reports a failure (so the agent hears about it, not a misleading ok)', async () => {
+    saveFile.mockResolvedValueOnce({ ok: false, error: 'EACCES: permission denied' });
+    const model = makeModel('old');
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', model);
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    await expect(
+      tools.execute('write_file', { path: '/x.md', content: 'new' }),
+    ).rejects.toThrow(/Failed to save \/x\.md.*EACCES/);
   });
 
   it('edit_file finds oldText by raw substring match and replaces at that range (single-line)', async () => {
@@ -966,37 +1041,47 @@ describe('AssistantTools — write-class execution', () => {
     ).rejects.toThrow(/oldText must not be empty/);
   });
 
-  it('create_file ships parent + name + content via to:file:create (single round-trip)', async () => {
-    // Regression: previously fired only `{parent, name}` and then
-    // tried to land the file via openpath + setValue + save. That
-    // racing chain frequently lost the content because
-    // `to:file:create` doesn't fire `from:file:opened` and
-    // `to:file:save` refuses to write to a path that doesn't exist
-    // yet. The fix passes content through `to:file:create` so main
-    // writes the file atomically with its initial body.
+  it('create_file ships parent + name + content via mked.createFile (awaited round-trip)', async () => {
+    // P8 reliability: `create_file` was previously fire-and-forget
+    // on `to:file:create` and always returned `ok: true` regardless
+    // of whether main actually wrote the file. It now awaits the
+    // invoke-style `mked.createFile` so a failure (read-only fs,
+    // permission denied) reaches the agent instead of a misleading
+    // success.
     const bm = makeBridgeManager();
     const tools = new AssistantTools(bm as never);
     await tools.execute('create_file', {
       path: '/workspace/notes/todo.md',
       content: 'todo',
     });
-    expect(bm.sent).toContainEqual({
-      channel: 'to:file:create',
-      data: {
-        parent: '/workspace/notes',
-        name: 'todo.md',
-        content: 'todo',
-      },
-    });
+    expect(createFile).toHaveBeenCalledWith(
+      '/workspace/notes',
+      'todo.md',
+      'todo',
+    );
   });
 
-  it('create_file does NOT fire to:file:openpath (main opens the new tab itself, avoiding the create→openpath race)', async () => {
+  it('create_file throws when mked.createFile reports a failure (agent gets honest feedback)', async () => {
+    createFile.mockResolvedValueOnce({
+      ok: false,
+      error: 'EACCES: permission denied',
+    });
+    const bm = makeBridgeManager();
+    const tools = new AssistantTools(bm as never);
+    await expect(
+      tools.execute('create_file', {
+        path: '/workspace/notes/todo.md',
+        content: 'todo',
+      }),
+    ).rejects.toThrow(/Failed to create .*todo\.md.*EACCES/);
+  });
+
+  it('create_file does NOT fire to:file:openpath (main opens the new tab itself after the write resolves)', async () => {
     // Regression: previously fired `to:file:openpath` right after
-    // `to:file:create`, but main's `fs.stat` could run before
+    // the create channel; main's `fs.stat` could run before
     // `fs.writeFile` completed and emit a spurious "Unable to open
     // path" toast. Main's `createFile` now opens the new file via
-    // `setActiveFile` once the write resolves, so the renderer doesn't
-    // need a second round-trip.
+    // `setActiveFile` once the awaited write resolves.
     const bm = makeBridgeManager();
     const tools = new AssistantTools(bm as never);
     await tools.execute('create_file', {
@@ -1017,10 +1102,11 @@ describe('AssistantTools — write-class execution', () => {
       path: 'notes/todo.md',
       content: 'body',
     });
-    expect(bm.sent).toContainEqual({
-      channel: 'to:file:create',
-      data: { parent: '/workspace/notes', name: 'todo.md', content: 'body' },
-    });
+    expect(createFile).toHaveBeenCalledWith(
+      '/workspace/notes',
+      'todo.md',
+      'body',
+    );
   });
 
   it('replace_selection fires executeEdits using the current selection range', async () => {

@@ -297,6 +297,31 @@ function joinUnderRoot(root: string, rel: string): string {
 }
 
 /**
+ * Persist `content` to disk via the `mked:fs:savefile` invoke
+ * channel and either return the success result or throw a typed
+ * error the agent can act on. Used by `write_file`, `edit_file`,
+ * `replace_selection`, `insert_at_cursor` — every write-class tool
+ * that previously fire-and-forgot `to:file:save` and lied to the
+ * agent about whether the write actually landed.
+ *
+ * In web mode `window.mked.saveFile` isn't installed; the caller
+ * should have already guarded against that via the in-memory
+ * editor edit, but we throw here so a misuse surfaces clearly.
+ */
+async function awaitedSaveFile(path: string, content: string): Promise<void> {
+  const mked = window.mked;
+  if (!mked?.saveFile) {
+    throw new Error(
+      'saveFile: main-process bridge unavailable (web mode); writing files is desktop-only.',
+    );
+  }
+  const result = await mked.saveFile(path, content);
+  if (!result.ok) {
+    throw new Error(`Failed to save ${path}: ${result.error}`);
+  }
+}
+
+/**
  * The catalog. Each entry's `parameters` is a plain JSON Schema dict
  * — the SDK accepts these directly via the `jsonSchema()` wrapper on
  * the main side. We hand-write them rather than going through Zod so
@@ -308,7 +333,7 @@ const CATALOG: Record<string, ToolSpec> = {
 
   read_file: {
     description:
-      'Read the full text content of a file in the workspace. Does NOT open a tab — reads directly from disk (or from the open buffer if you happen to have it open already, so unsaved edits are captured). Use freely for context-gathering. Prefer absolute paths or paths returned verbatim from list_files; relative paths are resolved against the workspace root.',
+      'Read the full text content of a file in the workspace. Does NOT open a tab — reads directly from disk (or from the open buffer if you happen to have it open already, so unsaved edits are captured). Use freely for context-gathering. Prefer absolute paths or paths returned verbatim from list_files; relative paths are resolved against the workspace root. NOTE: this is for files only. To enumerate a directory, use `list_files` with a `subpath` argument; passing a directory path here will return an error.',
     parameters: {
       type: 'object',
       properties: {
@@ -588,11 +613,10 @@ const CATALOG: Record<string, ToolSpec> = {
       }
       const model = fm.models.get(path);
       if (model) model.setValue(content);
-      ctx.bridge.bridge.send('to:file:save', {
-        content,
-        file: path,
-        prompt: false,
-      });
+      // Await the disk write so a failure (read-only fs, permission
+      // denied, etc.) surfaces to the agent instead of returning a
+      // misleading `ok: true`.
+      await awaitedSaveFile(path, content);
       return { ok: true, path };
     },
   },
@@ -702,11 +726,10 @@ const CATALOG: Record<string, ToolSpec> = {
           forceMoveMarkers: true,
         },
       ]);
-      ctx.bridge.bridge.send('to:file:save', {
-        content: model.getValue(),
-        file: path,
-        prompt: false,
-      });
+      // Await the disk write — the in-memory edit succeeded so the
+      // user sees the change, but the agent must hear about a save
+      // failure rather than getting `ok: true`.
+      await awaitedSaveFile(path, model.getValue());
       return { ok: true, path };
     },
   },
@@ -747,22 +770,25 @@ const CATALOG: Record<string, ToolSpec> = {
       // resolveWorkspacePath will fall through to a naive join under
       // treeRoot since the destination doesn't exist in the tree yet.
       const path = resolveWorkspacePath(ctx, input);
-      // Split into parent directory + file name for the existing
-      // `to:file:create` channel. The channel accepts an optional
-      // `content` field (added so this tool can write initial content
-      // atomically — `to:file:save` refuses to write to a path that
-      // doesn't exist yet, and an extra round-trip via openpath +
-      // setValue + save would race main's fs.writeFile completion).
       const lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
       const parent = lastSlash > 0 ? path.slice(0, lastSlash) : '';
       const name = lastSlash > 0 ? path.slice(lastSlash + 1) : path;
-      ctx.bridge.bridge.send('to:file:create', { parent, name, content });
-      // Main's `createFile` now opens the new file as a tab itself
-      // (via `setActiveFile` → `from:file:opened`) once the write
-      // completes — so we don't fire a separate `to:file:openpath`
-      // here. The previous round-trip raced `fs.writeFile` and
-      // surfaced a spurious "Unable to open path" toast.
-      return { ok: true, path };
+      // Awaited invoke: main mkdir -p's the parent, writes the
+      // file, refreshes the tree, and opens the new file as a tab.
+      // The structured `{ok, error?}` reply lets us tell the agent
+      // when something actually failed (read-only fs, permission
+      // denied, etc.) instead of always claiming success.
+      const mked = window.mked;
+      if (!mked?.createFile) {
+        throw new Error(
+          'create_file: main-process bridge unavailable (web mode); creating files is desktop-only.',
+        );
+      }
+      const result = await mked.createFile(parent, name, content);
+      if (!result.ok) {
+        throw new Error(`Failed to create ${path}: ${result.error}`);
+      }
+      return { ok: true, path: result.path };
     },
   },
 
@@ -804,11 +830,7 @@ const CATALOG: Record<string, ToolSpec> = {
       ]);
       const path = ctx.bridge.fileManager.activeFile;
       if (path && !path.startsWith('untitled-')) {
-        ctx.bridge.bridge.send('to:file:save', {
-          content: editor.getValue(),
-          file: path,
-          prompt: false,
-        });
+        await awaitedSaveFile(path, editor.getValue());
       }
       return { ok: true };
     },
@@ -851,11 +873,7 @@ const CATALOG: Record<string, ToolSpec> = {
       ]);
       const path = ctx.bridge.fileManager.activeFile;
       if (path && !path.startsWith('untitled-')) {
-        ctx.bridge.bridge.send('to:file:save', {
-          content: editor.getValue(),
-          file: path,
-          prompt: false,
-        });
+        await awaitedSaveFile(path, editor.getValue());
       }
       return { ok: true };
     },

@@ -36,7 +36,7 @@ const SAMPLE_PUSH = {
     openai: {
       enabled: false,
       hasKey: false,
-      defaultModel: 'gpt-4o',
+      defaultModel: 'gpt-5',
     },
     ollama: {
       enabled: false,
@@ -198,7 +198,7 @@ describe('AssistantManager.testConnection', () => {
   it('resolves with ok:true when from:ai:done lands for the pending callId', async () => {
     const { bridge, sent } = makeBridge();
     const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
-    const promise = mgr.testConnection('openai', 'gpt-4o');
+    const promise = mgr.testConnection('openai', 'gpt-5');
     const { callId } = sent.find((s) => s.channel === 'to:ai:chat')!.data as {
       callId: string;
     };
@@ -292,7 +292,7 @@ describe('AssistantManager — conversation CRUD', () => {
     mgr.setConfigFromServer({
       config: {
         anthropic: { enabled: true, hasKey: true, defaultModel: 'claude-opus-4-7' },
-        openai: { enabled: true, hasKey: true, defaultModel: 'gpt-4o' },
+        openai: { enabled: true, hasKey: true, defaultModel: 'gpt-5' },
         ollama: {
           enabled: false,
           hasKey: false,

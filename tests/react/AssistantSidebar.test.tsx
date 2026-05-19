@@ -44,7 +44,7 @@ function snapshotWith(overrides: {
       openai: {
         enabled: !!overrides.openai,
         hasKey: !!overrides.openai,
-        defaultModel: 'gpt-4o',
+        defaultModel: 'gpt-5',
       },
       ollama: {
         enabled: !!overrides.ollama,
