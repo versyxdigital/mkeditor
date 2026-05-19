@@ -37,6 +37,12 @@ declare global {
       ) => Promise<
         { ok: true; path: string } | { ok: false; error: string }
       >;
+      createFolder: (
+        parent: string,
+        name: string,
+      ) => Promise<
+        { ok: true; path: string } | { ok: false; error: string }
+      >;
     };
     setLanguage: (lng: string) => void;
   }

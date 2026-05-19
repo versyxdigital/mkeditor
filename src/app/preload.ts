@@ -178,6 +178,17 @@ contextBridge.exposeInMainWorld('mked', {
     ) as Promise<
       { ok: true; path: string } | { ok: false; error: string }
     >,
+  /**
+   * Create a new (empty) directory at `parent/name`. Resolves with
+   * `{ok: true, path}` on success or `{ok: false, error}` on
+   * failure. Used by the AI assistant's `create_folder` tool so the
+   * agent can make empty directories visible in the explorer
+   * without resorting to placeholder `.gitkeep` files.
+   */
+  createFolder: (parent: string, name: string) =>
+    ipcRenderer.invoke('mked:fs:createfolder', parent, name) as Promise<
+      { ok: true; path: string } | { ok: false; error: string }
+    >,
 });
 
 contextBridge.exposeInMainWorld('logger', {

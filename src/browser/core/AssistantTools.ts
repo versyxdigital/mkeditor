@@ -792,6 +792,47 @@ const CATALOG: Record<string, ToolSpec> = {
     },
   },
 
+  create_folder: {
+    description:
+      'Create a new (empty) directory at `path`. Auto-creates intermediate directories. Use this whenever you need a folder to exist — do NOT create placeholder `.gitkeep` (or similar) files to make an empty folder visible; the explorer renders empty directories natively.',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description:
+            'New folder path. Use forward slashes; main resolves it under the workspace root.',
+        },
+      },
+      required: ['path'],
+      additionalProperties: false,
+    },
+    // Read-class on purpose: creating an empty directory doesn't
+    // touch any user content, can't overwrite anything, and is
+    // trivially reversible. Going through the confirm dialog every
+    // time would just push the agent back toward the `.gitkeep`
+    // workaround it was doing before this tool existed.
+    toolClass: 'read',
+    async execute(args, ctx) {
+      const { path: input } = args as { path: string };
+      const path = resolveWorkspacePath(ctx, input);
+      const lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+      const parent = lastSlash > 0 ? path.slice(0, lastSlash) : '';
+      const name = lastSlash > 0 ? path.slice(lastSlash + 1) : path;
+      const mked = window.mked;
+      if (!mked?.createFolder) {
+        throw new Error(
+          'create_folder: main-process bridge unavailable (web mode); creating folders is desktop-only.',
+        );
+      }
+      const result = await mked.createFolder(parent, name);
+      if (!result.ok) {
+        throw new Error(`Failed to create folder ${path}: ${result.error}`);
+      }
+      return { ok: true, path: result.path };
+    },
+  },
+
   replace_selection: {
     description:
       'Replace the currently-selected text in the active editor with new content. Prompts for confirmation by default.',

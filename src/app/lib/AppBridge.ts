@@ -256,7 +256,17 @@ export class AppBridge {
     );
 
     ipcMain.on('to:folder:create', async (_e, { parent, name }) => {
-      await AppStorage.createFolder(this.context, parent, name);
+      // Fire-and-forget channel used by the menu UI — convert
+      // `AppStorage.createFolder`'s structured result back into a
+      // toast (it used to do this itself before being made honest
+      // for the AI assistant's invoke path).
+      const result = await AppStorage.createFolder(this.context, parent, name);
+      this.context.webContents.send('from:notification:display', {
+        status: result.ok ? 'success' : 'error',
+        key: result.ok
+          ? 'notifications:folder_created'
+          : 'notifications:unable_create_folder',
+      });
     });
 
     ipcMain.on('to:file:rename', async (_e, { path, name }) => {
@@ -366,6 +376,17 @@ export class AppBridge {
       'mked:fs:createfile',
       async (_e, parent: string, name: string, content: string) =>
         AppStorage.createFile(this.context, parent, name, content),
+    );
+
+    // Create a new (empty) directory with awaited success/failure —
+    // used by the AI assistant's `create_folder` tool so the agent
+    // stops resorting to `.gitkeep` placeholders to make folders
+    // visible. mkdir -p so intermediate directories are created on
+    // demand.
+    ipcMain.handle(
+      'mked:fs:createfolder',
+      async (_e, parent: string, name: string) =>
+        AppStorage.createFolder(this.context, parent, name),
     );
 
     ipcMain.on('mked:open-url', (_e, url: string) => {

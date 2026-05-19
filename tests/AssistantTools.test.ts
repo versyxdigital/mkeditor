@@ -188,13 +188,14 @@ function makeBridgeManager(opts: {
 }
 
 describe('AssistantTools — catalog metadata', () => {
-  it('describe() returns 10 tool descriptors (the documented catalog)', () => {
+  it('describe() returns 11 tool descriptors (the documented catalog)', () => {
     const bm = makeBridgeManager();
     const tools = new AssistantTools(bm as never);
     const names = tools.describe().map((d) => d.name);
     expect(names.sort()).toEqual(
       [
         'create_file',
+        'create_folder',
         'edit_file',
         'get_active_file',
         'get_selection',
@@ -1091,6 +1092,65 @@ describe('AssistantTools — write-class execution', () => {
     expect(bm.sent).not.toContainEqual(
       expect.objectContaining({ channel: 'to:file:openpath' }),
     );
+  });
+
+  it('create_folder ships parent + name via mked.createFolder (awaited round-trip)', async () => {
+    // The agent used to fall back to `create_file('foo/.gitkeep')`
+    // to make an empty folder visible, because no `create_folder`
+    // tool existed. This pins the new path.
+    const createFolder = jest.fn(async (parent: string, name: string) => ({
+      ok: true as const,
+      path: `${parent}/${name}`,
+    }));
+    const w = window as Window & {
+      mked?: { createFolder?: typeof createFolder };
+    };
+    const prev = w.mked;
+    w.mked = { ...prev, createFolder };
+    try {
+      const bm = makeBridgeManager();
+      const tools = new AssistantTools(bm as never);
+      const result = (await tools.execute('create_folder', {
+        path: '/workspace/essays',
+      })) as { ok: boolean; path: string };
+      expect(createFolder).toHaveBeenCalledWith('/workspace', 'essays');
+      expect(result.ok).toBe(true);
+      expect(result.path).toBe('/workspace/essays');
+    } finally {
+      if (prev === undefined) delete w.mked;
+      else w.mked = prev;
+    }
+  });
+
+  it('create_folder is classified as read so it auto-executes (no confirm dialog)', () => {
+    // Creating an empty directory is trivially reversible and
+    // doesn't touch user content — confirming every one would push
+    // the agent right back to the `.gitkeep` workaround.
+    const bm = makeBridgeManager();
+    const tools = new AssistantTools(bm as never);
+    expect(tools.classify('create_folder')).toBe('read');
+  });
+
+  it('create_folder throws when mked.createFolder reports a failure', async () => {
+    const createFolder = jest.fn(async () => ({
+      ok: false as const,
+      error: 'EACCES: permission denied',
+    }));
+    const w = window as Window & {
+      mked?: { createFolder?: typeof createFolder };
+    };
+    const prev = w.mked;
+    w.mked = { ...prev, createFolder };
+    try {
+      const bm = makeBridgeManager();
+      const tools = new AssistantTools(bm as never);
+      await expect(
+        tools.execute('create_folder', { path: '/workspace/essays' }),
+      ).rejects.toThrow(/Failed to create folder .*essays.*EACCES/);
+    } finally {
+      if (prev === undefined) delete w.mked;
+      else w.mked = prev;
+    }
   });
 
   it('create_file resolves a workspace-relative path before shipping IPC', async () => {

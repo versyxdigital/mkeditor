@@ -411,25 +411,28 @@ export class AppStorage {
   /**
    * Create a new folder in the given directory.
    */
+  /**
+   * Create a new folder at `parent/name`. Returns `{ok: true, path}`
+   * on success or `{ok: false, error}` on failure so callers can
+   * react honestly — the menu-driven flow surfaces a toast based on
+   * the result, and the AI assistant's `create_folder` tool reports
+   * the error back to the agent. `mkdir -p` so missing intermediate
+   * directories are created automatically.
+   */
   static async createFolder(
     context: BrowserWindow,
     parent: string,
     name: string,
-  ) {
+  ): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
     try {
       const dir = join(parent, name);
-      await fs.mkdir(dir);
+      await fs.mkdir(dir, { recursive: true });
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
-      context.webContents.send('from:notification:display', {
-        status: 'success',
-        key: 'notifications:folder_created',
-      });
-    } catch {
-      context.webContents.send('from:notification:display', {
-        status: 'error',
-        key: 'notifications:unable_create_folder',
-      });
+      return { ok: true, path: dir };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
     }
   }
 
