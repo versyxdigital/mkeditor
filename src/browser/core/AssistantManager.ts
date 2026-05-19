@@ -1624,17 +1624,38 @@ export class AssistantManager {
   }
 
   /**
-   * Mint a stable id with the given prefix. Uses `crypto.randomUUID`
-   * when available (electron renderer + jsdom 22+ both provide it);
-   * falls back to a timestamp+random suffix otherwise.
+   * Mint a stable id with the given prefix. Prefers `crypto.randomUUID`
+   * (always present in Electron renderer + jsdom 22+ — our only
+   * runtime targets); falls back to `crypto.getRandomValues` to
+   * synthesise a v4-shaped UUID for any environment that exposes
+   * Web Crypto without `randomUUID`. Both branches are
+   * cryptographically secure — we never reach for `Math.random()`,
+   * which would be flagged as insecure-randomness in a security
+   * scan (these ids correlate IPC traffic but the principle of
+   * never using `Math.random` for id generation holds).
    */
   private static mintCallId(prefix: string): string {
-    const g = globalThis as { crypto?: { randomUUID?: () => string } };
-    const uuid =
-      typeof g.crypto?.randomUUID === 'function'
-        ? g.crypto.randomUUID!()
-        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-    return `${prefix}-${uuid}`;
+    const g = globalThis as {
+      crypto?: {
+        randomUUID?: () => string;
+        getRandomValues?: <T extends ArrayBufferView>(arr: T) => T;
+      };
+    };
+    if (typeof g.crypto?.randomUUID === 'function') {
+      return `${prefix}-${g.crypto.randomUUID()}`;
+    }
+    if (typeof g.crypto?.getRandomValues === 'function') {
+      const bytes = new Uint8Array(16);
+      g.crypto.getRandomValues(bytes);
+      // RFC 4122 §4.4 — set version (4) + variant (10) bits.
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      return `${prefix}-${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    }
+    throw new Error(
+      'mintCallId: no cryptographic randomness source available (need crypto.randomUUID or crypto.getRandomValues)',
+    );
   }
 }
 
