@@ -21,10 +21,14 @@ import {
   openModalExternal,
   type ModalKey,
 } from '../react/contexts/ModalsContext';
+// Neutral seam at `src/browser/assistantUiState.ts` — NOT a React
+// import. React's <UIStateProvider> registers its setters at
+// mount; we call them through these module-level functions
+// without touching React.
 import {
   applyRestoredAssistantState,
   toggleRightSidebarExternal,
-} from '../react/contexts/UIStateContext';
+} from '../assistantUiState';
 import { sonnerToast } from '../notify';
 import { showPropertiesExternal } from '../react/contexts/PropertiesContext';
 import { basename } from '../util';

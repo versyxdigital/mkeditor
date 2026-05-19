@@ -1,5 +1,30 @@
 import * as React from 'react';
 import type { AssistantViewState } from '../../interfaces/Session';
+import {
+  _setRestoreHandler,
+  _syncMirror,
+  _notifyAssistantStateChange,
+  applyRestoredAssistantState,
+  clearAssistantStateChangeListener,
+  getCurrentAssistantState,
+  registerAssistantStateChangeListener,
+  registerToggleRightSidebar,
+  toggleRightSidebarExternal,
+} from '../../assistantUiState';
+
+// Re-export the public seam surface so existing React-side / test
+// imports keep working. The seam itself lives at
+// `src/browser/assistantUiState.ts` (outside `react/`) so managers
+// can use it without importing React — see the comment at the top
+// of that file.
+export {
+  applyRestoredAssistantState,
+  clearAssistantStateChangeListener,
+  getCurrentAssistantState,
+  registerAssistantStateChangeListener,
+  registerToggleRightSidebar,
+  toggleRightSidebarExternal,
+};
 
 interface UIState {
   /** Left (file-tree) sidebar visibility. */
@@ -35,75 +60,6 @@ interface UIStateProviderProps {
   children: React.ReactNode;
 }
 
-// ---------------------------------------------------------------------
-// Cross-boundary seams (read by FileManager + BridgeListeners — both
-// non-React callers). Same module-level pattern as `openModalExternal`,
-// `dispatchMenuActionExternal`, etc.
-// ---------------------------------------------------------------------
-
-/**
- * Live mirror of the React state, kept in sync via a useEffect inside
- * `UIStateProvider`. The composition root passes
- * `getCurrentAssistantState` to `FileManager.setAssistantStateGetter`
- * so `serializeSession()` can read the current value synchronously
- * from non-React code without holding a context handle.
- */
-const currentAssistantState: AssistantViewState = {
-  sidebarOpen: false,
-  size: 20,
-};
-
-export function getCurrentAssistantState(): AssistantViewState {
-  return { sidebarOpen: currentAssistantState.sidebarOpen, size: currentAssistantState.size };
-}
-
-/**
- * Setter handed up by `UIStateProvider` so `BridgeListeners` can push
- * the session-restored assistant block back into React state on
- * `from:session:restore`. Null until the provider mounts.
- */
-let restoreAssistantStateSetter:
-  | ((state: AssistantViewState) => void)
-  | null = null;
-
-export function applyRestoredAssistantState(state: AssistantViewState): void {
-  restoreAssistantStateSetter?.(state);
-}
-
-/**
- * Callback the composition root sets so changes to the right-sidebar
- * state schedule a session save (debounced through FileManager's
- * existing pipeline). Decouples UIStateContext from FileManager —
- * UIStateContext fires the notification; whoever wired it up owns the
- * downstream effect.
- */
-let assistantStateChangeListener: (() => void) | null = null;
-
-export function registerAssistantStateChangeListener(fn: () => void): void {
-  assistantStateChangeListener = fn;
-}
-
-export function clearAssistantStateChangeListener(): void {
-  assistantStateChangeListener = null;
-}
-
-/**
- * P8 — module-level seam used by the application menu (View →
- * Toggle Assistant Sidebar, accelerator Cmd/Ctrl+Shift+A) to flip
- * the assistant sidebar from non-React code. Registered by
- * `UIStateProvider` and consumed by `BridgeListeners.from:assistant:toggle`.
- * Null until the provider mounts — no-op in that window (boot).
- */
-let externalToggleRightSidebar: (() => void) | null = null;
-
-export function registerToggleRightSidebar(fn: () => void): void {
-  externalToggleRightSidebar = fn;
-}
-
-export function toggleRightSidebarExternal(): void {
-  externalToggleRightSidebar?.();
-}
-
 export const UIStateProvider: React.FC<UIStateProviderProps> = ({
   initialSidebarOpen,
   initialRightSidebarOpen = false,
@@ -118,25 +74,24 @@ export const UIStateProvider: React.FC<UIStateProviderProps> = ({
     initialRightSidebarSize,
   );
 
-  // Keep the module-level mirror in sync so non-React callers (the
-  // FileManager.serializeSession getter) read a fresh value without
+  // Keep the seam's mirror in sync so non-React callers
+  // (FileManager.serializeSession) read a fresh value without
   // having to subscribe to React state.
   React.useEffect(() => {
-    currentAssistantState.sidebarOpen = rightSidebarOpen;
-    currentAssistantState.size = rightSidebarSize;
+    _syncMirror({ sidebarOpen: rightSidebarOpen, size: rightSidebarSize });
   }, [rightSidebarOpen, rightSidebarSize]);
 
-  // Hand the restore-side setter up to the module-level seam so
-  // BridgeListeners can apply a session-restored state on
-  // `from:session:restore`. The setter is paired with both pieces of
-  // state — restore overwrites both in a single React batch.
+  // Hand the restore-side setter up to the seam so BridgeListeners
+  // can apply a session-restored state on `from:session:restore`.
+  // The setter is paired with both pieces of state — restore
+  // overwrites both in a single React batch.
   React.useEffect(() => {
-    restoreAssistantStateSetter = (state) => {
+    _setRestoreHandler((state) => {
       setRightSidebarOpenState(state.sidebarOpen);
       setRightSidebarSizeState(state.size);
-    };
+    });
     return () => {
-      restoreAssistantStateSetter = null;
+      _setRestoreHandler(null);
     };
   }, []);
 
@@ -147,15 +102,15 @@ export const UIStateProvider: React.FC<UIStateProviderProps> = ({
 
   const setRightSidebarOpen = React.useCallback((open: boolean) => {
     setRightSidebarOpenState(open);
-    assistantStateChangeListener?.();
+    _notifyAssistantStateChange();
   }, []);
 
   const toggleRightSidebar = React.useCallback(() => {
     setRightSidebarOpenState((open) => !open);
-    assistantStateChangeListener?.();
+    _notifyAssistantStateChange();
   }, []);
 
-  // P8 — register the toggle with the module-level seam used by the
+  // P8 — register the toggle with the seam used by the
   // application menu (View → Toggle Assistant Sidebar, Cmd/Ctrl+Shift+A)
   // and the system tray entry. Effect-registered so the latest
   // closure wins after a re-render.
@@ -166,7 +121,7 @@ export const UIStateProvider: React.FC<UIStateProviderProps> = ({
 
   const setRightSidebarSize = React.useCallback((size: number) => {
     setRightSidebarSizeState(size);
-    assistantStateChangeListener?.();
+    _notifyAssistantStateChange();
   }, []);
 
   const value = React.useMemo(

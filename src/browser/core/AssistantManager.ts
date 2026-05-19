@@ -24,7 +24,7 @@ import type {
 } from '../../app/interfaces/Assistant';
 import type { ToolExecutor } from './AssistantTools';
 import { encryptForMain } from './SecureChannelClient';
-import { confirmToolCallExternal } from '../react/contexts/ToolConfirmContext';
+import { confirmToolCallExternal } from '../toolConfirm';
 
 /**
  * P6 — surface AssistantManager uses to gather context at send time

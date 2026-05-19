@@ -1,18 +1,17 @@
 import * as React from 'react';
 
-import type { ToolConfirmPreview } from '../../core/AssistantTools';
+import {
+  confirmToolCallExternal,
+  registerToolConfirmOpener,
+  type ToolConfirmRequest,
+} from '../../toolConfirm';
 
-/**
- * One pending tool-call confirmation. AssistantManager fills this in
- * when a write-class tool fires (and the conversation doesn't have
- * auto-accept on); `<ToolConfirmDialog>` renders it.
- */
-export interface ToolConfirmRequest {
-  toolCallId: string;
-  toolName: string;
-  arguments: unknown;
-  preview: ToolConfirmPreview | null;
-}
+// Re-export so existing React-side callers keep their import path.
+// The seam itself lives at `src/browser/toolConfirm.ts` (outside
+// `react/`) so managers can call `confirmToolCallExternal` without
+// importing React — see the comment at the top of `toolConfirm.ts`.
+export type { ToolConfirmRequest };
+export { confirmToolCallExternal, registerToolConfirmOpener };
 
 interface ToolConfirmState {
   /** Currently-open request, or null when no dialog is shown. */
@@ -81,29 +80,8 @@ export function useToolConfirm(): ToolConfirmState {
   return ctx;
 }
 
-/* -------------------------------------------------------------------- */
-/*  Module-level seam for non-React callers (AssistantManager)            */
-/* -------------------------------------------------------------------- */
-
-let externalOpen: ((req: ToolConfirmRequest) => Promise<boolean>) | null = null;
-
-export function registerToolConfirmOpener(
-  fn: (req: ToolConfirmRequest) => Promise<boolean>,
-) {
-  externalOpen = fn;
-}
-
-/**
- * Open the tool-call confirm dialog from non-React code. Resolves
- * with `true` on accept, `false` on reject / dismiss / no-provider.
- *
- * If the React tree hasn't mounted the provider yet (early boot),
- * the call resolves false — i.e. write-class tools fail closed
- * rather than silently executing without the user's OK.
- */
-export function confirmToolCallExternal(
-  req: ToolConfirmRequest,
-): Promise<boolean> {
-  if (!externalOpen) return Promise.resolve(false);
-  return externalOpen(req);
-}
+// The module-level seam (`confirmToolCallExternal`,
+// `registerToolConfirmOpener`, `ToolConfirmRequest`) lives in
+// `src/browser/toolConfirm.ts` so manager-side callers can use it
+// without importing React. We re-export above for the existing
+// React-side imports.

@@ -28,14 +28,15 @@ jest.mock('../src/browser/react/contexts/PropertiesContext', () => ({
 }));
 
 // AI Assistant P2: BridgeListeners forwards the restored
-// `envelope.session.assistant` block into UIStateContext via this seam.
-// Mocked so the test runs without pulling React in.
-jest.mock('../src/browser/react/contexts/UIStateContext', () => ({
+// `envelope.session.assistant` block into the assistant-UI seam.
+// (The seam moved out of `react/` so manager code stays
+// React-free — see `src/browser/assistantUiState.ts`.)
+jest.mock('../src/browser/assistantUiState', () => ({
   applyRestoredAssistantState: jest.fn(),
 }));
 
 import { sonnerToast } from '../src/browser/notify';
-import { applyRestoredAssistantState } from '../src/browser/react/contexts/UIStateContext';
+import { applyRestoredAssistantState } from '../src/browser/assistantUiState';
 import { registerBridgeListeners } from '../src/browser/core/BridgeListeners';
 import type { SessionRestoreEnvelope } from '../src/browser/interfaces/Session';
 import type {
