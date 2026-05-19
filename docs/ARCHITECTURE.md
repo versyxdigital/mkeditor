@@ -65,7 +65,10 @@ This document describes how MKEditor is put together internally: how the two exe
 Runs Node. Owns:
 
 - `BrowserWindow` lifecycle, single-instance lock, OS file associations (`.md`), tray, app menu.
-- `~/.mkeditor/settings.json` (read/write/merge).
+- Three sibling JSON files under `~/.mkeditor/`:
+  - `settings.json` — editor + export preferences (read / validate / merge-defaults / save via [AppSettings](../src/app/lib/AppSettings.ts)).
+  - `session.json` — tabs, active tab, workspace folder, per-tab cursor / scroll / folding (atomic tmp + rename writes via [AppSession](../src/app/lib/AppSession.ts)).
+  - `assistant.json` — AI Assistant non-secret config (`enabled`, `model`, `baseUrl`) + persisted conversation history via [AssistantConfig](../src/app/lib/AssistantConfig.ts), with the `keys` section managed by [AssistantKeyStore](../src/app/lib/AssistantKeyStore.ts) (Electron `safeStorage`-encrypted; plaintext keys never cross IPC).
 - File system access for the editor: open/save dialogs, open path, directory tree, create/rename/delete file or folder, properties.
 - HTML export (writes the renderer-built HTML to disk) and PDF export (offscreen `BrowserWindow.printToPDF`).
 - `mked://` custom protocol: registered as privileged in [main.ts](../src/app/main.ts:52-63); on a request, [AppBridge.handleMkedUrl](../src/app/lib/AppBridge.ts:257) parses `mked://open?path=…` and routes through `AppStorage.openActiveFile`.

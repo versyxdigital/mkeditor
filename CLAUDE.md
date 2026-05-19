@@ -17,7 +17,7 @@ The renderer is React 19 + shadcn/ui + Tailwind v4 on top of a set of plain-TS m
 
 The same renderer bundle detects which mode it's running in via [getExecutionBridge()](src/browser/util.ts):
 
-- **Desktop**: `window.executionBridge` is injected by the Electron preload ([src/app/preload.ts](src/app/preload.ts)). Settings persist to `~/.mkeditor/settings.json`. File tree sidebar visible. Files open through IPC.
+- **Desktop**: `window.executionBridge` is injected by the Electron preload ([src/app/preload.ts](src/app/preload.ts)). Three sibling JSON files persist under `~/.mkeditor/`: `settings.json` (editor + export preferences), `session.json` (tabs, active tab, workspace folder, per-tab cursor/scroll/folding — restored on relaunch), and `assistant.json` (AI Assistant config + conversation history; API keys live in its `keys` section, encrypted with Electron `safeStorage` and never crossing IPC in plaintext). File tree sidebar visible. Files open through IPC.
 - **Web**: no bridge. Settings + last-edited content go to `localStorage` (`mkeditor-settings`, `mkeditor-export-settings`, `mkeditor-content`). Sidebar collapsed by default, "delete content" button shown in the toolbar. Exports use the File System Access API or `window.open` + `print()` for PDF.
 
 Mode branching lives in [index.ts](src/browser/index.ts), [EditorManager](src/browser/core/EditorManager.ts), [SettingsProvider](src/browser/core/providers/SettingsProvider.ts), [ExportSettingsProvider](src/browser/core/providers/ExportSettingsProvider.ts), and a few React components that conditionally render desktop-only chrome.

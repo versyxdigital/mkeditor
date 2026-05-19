@@ -1,7 +1,10 @@
 {
   "title": "Editor-Einstellungen",
+  "title_assistant": "KI-Einstellungen",
   "intro": "Hier kannst du verschiedene Editor-Einstellungen anpassen; Änderungen werden automatisch gespeichert.",
+  "intro_assistant": "Verbinde deine KI-Anbieterkonten, wähle Standardmodelle und teste die Verbindung. Schlüssel werden lokal gespeichert und verlassen deinen Rechner nie.",
   "settings_file_info": "Deine Einstellungsdatei befindet sich unter",
+  "settings_file_info_assistant": "Deine KI-Anbieterkonfiguration und Konversationen sind gespeichert unter",
   "formatting": "Formatierung",
   "autoindent_label": "Automatischen Einzug umschalten",
   "autoindent_help": "Text in neuen Zeilen automatisch einrücken.",
@@ -29,5 +32,7 @@
   "systemtheme_help": "Das Systemdesign kann gespeicherte Einstellungen überschreiben.",
   "language_label": "Sprache",
   "language_help": "Wähle die Anzeigesprache.",
-  "save_settings": "Einstellungen speichern"
+  "save_settings": "Einstellungen speichern",
+  "tab_general": "Allgemeine Einstellungen",
+  "tab_assistant": "KI-Anbieter"
 }

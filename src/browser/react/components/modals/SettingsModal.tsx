@@ -131,9 +131,15 @@ export const SettingsModal: React.FC = () => {
           </p>
           {mode === 'desktop' && (
             <p className="mt-1 text-muted-foreground">
-              <span>{t('modals-settings:settings_file_info')}</span>{' '}
+              <span>
+                {activeTab === 'assistant'
+                  ? t('modals-settings:settings_file_info_assistant')
+                  : t('modals-settings:settings_file_info')}
+              </span>{' '}
               <span className="font-mono text-xs">
-                ~/.mkeditor/settings.json
+                {activeTab === 'assistant'
+                  ? '~/.mkeditor/assistant.json'
+                  : '~/.mkeditor/settings.json'}
               </span>
               .
             </p>

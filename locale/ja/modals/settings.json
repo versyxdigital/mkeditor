@@ -1,7 +1,10 @@
 {
   "title": "エディター設定",
+  "title_assistant": "AI 設定",
   "intro": "ここでは各種エディター設定をカスタマイズできます。設定は更新時に自動的に保存されます。",
+  "intro_assistant": "AI プロバイダーのアカウントを接続し、既定のモデルを選び、接続をテストします。キーはローカルに保存され、お使いのマシンを離れることはありません。",
   "settings_file_info": "設定ファイルは次の場所にあります",
+  "settings_file_info_assistant": "AI プロバイダー設定と会話履歴は次の場所に保存されます",
   "formatting": "書式",
   "autoindent_label": "自動インデントを切り替え",
   "autoindent_help": "新しい行で自動的にインデントします。",
@@ -29,5 +32,7 @@
   "systemtheme_help": "システムテーマが保存済み設定を上書きできるようにします。",
   "language_label": "言語",
   "language_help": "インターフェースの言語を選択します。",
-  "save_settings": "設定を保存"
+  "save_settings": "設定を保存",
+  "tab_general": "一般設定",
+  "tab_assistant": "AI プロバイダー"
 }

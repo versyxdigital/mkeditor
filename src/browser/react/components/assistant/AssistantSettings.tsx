@@ -22,6 +22,7 @@ import {
 } from '../ui/select';
 import { Switch } from '../ui/switch';
 import { Icon } from '../Icon';
+import { ProviderLogo } from './ProviderLogo';
 
 /**
  * AI Assistant settings (P3). Mounted inside `<SettingsModal>` on the
@@ -165,7 +166,12 @@ const ApiProviderRow: React.FC<{
   const canTest = cfg.hasKey && !!cfg.defaultModel && !disabledByEncryption;
 
   return (
-    <ProviderCard label={label} status={status} statusKey="assistant-settings">
+    <ProviderCard
+      provider={provider}
+      label={label}
+      status={status}
+      statusKey="assistant-settings"
+    >
       <ToggleRow
         id={`${provider}-enabled`}
         label={t('assistant-settings:enable_label')}
@@ -375,7 +381,12 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
   // base URL and model select sit side by side, with the test
   // connection action below.
   return (
-    <ProviderCard label={label} status={status} statusKey="assistant-settings">
+    <ProviderCard
+      provider="ollama"
+      label={label}
+      status={status}
+      statusKey="assistant-settings"
+    >
       <ToggleRow
         id="ollama-enabled"
         label={t('assistant-settings:enable_label')}
@@ -465,17 +476,21 @@ const STATUS_CLASS: Record<Exclude<TestStatus, 'unknown'>, string> = {
 };
 
 const ProviderCard: React.FC<{
+  provider: ProviderId;
   label: string;
   status: TestStatus;
   statusKey: string;
   children: React.ReactNode;
-}> = ({ label, status, statusKey, children }) => (
+}> = ({ provider, label, status, statusKey, children }) => (
   <section
     aria-label={label}
     className="flex flex-col gap-3 rounded-md border border-border bg-background p-3"
   >
     <div className="flex items-center justify-between">
-      <h4 className="text-sm font-semibold">{label}</h4>
+      <h4 className="flex items-center gap-2 text-sm font-semibold">
+        <ProviderLogo provider={provider} className="h-4 w-4" />
+        <span>{label}</span>
+      </h4>
       {status !== 'unknown' && (
         <span
           className={cn(

@@ -1,7 +1,10 @@
 {
   "title": "Impostazioni dell'editor",
+  "title_assistant": "Impostazioni IA",
   "intro": "Qui puoi personalizzare varie impostazioni dell'editor; le impostazioni vengono salvate automaticamente quando le modifichi.",
+  "intro_assistant": "Collega i tuoi account dei provider di IA, scegli i modelli predefiniti e verifica la connettività. Le chiavi sono memorizzate localmente e non lasciano mai la tua macchina.",
   "settings_file_info": "Il tuo file delle impostazioni si trova in",
+  "settings_file_info_assistant": "La configurazione dei tuoi provider di IA e le conversazioni sono salvate in",
   "formatting": "Formattazione",
   "autoindent_label": "Attiva/disattiva rientro automatico",
   "autoindent_help": "Rientra automaticamente il testo nelle nuove righe.",
@@ -29,5 +32,7 @@
   "systemtheme_help": "Consenti al tema di sistema di sostituire le impostazioni salvate.",
   "language_label": "Lingua",
   "language_help": "Seleziona la lingua dell’interfaccia.",
-  "save_settings": "Salva impostazioni"
+  "save_settings": "Salva impostazioni",
+  "tab_general": "Impostazioni generali",
+  "tab_assistant": "Provider IA"
 }

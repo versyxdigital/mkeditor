@@ -1,7 +1,10 @@
 {
   "title": "Paramètres de l’éditeur",
+  "title_assistant": "Paramètres IA",
   "intro": "Vous pouvez ici personnaliser divers paramètres de l’éditeur ; les paramètres sont enregistrés automatiquement lors de leur modification.",
+  "intro_assistant": "Connectez vos comptes de fournisseurs d’IA, choisissez les modèles par défaut et testez la connectivité. Les clés sont stockées localement et ne quittent jamais votre machine.",
   "settings_file_info": "Votre fichier de paramètres se trouve à",
+  "settings_file_info_assistant": "Votre configuration de fournisseurs d’IA et vos conversations sont stockées à",
   "formatting": "Mise en forme",
   "autoindent_label": "Activer/désactiver l’indentation automatique",
   "autoindent_help": "Indenter automatiquement le texte sur les nouvelles lignes.",
@@ -29,5 +32,7 @@
   "systemtheme_help": "Laisser le thème du système remplacer vos paramètres enregistrés.",
   "language_label": "Langue",
   "language_help": "Sélectionnez la langue de l’interface.",
-  "save_settings": "Enregistrer les paramètres"
+  "save_settings": "Enregistrer les paramètres",
+  "tab_general": "Paramètres généraux",
+  "tab_assistant": "Fournisseurs d’IA"
 }
