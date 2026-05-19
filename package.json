@@ -55,7 +55,7 @@
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
     "monaco-editor-webpack-plugin": "^7.1.1",
-    "postcss": "^8.5.14",
+    "postcss": "^8.5.15",
     "postcss-loader": "^8.2.1",
     "prettier": "^3.8.3",
     "sass": "^1.99.0",
