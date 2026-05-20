@@ -5,11 +5,20 @@ import {
   Separator,
   type GroupImperativeHandle,
   type PanelImperativeHandle,
+  type PanelSize,
 } from 'react-resizable-panels';
 import { Toaster } from 'sonner';
 
-import { ManagersProvider, type Managers } from './contexts/ManagersContext';
-import { UIStateProvider, useUIState } from './contexts/UIStateContext';
+import {
+  ManagersProvider,
+  useManagers,
+  type Managers,
+} from './contexts/ManagersContext';
+import {
+  UIStateProvider,
+  toggleRightSidebarExternal,
+  useUIState,
+} from './contexts/UIStateContext';
 import { FilesProvider } from './contexts/FilesContext';
 import { FileTreeProvider } from './contexts/FileTreeContext';
 import {
@@ -23,18 +32,31 @@ import {
   usePrompts,
 } from './contexts/PromptsContext';
 import {
+  ToolConfirmProvider,
+  registerToolConfirmOpener,
+  useToolConfirm,
+} from './contexts/ToolConfirmContext';
+import {
   PropertiesProvider,
   registerPropertiesShower,
   useProperties,
 } from './contexts/PropertiesContext';
 import { SettingsContextProvider } from './contexts/SettingsContext';
 import { ExportSettingsContextProvider } from './contexts/ExportSettingsContext';
+import { AssistantContextProvider } from './contexts/AssistantContext';
 import { Navbar } from './components/Navbar';
 import { TabBar } from './components/TabBar';
+import { TitleBar } from './components/TitleBar';
+import { AssistantSidebar } from './components/AssistantSidebar';
+import { ConfirmToolCall } from './components/assistant/ConfirmToolCall';
 import { Sidebar } from './components/Sidebar';
 import { Workspace } from './components/Workspace';
 import { EditorToolbar } from './components/EditorToolbar';
 import { BottomToolbarRight } from './components/BottomToolbarRight';
+import { WindowProvider } from './contexts/WindowContext';
+import { registerMenuActionDispatcher } from '../menuDispatch';
+import type { MenuAction } from '../../app/lib/menuModel';
+import type { ModalKey } from './contexts/ModalsContext';
 
 // Modals are lazy: each one is a separate webpack chunk that is only
 // fetched the first time the user opens it. The five modal components
@@ -117,40 +139,174 @@ export const App: React.FC<AppProps> = ({
     <ManagersProvider value={managers}>
       <SettingsContextProvider>
         <ExportSettingsContextProvider>
-          <ModalsProvider>
-            <PromptsProvider>
-              <PropertiesProvider>
-                <ModalsBridge />
-                <PromptsBridge />
-                <PropertiesBridge />
-                <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
-                  <FilesProvider>
-                    <FileTreeProvider>
-                      <Navbar />
-                      <TabBar />
-                      <Shell
-                        onEditorReady={onEditorReady}
-                        workspaceGroupRef={workspaceGroupRef}
-                      />
-                      <EditorToolbar workspaceGroupRef={workspaceGroupRef} />
-                      <BottomToolbarRight />
-                      <LazyModals />
-                      <Toaster
-                        position="bottom-right"
-                        richColors
-                        closeButton
-                        theme="system"
-                      />
-                    </FileTreeProvider>
-                  </FilesProvider>
-                </UIStateProvider>
-              </PropertiesProvider>
-            </PromptsProvider>
-          </ModalsProvider>
+          <AssistantContextProvider>
+            <ModalsProvider>
+              <PromptsProvider>
+                <PropertiesProvider>
+                  <WindowProvider>
+                    <ToolConfirmProvider>
+                      <ModalsBridge />
+                      <PromptsBridge />
+                      <PropertiesBridge />
+                      <MenuActionBridge />
+                      <ToolConfirmBridge />
+                      <UIStateProvider initialSidebarOpen={initialSidebarOpen}>
+                        <FilesProvider>
+                          <FileTreeProvider>
+                            <TitleBar />
+                            <Navbar />
+                            <TabBar />
+                            <Shell
+                              onEditorReady={onEditorReady}
+                              workspaceGroupRef={workspaceGroupRef}
+                            />
+                            <EditorToolbar
+                              workspaceGroupRef={workspaceGroupRef}
+                            />
+                            <BottomToolbarRight />
+                            <LazyModals />
+                            <ConfirmToolCall />
+                            <Toaster
+                              position="bottom-right"
+                              richColors
+                              closeButton
+                              theme="system"
+                            />
+                          </FileTreeProvider>
+                        </FilesProvider>
+                      </UIStateProvider>
+                    </ToolConfirmProvider>
+                  </WindowProvider>
+                </PropertiesProvider>
+              </PromptsProvider>
+            </ModalsProvider>
+          </AssistantContextProvider>
         </ExportSettingsContextProvider>
       </SettingsContextProvider>
     </ManagersProvider>
   );
+};
+
+/**
+ * Resolves a `MenuAction` from the in-window `<TitleBar>` into the right
+ * effect — modals, Monaco commands, BridgeManager helpers, or main-process
+ * IPC. Registered through `menuDispatch.ts` so the non-React TitleBar.menu
+ * component can fire actions through a stable module-level seam.
+ */
+const MenuActionBridge: React.FC = () => {
+  const { bridgeManager, editorManager } = useManagers();
+  const { openModal } = useModals();
+
+  const dispatch = React.useCallback(
+    (action: MenuAction) => {
+      switch (action.kind) {
+        case 'channel': {
+          const editor = editorManager?.getMkEditor() ?? null;
+          if (action.channel === 'from:modal:open') {
+            // Payload may be a bare modal key OR `{modal, tab?}` for
+            // the P8 Help → Configure AI Providers menu item that
+            // opens Settings on a specific tab.
+            const payload = action.payload as
+              | ModalKey
+              | { modal: ModalKey; tab?: 'general' | 'assistant' };
+            if (typeof payload === 'string') {
+              openModal(payload);
+            } else if (payload && typeof payload.modal === 'string') {
+              openModal(
+                payload.modal,
+                payload.tab ? { tab: payload.tab } : undefined,
+              );
+            }
+            return;
+          }
+          if (action.channel === 'from:assistant:toggle') {
+            // View → Toggle Assistant Sidebar (also fired from
+            // the system tray on desktop). Route through the same
+            // UIStateContext seam BridgeListeners uses for the
+            // main-process / native macOS menu firing.
+            toggleRightSidebarExternal();
+            return;
+          }
+          if (action.channel === 'from:command:palette') {
+            if (editor) {
+              setTimeout(() => {
+                editor.focus();
+                editor.trigger('open', 'editor.action.quickCommand', {});
+              });
+            }
+            return;
+          }
+          // Other channels map 1-1 to a BridgeManager helper.
+          if (!bridgeManager) return;
+          switch (action.channel) {
+            case 'from:file:new':
+              return bridgeManager.menuFileNew();
+            case 'from:file:open':
+              return bridgeManager.menuFileOpen();
+            case 'from:file:save':
+              return bridgeManager.menuFileSave();
+            case 'from:file:saveas':
+              return bridgeManager.menuFileSaveAs();
+            case 'from:folder:open':
+              return bridgeManager.menuFolderOpen();
+          }
+          return;
+        }
+        case 'role': {
+          const editor = editorManager?.getMkEditor() ?? null;
+          switch (action.role) {
+            case 'undo':
+              editor?.trigger('keyboard', 'undo', null);
+              return;
+            case 'redo':
+              editor?.trigger('keyboard', 'redo', null);
+              return;
+            case 'cut':
+              if (editor && bridgeManager) {
+                setTimeout(() => {
+                  editor.focus();
+                  bridgeManager.editCut();
+                });
+              }
+              return;
+            case 'copy':
+              if (editor && bridgeManager) {
+                setTimeout(() => {
+                  editor.focus();
+                  bridgeManager.editCopy();
+                });
+              }
+              return;
+            case 'paste':
+              if (editor && bridgeManager) {
+                setTimeout(() => {
+                  editor.focus();
+                  bridgeManager.editPaste();
+                });
+              }
+              return;
+            case 'togglefullscreen':
+              bridgeManager?.windowToggleFullscreen();
+              return;
+            case 'quit':
+              bridgeManager?.windowClose();
+              return;
+          }
+          return;
+        }
+        case 'command':
+          bridgeManager?.runCommand(action.commandId);
+          return;
+      }
+    },
+    [bridgeManager, editorManager, openModal],
+  );
+
+  React.useEffect(() => {
+    registerMenuActionDispatcher(dispatch);
+  }, [dispatch]);
+
+  return null;
 };
 
 /**
@@ -190,6 +346,20 @@ const PropertiesBridge: React.FC = () => {
   React.useEffect(() => {
     registerPropertiesShower(show);
   }, [show]);
+  return null;
+};
+
+/**
+ * Hands the `useToolConfirm().open` function to the module-level
+ * `confirmToolCallExternal` so `AssistantManager.runWithConfirmation`
+ * (a non-React caller) can open the confirm dialog and await the
+ * user's response.
+ */
+const ToolConfirmBridge: React.FC = () => {
+  const { open } = useToolConfirm();
+  React.useEffect(() => {
+    registerToolConfirmOpener(open);
+  }, [open]);
   return null;
 };
 
@@ -236,16 +406,33 @@ const LazyModals: React.FC = () => {
 };
 
 /**
- * Sidebar | Workspace split. The outer Group sits below the Navbar +
- * TabBar in #react-root's flex column and flex-grows to fill the
- * remaining vertical space (`#mkeditor-layout { flex: 1 }`).
+ * Sidebar | Workspace | AssistantSidebar split. The outer Group sits
+ * below the Navbar + TabBar in #react-root's flex column and flex-grows
+ * to fill the remaining vertical space (`#mkeditor-layout { flex: 1 }`).
+ *
+ * The right-hand `assistant-pane` mirrors the left sidebar's
+ * collapse/expand effect. Its size is read from + written to
+ * UIStateContext and persisted through the session payload so
+ * `{ open, size }` survives relaunch.
  */
-const Shell: React.FC<{
+export const Shell: React.FC<{
   onEditorReady?: () => void;
   workspaceGroupRef: React.RefObject<GroupImperativeHandle | null>;
 }> = ({ onEditorReady, workspaceGroupRef }) => {
-  const { sidebarOpen } = useUIState();
+  const {
+    sidebarOpen,
+    rightSidebarOpen,
+    rightSidebarSize,
+    setRightSidebarSize,
+  } = useUIState();
+  const { mode } = useManagers();
+  // AI Assistant is desktop-only. On web the assistant pane is not
+  // rendered at all — see the Decisions table in
+  // docs/AI_ASSISTANT.md for the rationale (no localStorage key
+  // storage, no in-renderer SDK path).
+  const showAssistant = mode !== 'web';
   const sidebarPanelRef = React.useRef<PanelImperativeHandle>(null);
+  const assistantPanelRef = React.useRef<PanelImperativeHandle>(null);
 
   React.useEffect(() => {
     const panel = sidebarPanelRef.current;
@@ -253,6 +440,30 @@ const Shell: React.FC<{
     if (sidebarOpen && panel.isCollapsed()) panel.expand();
     else if (!sidebarOpen && !panel.isCollapsed()) panel.collapse();
   }, [sidebarOpen]);
+
+  React.useEffect(() => {
+    if (!showAssistant) return;
+    const panel = assistantPanelRef.current;
+    if (!panel) return;
+    if (rightSidebarOpen && panel.isCollapsed()) panel.expand();
+    else if (!rightSidebarOpen && !panel.isCollapsed()) panel.collapse();
+  }, [rightSidebarOpen, showAssistant]);
+
+  // Push every drag tick into UIStateContext so the size persists
+  // through the session save pipeline (debounced 300ms by
+  // FileManager.scheduleSessionSave). The panel reports size as a
+  // percentage of the outer Group, matching how we persist it. We
+  // suppress zero-size events fired while the panel is collapsed so
+  // collapsing doesn't clobber the user's last-chosen expanded size.
+  const handleAssistantResize = React.useCallback(
+    (panelSize: PanelSize) => {
+      const size = panelSize.asPercentage;
+      if (size > 0 && size !== rightSidebarSize) {
+        setRightSidebarSize(size);
+      }
+    },
+    [rightSidebarSize, setRightSidebarSize],
+  );
 
   return (
     <Group orientation="horizontal" id="mkeditor-layout">
@@ -269,6 +480,21 @@ const Shell: React.FC<{
       <Panel id="workspace-pane">
         <Workspace groupRef={workspaceGroupRef} onEditorReady={onEditorReady} />
       </Panel>
+      {showAssistant && (
+        <>
+          <Separator className="gutter sidebar-gutter-horizontal" />
+          <Panel
+            id="assistant-pane"
+            panelRef={assistantPanelRef}
+            collapsible
+            defaultSize={`${rightSidebarSize}%`}
+            minSize="15%"
+            onResize={handleAssistantResize}
+          >
+            <AssistantSidebar />
+          </Panel>
+        </>
+      )}
     </Group>
   );
 };

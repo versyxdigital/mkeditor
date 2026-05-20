@@ -1,0 +1,7 @@
+{
+  "title": "AI アシスタント",
+  "tabs_label": "AI プロバイダー",
+  "no_providers_enabled": "まだプロバイダーが接続されていません。設定で一つ有効にしてチャットを始めましょう。",
+  "provider_ready_placeholder": "{{provider}} の準備ができました — チャット UI は次のフェーズで登場します。",
+  "open_settings": "設定を開く"
+}

@@ -1,12 +1,22 @@
 import { type editor, languages } from 'monaco-editor';
 
-/** Predicate that returns true if `path` matches an open file in the tree. */
-export type PathExistsPredicate = (path: string) => boolean;
+/**
+ * Getter returning the absolute path of the currently-active tab,
+ * or `null` if the active tab is an untitled scratch buffer (no
+ * stable base directory for relative-path resolution).
+ *
+ * Sourced from `FileManager.activeFile` in the composition root.
+ * Reading from the renderer here (instead of `mked.getActiveFilePath()`
+ * via IPC) is what makes link resolution stay correct when the user
+ * switches tabs — the main process never learns about tab switches,
+ * only about `from:file:opened`, so its `activeFilePath` lags reality.
+ */
+export type ActiveFilePathGetter = () => string | null;
 
 export class MkedLinkProvider {
   constructor(
     _: editor.IStandaloneCodeEditor,
-    pathExists: PathExistsPredicate,
+    getActiveFilePath: ActiveFilePathGetter,
   ) {
     languages.registerLinkProvider('markdown', {
       provideLinks: async (m) => {
@@ -14,8 +24,11 @@ export class MkedLinkProvider {
         const links: languages.ILink[] = [];
         if (!mked) return { links };
 
-        const active = mked.getActiveFilePath();
-        if (!active) return { links };
+        // Untitled buffers have a synthetic id (`untitled-N`), not a
+        // real path — `dirname` would resolve relative to the
+        // Electron process cwd, which is never what the user wants.
+        const active = getActiveFilePath();
+        if (!active || active.startsWith('untitled')) return { links };
 
         const baseDir = await mked.pathDirname(active);
         const text = m.getValue();
@@ -29,7 +42,13 @@ export class MkedLinkProvider {
 
           const resolved = await mked.resolvePath(baseDir, url);
 
-          if (!pathExists(resolved)) continue;
+          // No tree-presence gate. The link is offered for every
+          // relative .md path syntactically present in the doc;
+          // `AppStorage.openActiveFile` checks existence at click
+          // time and surfaces an error toast if the target is gone.
+          // Gating on the loaded tree meant unexpanded folders'
+          // files were unlinkable, which was the most common
+          // complaint with the old behaviour.
 
           const startOffset = match.index + match[0].indexOf(url);
           const endOffset = startOffset + url.length;

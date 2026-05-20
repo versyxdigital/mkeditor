@@ -206,4 +206,31 @@ Markdown.use(ImageStyle);
 Markdown.use(TableStyle);
 Markdown.use(MarkdownItKatex);
 
+/**
+ * Render untrusted markdown content (currently: AI Assistant
+ * messages, added in P4) through the same singleton instance the
+ * preview pane uses, with raw-HTML pass-through disabled for the
+ * duration of the call.
+ *
+ * Why share the instance: the bundle-weight + extension-state cost
+ * of a second markdown-it is non-trivial (highlight.js + KaTeX +
+ * five plugins). The preview's `html: true` is fine for user-typed
+ * content but unsafe for model output — the model could emit
+ * `<script>` tags or other XSS vectors. We flip the option
+ * synchronously around `render(...)` so any concurrent (impossible
+ * in single-threaded JS, but defensive) caller still sees the
+ * preview's `html: true` once we restore. Other markdown-it options
+ * (linkify, breaks, the highlight callback, the loaded plugins) are
+ * preserved.
+ */
+export function renderAssistantMarkdown(content: string): string {
+  const previous = Markdown.options.html;
+  Markdown.set({ html: false });
+  try {
+    return Markdown.render(content);
+  } finally {
+    Markdown.set({ html: previous });
+  }
+}
+
 export { Markdown };

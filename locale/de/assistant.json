@@ -1,0 +1,7 @@
+{
+  "title": "KI-Assistent",
+  "tabs_label": "KI-Anbieter",
+  "no_providers_enabled": "Noch keine Anbieter verbunden. Aktivieren Sie einen in den Einstellungen, um zu chatten.",
+  "provider_ready_placeholder": "{{provider}} ist bereit — die Chat-Oberfläche kommt in der nächsten Phase.",
+  "open_settings": "Einstellungen öffnen"
+}

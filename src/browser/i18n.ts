@@ -41,6 +41,7 @@ const namespaces: { ns: string; path: string }[] = [
   { ns: 'sidebar', path: 'locale/{{lng}}/sidebar.json' },
   { ns: 'toolbar', path: 'locale/{{lng}}/toolbar.json' },
   { ns: 'menus-explorer', path: 'locale/{{lng}}/menus/explorer.json' },
+  { ns: 'menus-titlebar', path: 'locale/{{lng}}/menus/titlebar.json' },
   { ns: 'notifications', path: 'locale/{{lng}}/notifications.json' },
   { ns: 'modals-unsaved', path: 'locale/{{lng}}/modals/unsaved.json' },
   { ns: 'modals-properties', path: 'locale/{{lng}}/modals/properties.json' },

@@ -65,7 +65,10 @@ This document describes how MKEditor is put together internally: how the two exe
 Runs Node. Owns:
 
 - `BrowserWindow` lifecycle, single-instance lock, OS file associations (`.md`), tray, app menu.
-- `~/.mkeditor/settings.json` (read/write/merge).
+- Three sibling JSON files under `~/.mkeditor/`:
+  - `settings.json` — editor + export preferences (read / validate / merge-defaults / save via [AppSettings](../src/app/lib/AppSettings.ts)).
+  - `session.json` — tabs, active tab, workspace folder, per-tab cursor / scroll / folding (atomic tmp + rename writes via [AppSession](../src/app/lib/AppSession.ts)).
+  - `assistant.json` — AI Assistant non-secret config (`enabled`, `model`, `baseUrl`) + persisted conversation history via [AssistantConfig](../src/app/lib/AssistantConfig.ts), with the `keys` section managed by [AssistantKeyStore](../src/app/lib/AssistantKeyStore.ts) (Electron `safeStorage`-encrypted; plaintext keys never cross IPC).
 - File system access for the editor: open/save dialogs, open path, directory tree, create/rename/delete file or folder, properties.
 - HTML export (writes the renderer-built HTML to disk) and PDF export (offscreen `BrowserWindow.printToPDF`).
 - `mked://` custom protocol: registered as privileged in [main.ts](../src/app/main.ts:52-63); on a request, [AppBridge.handleMkedUrl](../src/app/lib/AppBridge.ts:257) parses `mked://open?path=…` and routes through `AppStorage.openActiveFile`.
@@ -106,6 +109,9 @@ src/browser/
 ├── notify.ts                      sonnerToast(level, msg) — neutral seam shared by React +
 │                                  non-React callers (BridgeListeners)
 ├── splash.ts                      showSplashScreen + fade helpers (boot-time)
+├── menuDispatch.ts                dispatchMenuActionExternal / registerMenuActionDispatcher
+│                                  — module-level seam from <TitleBar> into App.tsx's
+│                                  resolver (mirrors openModalExternal pattern)
 ├── util.ts                        debounce, getExecutionBridge, syncPreviewToExportSettings
 ├── config.ts                      default EditorSettings + ExportSettings
 ├── version.ts                     generated at build from package.json
@@ -172,10 +178,21 @@ src/browser/
     │   ├── PromptsContext.tsx     Dialog-driven prompt/confirm; openPromptExternal /
     │   │                          confirmExternal / promptExternal seams used by
     │   │                          FileManager.closeTab + explorerContextMenu
-    │   └── PropertiesContext.tsx  FileProperties modal state + showPropertiesExternal
+    │   ├── PropertiesContext.tsx  FileProperties modal state + showPropertiesExternal
+    │   └── WindowContext.tsx      useWindowControls() over BridgeManager's isMaximized
+    │                              observable + minimize/maximize/close/toggleFullscreen
+    │                              methods. NOOP fallback on web + pre-bridge boot.
     ├── components/
-    │   ├── Navbar.tsx             top chrome (sidebar toggle, file name, counts, cog,
-    │   │                          help) — shadcn Tooltip for icon hints
+    │   ├── TitleBar.tsx          VSCode-style top strip: logo + File/Edit/View/Help
+    │   │                          dropdowns + min/max/close on Windows/Linux desktop.
+    │   │                          CSS drag region with `WebkitAppRegion: drag` on the
+    │   │                          shell and `no-drag` on every interactive child.
+    │   │                          Hidden on macOS (native menu owns that surface);
+    │   │                          web renders logo + menus only.
+    │   ├── TitleBar.menu.tsx      one Radix DropdownMenu per MenuGroup; items dispatch
+    │   │                          through `dispatchMenuActionExternal` (menuDispatch.ts).
+    │   ├── Navbar.tsx             second-row chrome (sidebar toggle, file name, counts,
+    │   │                          cog, help) — shadcn Tooltip for icon hints
     │   ├── TabBar.tsx             native HTML5 DnD reorder; close button → FileManager
     │   ├── Sidebar.tsx, FileTreePanel.tsx     file explorer
     │   ├── Workspace.tsx          react-resizable-panels editor/preview split
@@ -432,6 +449,138 @@ A legacy `mkeditor-content` localStorage entry (left by pre-session-restore buil
 | `to:session:clear`           | renderer → main | none                     | Wipe the persisted session file   |
 | `from:session:restore`       | main → renderer | `SessionRestoreEnvelope` | Boot-time replay payload          |
 | `from:session:flush-request` | main → renderer | none                     | "Send me your final session, now" |
+
+### 4.13 Custom title bar
+
+The renderer draws its own title strip on Windows + Linux desktop and (with reduced surface) on web. macOS keeps the native menu bar and traffic lights — the renderer suppresses `<TitleBar>` entirely on `platform === 'darwin'`.
+
+**Window chrome.** [main.ts](../src/app/main.ts) branches in `BrowserWindow` construction: `frame: false` on Windows + Linux removes the native title strip; `titleBarStyle: 'hiddenInset'` + `trafficLightPosition: { x: 12, y: 12 }` on macOS keeps the traffic lights and aligns them with the title row.
+
+**Menu model.** [src/app/lib/menuModel.ts](../src/app/lib/menuModel.ts) is plain TS with no Electron imports and is consumed by both [AppMenu](../src/app/lib/AppMenu.ts) (builds the macOS native menu) and `<TitleBar>` (the in-window menu on Windows/Linux/web). It lives under `src/app/` because `src/app/tsconfig.json` excludes `../browser`; the renderer reaches it via webpack at `../../app/lib/menuModel`.
+
+Each `MenuItem` carries `{ id, label, accelerator?, darwinAccelerator?, action }`. Accelerators use Electron's `CmdOrCtrl+` modifier (resolved at runtime); `darwinAccelerator` is set only when the platforms genuinely diverge (e.g. DevTools — `Alt+Cmd+I` on macOS vs `Ctrl+Shift+I` elsewhere). `MenuAction` is one of `{ kind: 'channel', channel, payload? }`, `{ kind: 'role', role }`, or `{ kind: 'command', commandId }`.
+
+**Action dispatch.** [src/browser/menuDispatch.ts](../src/browser/menuDispatch.ts) is the module-level seam — `dispatchMenuActionExternal(action)` is called by `<TitleBar.menu>`'s item-select handler. `<App>` registers the real resolver (`MenuActionBridge` sentinel) at mount time. The resolver:
+
+- `channel` actions either open a React modal (`from:modal:open`) or call one of `BridgeManager`'s `menu*` helpers (`menuFileNew`, `menuFileSave`, `menuFolderOpen`, …). Those helpers are also what [BridgeListeners](../src/browser/core/BridgeListeners.ts) delegates to from the equivalent `from:*` receiver, so the macOS native menu and the in-window menu share one implementation.
+- `role` actions fire Monaco's `editor.trigger(...)` for undo/redo/cut/copy/paste, or `to:window:fullscreen` / `to:window:close` for togglefullscreen / quit.
+- `command` actions ship `to:command:run` with the commandId; main's [AppMenu.runCommand](../src/app/lib/AppMenu.ts) handles the same dispatch table the native menu uses.
+
+**Window controls.** [AppWindow.ts](../src/app/lib/AppWindow.ts) owns the window-control IPC surface. The `to:window:*` channels drive `BrowserWindow.minimize() / maximize() / unmaximize() / close() / setFullScreen(...)`. The class also listens for the window's own `maximize` / `unmaximize` events and emits `from:window:state` (`{ isMaximized: boolean }`); it sends an initial state on `did-finish-load` so the renderer's icon hydrates correctly on reload.
+
+**React surface.** [`<TitleBar>`](../src/browser/react/components/TitleBar.tsx) lays out logo · menu buttons · spacer · window-control trio. The root element gets `-webkit-app-region: drag` on desktop; every interactive child (logo, menu nav, window controls) opts into `no-drag`. Double-clicking the drag region toggles maximize/restore (matches every OS's native gesture). Alt focuses the first menu trigger (unless the user is typing in an input or Monaco); Left/Right/Home/End cycle focus between triggers; Esc closes any open dropdown (Radix-native). The active menu shows a highlight via Radix's `data-state="open"`.
+
+[`WindowContext`](../src/browser/react/contexts/WindowContext.tsx) wraps `BridgeManager.subscribeWindowState` + `getWindowState` via `useSyncExternalStore`. Web mode and the pre-bridge initial mount fall back to no-op handlers so consumers never need a null check.
+
+**Platform branching.** The renderer reads `platform: 'web' | 'darwin' | 'win32' | 'linux'` from `Managers`, populated at boot from `window.mked.platform` (pinned by the preload from `process.platform`). React components never sniff `navigator.userAgent` or `process.platform` themselves.
+
+**i18n.** Menu labels resolve through `t('menus-titlebar:<id>')` with the model's English `label` as the `defaultValue` fallback. The `menus-titlebar` namespace ships translations for all 13 supported locales.
+
+**IPC channels** (whitelisted in [preload.ts](../src/app/preload.ts)):
+
+| Channel                | Direction       | Payload             | Purpose                            |
+| ---------------------- | --------------- | ------------------- | ---------------------------------- |
+| `to:window:minimize`   | renderer → main | none                | Minimize the BrowserWindow         |
+| `to:window:maximize`   | renderer → main | none                | Toggle maximize / restore          |
+| `to:window:close`      | renderer → main | none                | Close the BrowserWindow            |
+| `to:window:fullscreen` | renderer → main | none                | Toggle full-screen                 |
+| `to:command:run`       | renderer → main | `commandId: string` | Run an AppMenu.runCommand handler  |
+| `from:window:state`    | main → renderer | `{ isMaximized }`   | Maximize-state sync (boot + event) |
+
+### 4.14 AI Assistant
+
+The right-hand sidebar that hosts per-provider chat surfaces (Anthropic / OpenAI / Ollama), gives an agent first-class read/write access to the workspace, and persists conversations across launches. Full design + per-phase notes: [AI_ASSISTANT.md](AI_ASSISTANT.md).
+
+**Desktop-only.** The assistant is hidden in the web build — the Navbar toggle, the sidebar shell, and the Settings → AI Providers tab all return `null` when `mode === 'web'`. API keys never enter the renderer process in any mode; on desktop they live in an Electron `safeStorage`-encrypted blob.
+
+**Process split.**
+
+- [AppAssistant](../src/app/lib/AppAssistant.ts) (main) owns the Vercel AI SDK instance (`streamText` / `generateText` from `ai` + `@ai-sdk/openai` + `@ai-sdk/anthropic` + `ollama-ai-provider-v2`). It holds the upstream `AbortController`s, maps SDK errors to a `ChatErrorEvent['code']` enum (`missing_key`, `invalid_key`, `rate_limited`, `context_window_exceeded`, `network_error`, `ollama_unreachable`, `model_unsupported_tools`, `cancelled`, `unknown`), and streams chunks back over IPC keyed by call id. For `APICallError` failures the inner upstream message (`{ "error": "…" }` for Ollama, `{ "error": { "message": "…" } }` for OpenAI-shape errors) is parsed out of `responseBody` and forwarded as `ChatErrorEvent.message` so the renderer can render actionable detail beneath the translated code.
+- [AssistantKeyStore](../src/app/lib/AssistantKeyStore.ts) (main) wraps `safeStorage` over the `keys` section of `~/.mkeditor/assistant.json`. Plaintext keys never leave main — sanitized snapshots stripped of `apiKey` are what the renderer sees.
+- [AssistantConfig](../src/app/lib/AssistantConfig.ts) (main) owns the non-secret half (`enabled`, `model`, `baseUrl`, the conversations array). Atomic tmp + rename writes, debounced 500 ms to coalesce streaming bursts.
+- [AssistantManager](../src/browser/core/AssistantManager.ts) (renderer) owns chat state: provider tabs, conversation lists, in-flight call map, streaming buffers, draft input per tab. Exposes the standard `subscribe(listener)` / `getSnapshot()` pair for `useSyncExternalStore`; never imports React.
+- [AssistantTools](../src/browser/core/AssistantTools.ts) (renderer) is the tool catalog + dispatcher. Tools call directly into [FileManager](../src/browser/core/FileManager.ts) / [FileTreeManager](../src/browser/core/FileTreeManager.ts) / [EditorManager](../src/browser/core/EditorManager.ts) — there is no new IPC surface for tool execution. Write-class tools (`write_file`, `edit_file`, `create_file`, `replace_selection`, `insert_at_cursor`) route through `confirmExternal` first unless the conversation's per-chat "auto-accept writes" toggle is on.
+- React lives under [src/browser/react/components/AssistantSidebar.tsx](../src/browser/react/components/AssistantSidebar.tsx) and [src/browser/react/components/assistant/](../src/browser/react/components/assistant/). The sidebar reads `useAssistantConfig` (sanitized snapshot) and `useAssistantChat` (live chat state) from [AssistantContext](../src/browser/react/contexts/AssistantContext.tsx).
+
+**Storage.** `~/.mkeditor/assistant.json` is the on-disk file. Shape:
+
+```json
+{
+  "version": 1,
+  "providers": {
+    "anthropic": {
+      "enabled": true,
+      "model": "claude-sonnet-4-6",
+      "apiKey": "<encrypted>"
+    },
+    "openai": { "enabled": false, "model": "gpt-5", "apiKey": null },
+    "ollama": {
+      "enabled": true,
+      "model": "llama3.2",
+      "baseUrl": "http://localhost:11434",
+      "apiKey": null
+    }
+  },
+  "conversations": [
+    {
+      "id": "conv-…",
+      "provider": "anthropic",
+      "title": "…",
+      "createdAt": 0,
+      "updatedAt": 0,
+      "autoAcceptWrites": false,
+      "messages": [
+        /* UiChatMessage[] */
+      ]
+    }
+  ]
+}
+```
+
+The `apiKey` value is a `safeStorage`-encrypted base64 blob. On corrupted decrypt it nulls out the key and disables the provider (rather than throwing on boot).
+
+**IPC channels** (whitelisted in [preload.ts](../src/app/preload.ts)). The `:ai:` namespace is the chat/config plane (chosen for brevity — `assistant` reads as a heavier word when scanning IPC tables); `from:assistant:toggle` lives under `:assistant:` because it's a UI-shell event, not a chat-plane message:
+
+| Channel                               | Direction       | Payload                                        | Purpose                                           |
+| ------------------------------------- | --------------- | ---------------------------------------------- | ------------------------------------------------- |
+| `to:ai:config:get`                    | renderer → main | none                                           | Initial sanitized config snapshot                 |
+| `to:ai:config:set`                    | renderer → main | `{ provider, patch }`                          | Mutate `enabled` / `model` / `baseUrl` (no key)   |
+| `to:ai:key:set`                       | renderer → main | `{ provider, apiKey }`                         | Store an API key (encrypts via `safeStorage`)     |
+| `to:ai:key:clear`                     | renderer → main | `{ provider }`                                 | Drop the stored key for a provider                |
+| `to:ai:chat`                          | renderer → main | `{ callId, provider, model, messages, tools }` | Begin a streaming completion                      |
+| `to:ai:cancel`                        | renderer → main | `{ callId }`                                   | Abort an in-flight call                           |
+| `to:ai:tool-result`                   | renderer → main | `{ callId, toolCallId, result }`               | Push a tool dispatch result back to the SDK loop  |
+| `to:ai:conversations:save`            | renderer → main | `{ conversations }`                            | Persist (debounced 500 ms)                        |
+| `to:ai:conversations:flush`           | renderer → main | none                                           | Force-flush pending writes (used on quit)         |
+| `to:ai:ollama:list`                   | renderer → main | none                                           | One-shot `localhost:11434/api/tags` proxy         |
+| `from:ai:config`                      | main → renderer | sanitized `AssistantConfig`                    | Snapshot push (boot + after every update)         |
+| `from:ai:chunk`                       | main → renderer | `{ callId, delta }`                            | Streamed text / tool-call delta                   |
+| `from:ai:tool-call`                   | main → renderer | `{ callId, toolCall }`                         | SDK requests a tool dispatch                      |
+| `from:ai:done`                        | main → renderer | `{ callId, usage? }`                           | Stream finished cleanly                           |
+| `from:ai:error`                       | main → renderer | `{ callId, code, message? }`                   | Mapped error code (see taxonomy above)            |
+| `from:ai:ollama:models`               | main → renderer | `{ models[] }`                                 | Reply to `to:ai:ollama:list`                      |
+| `from:ai:conversations`               | main → renderer | `{ conversations }`                            | Initial conversation snapshot (boot)              |
+| `from:ai:conversations:flush-request` | main → renderer | none                                           | Main asks renderer to flush pending state on quit |
+| `from:assistant:toggle`               | main → renderer | none                                           | Menu/tray → toggle the sidebar                    |
+
+**Menu integration.** [menuModel.ts](../src/app/lib/menuModel.ts) carries `view.assistant.toggle` (`CmdOrCtrl+Shift+A`, fires `from:assistant:toggle`) and `help.assistant.configure` (`channel` action with payload `{ modal: 'settings', tab: 'assistant' }`). [AppMenu.buildTrayContextMenu](../src/app/lib/AppMenu.ts) adds a "Toggle Assistant" entry that fires the same `from:assistant:toggle` channel. `from:assistant:toggle` is handled by [BridgeListeners](../src/browser/core/BridgeListeners.ts) which calls `toggleRightSidebarExternal()` — the module-level seam registered by [UIStateContext](../src/browser/react/contexts/UIStateContext.tsx).
+
+**Tool catalog (v1).** Defined once in [AssistantTools.ts](../src/browser/core/AssistantTools.ts) with JSON Schema parameter descriptors:
+
+| Tool                | Class | Effect                                             |
+| ------------------- | ----- | -------------------------------------------------- |
+| `read_file`         | read  | Returns file content by absolute or workspace path |
+| `list_files`        | read  | Lists `.md` files + folders under a directory      |
+| `get_active_file`   | read  | Returns the currently-focused tab's path + content |
+| `get_selection`     | read  | Returns the editor selection (or empty)            |
+| `open_tab`          | read  | Opens a file in a new tab                          |
+| `write_file`        | write | Overwrites a file (confirm gate)                   |
+| `edit_file`         | write | Targeted line/range edit (confirm gate)            |
+| `create_file`       | write | New file (confirm gate)                            |
+| `replace_selection` | write | Replace the current selection (confirm gate)       |
+| `insert_at_cursor`  | write | Insert at the cursor (confirm gate)                |
+
+Write-class tools render a [ConfirmToolCall](../src/browser/react/components/assistant/ConfirmToolCall.tsx) `AlertDialog` with a diff preview before running, unless the conversation's `autoAcceptWrites` flag is on (default off, per-conversation toggle in the chat header).
 
 ## 5. Settings Schema
 

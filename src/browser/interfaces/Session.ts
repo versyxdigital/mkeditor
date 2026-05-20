@@ -8,11 +8,28 @@ import type { editor } from 'monaco-editor';
  * own save/restore APIs without casting.
  */
 export interface SessionPayload {
-  version: 1;
+  /**
+   * v1 was the original session-restore shape; v2 added the optional
+   * `assistant` view-state block. Loader accepts either; writer
+   * always stamps the current canonical version.
+   */
+  version: 1 | 2;
   tabs: SessionTab[];
   activeFile: string | null;
   /** Workspace root path (desktop). Null when no folder is open. */
   workspaceRoot: string | null;
+  /**
+   * Right-sidebar view state. Optional so v1 payloads load unchanged.
+   * UIStateContext supplies defaults when absent. Conversation history
+   * lives in `~/.mkeditor/assistant.json`, not here.
+   */
+  assistant?: AssistantViewState;
+}
+
+export interface AssistantViewState {
+  sidebarOpen: boolean;
+  /** Size as a percentage of the outer Group, matching `react-resizable-panels`. */
+  size: number;
 }
 
 export interface SessionTab {

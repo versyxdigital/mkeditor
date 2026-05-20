@@ -1,0 +1,7 @@
+{
+  "title": "Assistente IA",
+  "tabs_label": "Provider IA",
+  "no_providers_enabled": "Nessun provider connesso. Attivane uno nelle Impostazioni per iniziare a chattare.",
+  "provider_ready_placeholder": "{{provider}} è pronto — l'interfaccia di chat arriva nella prossima fase.",
+  "open_settings": "Apri Impostazioni"
+}

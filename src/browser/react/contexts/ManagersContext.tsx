@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import type { AssistantManager } from '../../core/AssistantManager';
 import type { EditorManager } from '../../core/EditorManager';
 import type { BridgeManager } from '../../core/BridgeManager';
 import type { FileManager } from '../../core/FileManager';
@@ -7,8 +8,19 @@ import type { FileTreeManager } from '../../core/FileTreeManager';
 import type { EditorDispatcher } from '../../events/EditorDispatcher';
 import type { EditorProviders } from '../../interfaces/Providers';
 
+/**
+ * Runtime platform discriminator threaded from the composition root.
+ *
+ * `'web'` whenever the executionBridge isn't present (browser deploys).
+ * Otherwise pinned from `window.mked.platform` (preload reads the
+ * authoritative `process.platform`), so React components can branch on
+ * macOS vs Windows vs Linux without each rolling its own detection.
+ */
+export type Platform = 'web' | 'darwin' | 'win32' | 'linux';
+
 export interface Managers {
   mode: 'web' | 'desktop';
+  platform: Platform;
   /**
    * Null until the lazy-loaded `core/EditorManager` chunk lands. The
    * composition root pushes the constructed instance in via
@@ -24,6 +36,14 @@ export interface Managers {
   fileTreeManager: FileTreeManager | null;
   /** Wired in onEditorReady (both modes — web uses WebFileBridge). */
   bridgeManager: BridgeManager | null;
+  /**
+   * Renderer-side AI Assistant manager (P3+). Holds the sanitized
+   * `from:ai:config` snapshot and the public mutators the settings
+   * UI calls — see `AssistantContext` / `useAssistantConfig`.
+   * Constructed inside `BridgeManager` in `onEditorReady`; null until
+   * then.
+   */
+  assistantManager: AssistantManager | null;
   /**
    * Live reference to `editorManager.providers`. The map is mutated by
    * `onEditorReady` after Monaco creation, so consumers should read fields

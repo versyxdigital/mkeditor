@@ -1,7 +1,10 @@
 {
   "title": "Configuración del editor",
+  "title_assistant": "Configuración de IA",
   "intro": "Aquí puedes personalizar varios ajustes del editor; los ajustes se guardan automáticamente al actualizarlos.",
+  "intro_assistant": "Conecta tus cuentas de proveedores de IA, elige modelos predeterminados y prueba la conectividad. Las claves se almacenan localmente y nunca salen de tu máquina.",
   "settings_file_info": "Tu archivo de configuración se encuentra en",
+  "settings_file_info_assistant": "La configuración de tus proveedores de IA y conversaciones se guarda en",
   "formatting": "Formato",
   "autoindent_label": "Activar/desactivar sangría automática",
   "autoindent_help": "Sangrar automáticamente el texto en nuevas líneas.",
@@ -29,5 +32,7 @@
   "systemtheme_help": "Permitir que el tema del sistema sobrescriba tus ajustes guardados.",
   "language_label": "Idioma",
   "language_help": "Selecciona el idioma de la interfaz.",
-  "save_settings": "Guardar ajustes"
+  "save_settings": "Guardar ajustes",
+  "tab_general": "Configuración general",
+  "tab_assistant": "Proveedores de IA"
 }

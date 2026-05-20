@@ -1,0 +1,28 @@
+{
+  "file": "Dosya",
+  "edit": "Düzenle",
+  "view": "Görünüm",
+  "help": "Yardım",
+
+  "file.new": "Yeni Dosya...",
+  "file.open": "Dosya Aç...",
+  "folder.open": "Klasör Aç...",
+  "file.save": "Kaydet",
+  "file.saveas": "Farklı Kaydet...",
+  "file.settings": "Ayarlar...",
+  "file.openlog": "Günlüğü Aç...",
+  "file.quit": "Çıkış",
+
+  "edit.undo": "Geri Al",
+  "edit.redo": "Yinele",
+  "edit.cut": "Kes",
+  "edit.copy": "Kopyala",
+  "edit.paste": "Yapıştır",
+
+  "view.palette": "Komut Paletini Aç",
+  "view.fullscreen": "Tam Ekranı Değiştir",
+  "view.devtools": "Geliştirici Araçlarını Değiştir",
+
+  "help.about": "MKEditor Hakkında",
+  "help.shortcuts": "Düzenleyici Kısayolları"
+}

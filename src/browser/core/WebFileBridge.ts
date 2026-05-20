@@ -18,8 +18,7 @@ const LS_KEY_SESSION = 'mkeditor-session';
 /**
  * Legacy localStorage key used pre-session-restore to mirror the
  * single Monaco buffer. Migrated into the first untitled tab of a
- * freshly-written session on the first launch after Phase 3 ships,
- * then removed.
+ * freshly-written session on the first launch then removed.
  */
 const LS_KEY_LEGACY_CONTENT = 'mkeditor-content';
 
@@ -180,7 +179,7 @@ export class WebFileBridge implements ContextBridgeAPI {
     }
   }
 
-  // Session persistence (Phase 3) -------------------------------------
+  // Session persistence -------------------------------------
 
   /**
    * One-shot boot sequence for web mode. Attempts a silent workspace

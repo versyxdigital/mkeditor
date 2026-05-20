@@ -1,10 +1,28 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
-import { dirname, resolve } from 'path';
+import { promises as fsPromises } from 'fs';
+import { dirname, join, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
 import type { Logger, LogMessage } from '../interfaces/Logging';
 import type { SessionPayload } from '../interfaces/Session';
+import type {
+  CancelRequest,
+  ChatRequest,
+  ConfigSetRequest,
+  KeyClearRequest,
+  KeySetRequest,
+  OllamaListRequest,
+  PersistedConversations,
+  ToolResultRequest,
+} from '../interfaces/Assistant';
 import { AppSession } from './AppSession';
 import { AppStorage } from './AppStorage';
+import { AssistantConfig } from './AssistantConfig';
+import { AssistantKeyStore } from './AssistantKeyStore';
+import { SecureChannel } from './SecureChannel';
+import {
+  loadPersistedConversations,
+  writePersistedConversations,
+} from './assistantStoreFile';
 import { normalizeLanguage } from '../util';
 /**
  * AppBridge
@@ -23,7 +41,15 @@ export class AppBridge {
   private providers: SettingsProviders = {
     logger: null,
     settings: null,
+    assistant: null,
   };
+
+  /**
+   * RSA keypair used to receive secrets (API keys today, anything
+   * else later) without their plaintext ever crossing the IPC
+   * boundary. See `SecureChannel` for the rationale.
+   */
+  private secureChannel = new SecureChannel();
 
   /**
    * Create a new AppBridge instance to manage IPC traffic.
@@ -91,8 +117,8 @@ export class AppBridge {
     });
 
     // Persist the renderer's open-tab / cursor / scroll session. Fired
-    // by the renderer's debounced session save trigger (P2) and by the
-    // renderer's flush-request handler during quit (P1 stub, P2 real).
+    // by the renderer's debounced session save trigger and by the
+    // renderer's flush-request handler during quit.
     ipcMain.on('to:session:save', (_event, payload: SessionPayload) => {
       AppSession.save(payload);
     });
@@ -208,12 +234,47 @@ export class AppBridge {
       });
     });
 
-    ipcMain.on('to:file:create', async (_e, { parent, name }) => {
-      await AppStorage.createFile(this.context, parent, name);
-    });
+    ipcMain.on(
+      'to:file:create',
+      async (
+        _e,
+        {
+          parent,
+          name,
+          content,
+        }: { parent: string; name: string; content?: string },
+      ) => {
+        // Fire-and-forget channel used by the menu UI — convert
+        // `AppStorage.createFile`'s structured result back into a
+        // toast (it used to do this itself before being made honest
+        // for the AI assistant's invoke path).
+        const result = await AppStorage.createFile(
+          this.context,
+          parent,
+          name,
+          content,
+        );
+        this.context.webContents.send('from:notification:display', {
+          status: result.ok ? 'success' : 'error',
+          key: result.ok
+            ? 'notifications:file_created'
+            : 'notifications:unable_create_file',
+        });
+      },
+    );
 
     ipcMain.on('to:folder:create', async (_e, { parent, name }) => {
-      await AppStorage.createFolder(this.context, parent, name);
+      // Fire-and-forget channel used by the menu UI — convert
+      // `AppStorage.createFolder`'s structured result back into a
+      // toast (it used to do this itself before being made honest
+      // for the AI assistant's invoke path).
+      const result = await AppStorage.createFolder(this.context, parent, name);
+      this.context.webContents.send('from:notification:display', {
+        status: result.ok ? 'success' : 'error',
+        key: result.ok
+          ? 'notifications:folder_created'
+          : 'notifications:unable_create_folder',
+      });
     });
 
     ipcMain.on('to:file:rename', async (_e, { path, name }) => {
@@ -242,11 +303,144 @@ export class AppBridge {
       event.returnValue = locale;
     });
 
+    // Hand the renderer the SPKI base64 public key for this app
+    // session. Synchronous because the renderer needs it before
+    // the first key-encryption call and we'd otherwise need an
+    // awaited round-trip on the hot path. The public key is, by
+    // definition, public — no secret crosses here.
+    ipcMain.on('mked:secure:public-key', (event) => {
+      event.returnValue = this.secureChannel.publicKeySpkiBase64;
+    });
+
     // Provide path resolution through IPC to avoid having to set
     // nodeIntegration to true.
     ipcMain.handle('mked:path:dirname', (_e, p: string) => dirname(p));
     ipcMain.handle('mked:path:resolve', (_e, base: string, rel: string) =>
       resolve(base, rel),
+    );
+
+    // Tab-free file read for the AI assistant. The agent's `read_file`
+    // tool routes here when the requested file isn't already open as
+    // a tab — opening every read in a new tab gets noisy fast when
+    // the agent is gathering context across many files.
+    //
+    // **Trust boundary**: the renderer can supply any string here,
+    // so we MUST scope to the current workspace before touching the
+    // filesystem. `AppStorage.assertInWorkspace` resolves the path
+    // (canonicalising symlinks) and throws if it lands outside the
+    // open folder, or if no folder is open. See `AppStorage.ts` for
+    // the rationale.
+    ipcMain.handle(
+      'mked:fs:readfile',
+      async (
+        _e,
+        path: string,
+      ): Promise<{ content: string; lineCount: number }> => {
+        const safePath = await AppStorage.assertInWorkspace(path);
+        // Pre-flight stat so common confusions (directory passed
+        // where a file was expected) surface as actionable errors
+        // for the agent instead of raw EISDIR noise.
+        const stat = await fsPromises.stat(safePath);
+        if (stat.isDirectory()) {
+          throw new Error(
+            `${path} is a directory, not a file. Use list_files to enumerate its contents; use create_file to write a new file inside it.`,
+          );
+        }
+        const content = await fsPromises.readFile(safePath, 'utf-8');
+        // Count line breaks rather than splitting (avoids a large
+        // intermediate array for big files). Empty string → 1 line.
+        let lineCount = 1;
+        for (let i = 0; i < content.length; i++) {
+          if (content.charCodeAt(i) === 0x0a) lineCount += 1;
+        }
+        return { content, lineCount };
+      },
+    );
+
+    // Write a file with awaited success/failure — used by the AI
+    // assistant's write-class tools (`write_file`, `edit_file`,
+    // `replace_selection`, `insert_at_cursor`) so the agent gets
+    // honest feedback instead of an unconditional ok. The existing
+    // fire-and-forget `to:file:save` channel continues to serve the
+    // menu-driven save flow.
+    //
+    // **Trust boundary**: `assertInWorkspace(path, {mustExist:false})`
+    // resolves the parent (catching symlink escapes) and rejects
+    // any target outside the workspace root.
+    ipcMain.handle(
+      'mked:fs:savefile',
+      async (
+        _e,
+        path: string,
+        content: string,
+      ): Promise<{ ok: true; path: string } | { ok: false; error: string }> => {
+        try {
+          const safePath = await AppStorage.assertInWorkspace(path, {
+            mustExist: false,
+          });
+          await fsPromises.mkdir(dirname(safePath), { recursive: true });
+          await fsPromises.writeFile(safePath, content, 'utf-8');
+          return { ok: true, path: safePath };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { ok: false, error: message };
+        }
+      },
+    );
+
+    // Create a new file with awaited success/failure — used by the
+    // AI assistant's `create_file` tool. Validates that
+    // `parent/name` lands inside the workspace, then delegates to
+    // `AppStorage.createFile` (which mkdir -p's the parent, writes,
+    // refreshes the tree, and opens the file as a tab); the
+    // structured `{ok, error?}` result passes straight back to the
+    // renderer so the tool can report honest status to the agent.
+    ipcMain.handle(
+      'mked:fs:createfile',
+      async (_e, parent: string, name: string, content: string) => {
+        try {
+          const target = join(parent, name);
+          const safeTarget = await AppStorage.assertInWorkspace(target, {
+            mustExist: false,
+          });
+          return AppStorage.createFile(
+            this.context,
+            dirname(safeTarget),
+            // basename — name as the user supplied, joined under the
+            // canonicalised parent.
+            safeTarget.slice(dirname(safeTarget).length + 1),
+            content,
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { ok: false as const, error: message };
+        }
+      },
+    );
+
+    // Create a new (empty) directory with awaited success/failure —
+    // used by the AI assistant's `create_folder` tool so the agent
+    // stops resorting to `.gitkeep` placeholders to make folders
+    // visible. mkdir -p so intermediate directories are created on
+    // demand. Same workspace-scope check as createfile.
+    ipcMain.handle(
+      'mked:fs:createfolder',
+      async (_e, parent: string, name: string) => {
+        try {
+          const target = join(parent, name);
+          const safeTarget = await AppStorage.assertInWorkspace(target, {
+            mustExist: false,
+          });
+          return AppStorage.createFolder(
+            this.context,
+            dirname(safeTarget),
+            safeTarget.slice(dirname(safeTarget).length + 1),
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { ok: false as const, error: message };
+        }
+      },
     );
 
     ipcMain.on('mked:open-url', (_e, url: string) => {
@@ -265,6 +459,164 @@ export class AppBridge {
         this.providers.logger?.log.error('[to:i18n:set]', e);
       }
     });
+
+    // Renderer publishes the current workspace root whenever it
+    // adopts a new one (BridgeListeners.from:folder:opened detects
+    // the change). Main stores it as the trust boundary for all
+    // `mked:fs:*` invokes — see `AppStorage.assertInWorkspace`.
+    ipcMain.on('to:workspace:set', (_e, payload: { root: string | null }) => {
+      AppStorage.setWorkspaceRoot(payload?.root ?? null);
+    });
+
+    // ---- AI Assistant ----------------------------------------------
+    //
+    // All `to:ai:*` channels delegate to the AppAssistant service the
+    // composition root injects via `provide('assistant', ...)`. Each
+    // handler returns silently when no AppAssistant is registered so
+    // the bridge degrades gracefully in test contexts.
+
+    ipcMain.on('to:ai:chat', (_e, payload: ChatRequest) => {
+      this.providers.assistant?.chat(payload);
+    });
+
+    ipcMain.on('to:ai:cancel', (_e, payload: CancelRequest) => {
+      this.providers.assistant?.cancel(payload);
+    });
+
+    ipcMain.on('to:ai:tool-result', (_e, payload: ToolResultRequest) => {
+      this.providers.assistant?.submitToolResult(payload);
+    });
+
+    ipcMain.on('to:ai:config:get', () => {
+      this.pushAssistantConfig();
+    });
+
+    ipcMain.on('to:ai:config:set', (_e, payload: ConfigSetRequest) => {
+      AssistantConfig.update(payload);
+      this.pushAssistantConfig();
+    });
+
+    ipcMain.on('to:ai:key:set', (_e, payload: KeySetRequest) => {
+      // Payload carries RSA-OAEP ciphertext (base64) — never the
+      // raw API key. We decrypt with the per-session private key
+      // held inside `SecureChannel`, hand the plaintext directly to
+      // `AssistantKeyStore.setKey` (which re-encrypts via
+      // safeStorage for disk), and let the plaintext fall out of
+      // scope. The follow-up config push only carries
+      // `hasKey: boolean` so the renderer never sees plaintext
+      // come back either.
+      let plaintext: string;
+      try {
+        plaintext = this.secureChannel.decryptString(payload.ciphertext);
+      } catch (err) {
+        // Malformed / tampered ciphertext: refuse to act on it and
+        // leave the stored key untouched. Push the current config so
+        // the renderer sees the unchanged state.
+        this.providers.logger?.log.error('[to:ai:key:set] decrypt failed', err);
+        this.pushAssistantConfig();
+        return;
+      }
+      AssistantKeyStore.setKey(payload.provider, plaintext);
+      this.pushAssistantConfig();
+    });
+
+    ipcMain.on('to:ai:key:clear', (_e, payload: KeyClearRequest) => {
+      AssistantKeyStore.clearKey(payload.provider);
+      this.pushAssistantConfig();
+    });
+
+    ipcMain.on('to:ai:ollama:list', (_e, payload: OllamaListRequest) => {
+      void this.providers.assistant?.listOllamaModels(payload);
+    });
+
+    // Persisted conversation save. Renderer ships the latest
+    // `AssistantManager.serialize()` output (debounced 500 ms on its
+    // side); we drop it onto disk atomically. `null` payloads clear
+    // the on-disk block.
+    ipcMain.on(
+      'to:ai:conversations:save',
+      (_e, payload: PersistedConversations | null) => {
+        try {
+          writePersistedConversations(payload);
+        } catch (e) {
+          this.providers.logger?.log.error('[to:ai:conversations:save]', e);
+        }
+      },
+    );
+
+    // Synchronous flush ack from the renderer in response to a
+    // `from:ai:conversations:flush-request`. Main fires the request
+    // before-quit so any in-flight debounce window doesn't lose the
+    // last conversation mutation; the renderer answers synchronously
+    // with the latest serialize() output.
+    ipcMain.on(
+      'to:ai:conversations:flush',
+      (_e, payload: PersistedConversations | null) => {
+        try {
+          writePersistedConversations(payload);
+        } catch (e) {
+          this.providers.logger?.log.error('[to:ai:conversations:flush]', e);
+        }
+      },
+    );
+  }
+
+  /**
+   * Push the sanitized assistant config to the renderer over
+   * `from:ai:config`. Triggered by the `to:ai:config:get` handler, by
+   * every config/key mutation, and by main.ts on `did-finish-load` so
+   * the renderer hydrates on first paint.
+   */
+  pushAssistantConfig(): void {
+    if (!this.providers.assistant) return;
+    try {
+      if (this.context.isDestroyed()) return;
+      this.context.webContents.send(
+        'from:ai:config',
+        this.providers.assistant.buildSanitizedConfig(),
+      );
+    } catch (e) {
+      this.providers.logger?.log.error('[from:ai:config]', e);
+    }
+  }
+
+  /**
+   * Push the persisted conversation block to the renderer over
+   * `from:ai:conversations`. Called by main.ts on `did-finish-load`
+   * (after `pushAssistantConfig`) so the sidebar hydrates with
+   * history on first paint. Pre-P7 files surface as `null`.
+   */
+  pushPersistedConversations(): void {
+    try {
+      if (this.context.isDestroyed()) return;
+      this.context.webContents.send(
+        'from:ai:conversations',
+        loadPersistedConversations(),
+      );
+    } catch (e) {
+      this.providers.logger?.log.error('[from:ai:conversations]', e);
+    }
+  }
+
+  /**
+   * Broadcast a flush request to the renderer over
+   * `from:ai:conversations:flush-request`. Called by `main.ts`
+   * `before-quit` so the renderer ships the latest debounce-buffered
+   * serialize() output before the process exits.
+   */
+  requestPersistedConversationsFlush(): void {
+    try {
+      if (this.context.isDestroyed()) return;
+      this.context.webContents.send(
+        'from:ai:conversations:flush-request',
+        null,
+      );
+    } catch (e) {
+      this.providers.logger?.log.error(
+        '[from:ai:conversations:flush-request]',
+        e,
+      );
+    }
   }
 
   /**

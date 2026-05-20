@@ -1,0 +1,35 @@
+{
+  "confirm_title": "Разрешить {{toolName}}?",
+  "confirm_title_fallback": "Разрешить вызов инструмента?",
+  "confirm_intro": "Ассистент хочет запустить этот инструмент. Просмотрите изменение перед подтверждением.",
+  "confirm_accept": "Разрешить",
+  "confirm_reject": "Отклонить",
+  "args_label": "Аргументы",
+  "result_label": "Результат",
+  "error_label": "Ошибка",
+
+  "preview_create": "Создать файл {{path}}",
+  "preview_write": "Заменить {{path}}",
+  "preview_edit": "Редактировать {{path}}",
+  "preview_replace": "Заменить выделение в {{path}}",
+  "preview_insert": "Вставить в {{path}}",
+  "preview_before": "До",
+  "preview_after": "После",
+
+  "status_pending-confirm": "Ожидание подтверждения",
+  "status_executing": "Выполняется",
+  "status_succeeded": "Готово",
+  "status_failed": "Ошибка",
+
+  "toggle_card": "Показать/скрыть детали {{toolName}}",
+
+  "error_rejected": "Пользователь отклонил этот вызов инструмента.",
+  "error_execution_failed": "Выполнение инструмента не удалось.",
+  "error_unknown_tool": "Неизвестный инструмент.",
+
+  "show_more": "Показать больше (ещё {{chars}} симв.)",
+  "show_less": "Показать меньше",
+  "retry": "Повторить",
+  "retry_prompt": "Пожалуйста, повторите вызов {{toolName}}.",
+  "retry_prompt_with_args": "Пожалуйста, повторите {{toolName}} с аргументами: {{args}}"
+}

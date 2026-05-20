@@ -1,7 +1,10 @@
 {
-  "title": "Editor settings",
+  "title": "Editor Settings",
+  "title_assistant": "AI Settings",
   "intro": "Here you can customize various editor settings according to your preferences, settings are automatically saved as they are updated.",
+  "intro_assistant": "Connect your AI provider accounts, pick default models, and test connectivity. Keys are stored locally and never leave your machine.",
   "settings_file_info": "Your settings file is located at",
+  "settings_file_info_assistant": "Your AI provider config and conversations are stored at",
   "formatting": "Formatting",
   "autoindent_label": "Toggle automatic indentation",
   "autoindent_help": "Automatically indent text on new lines.",
@@ -29,5 +32,7 @@
   "systemtheme_help": "Let your system theme override your stored settings.",
   "language_label": "Language",
   "language_help": "Select the interface language.",
-  "save_settings": "Save Settings"
+  "save_settings": "Save Settings",
+  "tab_general": "General Settings",
+  "tab_assistant": "AI Providers"
 }

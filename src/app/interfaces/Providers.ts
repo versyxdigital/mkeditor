@@ -1,3 +1,4 @@
+import type { AppAssistant } from '../lib/AppAssistant';
 import type { AppBridge } from '../lib/AppBridge';
 import type { AppSettings } from '../lib/AppSettings';
 import type { LogConfig } from './Logging';
@@ -13,4 +14,5 @@ export interface BridgeProviders extends Providers {
 
 export interface SettingsProviders extends Providers {
   settings: AppSettings | null;
+  assistant: AppAssistant | null;
 }

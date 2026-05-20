@@ -1,6 +1,6 @@
 import { app, dialog, type BrowserWindow } from 'electron';
 import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, relative, resolve, isAbsolute } from 'path';
 import type { SaveFileOptions } from '../interfaces/Storage';
 
 /**
@@ -9,6 +9,116 @@ import type { SaveFileOptions } from '../interfaces/Storage';
 export class AppStorage {
   /** The active file path */
   private static activeFilePath: string | null = null;
+
+  /**
+   * The currently-open workspace root, or null when no folder is open.
+   *
+   * This is the **trust boundary** for the `mked:fs:*` IPC handlers
+   * exposed via `window.mked` to the renderer. Without scoping, those
+   * handlers would let a compromised renderer (XSS in a previewed
+   * doc, malicious mked:// link, agent-gone-wrong, future plugin)
+   * read or overwrite arbitrary user files. Every file-level invoke
+   * resolves the requested path to canonical form (`fs.realpath` so
+   * symlinks can't escape) and rejects anything that doesn't sit
+   * inside this root. When the root is null, fs invokes are denied
+   * outright — the user must open a folder first.
+   *
+   * Updated by the `to:workspace:set` IPC channel, which the renderer
+   * fires from `BridgeListeners.from:folder:opened` only when the
+   * tree adopts a new root (lazy sub-loads don't touch this).
+   */
+  private static workspaceRoot: string | null = null;
+
+  static getWorkspaceRoot(): string | null {
+    return AppStorage.workspaceRoot;
+  }
+
+  /**
+   * Set (or clear) the current workspace root. Renderer-driven; main
+   * normalises with `path.resolve` so trailing slashes / mixed
+   * separators are equivalent.
+   */
+  static setWorkspaceRoot(root: string | null): void {
+    AppStorage.workspaceRoot = root ? resolve(root) : null;
+  }
+
+  /**
+   * Throw if `target` is outside the open workspace (or no workspace
+   * is open). Returns the resolved (canonicalised, symlink-followed)
+   * absolute path when the check passes — callers should fs-op on
+   * the returned value, not the input, so symlink escapes can't
+   * race a TOCTOU between this check and the fs call.
+   *
+   * Pass `mustExist: false` for write/create paths whose target may
+   * not exist yet — the parent directory is canonicalised instead
+   * and the (un-realpath'd) basename is rejoined. The parent itself
+   * MUST exist for that mode; callers can `mkdir -p` separately.
+   */
+  static async assertInWorkspace(
+    target: string,
+    opts: { mustExist?: boolean } = { mustExist: true },
+  ): Promise<string> {
+    const root = AppStorage.workspaceRoot;
+    if (!root) {
+      throw new Error(
+        'No workspace is open. Open a folder before reading or writing files.',
+      );
+    }
+    if (!target || typeof target !== 'string') {
+      throw new Error('Invalid path');
+    }
+    let absolute = resolve(target);
+    if (opts.mustExist === false) {
+      // For write/create: canonicalise the PARENT (which must exist)
+      // and rejoin the basename. We don't realpath the basename
+      // because the file isn't there yet — a same-named symlink
+      // racing into place between check and write is unlikely in
+      // practice and main would need OS-level atomic ops to prevent.
+      const parent = dirname(absolute);
+      const base = absolute.slice(parent.length + 1);
+      let canonicalParent: string;
+      try {
+        canonicalParent = await fs.realpath(parent);
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT') {
+          // Parent doesn't exist yet — fall back to lexical
+          // resolution + scope check. mkdir -p in the caller will
+          // create it under the workspace root.
+          canonicalParent = parent;
+        } else {
+          throw err;
+        }
+      }
+      absolute = join(canonicalParent, base);
+    } else {
+      try {
+        absolute = await fs.realpath(absolute);
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT') {
+          throw new Error(`File not found: ${target}`, { cause: err });
+        }
+        throw err;
+      }
+    }
+    const rel = relative(root, absolute);
+    if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) {
+      // Empty relative means target === root, which is fine for
+      // directory ops but never for read/write of a file.
+      if (rel === '' && opts.mustExist !== false) {
+        throw new Error(
+          `Path is a directory (workspace root), not a file: ${target}`,
+        );
+      }
+      if (rel.startsWith('..') || isAbsolute(rel)) {
+        throw new Error(
+          `Path is outside the workspace: ${target} (workspace: ${root})`,
+        );
+      }
+    }
+    return absolute;
+  }
 
   /**
    * Get the path to the active file
@@ -369,50 +479,70 @@ export class AppStorage {
    * @param parent - parent directory path
    * @param name - name of the new file
    */
+  /**
+   * Create a new file at `parent/name` with `content` and open it
+   * as the active tab. Returns `{ok: true, path}` on success or
+   * `{ok: false, error}` on failure so callers can react honestly —
+   * the menu-driven flow surfaces a toast based on the result, and
+   * the AI assistant's `create_file` tool reports the error back to
+   * the agent instead of pretending the write succeeded. Parent
+   * directories are auto-created.
+   */
   static async createFile(
     context: BrowserWindow,
     parent: string,
     name: string,
-  ) {
+    content = '',
+  ): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
     try {
       const file = join(parent, name);
-      await fs.writeFile(file, '', 'utf-8');
+      // mkdir -p the parent so creating `poems/spring.md` succeeds
+      // even when `poems/` doesn't exist yet — both the menu-driven
+      // "new file" flow and the AI assistant's `create_file` tool
+      // route through here. fs.mkdir with `recursive: true` is a
+      // no-op when the directory already exists.
+      await fs.mkdir(parent, { recursive: true });
+      await fs.writeFile(file, content, 'utf-8');
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
-      context.webContents.send('from:notification:display', {
-        status: 'success',
-        key: 'notifications:file_created',
-      });
-    } catch {
-      context.webContents.send('from:notification:display', {
-        status: 'error',
-        key: 'notifications:unable_create_file',
-      });
+      // Open the newly-written file as a tab. Inlined here (instead of
+      // a separate `to:file:openpath` round-trip from the renderer)
+      // because the renderer-side `openPath` previously raced
+      // `fs.writeFile` and surfaced a spurious "Unable to open path"
+      // toast when stat ran before the write finished.
+      AppStorage.setActiveFile(context, file);
+      return { ok: true, path: file };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
     }
   }
 
   /**
    * Create a new folder in the given directory.
    */
+  /**
+   * Create a new folder at `parent/name`. Returns `{ok: true, path}`
+   * on success or `{ok: false, error}` on failure so callers can
+   * react honestly — the menu-driven flow surfaces a toast based on
+   * the result, and the AI assistant's `create_folder` tool reports
+   * the error back to the agent. `mkdir -p` so missing intermediate
+   * directories are created automatically.
+   */
   static async createFolder(
     context: BrowserWindow,
     parent: string,
     name: string,
-  ) {
+  ): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
     try {
       const dir = join(parent, name);
-      await fs.mkdir(dir);
+      await fs.mkdir(dir, { recursive: true });
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
-      context.webContents.send('from:notification:display', {
-        status: 'success',
-        key: 'notifications:folder_created',
-      });
-    } catch {
-      context.webContents.send('from:notification:display', {
-        status: 'error',
-        key: 'notifications:unable_create_folder',
-      });
+      return { ok: true, path: dir };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
     }
   }
 

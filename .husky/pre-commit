@@ -3,4 +3,4 @@
 # before a commit lands locally. CI runs the same checks plus the
 # build verification (see .github/workflows/tests.yml).
 
-npm run lint && npm run prettier-check && npm test
+npm run prettier-check && npm run lint && npm test
