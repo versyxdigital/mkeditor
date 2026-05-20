@@ -63,7 +63,7 @@
     "style-loader": "^4.0.0",
     "tailwindcss": "^4.3.0",
     "terser-webpack-plugin": "^5.3.14",
-    "ts-jest": "^29.4.9",
+    "ts-jest": "^29.4.10",
     "ts-loader": "^9.5.7",
     "typescript": "^6.0.3",
     "webpack": "^5.101.3",
