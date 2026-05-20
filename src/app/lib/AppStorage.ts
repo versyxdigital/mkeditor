@@ -1,6 +1,12 @@
 import { app, dialog, type BrowserWindow } from 'electron';
-import { statSync, readFileSync, writeFileSync, promises as fs } from 'fs';
-import { join, dirname, relative, resolve, isAbsolute } from 'path';
+import {
+  statSync,
+  readFileSync,
+  writeFileSync,
+  realpathSync,
+  promises as fs,
+} from 'fs';
+import { join, dirname, relative, resolve, isAbsolute, sep } from 'path';
 import type { SaveFileOptions } from '../interfaces/Storage';
 
 /**
@@ -34,12 +40,27 @@ export class AppStorage {
   }
 
   /**
-   * Set (or clear) the current workspace root. Renderer-driven; main
-   * normalises with `path.resolve` so trailing slashes / mixed
-   * separators are equivalent.
+   * Set (or clear) the current workspace root. Main normalises with
+   * `path.resolve` so trailing slashes / mixed separators are equivalent,
+   * then canonicalises via `fs.realpathSync` so an opened symlinked folder
+   * matches the canonical paths derived from `fs.realpath(target)`.
+   *
+   * `realpathSync` falls back to the lexical `resolve(root)` if the
+   * directory can't be canonicalised (was just deleted, permission
+   * denied, etc.), `assertInWorkspace` then surfaces the real error
+   * the next time the user fs-ops against the workspace.
    */
   static setWorkspaceRoot(root: string | null): void {
-    AppStorage.workspaceRoot = root ? resolve(root) : null;
+    if (!root) {
+      AppStorage.workspaceRoot = null;
+      return;
+    }
+    const absolute = resolve(root);
+    try {
+      AppStorage.workspaceRoot = realpathSync(absolute);
+    } catch {
+      AppStorage.workspaceRoot = absolute;
+    }
   }
 
   /**
@@ -103,7 +124,8 @@ export class AppStorage {
       }
     }
     const rel = relative(root, absolute);
-    if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) {
+    const isParentTraversal = rel === '..' || rel.startsWith('..' + sep);
+    if (rel === '' || isParentTraversal || isAbsolute(rel)) {
       // Empty relative means target === root, which is fine for
       // directory ops but never for read/write of a file.
       if (rel === '' && opts.mustExist !== false) {
@@ -111,7 +133,7 @@ export class AppStorage {
           `Path is a directory (workspace root), not a file: ${target}`,
         );
       }
-      if (rel.startsWith('..') || isAbsolute(rel)) {
+      if (isParentTraversal || isAbsolute(rel)) {
         throw new Error(
           `Path is outside the workspace: ${target} (workspace: ${root})`,
         );

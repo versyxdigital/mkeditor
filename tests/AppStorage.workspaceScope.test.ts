@@ -10,7 +10,7 @@
 
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { dirname, join } from 'path';
 
 import { AppStorage } from '../src/app/lib/AppStorage';
 
@@ -142,6 +142,66 @@ describe('AppStorage.assertInWorkspace', () => {
       await expect(
         AppStorage.assertInWorkspace(join(root, 'no-such.md')),
       ).rejects.toThrow(/File not found/);
+    });
+  });
+
+  it('accepts files when the workspace root itself is a symlink', async () => {
+    // Real-world repro: user opens `~/projects` which is a symlink to
+    // `/mnt/data/projects`. Without realpath'ing the root, every
+    // in-workspace file is reported as "outside" because
+    // `relative(symlinkPath, realTargetPath)` walks back out of the
+    // symlink.
+    await withTempRoot(async (realRoot) => {
+      const file = join(realRoot, 'inside.md');
+      writeFileSync(file, 'hi');
+
+      const linkRoot = join(
+        mkdtempSync(join(tmpdir(), 'mkeditor-link-')),
+        'workspace-link',
+      );
+      try {
+        symlinkSync(realRoot, linkRoot, 'dir');
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code === 'EPERM' || code === 'EACCES') return;
+        throw err;
+      }
+      try {
+        AppStorage.setWorkspaceRoot(linkRoot);
+        const safe = await AppStorage.assertInWorkspace(file);
+        expect(safe.endsWith('inside.md')).toBe(true);
+      } finally {
+        rmSync(linkRoot, { force: true });
+        rmSync(dirname(linkRoot), { recursive: true, force: true });
+      }
+    });
+  });
+
+  it('accepts an in-workspace directory whose name begins with `..`', async () => {
+    // `relative()` returns `..config/file.md` for this case — a bare
+    // `startsWith('..')` check would mistake it for parent-traversal
+    // and falsely reject the path.
+    await withTempRoot(async (root) => {
+      const dir = join(root, '..config');
+      mkdirSync(dir);
+      const file = join(dir, 'note.md');
+      writeFileSync(file, 'hi');
+      AppStorage.setWorkspaceRoot(root);
+      const safe = await AppStorage.assertInWorkspace(file);
+      expect(safe.endsWith(join('..config', 'note.md'))).toBe(true);
+    });
+  });
+
+  it('still rejects `..` and `../something` even with the looser prefix check', async () => {
+    // Regression guard: tightening from `startsWith('..')` to
+    // `=== '..' || startsWith('..' + sep)` must not let real parent-
+    // traversal slip through.
+    await withTempRoot(async (root) => {
+      AppStorage.setWorkspaceRoot(root);
+      // Lexical `..` resolves to the workspace's parent.
+      await expect(
+        AppStorage.assertInWorkspace(join(root, '..'), { mustExist: false }),
+      ).rejects.toThrow(/outside the workspace/);
     });
   });
 });
