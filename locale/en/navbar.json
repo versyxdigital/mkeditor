@@ -1,5 +1,6 @@
 {
   "toggle_sidebar": "Toggle sidebar",
+  "toggle_assistant_tooltip": "Toggle AI Assistant",
   "character_count": "Character Count:",
   "word_count": "Word Count:",
   "settings_tooltip": "Configure editor settings",

@@ -1,6 +1,6 @@
 # MKEditor — Project Context
 
-Electron-based markdown editor built around Monaco. The same TypeScript bundle ships as a desktop app (Electron wraps it) and as a pure web app (deployed to GitHub Pages). Current version: 3.8.1.
+Electron-based markdown editor built around Monaco. The same TypeScript bundle ships as a desktop app (Electron wraps it) and as a pure web app (deployed to GitHub Pages). Current version: 4.0.0.
 
 The renderer is React 19 + shadcn/ui + Tailwind v4 on top of a set of plain-TS managers (Monaco, files, settings, markdown, IPC bridge). Migration history: [docs/REACT_MIGRATION.md](docs/REACT_MIGRATION.md). Subsystem READMEs: [src/app/README.md](src/app/README.md), [src/browser/README.md](src/browser/README.md), [src/browser/extensions/README.md](src/browser/extensions/README.md). For deeper detail see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). For planned work see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -17,7 +17,7 @@ The renderer is React 19 + shadcn/ui + Tailwind v4 on top of a set of plain-TS m
 
 The same renderer bundle detects which mode it's running in via [getExecutionBridge()](src/browser/util.ts):
 
-- **Desktop**: `window.executionBridge` is injected by the Electron preload ([src/app/preload.ts](src/app/preload.ts)). Settings persist to `~/.mkeditor/settings.json`. File tree sidebar visible. Files open through IPC.
+- **Desktop**: `window.executionBridge` is injected by the Electron preload ([src/app/preload.ts](src/app/preload.ts)). Three sibling JSON files persist under `~/.mkeditor/`: `settings.json` (editor + export preferences), `session.json` (tabs, active tab, workspace folder, per-tab cursor/scroll/folding — restored on relaunch), and `assistant.json` (AI Assistant config + conversation history; API keys live in its `keys` section, encrypted with Electron `safeStorage` and never crossing IPC in plaintext). File tree sidebar visible. Files open through IPC.
 - **Web**: no bridge. Settings + last-edited content go to `localStorage` (`mkeditor-settings`, `mkeditor-export-settings`, `mkeditor-content`). Sidebar collapsed by default, "delete content" button shown in the toolbar. Exports use the File System Access API or `window.open` + `print()` for PDF.
 
 Mode branching lives in [index.ts](src/browser/index.ts), [EditorManager](src/browser/core/EditorManager.ts), [SettingsProvider](src/browser/core/providers/SettingsProvider.ts), [ExportSettingsProvider](src/browser/core/providers/ExportSettingsProvider.ts), and a few React components that conditionally render desktop-only chrome.
@@ -26,8 +26,8 @@ Mode branching lives in [index.ts](src/browser/index.ts), [EditorManager](src/br
 
 Channels are whitelisted in [preload.ts](src/app/preload.ts:15-53):
 
-- **Renderer → Main** (`to:*`): `to:title:set`, `to:editor:state`, `to:settings:save`, `to:html:export`, `to:pdf:export`, `to:file:*`, `to:folder:*`, `to:i18n:set`.
-- **Main → Renderer** (`from:*`): `from:theme:set`, `from:settings:set`, `from:file:*`, `from:folder:*`, `from:modal:open`, `from:command:palette`, `from:notification:display`, `from:path:*`, `from:i18n:set`.
+- **Renderer → Main** (`to:*`): `to:title:set`, `to:editor:state`, `to:settings:save`, `to:html:export`, `to:pdf:export`, `to:file:*`, `to:folder:*`, `to:i18n:set`, `to:ai:*` (config get/set, key set/clear, chat, cancel, tool-result, conversations save/flush, ollama list).
+- **Main → Renderer** (`from:*`): `from:theme:set`, `from:settings:set`, `from:file:*`, `from:folder:*`, `from:modal:open`, `from:command:palette`, `from:notification:display`, `from:path:*`, `from:i18n:set`, `from:ai:*` (config, chunk, tool-call, done, error, ollama:models, conversations, conversations:flush-request), `from:assistant:toggle`.
 
 Additionally `window.mked` exposes synchronous/invoke helpers for the `mked://` link provider, app locale, and path resolution. `window.logger` forwards renderer logs to `electron-log` via an `ipcMain.on('log', …)` handler in [AppBridge.ts](src/app/lib/AppBridge.ts).
 
@@ -68,6 +68,8 @@ When adding new cross-boundary functionality, follow this same seam pattern — 
 - [BridgeManager](src/browser/core/BridgeManager.ts) — wires FileManager/FileTreeManager into IPC.
 - [BridgeListeners](src/browser/core/BridgeListeners.ts) — central place where `from:*` channels mutate renderer state (modals, properties, notifications, files, theme, settings, i18n).
 - [HTMLExporter](src/browser/core/HTMLExporter.ts) — builds standalone HTML (with optional CDN-linked Bootstrap/FontAwesome/highlight.js/KaTeX for the **export**), strips internal scroll-sync attrs, exports via Electron save dialog or web File System Access API.
+- [AssistantManager](src/browser/core/AssistantManager.ts) — chat state owner (provider tabs, conversations, in-flight call map, streaming buffers, draft input). Standard `subscribe`/`getSnapshot`. **Desktop-only** — never constructed in web mode. See [docs/AI_ASSISTANT.md](docs/AI_ASSISTANT.md) + [docs/ARCHITECTURE.md §4.14](docs/ARCHITECTURE.md).
+- [AssistantTools](src/browser/core/AssistantTools.ts) — tool catalog (`read_file`, `write_file`, `edit_file`, …) + dispatcher into FileManager/FileTreeManager/EditorManager. Write-class tools route through `confirmExternal` unless the conversation's auto-accept toggle is on.
 - Providers in [core/providers/](src/browser/core/providers/):
   - `SettingsProvider` — Monaco options + `<body data-theme>` flip + Monaco theme. Exposes `subscribe`/`getSnapshot`/`updateSetting` + `setPersistHandler(fn)`.
   - `ExportSettingsProvider` — live preview style sync + debounced persist (same observable surface).
@@ -82,6 +84,9 @@ When adding new cross-boundary functionality, follow this same seam pattern — 
 - [AppStorage](src/app/lib/AppStorage.ts) — file/folder CRUD, save dialogs, PDF generation via offscreen `BrowserWindow.printToPDF`, directory tree builder (filters `.md` and directories).
 - [AppSettings](src/app/lib/AppSettings.ts) — `~/.mkeditor/settings.json` load/validate/merge-defaults/save.
 - [AppMenu](src/app/lib/AppMenu.ts) — application menu and tray menu. Menu items send `from:*` channels that the renderer turns into actions.
+- [AppAssistant](src/app/lib/AppAssistant.ts) — Vercel AI SDK wrapper. Owns the upstream stream, `AbortController` per call, error→code mapping (`invalid_key`, `rate_limited`, `context_window_exceeded`, `ollama_unreachable`, `network_error`, `unknown`). **Desktop-only**; the renderer never sees an API key. See [docs/AI_ASSISTANT.md](docs/AI_ASSISTANT.md).
+- [AssistantKeyStore](src/app/lib/AssistantKeyStore.ts) — Electron `safeStorage`-encrypted blob for API keys, stored in the `keys` section of `~/.mkeditor/assistant.json`. Plaintext never crosses IPC.
+- [AssistantConfig](src/app/lib/AssistantConfig.ts) — non-secret config (enabled flags, models, baseUrl) + persisted conversation history. Atomic tmp+rename writes, 500 ms debounce.
 
 ## Build & Run
 

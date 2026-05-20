@@ -32,6 +32,27 @@ const senderWhitelist = [
   'to:file:delete',
   'to:file:properties',
   'to:i18n:set',
+  'to:workspace:set',
+  'to:window:minimize',
+  'to:window:maximize',
+  'to:window:close',
+  'to:window:fullscreen',
+  'to:command:run',
+  'to:edit:cut',
+  'to:edit:copy',
+  'to:edit:paste',
+  // AI Assistant — chat / config / keys / Ollama
+  'to:ai:chat',
+  'to:ai:cancel',
+  'to:ai:tool-result',
+  'to:ai:config:get',
+  'to:ai:config:set',
+  'to:ai:key:set',
+  'to:ai:key:clear',
+  'to:ai:ollama:list',
+  // AI Assistant — conversation persistence
+  'to:ai:conversations:save',
+  'to:ai:conversations:flush',
 ];
 
 // Can be sent from the main process and received
@@ -54,6 +75,19 @@ const receiverWhitelist = [
   'from:path:properties',
   'from:path:renamed',
   'from:i18n:set',
+  'from:window:state',
+  // AI Assistant — streaming chunks / tool calls / done / error / config
+  'from:ai:chunk',
+  'from:ai:tool-call',
+  'from:ai:done',
+  'from:ai:error',
+  'from:ai:config',
+  'from:ai:ollama:models',
+  // AI Assistant — conversation persistence
+  'from:ai:conversations',
+  'from:ai:conversations:flush-request',
+  // AI Assistant — application menu / tray sidebar toggle
+  'from:assistant:toggle',
 ];
 
 /**
@@ -96,12 +130,71 @@ const contextBridgeChannel = () => {
 contextBridge.exposeInMainWorld('executionBridge', contextBridgeChannel());
 
 contextBridge.exposeInMainWorld('mked', {
+  // Pinned at preload time: `process.platform` is authoritative here (the
+  // preload runs in Node), avoiding a renderer-side UA sniff. Read once
+  // by the composition root in `index.ts` and threaded through Managers.
+  platform: process.platform,
   getActiveFilePath: () => ipcRenderer.sendSync('mked:get-active-file'),
   getAppLocale: () => ipcRenderer.sendSync('mked:get-locale'),
+  /**
+   * SPKI base64 of main's per-session RSA-OAEP public key. The
+   * renderer imports this via Web Crypto and uses it to encrypt
+   * any secret (today: AI provider API keys) before sending over
+   * IPC. Synchronous because we want the very first key-set call
+   * to succeed without an awaited round-trip. The public key is
+   * not a secret — no compliance issue with how it crosses.
+   */
+  secureChannelPublicKey: (): string =>
+    ipcRenderer.sendSync('mked:secure:public-key'),
   openMkedUrl: (url: string) => ipcRenderer.send('mked:open-url', url),
   pathDirname: (p: string) => ipcRenderer.invoke('mked:path:dirname', p),
   resolvePath: (base: string, rel: string) =>
     ipcRenderer.invoke('mked:path:resolve', base, rel),
+  /**
+   * Read a file's contents without opening it as a tab. Used by the
+   * AI assistant's `read_file` tool when the requested file isn't
+   * already open — keeps tab-spam down when the agent is gathering
+   * context across many files.
+   */
+  readFile: (path: string) =>
+    ipcRenderer.invoke('mked:fs:readfile', path) as Promise<{
+      content: string;
+      lineCount: number;
+    }>,
+  /**
+   * Write `content` to an existing or new file at `path`. Resolves
+   * with `{ok: true, path}` on success or `{ok: false, error}` on
+   * failure — used by the AI assistant's write-class tools so they
+   * can report honest success/failure to the agent (the fire-and-
+   * forget `to:file:save` channel used by the menu UI returns
+   * nothing). Parent directories are created on demand.
+   */
+  saveFile: (path: string, content: string) =>
+    ipcRenderer.invoke('mked:fs:savefile', path, content) as Promise<
+      { ok: true; path: string } | { ok: false; error: string }
+    >,
+  /**
+   * Create a new file at `parent/name` with `content`. Resolves with
+   * `{ok: true, path}` on success or `{ok: false, error}` on failure.
+   * Parent directories are created on demand. Used by the AI
+   * assistant's `create_file` tool; the menu-driven flow continues
+   * to use the existing fire-and-forget `to:file:create` channel.
+   */
+  createFile: (parent: string, name: string, content: string) =>
+    ipcRenderer.invoke('mked:fs:createfile', parent, name, content) as Promise<
+      { ok: true; path: string } | { ok: false; error: string }
+    >,
+  /**
+   * Create a new (empty) directory at `parent/name`. Resolves with
+   * `{ok: true, path}` on success or `{ok: false, error}` on
+   * failure. Used by the AI assistant's `create_folder` tool so the
+   * agent can make empty directories visible in the explorer
+   * without resorting to placeholder `.gitkeep` files.
+   */
+  createFolder: (parent: string, name: string) =>
+    ipcRenderer.invoke('mked:fs:createfolder', parent, name) as Promise<
+      { ok: true; path: string } | { ok: false; error: string }
+    >,
 });
 
 contextBridge.exposeInMainWorld('logger', {

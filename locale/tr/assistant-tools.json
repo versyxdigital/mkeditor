@@ -1,0 +1,35 @@
+{
+  "confirm_title": "{{toolName}} izin verilsin mi?",
+  "confirm_title_fallback": "Araç çağrısına izin verilsin mi?",
+  "confirm_intro": "Asistan bu aracı çalıştırmak istiyor. Kabul etmeden önce değişikliği gözden geçirin.",
+  "confirm_accept": "İzin ver",
+  "confirm_reject": "Reddet",
+  "args_label": "Argümanlar",
+  "result_label": "Sonuç",
+  "error_label": "Hata",
+
+  "preview_create": "{{path}} dosyasını oluştur",
+  "preview_write": "{{path}} öğesini değiştir",
+  "preview_edit": "{{path}} öğesini düzenle",
+  "preview_replace": "{{path}} içindeki seçimi değiştir",
+  "preview_insert": "{{path}} içine ekle",
+  "preview_before": "Önce",
+  "preview_after": "Sonra",
+
+  "status_pending-confirm": "Onay bekleniyor",
+  "status_executing": "Çalışıyor",
+  "status_succeeded": "Tamamlandı",
+  "status_failed": "Başarısız",
+
+  "toggle_card": "{{toolName}} ayrıntılarını aç/kapat",
+
+  "error_rejected": "Kullanıcı bu araç çağrısını reddetti.",
+  "error_execution_failed": "Araç yürütmesi başarısız oldu.",
+  "error_unknown_tool": "Bilinmeyen araç.",
+
+  "show_more": "Daha fazla göster ({{chars}} ek karakter)",
+  "show_less": "Daha az göster",
+  "retry": "Yeniden dene",
+  "retry_prompt": "Lütfen {{toolName}} çağrısını yeniden deneyin.",
+  "retry_prompt_with_args": "Lütfen {{toolName}} öğesini şu argümanlarla yeniden deneyin: {{args}}"
+}

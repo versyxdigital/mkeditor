@@ -1,7 +1,10 @@
 {
   "title": "Editorinstellingen",
+  "title_assistant": "AI-instellingen",
   "intro": "Hier kun je diverse editorinstellingen aanpassen; instellingen worden automatisch opgeslagen wanneer je ze wijzigt.",
+  "intro_assistant": "Verbind je AI-providerkonten, kies standaardmodellen en test de verbinding. Sleutels worden lokaal opgeslagen en verlaten je computer nooit.",
   "settings_file_info": "Je instellingenbestand bevindt zich op",
+  "settings_file_info_assistant": "Je AI-providerconfiguratie en gesprekken worden opgeslagen op",
   "formatting": "Opmaak",
   "autoindent_label": "Automatisch inspringen schakelen",
   "autoindent_help": "Tekst automatisch laten inspringen op nieuwe regels.",
@@ -29,5 +32,7 @@
   "systemtheme_help": "Het systeemthema mag je opgeslagen instellingen overschrijven.",
   "language_label": "Taal",
   "language_help": "Selecteer de taal van de interface.",
-  "save_settings": "Instellingen opslaan"
+  "save_settings": "Instellingen opslaan",
+  "tab_general": "Algemene instellingen",
+  "tab_assistant": "AI-providers"
 }

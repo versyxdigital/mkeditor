@@ -3,6 +3,7 @@ import * as React from 'react';
 import { useFiles } from '../contexts/FilesContext';
 import { useModals } from '../contexts/ModalsContext';
 import { useUIState } from '../contexts/UIStateContext';
+import { useManagers } from '../contexts/ManagersContext';
 import { sonnerToast } from '../../notify';
 import { useCounts } from '../hooks/useCounts';
 import { useTranslation } from '../hooks/useTranslation';
@@ -19,10 +20,15 @@ import {
  * Top navbar.
  */
 export const Navbar: React.FC = () => {
-  const { toggleSidebar } = useUIState();
+  const { toggleSidebar, toggleRightSidebar, rightSidebarOpen } = useUIState();
   const { openModal } = useModals();
+  const { mode } = useManagers();
   const { t } = useTranslation();
   const { activeFile, tabs } = useFiles();
+
+  // Hide the AI sidebar toggle on web — AI Assistant is desktop-only
+  // (see docs/AI_ASSISTANT.md "Decisions" → "API call location").
+  const showAssistantToggle = mode !== 'web';
   const counts = useCounts();
 
   // Navbar shows the full path of the active file (the tab itself
@@ -50,7 +56,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <nav className="flex items-center justify-between border-b border-border bg-background px-2 py-1">
+      <nav className="flex items-center justify-between border-b border-border bg-background">
         <div className="flex items-center gap-2">
           <Button
             id="sidebar-toggle"
@@ -59,14 +65,13 @@ export const Navbar: React.FC = () => {
             type="button"
             title={t('navbar:toggle_sidebar')}
             onClick={toggleSidebar}
-            className="h-7 w-7"
+            className="h-7 w-7 text-xs"
           >
             <Icon name="bars" />
           </Button>
-          <img src="./icon.png" className="ml-1 h-6 w-6" />
           <span
             id="active-file"
-            className="truncate text-sm text-muted-foreground"
+            className="truncate text-xs text-muted-foreground"
             title={activeFileLabel ?? undefined}
           >
             {activeFileLabel ?? t('app:brand_name')}
@@ -79,7 +84,7 @@ export const Navbar: React.FC = () => {
                   size="icon"
                   variant="ghost"
                   onClick={handleCopyPath}
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground text-xs"
                   aria-label={t('navbar:copy_path_tooltip')}
                 >
                   <Icon name="copy" />
@@ -127,6 +132,26 @@ export const Navbar: React.FC = () => {
             </TooltipTrigger>
             <TooltipContent>{t('navbar:shortcuts_tooltip')}</TooltipContent>
           </Tooltip>
+          {showAssistantToggle && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  id="assistant-toggle"
+                  size="icon"
+                  variant="ghost"
+                  type="button"
+                  aria-pressed={rightSidebarOpen}
+                  onClick={toggleRightSidebar}
+                  className="h-7 w-7 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <Icon name="comments" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {t('navbar:toggle_assistant_tooltip')}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </nav>
     </TooltipProvider>

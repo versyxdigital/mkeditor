@@ -13,18 +13,27 @@ const app = {
 };
 
 const BrowserWindow = jest.fn().mockImplementation((opts) => {
+  // Sender-id used by the AppWindow / AppMenu sender-scoping checks.
+  // Same value across windows is fine for tests — production
+  // recreations get distinct ids from Electron itself.
+  const senderId = 1;
   return {
     loadFile: jest.fn(),
     webContents: {
+      id: senderId,
       on: jest.fn(),
+      once: jest.fn(),
       loadFile: jest.fn(),
       setWindowOpenHandler: jest.fn(),
       send: jest.fn(),
     },
     on: jest.fn(),
+    once: jest.fn(),
     maximize: jest.fn(),
     show: jest.fn(),
     setTitle: jest.fn(),
+    setMenuBarVisibility: jest.fn(),
+    isDestroyed: jest.fn(() => false),
   };
 });
 
@@ -34,6 +43,10 @@ const nativeImage = {
 
 const nativeTheme = {
   shouldUseDarkColors: false,
+  // Mirrors Electron's EventEmitter surface — main.ts subscribes to
+  // `nativeTheme.on('updated', ...)` for live OS theme tracking.
+  on: jest.fn(),
+  off: jest.fn(),
 };
 
 const shell = {
@@ -57,6 +70,8 @@ const dialog = {
 const ipcMain = {
   on: jest.fn(),
   handle: jest.fn(),
+  removeListener: jest.fn(),
+  removeHandler: jest.fn(),
 };
 
 const protocol = {
@@ -64,11 +79,25 @@ const protocol = {
   handle: jest.fn(),
 };
 
+// safeStorage mock — used by AssistantKeyStore.
+// Tests that exercise the encryption path replace these with jest.fn()
+// per-suite. The defaults give a working round-trip via base64 + a
+// fixed prefix so jest.requireActual paths still behave sanely.
+const safeStorage = {
+  isEncryptionAvailable: jest.fn(() => true),
+  encryptString: jest.fn((s) => Buffer.from('ENC:' + s, 'utf-8')),
+  decryptString: jest.fn((buf) => {
+    const text = buf.toString('utf-8');
+    return text.startsWith('ENC:') ? text.slice(4) : text;
+  }),
+};
+
 module.exports = {
   app,
   BrowserWindow,
   nativeImage,
   nativeTheme,
+  safeStorage,
   shell,
   Tray,
   dialog,

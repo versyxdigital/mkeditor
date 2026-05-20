@@ -34,8 +34,9 @@ describe('AppBridge to:session:save handler', () => {
 
   it('forwards the renderer payload to AppSession.save', () => {
     const context = {
-      webContents: { send: jest.fn() },
+      webContents: { id: 1, send: jest.fn() },
       setTitle: jest.fn(),
+      once: jest.fn(),
     } as never;
     const bridge = new AppBridge(context);
     bridge.register();
@@ -60,7 +61,7 @@ describe('AppBridge to:session:save handler', () => {
       activeFile: '/abs/foo.md',
       workspaceRoot: null,
     };
-    handler({}, payload);
+    handler({ sender: { id: 1 } }, payload);
 
     expect(AppSession.save).toHaveBeenCalledTimes(1);
     expect(AppSession.save).toHaveBeenCalledWith(payload);
@@ -75,8 +76,9 @@ describe('AppBridge to:session:clear handler', () => {
   it('calls AppSession.clear and fires the success notification', () => {
     const send = jest.fn();
     const context = {
-      webContents: { send },
+      webContents: { id: 1, send },
       setTitle: jest.fn(),
+      once: jest.fn(),
     } as never;
     const bridge = new AppBridge(context);
     bridge.register();
@@ -86,9 +88,9 @@ describe('AppBridge to:session:clear handler', () => {
       (c) => c[0] === 'to:session:clear',
     );
     expect(clearCall).toBeDefined();
-    const handler = clearCall![1] as () => void;
+    const handler = clearCall![1] as (e: unknown) => void;
 
-    handler();
+    handler({ sender: { id: 1 } });
 
     expect(AppSession.clear).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenCalledWith('from:notification:display', {

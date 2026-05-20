@@ -1,0 +1,7 @@
+{
+  "title": "Assistant IA",
+  "tabs_label": "Fournisseur d'IA",
+  "no_providers_enabled": "Aucun fournisseur connecté pour l'instant. Activez-en un dans les Paramètres pour commencer à discuter.",
+  "provider_ready_placeholder": "{{provider}} est prêt — l'interface de chat arrive dans la prochaine phase.",
+  "open_settings": "Ouvrir les paramètres"
+}

@@ -1,0 +1,28 @@
+{
+  "file": "Datei",
+  "edit": "Bearbeiten",
+  "view": "Ansicht",
+  "help": "Hilfe",
+
+  "file.new": "Neue Datei...",
+  "file.open": "Datei öffnen...",
+  "folder.open": "Ordner öffnen...",
+  "file.save": "Speichern",
+  "file.saveas": "Speichern unter...",
+  "file.settings": "Einstellungen...",
+  "file.openlog": "Protokoll öffnen...",
+  "file.quit": "Beenden",
+
+  "edit.undo": "Rückgängig",
+  "edit.redo": "Wiederholen",
+  "edit.cut": "Ausschneiden",
+  "edit.copy": "Kopieren",
+  "edit.paste": "Einfügen",
+
+  "view.palette": "Befehlspalette öffnen",
+  "view.fullscreen": "Vollbild umschalten",
+  "view.devtools": "Entwicklertools umschalten",
+
+  "help.about": "Über MKEditor",
+  "help.shortcuts": "Editor-Tastenkürzel"
+}

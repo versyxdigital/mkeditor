@@ -1,0 +1,35 @@
+{
+  "confirm_title": "Дозволити {{toolName}}?",
+  "confirm_title_fallback": "Дозволити виклик інструмента?",
+  "confirm_intro": "Асистент хоче запустити цей інструмент. Перегляньте зміну перед підтвердженням.",
+  "confirm_accept": "Дозволити",
+  "confirm_reject": "Відхилити",
+  "args_label": "Аргументи",
+  "result_label": "Результат",
+  "error_label": "Помилка",
+
+  "preview_create": "Створити файл {{path}}",
+  "preview_write": "Замінити {{path}}",
+  "preview_edit": "Редагувати {{path}}",
+  "preview_replace": "Замінити виділення в {{path}}",
+  "preview_insert": "Вставити в {{path}}",
+  "preview_before": "До",
+  "preview_after": "Після",
+
+  "status_pending-confirm": "Очікування підтвердження",
+  "status_executing": "Виконується",
+  "status_succeeded": "Готово",
+  "status_failed": "Помилка",
+
+  "toggle_card": "Показати/сховати деталі {{toolName}}",
+
+  "error_rejected": "Користувач відхилив цей виклик інструмента.",
+  "error_execution_failed": "Виконання інструмента не вдалося.",
+  "error_unknown_tool": "Невідомий інструмент.",
+
+  "show_more": "Показати більше (ще {{chars}} симв.)",
+  "show_less": "Показати менше",
+  "retry": "Повторити",
+  "retry_prompt": "Будь ласка, повторіть виклик {{toolName}}.",
+  "retry_prompt_with_args": "Будь ласка, повторіть {{toolName}} з аргументами: {{args}}"
+}

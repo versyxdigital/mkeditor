@@ -1,5 +1,23 @@
 # CHANGELOG
 
+### 2026-05-19 - v4.0.0
+
+#### Added
+
+- **AI Assistant**: In-editor agent (Anthropic / OpenAI / Ollama) in a right-hand sidebar with per-provider chat tabs, persisted conversations, streaming responses, and a workspace-scoped read/write tool catalog. Write tools confirm by default; `@`-mentions, active-file chip and selection sharing keep the agent grounded in workspace context. Translated across all 13 supported locales. Desktop-only.
+
+#### Changed
+
+- **Secure key transport**: AI provider API keys are RSA-OAEP-encrypted in the renderer before crossing IPC — plaintext never traverses the renderer↔main bridge. On-disk storage continues to use Electron `safeStorage`.
+- **Workspace-scoped file IPC**: All assistant file operations resolve against the open workspace root (canonical paths, symlink escapes rejected); calls outside the workspace or without a workspace open are denied.
+
+#### Fixed
+
+- **Tab unsaved-indicator**: Saving via the menu or `Ctrl+S` now clears the tab's unsaved-changes dot (previously only the toolbar Save button did).
+- **Menu accelerators on Windows/Linux**: `Ctrl+S`, `Ctrl+O` and other keybindings shown in the in-window title bar now actually fire, with the native menu bar still hidden.
+
+---
+
 ### 2026-05-17 - v3.8.1
 
 #### Fixed

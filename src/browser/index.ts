@@ -10,6 +10,10 @@ import { showSplashScreen } from './splash';
 
 import { App } from './react/App';
 import type { Managers } from './react/contexts/ManagersContext';
+import {
+  getCurrentAssistantState,
+  registerAssistantStateChangeListener,
+} from './react/contexts/UIStateContext';
 
 // The bi-directional synchronous bridge to the main execution context.
 // Exposed on the window object through the preloader.
@@ -17,6 +21,18 @@ const api = getExecutionBridge();
 
 // App mode (desktop or web).
 const mode: 'web' | 'desktop' = api !== 'web' ? 'desktop' : 'web';
+
+// Authoritative runtime platform. Desktop reads `process.platform` via the
+// preload's `window.mked.platform`; web has no preload so we collapse it to
+// `'web'`. Components that need to branch (e.g. `<TitleBar>` hiding on
+// macOS) read this from Managers — no UA sniffing in React.
+const mkedPlatform = window.mked?.platform;
+const platform: 'web' | 'darwin' | 'win32' | 'linux' =
+  mode === 'web'
+    ? 'web'
+    : mkedPlatform === 'darwin' || mkedPlatform === 'win32'
+      ? mkedPlatform
+      : 'linux';
 
 // Inject the markdown stylesheet into <head> so the live preview pane
 // is styled the moment React mounts. The same string is inlined into
@@ -44,11 +60,13 @@ const dispatcher = new EditorDispatcher();
 
 const initialManagers: Managers = {
   mode,
+  platform,
   editorManager: null,
   dispatcher,
   fileManager: null,
   fileTreeManager: null,
   bridgeManager: null,
+  assistantManager: null,
   providers: {
     bridge: null,
     commands: null,
@@ -226,9 +244,23 @@ function onEditorReadyInner() {
       editorManager.providers.settings?.getSetting('sessionRestore') ?? true,
   );
 
-  new MkedLinkProvider(mkeditor, (path) =>
-    bridgeManager.fileTreeManager.hasFile(path),
+  // Round-trip the assistant right-sidebar view-state through the
+  // existing session payload. UIStateContext keeps a live mirror
+  // of `{ sidebarOpen, size }`; FileManager reads it at save time.
+  // Changes inside UIStateContext fire the change listener wired
+  // here, which goes through FileManager's existing 300 ms-debounced
+  // save pipeline so AI Assistant churn coalesces with tab churn.
+  bridgeManager.fileManager.setAssistantStateGetter(getCurrentAssistantState);
+  registerAssistantStateChangeListener(() =>
+    bridgeManager.fileManager.notifyAssistantStateChanged(),
   );
+
+  // Source the active file from FileManager (renderer-side, always
+  // current). Reading via the main process here would lag tab switches
+  // — main only learns about `from:file:opened`, not about renderer-
+  // driven `activateFile` calls — so relative links in any non-most-
+  // recently-opened tab would resolve against the wrong base dir.
+  new MkedLinkProvider(mkeditor, () => bridgeManager.fileManager.activeFile);
 
   if (api !== 'web') {
     api.receive('from:i18n:set', (lng: string) => {
@@ -280,5 +312,6 @@ function onEditorReadyInner() {
     bridgeManager,
     fileManager: bridgeManager.fileManager,
     fileTreeManager: bridgeManager.fileTreeManager,
+    assistantManager: bridgeManager.assistantManager,
   }));
 }

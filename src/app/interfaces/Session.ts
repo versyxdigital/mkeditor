@@ -1,7 +1,7 @@
 /**
  * Persisted session shape. Mirrors the schema documented in
  * `docs/SESSION_RESTORE.md` and the renderer-side serializer in
- * `FileManager.serializeSession()` (added in Phase 2).
+ * `FileManager.serializeSession()`.
  *
  * Main process never interprets `viewState` — it's a JSON-serialisable
  * opaque blob owned by Monaco (`editor.ICodeEditorViewState`). Typed as
@@ -9,8 +9,13 @@
  * into the node-side bundle.
  */
 export interface SessionPayload {
-  /** Format version. Bump on shape changes; current loader rejects mismatches. */
-  version: 1;
+  /**
+   * Format version. v1 was the original session-restore shape; v2 adds
+   * the optional `assistant` view-state block. The loader accepts either
+   * version (a v1 file loads with `assistant` undefined) and the writer
+   * always stamps the current `AppSession.SCHEMA_VERSION` (2 today).
+   */
+  version: 1 | 2;
   /** Insertion order is tab order. */
   tabs: SessionTab[];
   /** Path of the active tab. Must match a `tabs[].path` or be null. */
@@ -18,9 +23,28 @@ export interface SessionPayload {
   /**
    * Currently-open workspace folder path, or null. Main re-validates
    * this at restore time and drops it if the directory no longer
-   * exists. Desktop only; web mode handles its root via IDB (P3).
+   * exists. Desktop only; web mode handles its root via IDB.
    */
   workspaceRoot: string | null;
+  /**
+   * AI Assistant right-sidebar view state, added in v2.
+   * Optional so v1 payloads load unchanged; UIStateContext supplies
+   * sensible defaults when absent. Conversation history lives in
+   * `~/.mkeditor/assistant.json`, not here — this block is purely the
+   * layout/visibility snapshot the renderer hydrates at boot.
+   */
+  assistant?: AssistantViewState;
+}
+
+export interface AssistantViewState {
+  /** Whether the right sidebar is expanded. */
+  sidebarOpen: boolean;
+  /**
+   * Last-selected size as a percentage of the outer Group's width.
+   * `react-resizable-panels` stores layout in percent; we round-trip
+   * the same scale so re-applying it matches the user's drag exactly.
+   */
+  size: number;
 }
 
 export interface SessionTab {

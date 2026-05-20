@@ -3,5 +3,8 @@
   "text": "Kapatmadan önce değişiklikler kaydedilsin mi?",
   "confirm": "Kaydet ve kapat",
   "deny": "Kaydetmeden kapat",
-  "cancel": "İptal"
+  "cancel": "İptal",
+  "workspace_switch_text": "Çalışma alanını değiştirmek tüm açık sekmeleri kapatır. {{count}} sekmede kaydedilmemiş değişiklikleriniz var. Ne yapmak istersiniz?",
+  "workspace_switch_save_all": "Tümünü kaydet ve kapat",
+  "workspace_switch_discard": "Tümünü at ve kapat"
 }

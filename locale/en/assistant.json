@@ -1,0 +1,7 @@
+{
+  "title": "AI Assistant",
+  "tabs_label": "AI provider",
+  "no_providers_enabled": "No providers connected yet. Enable one in Settings to start chatting.",
+  "provider_ready_placeholder": "{{provider}} is ready — chat UI lands in the next phase.",
+  "open_settings": "Open Settings"
+}

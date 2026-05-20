@@ -140,3 +140,197 @@ describe('SettingsProvider.loadSettingsFromLocalStorage (web)', () => {
     expect(provider.getSetting('wordwrap')).toBe(true);
   });
 });
+
+describe('SettingsProvider system-theme tracking', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('reads OS darkmode separately from the stored manual preference', () => {
+    // User's manual preference (would normally be applied when
+    // systemtheme is off). Stored on disk; should never be touched by
+    // OS-theme pushes.
+    localStorage.setItem(
+      'mkeditor-settings',
+      JSON.stringify({
+        autoindent: false,
+        darkmode: true,
+        wordwrap: true,
+        whitespace: false,
+        minimap: true,
+        systemtheme: true,
+        scrollsync: true,
+        sessionRestore: true,
+        locale: 'en',
+      }),
+    );
+    const dispatcher = new EditorDispatcher();
+    const mkeditor = new EditorManager({
+      dispatcher,
+      init: true,
+      watch: false,
+    });
+    const provider = new SettingsProvider('web', mkeditor.getMkEditor()!);
+
+    // Stored preference reads as `true` (dark).
+    expect(provider.getSetting('darkmode')).toBe(true);
+    // OS hasn't reported yet.
+    expect(provider.getOsDarkmode()).toBeNull();
+
+    // OS reports light. Should NOT clobber the stored preference.
+    provider.setOsDarkmode(false);
+    expect(provider.getOsDarkmode()).toBe(false);
+    expect(provider.getSetting('darkmode')).toBe(true);
+
+    // Document body reflects effective (OS) theme, not stored.
+    expect(document.body.getAttribute('data-theme')).toBe('light');
+  });
+
+  it('falls back to stored darkmode when systemtheme is off', () => {
+    localStorage.setItem(
+      'mkeditor-settings',
+      JSON.stringify({
+        autoindent: false,
+        darkmode: true,
+        wordwrap: true,
+        whitespace: false,
+        minimap: true,
+        systemtheme: false,
+        scrollsync: true,
+        sessionRestore: true,
+        locale: 'en',
+      }),
+    );
+    const dispatcher = new EditorDispatcher();
+    const mkeditor = new EditorManager({
+      dispatcher,
+      init: true,
+      watch: false,
+    });
+    const provider = new SettingsProvider('web', mkeditor.getMkEditor()!);
+
+    // OS push lands but systemtheme is off — stored preference wins.
+    provider.setOsDarkmode(false);
+    expect(document.body.getAttribute('data-theme')).toBe('dark');
+    expect(provider.getSetting('darkmode')).toBe(true);
+  });
+
+  it('flips the rendered theme when systemtheme is toggled, preserving stored darkmode', () => {
+    // Regression for the launch bug: stored darkmode=true, OS is
+    // light. The user toggles systemtheme on while the app is open —
+    // the rendered theme must follow the OS without overwriting the
+    // stored preference.
+    localStorage.setItem(
+      'mkeditor-settings',
+      JSON.stringify({
+        autoindent: false,
+        darkmode: true,
+        wordwrap: true,
+        whitespace: false,
+        minimap: true,
+        systemtheme: false,
+        scrollsync: true,
+        sessionRestore: true,
+        locale: 'en',
+      }),
+    );
+    const dispatcher = new EditorDispatcher();
+    const mkeditor = new EditorManager({
+      dispatcher,
+      init: true,
+      watch: false,
+    });
+    const provider = new SettingsProvider('web', mkeditor.getMkEditor()!);
+
+    // OS push lands first (boot order).
+    provider.setOsDarkmode(false);
+    // systemtheme off → stored wins → dark.
+    expect(document.body.getAttribute('data-theme')).toBe('dark');
+
+    // Toggle systemtheme on — rendered theme flips to OS (light).
+    provider.updateSetting('systemtheme', true);
+    expect(document.body.getAttribute('data-theme')).toBe('light');
+
+    // Stored darkmode preserved.
+    expect(provider.getSetting('darkmode')).toBe(true);
+
+    // Toggle systemtheme back off — rendered theme restores to stored
+    // (dark). This is the "preserve manual preference" semantic.
+    provider.updateSetting('systemtheme', false);
+    expect(document.body.getAttribute('data-theme')).toBe('dark');
+  });
+
+  it('setOsDarkmode is a silent cache when systemtheme is off (no emit)', () => {
+    const dispatcher = new EditorDispatcher();
+    const mkeditor = new EditorManager({
+      dispatcher,
+      init: true,
+      watch: false,
+    });
+    const provider = new SettingsProvider('web', mkeditor.getMkEditor()!);
+    // default systemtheme is true — flip to false so emit shouldn't fire.
+    provider.updateSetting('systemtheme', false);
+
+    const listener = jest.fn();
+    provider.subscribe(listener);
+
+    // OS push with systemtheme off: cache updates silently, no emit.
+    provider.setOsDarkmode(true);
+    expect(provider.getOsDarkmode()).toBe(true);
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('setOsDarkmode emits when systemtheme is on (so React subscribers re-render)', () => {
+    const dispatcher = new EditorDispatcher();
+    const mkeditor = new EditorManager({
+      dispatcher,
+      init: true,
+      watch: false,
+    });
+    const provider = new SettingsProvider('web', mkeditor.getMkEditor()!);
+    // systemtheme is true by default.
+
+    const listener = jest.fn();
+    provider.subscribe(listener);
+
+    provider.setOsDarkmode(true);
+    expect(listener).toHaveBeenCalled();
+  });
+
+  it('snapshot exposes effectiveDarkmode for UI consumers that visualise the rendered theme', () => {
+    // The bottom-toolbar moon icon needs to show the rendered theme
+    // (which may differ from `settings.darkmode` while systemtheme is
+    // on and the OS doesn't match the stored preference). The
+    // snapshot carries `effectiveDarkmode` so consumers don't need to
+    // re-derive it.
+    localStorage.setItem(
+      'mkeditor-settings',
+      JSON.stringify({
+        autoindent: false,
+        darkmode: true,
+        wordwrap: true,
+        whitespace: false,
+        minimap: true,
+        systemtheme: true,
+        scrollsync: true,
+        sessionRestore: true,
+        locale: 'en',
+      }),
+    );
+    const dispatcher = new EditorDispatcher();
+    const mkeditor = new EditorManager({
+      dispatcher,
+      init: true,
+      watch: false,
+    });
+    const provider = new SettingsProvider('web', mkeditor.getMkEditor()!);
+    // Stored is dark; OS hasn't reported → fallback to stored.
+    expect(provider.getSnapshot().darkmode).toBe(true);
+    expect(provider.getSnapshot().effectiveDarkmode).toBe(true);
+
+    // OS reports light. Stored stays dark; effective flips.
+    provider.setOsDarkmode(false);
+    expect(provider.getSnapshot().darkmode).toBe(true);
+    expect(provider.getSnapshot().effectiveDarkmode).toBe(false);
+  });
+});

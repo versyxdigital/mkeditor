@@ -3,5 +3,8 @@
   "text": "Save changes to your file before closing?",
   "confirm": "Save & close",
   "deny": "Close without saving",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "workspace_switch_text": "Switching workspace will close every open tab. You have unsaved changes in {{count}} tab(s). What would you like to do?",
+  "workspace_switch_save_all": "Save all & close",
+  "workspace_switch_discard": "Discard all & close"
 }

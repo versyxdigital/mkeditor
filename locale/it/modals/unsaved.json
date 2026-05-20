@@ -3,5 +3,8 @@
   "text": "Salvare le modifiche prima di chiudere?",
   "confirm": "Salva e chiudi",
   "deny": "Chiudi senza salvare",
-  "cancel": "Annulla"
+  "cancel": "Annulla",
+  "workspace_switch_text": "Cambiare area di lavoro chiuderà tutte le schede aperte. Hai modifiche non salvate in {{count}} scheda/e. Cosa vuoi fare?",
+  "workspace_switch_save_all": "Salva tutto e chiudi",
+  "workspace_switch_discard": "Scarta tutto e chiudi"
 }

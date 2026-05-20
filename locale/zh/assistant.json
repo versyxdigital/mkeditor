@@ -1,0 +1,7 @@
+{
+  "title": "AI 助手",
+  "tabs_label": "AI 提供商",
+  "no_providers_enabled": "尚未连接任何提供商。请在“设置”中启用一个以开始聊天。",
+  "provider_ready_placeholder": "{{provider}} 已就绪 — 聊天界面将在下一阶段推出。",
+  "open_settings": "打开设置"
+}

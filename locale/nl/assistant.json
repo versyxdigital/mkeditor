@@ -1,0 +1,7 @@
+{
+  "title": "AI-assistent",
+  "tabs_label": "AI-provider",
+  "no_providers_enabled": "Nog geen providers verbonden. Schakel er een in via Instellingen om te beginnen met chatten.",
+  "provider_ready_placeholder": "{{provider}} is klaar — de chat-UI komt in de volgende fase.",
+  "open_settings": "Instellingen openen"
+}

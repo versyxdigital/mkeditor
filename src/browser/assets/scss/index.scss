@@ -5,7 +5,6 @@
 @use '_preview';
 @use '_darkmode';
 @use '_sidebar';
-@use '_tabs';
 
 @include meta.load-css('katex/dist/katex.min.css');
 
@@ -41,17 +40,110 @@ body > nav {
   opacity: 0;
 }
 
+// Splash overlay.
+//
+// Three stacked layers:
+//   1. A deep near-black base gradient (cooler than `#222` so the
+//      teal glow has somewhere to bloom).
+//   2. Two off-axis radial blobs in the brand primary, tinted with
+//      `color-mix` so they stay locked to the theme token rather
+//      than a hardcoded teal.
+//   3. A slowly pulsing center halo via `::before` so the splash
+//      feels alive while Monaco boots in the background.
+//
+// The pulsing logo/halo animations honour `prefers-reduced-motion`.
 #splashscreen {
   z-index: 9999;
-  background: #222222;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
+  background:
+    radial-gradient(
+      ellipse at 22% 28%,
+      color-mix(in oklch, var(--primary) 38%, transparent) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 80% 75%,
+      color-mix(in oklch, var(--primary) 28%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(ellipse at center, #1a2528 0%, #0c1416 75%);
+
+  // Soft breathing halo behind the centered logo/title block.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -10%;
+    background: radial-gradient(
+      circle at center,
+      color-mix(in oklch, var(--primary) 18%, transparent) 0%,
+      transparent 55%
+    );
+    animation: splash-pulse 4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  // Logo + title sit above the halo pseudo-element.
+  > div {
+    position: relative;
+    z-index: 1;
+  }
+
+  img {
+    filter: drop-shadow(
+        0 0 28px color-mix(in oklch, var(--primary) 55%, transparent)
+      )
+      drop-shadow(0 0 6px color-mix(in oklch, var(--primary) 50%, transparent));
+    animation: splash-logo-glow 3.5s ease-in-out infinite;
+  }
+
   h1 {
     font-size: 3.5em;
     letter-spacing: 10px;
     text-transform: uppercase;
+    text-shadow:
+      0 0 18px color-mix(in oklch, var(--primary) 60%, transparent),
+      0 0 4px color-mix(in oklch, var(--primary) 45%, transparent);
+  }
+}
+
+@keyframes splash-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes splash-logo-glow {
+  0%,
+  100% {
+    filter: drop-shadow(
+        0 0 20px color-mix(in oklch, var(--primary) 50%, transparent)
+      )
+      drop-shadow(0 0 4px color-mix(in oklch, var(--primary) 45%, transparent));
+  }
+  50% {
+    filter: drop-shadow(
+        0 0 36px color-mix(in oklch, var(--primary) 75%, transparent)
+      )
+      drop-shadow(0 0 8px color-mix(in oklch, var(--primary) 60%, transparent));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #splashscreen::before,
+  #splashscreen img {
+    animation: none;
   }
 }
 

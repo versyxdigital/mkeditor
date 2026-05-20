@@ -1,7 +1,10 @@
 {
   "title": "编辑器设置",
+  "title_assistant": "AI 设置",
   "intro": "在此可根据你的偏好自定义编辑器设置；更新时将自动保存。",
+  "intro_assistant": "连接你的 AI 提供商账户、选择默认模型并测试连通性。密钥保存在本地，永不离开你的设备。",
   "settings_file_info": "你的设置文件位于",
+  "settings_file_info_assistant": "你的 AI 提供商配置和对话记录保存在",
   "formatting": "格式",
   "autoindent_label": "切换自动缩进",
   "autoindent_help": "在新行自动缩进文本。",
@@ -29,5 +32,7 @@
   "systemtheme_help": "允许系统主题覆盖已保存的设置。",
   "language_label": "语言",
   "language_help": "选择界面语言。",
-  "save_settings": "保存设置"
+  "save_settings": "保存设置",
+  "tab_general": "常规设置",
+  "tab_assistant": "AI 提供商"
 }

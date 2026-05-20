@@ -25,11 +25,29 @@ jest.mock('../src/browser/react/contexts/PromptsContext', () => ({
 jest.mock('monaco-editor', () => {
   const createModel = jest.fn((content: string, _lang: string) => {
     let value = content;
+    let altVersion = 1;
+    const contentListeners = new Set<() => void>();
     return {
       getValue: jest.fn(() => value),
       setValue: jest.fn((next: string) => {
         value = next;
+        altVersion += 1;
+        contentListeners.forEach((l) => l());
       }),
+      // Returned identity is what FileManager.trackTab compares against
+      // its stored baseline to derive the dirty flag. Mutated by
+      // setValue above and by the test-only `_simulateEdit` helper.
+      getAlternativeVersionId: jest.fn(() => altVersion),
+      onDidChangeContent: jest.fn((listener: () => void) => {
+        contentListeners.add(listener);
+        return { dispose: () => contentListeners.delete(listener) };
+      }),
+      // Test-only: bump the alt-version without going through setValue.
+      // Simulates a user keystroke that diverges from the baseline.
+      _simulateEdit: () => {
+        altVersion += 1;
+        contentListeners.forEach((l) => l());
+      },
       dispose: jest.fn(),
       // FileManager doesn't read these but Monaco models expose them.
       uri: { toString: () => 'inmemory://model' },
@@ -113,11 +131,52 @@ describe('FileManager.serializeSession', () => {
 
     const payload = fm.serializeSession();
     expect(payload).toEqual({
-      version: 1,
+      version: 2,
       tabs: [],
       activeFile: null,
       workspaceRoot: null,
     });
+  });
+
+  it('includes the assistant block from the injected getter', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.setAssistantStateGetter(() => ({ sidebarOpen: true, size: 27.5 }));
+    const payload = fm.serializeSession();
+    expect(payload.assistant).toEqual({ sidebarOpen: true, size: 27.5 });
+  });
+
+  it('omits the assistant block when no getter is set', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    const payload = fm.serializeSession();
+    expect(payload.assistant).toBeUndefined();
+  });
+
+  it('omits the assistant block when the getter returns null', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.setAssistantStateGetter(() => null);
+    const payload = fm.serializeSession();
+    expect(payload.assistant).toBeUndefined();
   });
 
   it('includes the workspace root from the injected getter', async () => {
@@ -424,6 +483,29 @@ describe('FileManager.scheduleSessionSave', () => {
       tabs: { path: string }[];
     };
     expect(lastPayload.tabs.map((t) => t.path)).toEqual(['untitled-1']);
+  });
+
+  it('notifyAssistantStateChanged fires a to:session:save after the debounce', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge, sent } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.setAssistantStateGetter(() => ({ sidebarOpen: true, size: 30 }));
+    fm.notifyAssistantStateChanged();
+
+    jest.advanceTimersByTime(100);
+    expect(sent.filter((s) => s.channel === 'to:session:save')).toHaveLength(0);
+    jest.advanceTimersByTime(400);
+    const saves = sent.filter((s) => s.channel === 'to:session:save');
+    expect(saves.length).toBeGreaterThan(0);
+    const lastPayload = saves[saves.length - 1].data as {
+      assistant?: { sidebarOpen: boolean; size: number };
+    };
+    expect(lastPayload.assistant).toEqual({ sidebarOpen: true, size: 30 });
   });
 
   it('does not fire a save while suspendSessionSaves is in effect', async () => {
@@ -868,5 +950,75 @@ describe('FileManager serialize ↔ restore round-trip', () => {
     expect(fm2.activeFile).toBe('untitled-1');
     expect(fm2.models.get('untitled-1')?.getValue()).toBe('the body');
     expect(fm2.untitledCounter).toBe(2);
+  });
+});
+
+describe('FileManager per-tab dirty tracking', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('flips dirty true on edit and back to false on save', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const mk = makeMkeditor();
+    const fm = new FileManager(
+      bridge as never,
+      mk as never,
+      new EditorDispatcher(),
+    );
+
+    fm.seedUntitled('original');
+    // Seeded tab opens clean — getSnapshot's surfaced dirty flag is false.
+    expect(fm.getSnapshot().tabs[0].dirty).toBe(false);
+
+    // Simulate a user keystroke against the active model.
+    const model = fm.models.get('untitled-1') as {
+      _simulateEdit: () => void;
+    };
+    model._simulateEdit();
+    expect(fm.getSnapshot().tabs[0].dirty).toBe(true);
+
+    // Now switch the tab to a real-file path and save against it.
+    // (saveContentToFile short-circuits to saveas for untitled paths.)
+    fm.replaceUntitled('/real.md', 'real.md', 'real-content');
+    // replaceUntitled re-baselines via trackTab, so dirty flips back to false.
+    expect(fm.getSnapshot().tabs[0].dirty).toBe(false);
+
+    // Edit again, then save — dirty should drop back to false.
+    const realModel = fm.models.get('/real.md') as {
+      _simulateEdit: () => void;
+    };
+    realModel._simulateEdit();
+    expect(fm.getSnapshot().tabs[0].dirty).toBe(true);
+
+    fm.saveContentToFile();
+    expect(fm.getSnapshot().tabs[0].dirty).toBe(false);
+  });
+
+  it('closeTab disposes the dirty listener (no leak across reopens)', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.seedUntitled('a');
+    await fm.closeTab('untitled-1');
+
+    // closeTab opens a fresh untitled-2 (when no tabs left); dirty for
+    // the *closed* path is gone from the snapshot.
+    expect(
+      fm.getSnapshot().tabs.find((t) => t.path === 'untitled-1'),
+    ).toBeUndefined();
+    // The fresh tab is clean.
+    expect(
+      fm.getSnapshot().tabs.find((t) => t.path === 'untitled-2')?.dirty,
+    ).toBe(false);
   });
 });

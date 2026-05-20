@@ -1,0 +1,35 @@
+{
+  "confirm_title": "{{toolName}} erlauben?",
+  "confirm_title_fallback": "Werkzeugaufruf erlauben?",
+  "confirm_intro": "Der Assistent möchte dieses Werkzeug ausführen. Überprüfen Sie die Änderung vor dem Akzeptieren.",
+  "confirm_accept": "Erlauben",
+  "confirm_reject": "Ablehnen",
+  "args_label": "Argumente",
+  "result_label": "Ergebnis",
+  "error_label": "Fehler",
+
+  "preview_create": "Datei {{path}} erstellen",
+  "preview_write": "{{path}} ersetzen",
+  "preview_edit": "{{path}} bearbeiten",
+  "preview_replace": "Auswahl in {{path}} ersetzen",
+  "preview_insert": "In {{path}} einfügen",
+  "preview_before": "Vorher",
+  "preview_after": "Nachher",
+
+  "status_pending-confirm": "Warte auf Bestätigung",
+  "status_executing": "Wird ausgeführt",
+  "status_succeeded": "Fertig",
+  "status_failed": "Fehlgeschlagen",
+
+  "toggle_card": "{{toolName}} Details umschalten",
+
+  "error_rejected": "Der Benutzer hat diesen Werkzeugaufruf abgelehnt.",
+  "error_execution_failed": "Die Werkzeugausführung ist fehlgeschlagen.",
+  "error_unknown_tool": "Unbekanntes Werkzeug.",
+
+  "show_more": "Mehr anzeigen ({{chars}} weitere Zeichen)",
+  "show_less": "Weniger anzeigen",
+  "retry": "Wiederholen",
+  "retry_prompt": "Bitte {{toolName}} erneut aufrufen.",
+  "retry_prompt_with_args": "Bitte {{toolName}} mit den Argumenten erneut versuchen: {{args}}"
+}

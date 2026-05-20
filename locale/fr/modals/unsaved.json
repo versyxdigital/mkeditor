@@ -3,5 +3,8 @@
   "text": "Enregistrer les modifications avant de fermer ?",
   "confirm": "Enregistrer et fermer",
   "deny": "Fermer sans enregistrer",
-  "cancel": "Annuler"
+  "cancel": "Annuler",
+  "workspace_switch_text": "Changer d'espace de travail fermera tous les onglets ouverts. Vous avez des modifications non enregistrées dans {{count}} onglet(s). Que souhaitez-vous faire ?",
+  "workspace_switch_save_all": "Tout enregistrer et fermer",
+  "workspace_switch_discard": "Tout abandonner et fermer"
 }

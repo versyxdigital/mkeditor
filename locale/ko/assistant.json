@@ -1,0 +1,7 @@
+{
+  "title": "AI 어시스턴트",
+  "tabs_label": "AI 공급자",
+  "no_providers_enabled": "아직 연결된 공급자가 없습니다. 채팅을 시작하려면 설정에서 하나를 활성화하세요.",
+  "provider_ready_placeholder": "{{provider}} 준비 완료 — 채팅 UI는 다음 단계에 도착합니다.",
+  "open_settings": "설정 열기"
+}

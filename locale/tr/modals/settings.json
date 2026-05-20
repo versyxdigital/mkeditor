@@ -1,7 +1,10 @@
 {
-  "title": "Editör ayarları",
+  "title": "Editör Ayarları",
+  "title_assistant": "AI Ayarları",
   "intro": "Burada çeşitli editör ayarlarını özelleştirebilirsiniz; ayarlar güncellendikçe otomatik olarak kaydedilir.",
+  "intro_assistant": "AI sağlayıcı hesaplarını bağla, varsayılan modelleri seç ve bağlantıyı test et. Anahtarlar yerel olarak saklanır ve cihazından asla çıkmaz.",
   "settings_file_info": "Ayar dosyanız şurada bulunur",
+  "settings_file_info_assistant": "AI sağlayıcı yapılandırmanız ve konuşmalarınız şurada saklanır",
   "formatting": "Biçimlendirme",
   "autoindent_label": "Otomatik girintilemeyi aç/kapat",
   "autoindent_help": "Yeni satırlarda metni otomatik girintile.",
@@ -29,5 +32,7 @@
   "systemtheme_help": "Sistem temasının kaydedilmiş ayarları değiştirmesine izin ver.",
   "language_label": "Dil",
   "language_help": "Arayüz dilini seçin.",
-  "save_settings": "Ayarları kaydet"
+  "save_settings": "Ayarları kaydet",
+  "tab_general": "Genel Ayarlar",
+  "tab_assistant": "AI Sağlayıcıları"
 }
