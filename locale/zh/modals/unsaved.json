@@ -3,5 +3,8 @@
   "text": "在关闭前保存更改吗？",
   "confirm": "保存并关闭",
   "deny": "不保存并关闭",
-  "cancel": "取消"
+  "cancel": "取消",
+  "workspace_switch_text": "切换工作区将关闭所有已打开的标签页。您在 {{count}} 个标签页中有未保存的更改。您想如何操作？",
+  "workspace_switch_save_all": "全部保存并关闭",
+  "workspace_switch_discard": "全部放弃并关闭"
 }

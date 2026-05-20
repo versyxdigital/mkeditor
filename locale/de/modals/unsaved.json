@@ -3,5 +3,8 @@
   "text": "Änderungen vor dem Schließen speichern?",
   "confirm": "Speichern & schließen",
   "deny": "Ohne Speichern schließen",
-  "cancel": "Abbrechen"
+  "cancel": "Abbrechen",
+  "workspace_switch_text": "Beim Wechsel des Arbeitsbereichs werden alle geöffneten Tabs geschlossen. Du hast nicht gespeicherte Änderungen in {{count}} Tab(s). Wie möchtest du fortfahren?",
+  "workspace_switch_save_all": "Alle speichern & schließen",
+  "workspace_switch_discard": "Alle verwerfen & schließen"
 }

@@ -3,5 +3,8 @@
   "text": "閉じる前に変更を保存しますか？",
   "confirm": "保存して閉じる",
   "deny": "保存せずに閉じる",
-  "cancel": "キャンセル"
+  "cancel": "キャンセル",
+  "workspace_switch_text": "ワークスペースを切り替えると、開いているすべてのタブが閉じられます。{{count}} 個のタブに未保存の変更があります。どうしますか？",
+  "workspace_switch_save_all": "すべて保存して閉じる",
+  "workspace_switch_discard": "すべて破棄して閉じる"
 }

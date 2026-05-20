@@ -3,5 +3,8 @@
   "text": "Salvar as alterações antes de fechar?",
   "confirm": "Salvar e fechar",
   "deny": "Fechar sem salvar",
-  "cancel": "Cancelar"
+  "cancel": "Cancelar",
+  "workspace_switch_text": "Trocar de espaço de trabalho fechará todas as guias abertas. Você tem alterações não salvas em {{count}} guia(s). O que deseja fazer?",
+  "workspace_switch_save_all": "Salvar tudo e fechar",
+  "workspace_switch_discard": "Descartar tudo e fechar"
 }

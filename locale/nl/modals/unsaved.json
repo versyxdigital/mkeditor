@@ -3,5 +3,8 @@
   "text": "Wijzigingen opslaan voordat je sluit?",
   "confirm": "Opslaan en sluiten",
   "deny": "Sluiten zonder op te slaan",
-  "cancel": "Annuleren"
+  "cancel": "Annuleren",
+  "workspace_switch_text": "Het wisselen van werkruimte sluit alle geopende tabbladen. Je hebt niet-opgeslagen wijzigingen in {{count}} tabblad(en). Wat wil je doen?",
+  "workspace_switch_save_all": "Alles opslaan en sluiten",
+  "workspace_switch_discard": "Alles verwerpen en sluiten"
 }

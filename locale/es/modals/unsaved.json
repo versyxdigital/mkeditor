@@ -3,5 +3,8 @@
   "text": "¿Guardar los cambios antes de cerrar?",
   "confirm": "Guardar y cerrar",
   "deny": "Cerrar sin guardar",
-  "cancel": "Cancelar"
+  "cancel": "Cancelar",
+  "workspace_switch_text": "Cambiar de espacio de trabajo cerrará todas las pestañas abiertas. Tienes cambios sin guardar en {{count}} pestaña(s). ¿Qué deseas hacer?",
+  "workspace_switch_save_all": "Guardar todo y cerrar",
+  "workspace_switch_discard": "Descartar todo y cerrar"
 }
