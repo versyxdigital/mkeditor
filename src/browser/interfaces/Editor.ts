@@ -13,6 +13,10 @@ export interface EditorSettings {
   locale: string;
 }
 
+export type EditorSettingsSnapshot = EditorSettings & {
+  effectiveDarkmode: boolean;
+};
+
 export interface ExportSettings {
   withStyles: boolean;
   container: 'container' | 'container-fluid';

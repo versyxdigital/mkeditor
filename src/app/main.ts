@@ -193,14 +193,10 @@ function main(file: string | null = null) {
   // and set the active file (untitled new file if no file open).
   context.webContents.on('did-finish-load', () => {
     if (context) {
-      if (settings.applied && settings.applied.systemtheme) {
-        context.webContents.send(
-          'from:theme:set',
-          nativeTheme.shouldUseDarkColors,
-        );
-      } else {
-        context.webContents.send('from:theme:set', settings.applied?.darkmode);
-      }
+      context.webContents.send(
+        'from:theme:set',
+        nativeTheme.shouldUseDarkColors,
+      );
       context.webContents.send('from:settings:set', settings.loadFile());
 
       const sessionEnabled = settings.applied?.sessionRestore ?? true;
@@ -226,11 +222,19 @@ function main(file: string | null = null) {
     }
   });
 
+  const handleNativeThemeUpdated = () => {
+    if (!context || context.isDestroyed()) return;
+    if (!settings.applied?.systemtheme) return;
+    context.webContents.send('from:theme:set', nativeTheme.shouldUseDarkColors);
+  };
+  nativeTheme.on('updated', handleNativeThemeUpdated);
+
   context.on('close', (event) => {
     bridge.promptUserBeforeQuit(<Event>event);
   });
 
   context.on('closed', () => {
+    nativeTheme.off('updated', handleNativeThemeUpdated);
     context = null;
   });
 

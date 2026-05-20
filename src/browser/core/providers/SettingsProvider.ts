@@ -1,5 +1,9 @@
 import { editor } from 'monaco-editor';
-import type { EditorSettings, SettingsFile } from '../../interfaces/Editor';
+import type {
+  EditorSettings,
+  EditorSettingsSnapshot,
+  SettingsFile,
+} from '../../interfaces/Editor';
 import { settings } from '../../config';
 
 type PersistHandler = (next: Partial<SettingsFile>) => void;
@@ -23,7 +27,10 @@ export class SettingsProvider {
   private currentSettings: EditorSettings = { ...settings };
 
   /** Stable snapshot returned by getSnapshot — rebuilt only on emit. */
-  private snapshot: EditorSettings = this.currentSettings;
+  private snapshot: EditorSettingsSnapshot = {
+    ...this.currentSettings,
+    effectiveDarkmode: this.currentSettings.darkmode,
+  };
 
   /** Listeners registered through `subscribe`. */
   private listeners = new Set<() => void>();
@@ -33,6 +40,13 @@ export class SettingsProvider {
    * once BridgeManager exists.
    */
   private persistHandler: PersistHandler | null = null;
+
+  /**
+   * Current OS theme (Windows / macOS / GNOME). Populated by
+   * `from:theme:set` at boot and on every `nativeTheme.on('updated')`
+   * event.
+   */
+  private osDarkmode: boolean | null = null;
 
   /**
    * Create a new editor settings handler.
@@ -59,13 +73,16 @@ export class SettingsProvider {
   }
 
   /** Returns the same object reference between emits (useSyncExternalStore contract). */
-  public getSnapshot(): EditorSettings {
+  public getSnapshot(): EditorSettingsSnapshot {
     return this.snapshot;
   }
 
   private emit() {
     // Recompute the snapshot reference so React's `===` check fires.
-    this.snapshot = { ...this.currentSettings };
+    this.snapshot = {
+      ...this.currentSettings,
+      effectiveDarkmode: this.effectiveDarkmode(),
+    };
     this.listeners.forEach((l) => l());
   }
 
@@ -137,7 +154,7 @@ export class SettingsProvider {
       minimap: () => this.setMinimap(),
       wordwrap: () => this.setWordWrap(),
       whitespace: () => this.setWhitespace(),
-      systemtheme: () => this.setSystemThemeOverride(),
+      systemtheme: () => this.setTheme(),
       // scrollsync has no editor option — checked at scroll time.
       locale: () => window.setLanguage(this.currentSettings.locale),
     };
@@ -173,7 +190,10 @@ export class SettingsProvider {
     // swaps `this.currentSettings`. Without this the React contexts see
     // the original defaults snapshot on first render and the controls
     // render as "off" even though the underlying settings are loaded.
-    this.snapshot = { ...this.currentSettings };
+    this.snapshot = {
+      ...this.currentSettings,
+      effectiveDarkmode: this.effectiveDarkmode(),
+    };
   }
 
   private loadSettingsFromLocalStorage() {
@@ -239,12 +259,37 @@ export class SettingsProvider {
   }
 
   public setTheme() {
-    document.body.setAttribute(
-      'data-theme',
-      this.currentSettings.darkmode ? 'dark' : 'light',
-    );
-    editor.setTheme(this.currentSettings.darkmode ? 'vs-dark' : 'vs');
+    const effective = this.effectiveDarkmode();
+    document.body.setAttribute('data-theme', effective ? 'dark' : 'light');
+    editor.setTheme(effective ? 'vs-dark' : 'vs');
     return this;
+  }
+
+  /**
+   * Theme actually rendered to the DOM + Monaco.
+   */
+  private effectiveDarkmode(): boolean {
+    if (this.currentSettings.systemtheme && this.osDarkmode !== null) {
+      return this.osDarkmode;
+    }
+    return this.currentSettings.darkmode;
+  }
+
+  /**
+   * Update the cached OS theme and re-apply the effective theme.
+   */
+  public setOsDarkmode(value: boolean): void {
+    if (this.osDarkmode === value) return;
+    this.osDarkmode = value;
+    if (this.currentSettings.systemtheme) {
+      this.setTheme();
+      this.emit();
+    }
+  }
+
+  /** Test/inspection helper — read the current OS darkmode cache. */
+  public getOsDarkmode(): boolean | null {
+    return this.osDarkmode;
   }
 
   public setMinimap() {

@@ -1,12 +1,20 @@
 import * as React from 'react';
 
-import type { EditorSettings } from '../../interfaces/Editor';
+import type {
+  EditorSettings,
+  EditorSettingsSnapshot,
+} from '../../interfaces/Editor';
 import type { SettingsProvider } from '../../core/providers/SettingsProvider';
 import { settings as defaults } from '../../config';
 import { useManagers } from './ManagersContext';
 
+const fallbackSnapshot: EditorSettingsSnapshot = {
+  ...defaults,
+  effectiveDarkmode: defaults.darkmode,
+};
+
 interface SettingsContextValue {
-  settings: EditorSettings;
+  settings: EditorSettingsSnapshot;
   /**
    * Single React-facing setter. Behind the scenes this is
    * `provider.updateSetting(key, value)` which writes state, applies
@@ -20,7 +28,7 @@ interface SettingsContextValue {
 }
 
 const SettingsContext = React.createContext<SettingsContextValue>({
-  settings: defaults,
+  settings: fallbackSnapshot,
   updateSetting: () => {},
 });
 
@@ -45,7 +53,7 @@ export const SettingsContextProvider: React.FC<{
   );
 
   const getSnapshot = React.useCallback(
-    () => provider?.getSnapshot() ?? defaults,
+    () => provider?.getSnapshot() ?? fallbackSnapshot,
     [provider],
   );
 

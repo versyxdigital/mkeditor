@@ -64,13 +64,9 @@ export function registerBridgeListeners(
     });
   };
 
-  // Set the theme according to the user's system theme. React
-  // subscribes to SettingsProvider's emitter so the navbar
-  // darkmode toggle reflects the change.
+  // Apply the OS theme pushed from main.
   bridge.receive('from:theme:set', (shouldUseDarkMode: boolean) => {
-    if (shouldUseDarkMode) {
-      providers.settings?.updateSetting('darkmode', shouldUseDarkMode);
-    }
+    providers.settings?.setOsDarkmode(shouldUseDarkMode);
   });
 
   // Set settings from stored settings file (%HOME%/.mkeditor/settings.json).

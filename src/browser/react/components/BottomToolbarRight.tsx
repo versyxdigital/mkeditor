@@ -37,14 +37,16 @@ export const BottomToolbarRight: React.FC = () => {
       >
         <Switch
           id="darkmode-setting"
-          checked={settings.darkmode}
+          checked={settings.effectiveDarkmode}
           disabled={darkmodeDisabled}
           onCheckedChange={(v) => updateSetting('darkmode', v)}
         />
         <Label
           htmlFor="darkmode-setting"
           id="darkmode-icon"
-          className={settings.darkmode ? 'text-yellow-400' : 'text-foreground'}
+          className={
+            settings.effectiveDarkmode ? 'text-yellow-400' : 'text-foreground'
+          }
         >
           <Icon name="moon" />
         </Label>
