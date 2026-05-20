@@ -82,7 +82,7 @@ MKEditor comes with full support for exporting your markdown to HTML and PDF �
 MKEditor v4.0.0 comes with the ability to connect to your AI provider of choice 🤖 Choose between Anthropic, OpenAI, or a local Ollama install. Each provider gets its own chat tab with persisted conversation history and a workspace-aware tool catalog: the assistant can read, edit, and create files in your open folder (write actions ask you to confirm first).
 
 > [!IMPORTANT]
-> API keys are encrypted on disk with Electron's `safeStorage` and never cross the renderer↔main IPC boundary in plaintext.
+> API keys are encrypted with Electron's `safeStorage` and are never transmitted through the app in plaintext.
 
 # Contributing
 
