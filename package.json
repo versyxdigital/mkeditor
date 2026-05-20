@@ -86,7 +86,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@vscode/markdown-it-katex": "^1.1.2",
-    "ai": "^6.0.184",
+    "ai": "^6.0.185",
     "circle-buffer": "^0.2.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
