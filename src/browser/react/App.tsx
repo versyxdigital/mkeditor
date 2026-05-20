@@ -33,6 +33,7 @@ import {
 } from './contexts/PromptsContext';
 import {
   ToolConfirmProvider,
+  registerToolConfirmCanceller,
   registerToolConfirmOpener,
   useToolConfirm,
 } from './contexts/ToolConfirmContext';
@@ -350,16 +351,17 @@ const PropertiesBridge: React.FC = () => {
 };
 
 /**
- * Hands the `useToolConfirm().open` function to the module-level
- * `confirmToolCallExternal` so `AssistantManager.runWithConfirmation`
- * (a non-React caller) can open the confirm dialog and await the
- * user's response.
+ * Hands the `useToolConfirm().open` function (and its sibling
+ * `cancelForCallId`) to the module-level seam so
+ * `AssistantManager.runWithConfirmation` and `cancelCall` (non-React
+ * callers) can drive the dialog without importing React.
  */
 const ToolConfirmBridge: React.FC = () => {
-  const { open } = useToolConfirm();
+  const { open, cancelForCallId } = useToolConfirm();
   React.useEffect(() => {
     registerToolConfirmOpener(open);
-  }, [open]);
+    registerToolConfirmCanceller(cancelForCallId);
+  }, [open, cancelForCallId]);
   return null;
 };
 

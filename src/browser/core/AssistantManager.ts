@@ -24,7 +24,10 @@ import type {
 } from '../../app/interfaces/Assistant';
 import type { ToolExecutor } from './AssistantTools';
 import { encryptForMain } from './SecureChannelClient';
-import { confirmToolCallExternal } from '../toolConfirm';
+import {
+  cancelToolConfirmsForCallId,
+  confirmToolCallExternal,
+} from '../toolConfirm';
 
 /**
  * Surface AssistantManager uses to gather context at send time
@@ -544,7 +547,9 @@ export class AssistantManager {
   ): void {
     const map = this.conversations[provider];
     if (!map.has(conversationId)) return;
-    // Cancel any in-flight chat against this conversation.
+    // Cancel any in-flight chat against this conversation. Also drop
+    // any open / queued tool-call confirmations for those chats so the
+    // user isn't prompted for a conversation they've just deleted.
     for (const [callId, inflight] of this.inflightChats) {
       if (
         inflight.provider === provider &&
@@ -552,6 +557,7 @@ export class AssistantManager {
       ) {
         this.cancelChat(callId);
         this.inflightChats.delete(callId);
+        cancelToolConfirmsForCallId(callId);
       }
     }
     map.delete(conversationId);
@@ -724,6 +730,12 @@ export class AssistantManager {
       );
     }
     this.inflightChats.delete(callId);
+    // Drop any tool-call confirmations the user hasn't responded to
+    // yet for this chat. Their resolve(false) lands AFTER the inflight
+    // entry is gone, so `runWithConfirmation`'s post-await
+    // `if (!inflight) return` bails before shipping a phantom
+    // "rejected" tool-result for a chat the user just cancelled.
+    cancelToolConfirmsForCallId(callId);
     this.cancelChat(callId);
     this.rebuildChatSnapshot();
     return true;
@@ -965,6 +977,10 @@ export class AssistantManager {
       toolName: payload.toolName,
       arguments: payload.arguments,
       preview,
+      // Tag with the in-flight chat id so `cancelCall(callId)` can
+      // drop this confirmation (and any others queued behind it) when
+      // the user cancels mid-stream.
+      callId: payload.callId,
     });
     const inflight = this.inflightChats.get(payload.callId);
     if (!inflight) return; // chat was cancelled while we awaited the user
@@ -1475,6 +1491,12 @@ export class AssistantManager {
       );
     }
     this.inflightChats.delete(callId);
+    // Drain any tool-call confirmations still queued for this chat —
+    // in practice the normal flow resolves them before `onChatDone`
+    // arrives, but if a parallel tool-call was waiting behind a
+    // first-confirm-then-error race, we don't want to leave a stale
+    // dialog up for a chat that's already done.
+    cancelToolConfirmsForCallId(callId);
     this.rebuildChatSnapshot();
   }
 
@@ -1516,6 +1538,10 @@ export class AssistantManager {
       );
     }
     this.inflightChats.delete(payload.callId);
+    // Same defensive drain as `onChatDone` — if a confirmation was
+    // queued behind one whose execution errored, don't leave the
+    // dialog up for a chat that's now in `failed` status.
+    cancelToolConfirmsForCallId(payload.callId);
     this.rebuildChatSnapshot();
   }
 

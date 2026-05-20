@@ -21,15 +21,23 @@ import type { ToolConfirmPreview } from './core/AssistantTools';
  * One pending tool-call confirmation. AssistantManager fills this in
  * when a write-class tool fires (and the conversation doesn't have
  * auto-accept on); `<ToolConfirmDialog>` renders it.
+ *
+ * `callId` is the in-flight chat id the tool-call belongs to. The
+ * `<ToolConfirmProvider>` queue uses it to drop confirmations
+ * belonging to a chat the user has just cancelled, so the user
+ * doesn't get prompted for tool-calls from a conversation they've
+ * already walked away from.
  */
 export interface ToolConfirmRequest {
   toolCallId: string;
   toolName: string;
   arguments: unknown;
   preview: ToolConfirmPreview | null;
+  callId?: string;
 }
 
 let externalOpen: ((req: ToolConfirmRequest) => Promise<boolean>) | null = null;
+let externalCancelForCallId: ((callId: string) => void) | null = null;
 
 export function registerToolConfirmOpener(
   fn: (req: ToolConfirmRequest) => Promise<boolean>,
@@ -38,8 +46,28 @@ export function registerToolConfirmOpener(
 }
 
 /**
+ * Register the React-side hook that drops every queued or in-flight
+ * confirmation belonging to `callId` (the chat the user just
+ * cancelled). Each affected Promise resolves to `false` — and since
+ * `AssistantManager.runWithConfirmation` already bails when the
+ * matching inflight chat is gone, no spurious "User declined"
+ * tool-result is shipped.
+ */
+export function registerToolConfirmCanceller(
+  fn: (callId: string) => void,
+): void {
+  externalCancelForCallId = fn;
+}
+
+/**
  * Open the tool-call confirm dialog from non-React code. Resolves
  * with `true` on accept, `false` on reject / dismiss / no-provider.
+ *
+ * Multiple in-flight calls (parallel tool-calls in a single
+ * assistant turn) are queued — they show one at a time in arrival
+ * order. A prior call is NEVER force-resolved to make room for a
+ * later one; that would surface as "User declined the tool call"
+ * for an action the user never had the chance to evaluate.
  *
  * If the React tree hasn't mounted the provider yet (early boot),
  * the call resolves false — write-class tools fail closed rather
@@ -50,4 +78,14 @@ export function confirmToolCallExternal(
 ): Promise<boolean> {
   if (!externalOpen) return Promise.resolve(false);
   return externalOpen(req);
+}
+
+/**
+ * Drop every queued or in-flight confirmation for `callId`. Called
+ * by `AssistantManager.cancelCall` so the user isn't prompted for
+ * tool-calls from a chat they've already cancelled. No-op when no
+ * provider is registered (early boot / web mode).
+ */
+export function cancelToolConfirmsForCallId(callId: string): void {
+  externalCancelForCallId?.(callId);
 }
