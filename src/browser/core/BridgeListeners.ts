@@ -91,8 +91,19 @@ export function registerBridgeListeners(
   bridge.receive('from:folder:open', () => manager.menuFolderOpen());
 
   // Handle post-folder open events
-  bridge.receive('from:folder:opened', ({ tree: t, path }) => {
+  bridge.receive('from:folder:opened', async ({ tree: t, path }) => {
     const rootChanged = !tree.treeRoot || !path.startsWith(tree.treeRoot);
+    // Genuine workspace switch (had a root, now have a different one).
+    const switchingWorkspace = rootChanged && tree.treeRoot !== null;
+    if (switchingWorkspace) {
+      const proceed = await files.closeAllTabsForWorkspaceSwitch();
+      if (!proceed) {
+        // User cancelled the unsaved-changes prompt. Don't adopt the
+        // new tree, don't publish the new workspace root to main.
+        tree.openingFolder = false;
+        return;
+      }
+    }
     if (tree.openingFolder || rootChanged) {
       tree.treeRoot = path;
       tree.openingFolder = false;

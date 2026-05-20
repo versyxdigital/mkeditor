@@ -284,6 +284,112 @@ export class FileManager {
   }
 
   /**
+   * Close every open tab (workspace files, external files, untitled —
+   * everything) in response to the user picking a new workspace folder.
+   * If any tab is dirty, surfaces a single batched prompt with Save all
+   * / Discard all / Cancel before tearing anything down.
+   */
+  public async closeAllTabsForWorkspaceSwitch(): Promise<boolean> {
+    if (this.tabs.size === 0) return true;
+
+    // Snapshot before any prompt.
+    const paths = Array.from(this.tabs.keys());
+    const dirtyPaths = paths.filter((p) => this.dirtyByPath.get(p) === true);
+
+    if (dirtyPaths.length > 0) {
+      const result = await openPromptExternal({
+        title: t('modals-unsaved:title'),
+        description: t('modals-unsaved:workspace_switch_text', {
+          count: dirtyPaths.length,
+        }),
+        buttons: [
+          {
+            id: 'cancel',
+            label: t('modals-unsaved:cancel'),
+            variant: 'secondary',
+          },
+          {
+            id: 'deny',
+            label: t('modals-unsaved:workspace_switch_discard'),
+            variant: 'secondary',
+          },
+          {
+            id: 'confirm',
+            label: t('modals-unsaved:workspace_switch_save_all'),
+            variant: 'primary',
+          },
+        ],
+      });
+
+      if (result.button !== 'confirm' && result.button !== 'deny') {
+        return false;
+      }
+
+      if (result.button === 'confirm') {
+        // Fire save IPC for each dirty tab.
+        for (const path of dirtyPaths) {
+          const mdl = this.models.get(path);
+          if (!mdl) continue;
+          const current = mdl.getValue();
+          if (path.startsWith('untitled')) {
+            this.bridge.send('to:file:saveas', current);
+          } else {
+            this.bridge.send('to:file:save', {
+              content: current,
+              file: path,
+              openFile: false,
+            });
+          }
+        }
+      }
+    }
+
+    // Tear everything down. Order matters: Monaco's current model is
+    // about to be disposed, so we attach the fresh untitled model
+    // BEFORE disposing the outgoing one (Monaco doesn't recover
+    // cleanly from setModel(disposed)). seedUntitled does that
+    // attach + tracking; we run it AFTER clearing the bookkeeping
+    // but BEFORE disposing the old models.
+    const outgoingModels = Array.from(this.models.values());
+    const outgoingListeners = Array.from(this.modelListeners.values());
+
+    this.tabs.clear();
+    this.models.clear();
+    this.originals.clear();
+    this.viewStates.clear();
+    this.baselineVersions.clear();
+    this.dirtyByPath.clear();
+    this.modelListeners.clear();
+    this.activeFile = null;
+
+    // Attach the fresh untitled model BEFORE tearing down the
+    // outgoing ones so Monaco never observes a "current model is
+    // disposed" state.
+    this.seedUntitled('');
+
+    // Dispose content-change listeners.
+    for (const listener of outgoingListeners) {
+      try {
+        listener.dispose();
+      } catch {
+        // Already-disposed listener; swallow so the loop continues.
+      }
+    }
+    for (const mdl of outgoingModels) {
+      try {
+        mdl.dispose();
+      } catch {
+        // Already-disposed model (e.g. from a previous error path);
+        // swallow so the rest of the loop runs.
+      }
+    }
+
+    this.emitChange();
+    this.scheduleSessionSave();
+    return true;
+  }
+
+  /**
    * Close a tab. If the buffer is dirty, opens a three-button prompt
    * (Save & close / Close without saving / Cancel) via openPromptExternal.
    */
