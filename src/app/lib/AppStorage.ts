@@ -6,7 +6,15 @@ import {
   realpathSync,
   promises as fs,
 } from 'fs';
-import { join, dirname, relative, resolve, isAbsolute, sep } from 'path';
+import {
+  basename,
+  join,
+  dirname,
+  relative,
+  resolve,
+  isAbsolute,
+  sep,
+} from 'path';
 import type { SaveFileOptions } from '../interfaces/Storage';
 
 /**
@@ -96,7 +104,7 @@ export class AppStorage {
       // racing into place between check and write is unlikely in
       // practice and main would need OS-level atomic ops to prevent.
       const parent = dirname(absolute);
-      const base = absolute.slice(parent.length + 1);
+      const base = basename(absolute);
       let canonicalParent: string;
       try {
         canonicalParent = await fs.realpath(parent);

@@ -7,7 +7,7 @@ import {
   type IpcMainInvokeEvent,
 } from 'electron';
 import { promises as fsPromises } from 'fs';
-import { dirname, join, resolve } from 'path';
+import { basename, dirname, join, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
 import type { Logger, LogMessage } from '../interfaces/Logging';
 import type { SessionPayload } from '../interfaces/Session';
@@ -423,9 +423,7 @@ export class AppBridge {
           return AppStorage.createFile(
             this.context,
             dirname(safeTarget),
-            // basename — name as the user supplied, joined under the
-            // canonicalised parent.
-            safeTarget.slice(dirname(safeTarget).length + 1),
+            basename(safeTarget),
             content,
           );
         } catch (err) {
@@ -451,7 +449,7 @@ export class AppBridge {
           return AppStorage.createFolder(
             this.context,
             dirname(safeTarget),
-            safeTarget.slice(dirname(safeTarget).length + 1),
+            basename(safeTarget),
           );
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
