@@ -427,7 +427,7 @@ export class AssistantManager {
         provider,
         model,
         messages: [{ role: 'user', content: 'ping' }],
-        maxOutputTokens: 1,
+        maxOutputTokens: 32,
       };
       this.bridge.send('to:ai:chat', req);
     });

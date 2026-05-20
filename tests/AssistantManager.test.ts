@@ -257,7 +257,12 @@ describe('AssistantManager.refreshOllamaModels', () => {
 });
 
 describe('AssistantManager.testConnection', () => {
-  it('sends to:ai:chat with maxOutputTokens=1 and a single user message', () => {
+  it('sends to:ai:chat with a small-but-OpenAI-safe maxOutputTokens and a single user message', () => {
+    // Regression: `maxOutputTokens: 1` worked when the default OpenAI
+    // model was a non-reasoning chat model, but reasoning models
+    // (gpt-5, o1, o3) reject `max_completion_tokens` below their
+    // internal floor. The test value must stay ≥16 for OpenAI to
+    // accept it across reasoning models.
     const { bridge, sent } = makeBridge();
     const mgr = new AssistantManager(bridge as never, {
       disablePacedReveal: true,
@@ -269,7 +274,8 @@ describe('AssistantManager.testConnection', () => {
     const payload = sentCall!.data as Record<string, unknown>;
     expect(payload.provider).toBe('anthropic');
     expect(payload.model).toBe('claude-sonnet-4-6');
-    expect(payload.maxOutputTokens).toBe(1);
+    expect(typeof payload.maxOutputTokens).toBe('number');
+    expect(payload.maxOutputTokens as number).toBeGreaterThanOrEqual(16);
     expect(payload.messages).toEqual([{ role: 'user', content: 'ping' }]);
     expect(typeof payload.callId).toBe('string');
   });
