@@ -43,6 +43,10 @@ const nativeImage = {
 
 const nativeTheme = {
   shouldUseDarkColors: false,
+  // Mirrors Electron's EventEmitter surface — main.ts subscribes to
+  // `nativeTheme.on('updated', ...)` for live OS theme tracking.
+  on: jest.fn(),
+  off: jest.fn(),
 };
 
 const shell = {
