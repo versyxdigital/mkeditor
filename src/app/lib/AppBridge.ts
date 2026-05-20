@@ -1,4 +1,11 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  type IpcMainEvent,
+  type IpcMainInvokeEvent,
+} from 'electron';
 import { promises as fsPromises } from 'fs';
 import { dirname, join, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
@@ -52,6 +59,19 @@ export class AppBridge {
   private secureChannel = new SecureChannel();
 
   /**
+   * IPC listener hygiene. Every `ipcMain.on` registration is process-
+   * global, so on macOS where `app.on('activate')` rebuilds the window
+   * after it's been closed, listeners would otherwise accumulate across
+   * recreations and dispatch on the wrong (destroyed) BrowserWindow.
+   */
+  private listeners: Array<{
+    channel: string;
+    handler: (...args: unknown[]) => void;
+  }> = [];
+  private invokeChannels: string[] = [];
+  private disposed = false;
+
+  /**
    * Create a new AppBridge instance to manage IPC traffic.
    *
    * @param context - the browser window
@@ -83,7 +103,7 @@ export class AppBridge {
    */
   register() {
     // Enable logging from the renderer context
-    ipcMain.on('log', (_e, { level, msg, meta }: LogMessage) => {
+    this.on('log', (_e, { level, msg, meta }: LogMessage) => {
       const logger = this.providers.logger?.log;
       if (!logger) return;
 
@@ -100,32 +120,32 @@ export class AppBridge {
     });
 
     // Set the app window title
-    ipcMain.on('to:title:set', (event, title = null) => {
+    this.on('to:title:set', (event, title = null) => {
       this.contextWindowTitle = title ? `MKEditor - ${title}` : 'MKEditor';
       this.setWindowTitle();
     });
 
     // Set the editor state to track content changes in the main process.
-    ipcMain.on('to:editor:state', (event, hasChanged: boolean) => {
+    this.on('to:editor:state', (event, hasChanged: boolean) => {
       this.editorContentHasChanged = hasChanged;
       this.setWindowTitle();
     });
 
     // Save editor settings to file (~/.mkeditor/settings.json)
-    ipcMain.on('to:settings:save', (event, { settings }) => {
+    this.on('to:settings:save', (event, { settings }) => {
       this.providers.settings?.saveSettingsToFile(settings);
     });
 
     // Persist the renderer's open-tab / cursor / scroll session. Fired
     // by the renderer's debounced session save trigger and by the
     // renderer's flush-request handler during quit.
-    ipcMain.on('to:session:save', (_event, payload: SessionPayload) => {
+    this.on('to:session:save', (_event, payload: SessionPayload) => {
       AppSession.save(payload);
     });
 
     // Wipe the persisted session file. Fired by the renderer's
     // "Clear saved session" action in the Settings modal.
-    ipcMain.on('to:session:clear', () => {
+    this.on('to:session:clear', () => {
       AppSession.clear();
       this.context.webContents.send('from:notification:display', {
         status: 'success',
@@ -134,7 +154,7 @@ export class AppBridge {
     });
 
     // Export rendered HTML, triggered from the renderer process
-    ipcMain.on('to:html:export', (event, { content }) => {
+    this.on('to:html:export', (event, { content }) => {
       AppStorage.saveFile(this.context, {
         id: event.sender.id,
         data: content,
@@ -143,7 +163,7 @@ export class AppBridge {
     });
 
     // Export rendered HTML to PDF
-    ipcMain.on('to:pdf:export', async (event, { content }) => {
+    this.on('to:pdf:export', async (event, { content }) => {
       const offscreen = new BrowserWindow({
         show: false,
         webPreferences: { offscreen: true },
@@ -157,7 +177,7 @@ export class AppBridge {
     });
 
     // Create a new file, linked to the application menu
-    ipcMain.on('to:file:new', () => {
+    this.on('to:file:new', () => {
       AppStorage.createNewFile(this.context).then(() => {
         this.setWindowTitle();
       });
@@ -165,15 +185,15 @@ export class AppBridge {
 
     // Open a new file, forwarded from the renderer process
     // via received from:file:open event.
-    ipcMain.on('to:file:open', () => {
+    this.on('to:file:open', () => {
       AppStorage.showOpenDialog(this.context);
     });
 
-    ipcMain.on('to:folder:open', () => {
+    this.on('to:folder:open', () => {
       AppStorage.openDirectory(this.context);
     });
 
-    ipcMain.on('to:file:openpath', (event, { path }: { path: string }) => {
+    this.on('to:file:openpath', (event, { path }: { path: string }) => {
       AppStorage.openPath(this.context, path);
     });
 
@@ -181,7 +201,7 @@ export class AppBridge {
     // editor content changes are detected by logic in the renderer process, the renderer bridge will
     // submit a save event to this channel with prompt and fromOpen both defined, otherwise it'll just
     // submit an open event directly to the "to:file:open" channel instead.
-    ipcMain.on(
+    this.on(
       'to:file:save',
       async (
         event,
@@ -224,7 +244,7 @@ export class AppBridge {
     // this will simply just call AppStorage save and triger
     // the dialog for the user to save the file to the location
     // of their choice.
-    ipcMain.on('to:file:saveas', (event, data) => {
+    this.on('to:file:saveas', (event, data) => {
       AppStorage.saveFile(this.context, {
         id: event.sender.id,
         data,
@@ -234,7 +254,7 @@ export class AppBridge {
       });
     });
 
-    ipcMain.on(
+    this.on(
       'to:file:create',
       async (
         _e,
@@ -263,7 +283,7 @@ export class AppBridge {
       },
     );
 
-    ipcMain.on('to:folder:create', async (_e, { parent, name }) => {
+    this.on('to:folder:create', async (_e, { parent, name }) => {
       // Fire-and-forget channel used by the menu UI — convert
       // `AppStorage.createFolder`'s structured result back into a
       // toast (it used to do this itself before being made honest
@@ -277,26 +297,26 @@ export class AppBridge {
       });
     });
 
-    ipcMain.on('to:file:rename', async (_e, { path, name }) => {
+    this.on('to:file:rename', async (_e, { path, name }) => {
       await AppStorage.renamePath(this.context, path, name);
     });
 
-    ipcMain.on('to:file:delete', async (_e, { path }) => {
+    this.on('to:file:delete', async (_e, { path }) => {
       await AppStorage.deletePath(this.context, path);
     });
 
-    ipcMain.on('to:file:properties', async (event, { path }) => {
+    this.on('to:file:properties', async (event, { path }) => {
       const info = await AppStorage.getPathProperties(path);
       event.sender.send('from:path:properties', info);
     });
 
     // mked:// protocol handlers
-    ipcMain.on('mked:get-active-file', (event) => {
+    this.onSync('mked:get-active-file', (event) => {
       event.returnValue = AppStorage.getActiveFilePath();
     });
 
     // Provide app locale to renderer
-    ipcMain.on('mked:get-locale', (event) => {
+    this.onSync('mked:get-locale', (event) => {
       const locale =
         this.providers.settings?.getSetting('locale') ??
         normalizeLanguage(app.getLocale());
@@ -304,18 +324,15 @@ export class AppBridge {
     });
 
     // Hand the renderer the SPKI base64 public key for this app
-    // session. Synchronous because the renderer needs it before
-    // the first key-encryption call and we'd otherwise need an
-    // awaited round-trip on the hot path. The public key is, by
-    // definition, public — no secret crosses here.
-    ipcMain.on('mked:secure:public-key', (event) => {
+    // session.
+    this.onSync('mked:secure:public-key', (event) => {
       event.returnValue = this.secureChannel.publicKeySpkiBase64;
     });
 
     // Provide path resolution through IPC to avoid having to set
     // nodeIntegration to true.
-    ipcMain.handle('mked:path:dirname', (_e, p: string) => dirname(p));
-    ipcMain.handle('mked:path:resolve', (_e, base: string, rel: string) =>
+    this.handle('mked:path:dirname', (_e, p: string) => dirname(p));
+    this.handle('mked:path:resolve', (_e, base: string, rel: string) =>
       resolve(base, rel),
     );
 
@@ -330,7 +347,7 @@ export class AppBridge {
     // (canonicalising symlinks) and throws if it lands outside the
     // open folder, or if no folder is open. See `AppStorage.ts` for
     // the rationale.
-    ipcMain.handle(
+    this.handle(
       'mked:fs:readfile',
       async (
         _e,
@@ -367,7 +384,7 @@ export class AppBridge {
     // **Trust boundary**: `assertInWorkspace(path, {mustExist:false})`
     // resolves the parent (catching symlink escapes) and rejects
     // any target outside the workspace root.
-    ipcMain.handle(
+    this.handle(
       'mked:fs:savefile',
       async (
         _e,
@@ -395,7 +412,7 @@ export class AppBridge {
     // refreshes the tree, and opens the file as a tab); the
     // structured `{ok, error?}` result passes straight back to the
     // renderer so the tool can report honest status to the agent.
-    ipcMain.handle(
+    this.handle(
       'mked:fs:createfile',
       async (_e, parent: string, name: string, content: string) => {
         try {
@@ -423,7 +440,7 @@ export class AppBridge {
     // stops resorting to `.gitkeep` placeholders to make folders
     // visible. mkdir -p so intermediate directories are created on
     // demand. Same workspace-scope check as createfile.
-    ipcMain.handle(
+    this.handle(
       'mked:fs:createfolder',
       async (_e, parent: string, name: string) => {
         try {
@@ -443,7 +460,7 @@ export class AppBridge {
       },
     );
 
-    ipcMain.on('mked:open-url', (_e, url: string) => {
+    this.on('mked:open-url', (_e, url: string) => {
       try {
         this.handleMkedUrl(url);
       } catch (e) {
@@ -452,7 +469,7 @@ export class AppBridge {
     });
 
     // Broadcast language changes to the renderer
-    ipcMain.on('to:i18n:set', (_e, lng: string) => {
+    this.on('to:i18n:set', (_e, lng: string) => {
       try {
         this.context.webContents.send('from:i18n:set', lng);
       } catch (e) {
@@ -464,7 +481,7 @@ export class AppBridge {
     // adopts a new one (BridgeListeners.from:folder:opened detects
     // the change). Main stores it as the trust boundary for all
     // `mked:fs:*` invokes — see `AppStorage.assertInWorkspace`.
-    ipcMain.on('to:workspace:set', (_e, payload: { root: string | null }) => {
+    this.on('to:workspace:set', (_e, payload: { root: string | null }) => {
       AppStorage.setWorkspaceRoot(payload?.root ?? null);
     });
 
@@ -475,28 +492,28 @@ export class AppBridge {
     // handler returns silently when no AppAssistant is registered so
     // the bridge degrades gracefully in test contexts.
 
-    ipcMain.on('to:ai:chat', (_e, payload: ChatRequest) => {
+    this.on('to:ai:chat', (_e, payload: ChatRequest) => {
       this.providers.assistant?.chat(payload);
     });
 
-    ipcMain.on('to:ai:cancel', (_e, payload: CancelRequest) => {
+    this.on('to:ai:cancel', (_e, payload: CancelRequest) => {
       this.providers.assistant?.cancel(payload);
     });
 
-    ipcMain.on('to:ai:tool-result', (_e, payload: ToolResultRequest) => {
+    this.on('to:ai:tool-result', (_e, payload: ToolResultRequest) => {
       this.providers.assistant?.submitToolResult(payload);
     });
 
-    ipcMain.on('to:ai:config:get', () => {
+    this.on('to:ai:config:get', () => {
       this.pushAssistantConfig();
     });
 
-    ipcMain.on('to:ai:config:set', (_e, payload: ConfigSetRequest) => {
+    this.on('to:ai:config:set', (_e, payload: ConfigSetRequest) => {
       AssistantConfig.update(payload);
       this.pushAssistantConfig();
     });
 
-    ipcMain.on('to:ai:key:set', (_e, payload: KeySetRequest) => {
+    this.on('to:ai:key:set', (_e, payload: KeySetRequest) => {
       // Payload carries RSA-OAEP ciphertext (base64) — never the
       // raw API key. We decrypt with the per-session private key
       // held inside `SecureChannel`, hand the plaintext directly to
@@ -520,12 +537,12 @@ export class AppBridge {
       this.pushAssistantConfig();
     });
 
-    ipcMain.on('to:ai:key:clear', (_e, payload: KeyClearRequest) => {
+    this.on('to:ai:key:clear', (_e, payload: KeyClearRequest) => {
       AssistantKeyStore.clearKey(payload.provider);
       this.pushAssistantConfig();
     });
 
-    ipcMain.on('to:ai:ollama:list', (_e, payload: OllamaListRequest) => {
+    this.on('to:ai:ollama:list', (_e, payload: OllamaListRequest) => {
       void this.providers.assistant?.listOllamaModels(payload);
     });
 
@@ -533,7 +550,7 @@ export class AppBridge {
     // `AssistantManager.serialize()` output (debounced 500 ms on its
     // side); we drop it onto disk atomically. `null` payloads clear
     // the on-disk block.
-    ipcMain.on(
+    this.on(
       'to:ai:conversations:save',
       (_e, payload: PersistedConversations | null) => {
         try {
@@ -549,7 +566,7 @@ export class AppBridge {
     // before-quit so any in-flight debounce window doesn't lose the
     // last conversation mutation; the renderer answers synchronously
     // with the latest serialize() output.
-    ipcMain.on(
+    this.on(
       'to:ai:conversations:flush',
       (_e, payload: PersistedConversations | null) => {
         try {
@@ -559,6 +576,85 @@ export class AppBridge {
         }
       },
     );
+
+    // Tear down every registered IPC listener and invoke handler when
+    // this window closes.
+    this.context.once('closed', () => this.dispose());
+  }
+
+  /**
+   * Register an `ipcMain.on` handler scoped to this window's webContents.
+   * The handler runs only when the event originated from our renderer.
+   */
+  private on(
+    channel: string,
+    fn: (event: IpcMainEvent, ...args: any[]) => void | Promise<void>,
+  ): void {
+    const handler = (event: IpcMainEvent, ...args: unknown[]) => {
+      if (event.sender.id !== this.context.webContents.id) return;
+      void fn(event, ...args);
+    };
+    ipcMain.on(channel, handler);
+    this.listeners.push({
+      channel,
+      handler: handler as (...args: unknown[]) => void,
+    });
+  }
+
+  /**
+   * Sender-scoped synchronous `ipcMain.on` handler. On a sender
+   * mismatch we explicitly null the return value so a foreign
+   * window never receives this window's per-session secrets.
+   */
+  private onSync(
+    channel: string,
+    fn: (event: IpcMainEvent, ...args: any[]) => void,
+  ): void {
+    const handler = (event: IpcMainEvent, ...args: unknown[]) => {
+      if (event.sender.id !== this.context.webContents.id) {
+        event.returnValue = null;
+        return;
+      }
+      fn(event, ...args);
+    };
+    ipcMain.on(channel, handler);
+    this.listeners.push({
+      channel,
+      handler: handler as (...args: unknown[]) => void,
+    });
+  }
+
+  /**
+   * Sender-scoped `ipcMain.handle` registration. Foreign senders get a
+   * rejected invoke promise rather than a real result.
+   */
+  private handle(
+    channel: string,
+    fn: (event: IpcMainInvokeEvent, ...args: any[]) => unknown,
+  ): void {
+    ipcMain.handle(channel, (event: IpcMainInvokeEvent, ...args: unknown[]) => {
+      if (event.sender.id !== this.context.webContents.id) {
+        throw new Error(`IPC ${channel}: sender mismatch`);
+      }
+      return fn(event, ...args);
+    });
+    this.invokeChannels.push(channel);
+  }
+
+  /**
+   * Remove every IPC listener and invoke handler this bridge registered.
+   */
+  private dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const { channel, handler } of this.listeners) {
+      ipcMain.removeListener(channel, handler);
+    }
+    this.listeners = [];
+    for (const channel of this.invokeChannels) {
+      ipcMain.removeHandler(channel);
+    }
+    this.invokeChannels = [];
   }
 
   /**

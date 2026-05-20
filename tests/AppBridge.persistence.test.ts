@@ -61,17 +61,24 @@ const SAMPLE_PAYLOAD: PersistedConversations = {
   drafts: {},
 };
 
+const FAKE_SENDER_ID = 1;
+
 function makeBridge() {
   const send = jest.fn();
   const isDestroyed = jest.fn<boolean, []>(() => false);
   const context = {
-    webContents: { send },
+    webContents: { id: FAKE_SENDER_ID, send },
     isDestroyed,
     setTitle: jest.fn(),
+    once: jest.fn(),
   } as never;
   const bridge = new AppBridge(context);
   bridge.register();
   return { bridge, send, isDestroyed };
+}
+
+function fakeIpcEvent(senderId: number = FAKE_SENDER_ID) {
+  return { sender: { id: senderId } } as unknown;
 }
 
 function findHandler(channel: string) {
@@ -89,7 +96,7 @@ describe('AppBridge — to:ai:conversations:save handler (P7)', () => {
   it('forwards the renderer payload to writePersistedConversations', () => {
     makeBridge();
     const handler = findHandler('to:ai:conversations:save');
-    handler({}, SAMPLE_PAYLOAD);
+    handler(fakeIpcEvent(), SAMPLE_PAYLOAD);
     expect(writePersistedConversations).toHaveBeenCalledTimes(1);
     expect(writePersistedConversations).toHaveBeenCalledWith(SAMPLE_PAYLOAD);
   });
@@ -97,8 +104,15 @@ describe('AppBridge — to:ai:conversations:save handler (P7)', () => {
   it('forwards a null payload (clear-history affordance)', () => {
     makeBridge();
     const handler = findHandler('to:ai:conversations:save');
-    handler({}, null);
+    handler(fakeIpcEvent(), null);
     expect(writePersistedConversations).toHaveBeenCalledWith(null);
+  });
+
+  it('ignores events from a foreign sender (no cross-window dispatch)', () => {
+    makeBridge();
+    const handler = findHandler('to:ai:conversations:save');
+    handler(fakeIpcEvent(/* senderId */ 9999), SAMPLE_PAYLOAD);
+    expect(writePersistedConversations).not.toHaveBeenCalled();
   });
 
   it('swallows write errors so the renderer never sees a crash', () => {
@@ -108,7 +122,7 @@ describe('AppBridge — to:ai:conversations:save handler (P7)', () => {
     makeBridge();
     const handler = findHandler('to:ai:conversations:save');
     // No throw — error is logged inside the handler.
-    expect(() => handler({}, SAMPLE_PAYLOAD)).not.toThrow();
+    expect(() => handler(fakeIpcEvent(), SAMPLE_PAYLOAD)).not.toThrow();
   });
 });
 
@@ -116,7 +130,7 @@ describe('AppBridge — to:ai:conversations:flush handler (P7)', () => {
   it('forwards the quit-flush payload to writePersistedConversations', () => {
     makeBridge();
     const handler = findHandler('to:ai:conversations:flush');
-    handler({}, SAMPLE_PAYLOAD);
+    handler(fakeIpcEvent(), SAMPLE_PAYLOAD);
     expect(writePersistedConversations).toHaveBeenCalledWith(SAMPLE_PAYLOAD);
   });
 });

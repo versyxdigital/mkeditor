@@ -67,6 +67,7 @@ const ipcMain = {
   on: jest.fn(),
   handle: jest.fn(),
   removeListener: jest.fn(),
+  removeHandler: jest.fn(),
 };
 
 const protocol = {
