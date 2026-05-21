@@ -18,7 +18,8 @@ import { renderWithProviders } from '../utils/render';
 // renderWithProviders so the full context tree is mounted; the
 // default fake AssistantManager covers the chat snapshot the
 // retry-button gate consults.
-const render = (ui: React.ReactElement) => renderWithProviders(ui);
+const render: typeof renderWithProviders = (ui, options) =>
+  renderWithProviders(ui, options);
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string, vars?: Record<string, unknown>) =>
@@ -119,5 +120,210 @@ describe('<ToolCallCard>', () => {
   it('succeeded card stays collapsed until clicked — args block hidden initially', () => {
     render(<ToolCallCard invocation={invocation({ status: 'succeeded' })} />);
     expect(screen.queryByText('assistant-tools:args_label')).toBeNull();
+  });
+});
+
+/* ---------- Inline confirmation rendering --------------------------- */
+
+// The InlineDiffPreview component would otherwise need a full Monaco
+// mount per render here, which doesn't add value for testing the card's
+// routing logic. Stub it; we test InlineDiffPreview's own behaviour in
+// its dedicated spec. InsertPreview stays unmocked — it's a pure
+// <pre> and asserting against its DOM is useful.
+jest.mock(
+  '../../src/browser/react/components/assistant/InlineDiffPreview',
+  () => ({
+    InlineDiffPreview: (props: {
+      original: string;
+      modified: string;
+      fetchFullOriginal?: () => Promise<string>;
+      fetchFullModified?: () => Promise<string>;
+    }) => (
+      <div
+        data-testid="inline-diff-preview-stub"
+        data-original={props.original}
+        data-modified={props.modified}
+        data-has-fetch-original={props.fetchFullOriginal !== undefined}
+        data-has-fetch-modified={props.fetchFullModified !== undefined}
+      />
+    ),
+  }),
+);
+
+describe('<ToolCallCard> inline confirmation', () => {
+  function pendingInvocation(
+    overrides: Partial<ToolInvocation> = {},
+  ): ToolInvocation {
+    return {
+      toolCallId: 'tc-pending',
+      toolName: 'write_file',
+      arguments: { path: '/a.md', content: 'NEW CONTENT' },
+      status: 'pending-confirm',
+      ...overrides,
+    };
+  }
+
+  function pendingChatSnapshot(pendingConfirm: {
+    toolCallId: string;
+    toolName: string;
+    callId: string;
+    preview: ToolInvocation['arguments'] extends infer A
+      ? {
+          kind: 'edit' | 'write' | 'create' | 'replace' | 'insert';
+          path?: string;
+          before?: string;
+          after: string;
+          detail?: string;
+        } | null
+      : never;
+  }) {
+    return {
+      conversations: { anthropic: [], openai: [], ollama: [] },
+      activeConversation: { anthropic: null, openai: null, ollama: null },
+      drafts: {},
+      inflight: {},
+      pendingConfirms: { [pendingConfirm.toolCallId]: pendingConfirm },
+    } as Parameters<
+      ReturnType<
+        typeof import('../utils/render').fakeAssistantManager
+      >['_setChatSnapshot']
+    >[0];
+  }
+
+  it('renders the InlineDiffPreview for write/edit/replace kinds', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { fakeAssistantManager } = require('../utils/render');
+    const am = fakeAssistantManager({
+      initialChatSnapshot: pendingChatSnapshot({
+        toolCallId: 'tc-pending',
+        toolName: 'write_file',
+        callId: 'chat-1',
+        preview: {
+          kind: 'write',
+          path: '/a.md',
+          before: 'OLD',
+          after: 'NEW CONTENT',
+        },
+      }),
+    });
+    render(<ToolCallCard invocation={pendingInvocation()} />, {
+      managers: { assistantManager: am },
+    });
+    const stub = screen.getByTestId('inline-diff-preview-stub');
+    expect(stub.dataset.original).toBe('OLD');
+    expect(stub.dataset.modified).toBe('NEW CONTENT');
+    // write_file: original-fetch wires to disk via the path; modified
+    // fetch resolves args.content synchronously.
+    expect(stub.dataset.hasFetchOriginal).toBe('true');
+    expect(stub.dataset.hasFetchModified).toBe('true');
+  });
+
+  it('renders the InsertPreview for insert/create kinds', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { fakeAssistantManager } = require('../utils/render');
+    const am = fakeAssistantManager({
+      initialChatSnapshot: pendingChatSnapshot({
+        toolCallId: 'tc-pending',
+        toolName: 'create_file',
+        callId: 'chat-1',
+        preview: {
+          kind: 'create',
+          path: '/new.md',
+          after: '# Hello',
+        },
+      }),
+    });
+    render(
+      <ToolCallCard
+        invocation={pendingInvocation({
+          toolName: 'create_file',
+          arguments: { parent: '/', name: 'new.md', content: '# Hello' },
+        })}
+      />,
+      { managers: { assistantManager: am } },
+    );
+    expect(screen.getByTestId('insert-preview')).toBeInTheDocument();
+    expect(screen.queryByTestId('inline-diff-preview-stub')).toBeNull();
+  });
+
+  it('Accept button calls manager.respondToConfirm(toolCallId, true)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { fakeAssistantManager } = require('../utils/render');
+    const am = fakeAssistantManager({
+      initialChatSnapshot: pendingChatSnapshot({
+        toolCallId: 'tc-pending',
+        toolName: 'insert_at_cursor',
+        callId: 'chat-1',
+        preview: {
+          kind: 'insert',
+          after: 'snippet',
+        },
+      }),
+    });
+    render(
+      <ToolCallCard
+        invocation={pendingInvocation({
+          toolName: 'insert_at_cursor',
+          arguments: { content: 'snippet' },
+        })}
+      />,
+      { managers: { assistantManager: am } },
+    );
+    fireEvent.click(screen.getByTestId('tool-call-accept-tc-pending'));
+    expect(am.respondToConfirm).toHaveBeenCalledWith('tc-pending', true);
+  });
+
+  it('Reject button calls manager.respondToConfirm(toolCallId, false)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { fakeAssistantManager } = require('../utils/render');
+    const am = fakeAssistantManager({
+      initialChatSnapshot: pendingChatSnapshot({
+        toolCallId: 'tc-pending',
+        toolName: 'insert_at_cursor',
+        callId: 'chat-1',
+        preview: { kind: 'insert', after: 'snippet' },
+      }),
+    });
+    render(
+      <ToolCallCard
+        invocation={pendingInvocation({
+          toolName: 'insert_at_cursor',
+          arguments: { content: 'snippet' },
+        })}
+      />,
+      { managers: { assistantManager: am } },
+    );
+    fireEvent.click(screen.getByTestId('tool-call-reject-tc-pending'));
+    expect(am.respondToConfirm).toHaveBeenCalledWith('tc-pending', false);
+  });
+
+  it('does NOT render the inline confirmation when no pendingConfirms entry exists for this toolCallId', () => {
+    // Pending-confirm status but the snapshot has no matching entry —
+    // can happen mid-cleanup (e.g. cancelCall just fired and the entry
+    // was dropped before this card unmounted). The card should fall
+    // back to the simple muted styling, no Accept/Reject row.
+    render(<ToolCallCard invocation={pendingInvocation()} />);
+    expect(screen.queryByTestId('tool-call-accept-tc-pending')).toBeNull();
+    expect(screen.queryByTestId('tool-call-reject-tc-pending')).toBeNull();
+    expect(screen.queryByTestId('inline-diff-preview-stub')).toBeNull();
+    expect(screen.queryByTestId('insert-preview')).toBeNull();
+  });
+
+  it('does NOT render the inline confirmation when status is not pending-confirm', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { fakeAssistantManager } = require('../utils/render');
+    const am = fakeAssistantManager({
+      initialChatSnapshot: pendingChatSnapshot({
+        toolCallId: 'tc-pending',
+        toolName: 'write_file',
+        callId: 'chat-1',
+        preview: { kind: 'write', path: '/x', after: 'a' },
+      }),
+    });
+    render(
+      <ToolCallCard invocation={pendingInvocation({ status: 'succeeded' })} />,
+      { managers: { assistantManager: am } },
+    );
+    expect(screen.queryByTestId('inline-diff-preview-stub')).toBeNull();
   });
 });
