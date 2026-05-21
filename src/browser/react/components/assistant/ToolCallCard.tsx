@@ -295,14 +295,34 @@ function useInlineConfirmContent(
         fetchFullModified = () => Promise.resolve(argContent);
       }
     } else if (preview.kind === 'edit') {
-      // before = args.oldText, after = args.newText — both in args.
+      // Phase 6: preview shows ±3 lines of context around the match.
+      // "Show full" expands to the whole file — the original side
+      // reads from disk; the modified side reads from disk AND applies
+      // the agent's replacement so the user sees the entire post-edit
+      // file in situ. When path is missing (snippet builder bailed),
+      // fall back to the args strings so something still expands.
       const oldText = getStringArg('oldText');
       const newText = getStringArg('newText');
-      if (oldText !== undefined) {
-        fetchFullOriginal = () => Promise.resolve(oldText);
-      }
-      if (newText !== undefined) {
-        fetchFullModified = () => Promise.resolve(newText);
+      if (preview.path) {
+        const diskPath = preview.path;
+        fetchFullOriginal = fetchFromDisk(diskPath);
+        if (oldText !== undefined && newText !== undefined) {
+          fetchFullModified = async () => {
+            const original = await fetchFromDisk(diskPath)();
+            // The agent's edit_file contract guarantees oldText
+            // matches exactly once in the file. Single-shot replace.
+            return original.replace(oldText, newText);
+          };
+        } else {
+          fetchFullModified = fetchFromDisk(diskPath);
+        }
+      } else {
+        if (oldText !== undefined) {
+          fetchFullOriginal = () => Promise.resolve(oldText);
+        }
+        if (newText !== undefined) {
+          fetchFullModified = () => Promise.resolve(newText);
+        }
       }
     } else if (preview.kind === 'replace') {
       // before = selection text (no source to refetch — selection

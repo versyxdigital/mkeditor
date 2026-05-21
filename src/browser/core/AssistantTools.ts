@@ -74,6 +74,84 @@ function truncate(text: string): string {
   return text.slice(0, PREVIEW_TRUNCATE_AT) + PREVIEW_TRUNCATION_MARKER;
 }
 
+/**
+ * For `edit_file` previews, surface the change in situ — surround the
+ * matched `oldText` with ±`contextLines` lines from the live file so
+ * the user sees where the edit lands, not just the search/replace pair.
+ *
+ * Returns `null` if `oldText` doesn't occur in `fileText` (the agent
+ * fired an edit that won't match; the preview falls back to the plain
+ * oldText→newText diff and the same `execute` failure surfaces on Accept).
+ *
+ * When the snippet doesn't cover the whole file, `PREVIEW_TRUNCATION_MARKER`
+ * is appended to both sides — the inline diff's "Show full" expander
+ * then fetches the entire file via `mked:fs:readfile`.
+ */
+export interface EditContextSnippet {
+  before: string;
+  after: string;
+  /** Human-readable line range, e.g. "Lines 12–18". */
+  detail: string;
+  /** True iff the snippet doesn't cover the whole file. */
+  truncated: boolean;
+}
+
+export function buildEditContextSnippet(
+  fileText: string,
+  oldText: string,
+  newText: string,
+  contextLines = 3,
+): EditContextSnippet | null {
+  if (!oldText) return null;
+  const idx = fileText.indexOf(oldText);
+  if (idx < 0) return null;
+
+  // Split for line-based slicing. We accept either LF or CRLF in the
+  // source; the snippet rejoins on `\n` (the diff editor doesn't care
+  // about line-ending fidelity here — preview is for human eyes).
+  const allLines = fileText.split(/\r?\n/);
+  const totalLines = allLines.length;
+
+  // Find the line index of the first character of the match.
+  const matchStartLine = countLines(fileText, 0, idx);
+  // And the last line touched by the match.
+  const matchEndLine = matchStartLine + countLines(oldText, 0, oldText.length);
+
+  const contextStart = Math.max(0, matchStartLine - contextLines);
+  const contextEnd = Math.min(totalLines - 1, matchEndLine + contextLines);
+
+  const snippetLines = allLines.slice(contextStart, contextEnd + 1);
+  const before = snippetLines.join('\n');
+  // The match is guaranteed to occur exactly once in `fileText`; the
+  // sliced snippet contains it once too. Single-shot replace.
+  const after = before.replace(oldText, newText);
+
+  const truncated = contextStart > 0 || contextEnd < totalLines - 1;
+  return {
+    before: truncated ? before + PREVIEW_TRUNCATION_MARKER : before,
+    after: truncated ? after + PREVIEW_TRUNCATION_MARKER : after,
+    detail: `Lines ${contextStart + 1}–${contextEnd + 1}`,
+    truncated,
+  };
+}
+
+/** Count `\n` and `\r\n` line breaks in `text[start..end]`. */
+function countLines(text: string, start: number, end: number): number {
+  let count = 0;
+  for (let i = start; i < end; i++) {
+    const ch = text.charCodeAt(i);
+    if (ch === 0x0a) {
+      count += 1;
+    } else if (ch === 0x0d && text.charCodeAt(i + 1) === 0x0a) {
+      count += 1;
+      i += 1;
+    } else if (ch === 0x0d) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
 /** Wait for a path to land in FileManager.models (idempotent if already there). */
 function waitForFileToOpen(
   bridge: BridgeManager,
@@ -697,9 +775,32 @@ const CATALOG: Record<string, ToolSpec> = {
       } catch {
         /* preview is non-fatal */
       }
-      // Preview shows the literal text being replaced (oldText), so
-      // the dialog can never disagree with what `execute` actually
-      // does — they both anchor on the same substring.
+      // When the target file is open in a Monaco model (the common
+      // case — the agent has just read it), build a context-bounded
+      // preview that shows ±3 lines around the match. The user sees
+      // WHERE the edit lands instead of an isolated oldText/newText
+      // pair that's easy to mis-evaluate.
+      //
+      // Falls back to the literal oldText → newText pair when the
+      // file isn't open or `oldText` doesn't match (the agent fired
+      // an edit that will fail; the same error surfaces on Accept).
+      const openModel = ctx.bridge.fileManager.models.get(path);
+      if (openModel) {
+        const snippet = buildEditContextSnippet(
+          openModel.getValue(),
+          oldText,
+          newText,
+        );
+        if (snippet) {
+          return {
+            kind: 'edit',
+            path,
+            before: snippet.before,
+            after: snippet.after,
+            detail: snippet.detail,
+          };
+        }
+      }
       return {
         kind: 'edit',
         path,

@@ -1343,11 +1343,12 @@ describe('AssistantTools — preview building', () => {
     });
   });
 
-  it('buildPreview for edit_file shows oldText (before) and newText (after) directly', () => {
-    // Preview anchors on the same string `execute` searches for, so
-    // the dialog can't ever disagree with the resulting edit — the
-    // original line-range design hid the actual replacement target
-    // behind line numbers the agent often miscounted on CRLF files.
+  it('buildPreview for edit_file surrounds the match with ±3 lines of context from the open file (phase 6)', () => {
+    // Phase 6: when the target file is open in a Monaco model, the
+    // preview shows the change in situ — surrounding lines come from
+    // the live file so the user can see WHERE the edit lands. The
+    // snippet covers the entire file here (only 4 lines), so no
+    // truncation marker is appended.
     const models = new Map<string, FakeModel>();
     models.set('/x.md', makeModel('line A\nline B\nline C\nline D'));
     const bm = makeBridgeManager({ models });
@@ -1359,10 +1360,71 @@ describe('AssistantTools — preview building', () => {
     });
     expect(preview?.kind).toBe('edit');
     expect(preview?.path).toBe('/x.md');
-    expect(preview?.before).toBe('line B\nline C');
+    expect(preview?.before).toBe('line A\nline B\nline C\nline D');
+    expect(preview?.after).toBe('line A\nNEW\nline D');
+    expect(preview?.detail).toBe('Lines 1–4');
+  });
+
+  it('buildPreview for edit_file falls back to oldText → newText when the file is not open', () => {
+    // Closed-file case: no Monaco model in the FileManager map → the
+    // preview can't build a context snippet, so it reverts to the
+    // literal oldText / newText pair. The agent and the user still
+    // see the same substring `execute` will search for.
+    const bm = makeBridgeManager();
+    const tools = new AssistantTools(bm as never);
+    const preview = tools.buildPreview('edit_file', {
+      path: '/x.md',
+      oldText: 'some search string',
+      newText: 'replacement',
+    });
+    expect(preview?.kind).toBe('edit');
+    expect(preview?.before).toBe('some search string');
+    expect(preview?.after).toBe('replacement');
+    expect(preview?.detail).toBeUndefined();
+  });
+
+  it('buildPreview for edit_file appends the truncation marker when context does not cover the whole file', () => {
+    // 20-line file with the match on line 10 — ±3 context covers
+    // lines 7–13. The remaining lines are truncated; both sides
+    // carry the marker so the inline diff offers the "Show full"
+    // expander (which fetches the full file from disk via the
+    // ToolCallCard fetcher).
+    const lines: string[] = [];
+    for (let i = 1; i <= 20; i++) lines.push(`line ${i}`);
+    const fileText = lines.join('\n');
+    const models = new Map<string, FakeModel>();
+    models.set('/big.md', makeModel(fileText));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const preview = tools.buildPreview('edit_file', {
+      path: '/big.md',
+      oldText: 'line 10',
+      newText: 'TEN',
+    });
+    expect(preview?.detail).toBe('Lines 7–13');
+    expect(preview?.before?.endsWith('…[truncated]')).toBe(true);
+    expect(preview?.after?.endsWith('…[truncated]')).toBe(true);
+    // Snippet body: lines 7-13 around the match.
+    expect(preview?.before).toContain('line 7\nline 8\nline 9\nline 10');
+    expect(preview?.after).toContain('line 7\nline 8\nline 9\nTEN');
+  });
+
+  it('buildPreview for edit_file falls back to plain oldText/newText when the match is not found', () => {
+    // Open file but `oldText` doesn't appear → can't build a snippet.
+    // execute() would throw the same "not found" error on Accept, but
+    // the preview falls through to the plain pair so the user sees
+    // what the agent proposed.
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', makeModel('line A\nline B'));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const preview = tools.buildPreview('edit_file', {
+      path: '/x.md',
+      oldText: 'not-there',
+      newText: 'NEW',
+    });
+    expect(preview?.before).toBe('not-there');
     expect(preview?.after).toBe('NEW');
-    // No more line-range detail — the before/after blocks are
-    // self-describing now.
     expect(preview?.detail).toBeUndefined();
   });
 
