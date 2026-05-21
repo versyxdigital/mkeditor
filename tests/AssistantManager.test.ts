@@ -782,6 +782,66 @@ describe('AssistantManager — paced streaming reveal (P8)', () => {
     );
   });
 
+  it('drains the buffer when a tool call arrives mid-burst (no split words around the tool card)', async () => {
+    // Regression: the model emits a burst that includes a tool-call
+    // event before the paced reveal has finished painting the preceding
+    // text. Without draining the buffer first, the post-tool reveal
+    // tick paints those leftover chars into a fresh text segment AFTER
+    // the tool card — splitting whatever was mid-word ("…two new v" →
+    // [tool] → "erses!…"). The buffer must drain so the pre-tool text
+    // settles into the segment BEFORE the tool card.
+    const { bridge } = makeBridge();
+    const clock = fakeFrameClock();
+    const mgr = new AssistantManager(bridge as never, {
+      requestFrame: clock.requestFrame,
+      cancelFrame: clock.cancelFrame,
+    });
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'read' as const,
+      buildPreview: () => null,
+      execute: async () => ({ ok: true }),
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+
+    // Burst the model's full pre-tool text. Only a fraction will have
+    // been revealed before the tool call arrives.
+    mgr.appendChunk(
+      callId,
+      "I'll read the poem first, then add two new verses!",
+    );
+    clock.tick(); // reveal a slice, buffer still has the rest
+
+    // Tool call lands mid-reveal.
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'read_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Post-tool text arrives later.
+    mgr.appendChunk(callId, 'Done!');
+    for (let i = 0; i < 10; i++) clock.tick();
+
+    const msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)!
+      .messages.find((m) => m.role === 'assistant')!;
+    expect(msg.segments).toEqual([
+      {
+        type: 'text',
+        text: "I'll read the poem first, then add two new verses!",
+      },
+      { type: 'tool-call', toolCallId: 'tc-1' },
+      { type: 'text', text: 'Done!' },
+    ]);
+  });
+
   it('drains the buffer on cancelCall too (no token loss when user hits Stop mid-burst)', () => {
     const { bridge } = makeBridge();
     const clock = fakeFrameClock();

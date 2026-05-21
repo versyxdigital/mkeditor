@@ -931,6 +931,7 @@ export class AssistantManager {
   public onToolCall(payload: ChatToolCallEvent): void {
     const inflight = this.inflightChats.get(payload.callId);
     if (!inflight) return; // foreign callId (e.g. test ping) — silently drop
+    this.drainPendingForCall(payload.callId);
     const executor = this.toolExecutor;
     if (!executor || !executor.hasTool(payload.toolName)) {
       this.recordToolCall(inflight, {
