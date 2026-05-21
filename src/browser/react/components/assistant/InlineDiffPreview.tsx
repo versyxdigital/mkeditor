@@ -179,6 +179,16 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
     modifiedModelRef.current = modifiedModel;
     const diff = editor.createDiffEditor(host, {
       renderSideBySide: sideBySide,
+      // Monaco silently forces inline view when the editor is
+      // narrower than `renderSideBySideInlineBreakpoint` (default
+      // ~900px) and `useInlineViewWhenSpaceIsLimited` is true (also
+      // default). The chat panel is well under 900px, so without
+      // these overrides the side-by-side toggle would have no
+      // visible effect — Monaco overrides `renderSideBySide` on
+      // every layout pass. Disabling the auto-switch lets the user's
+      // explicit toggle stick.
+      useInlineViewWhenSpaceIsLimited: false,
+      renderSideBySideInlineBreakpoint: 0,
       readOnly: true,
       automaticLayout: true,
       scrollBeyondLastLine: false,

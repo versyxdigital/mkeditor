@@ -208,6 +208,19 @@ describe('<InlineDiffPreview>', () => {
     expect(opts.glyphMargin).toBe(false);
   });
 
+  it('opts out of Monaco auto-inline-when-narrow so the side-by-side toggle actually sticks', () => {
+    // Monaco's default useInlineViewWhenSpaceIsLimited:true forces
+    // inline view below ~900px width, silently overriding our
+    // renderSideBySide value. The chat panel is well under that, so
+    // both opt-outs are required for the toggle to be effective.
+    render(<InlineDiffPreview original="a" modified="b" />);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const monaco = require('monaco-editor');
+    const opts = monaco.editor.createDiffEditor.mock.calls[0][1];
+    expect(opts.useInlineViewWhenSpaceIsLimited).toBe(false);
+    expect(opts.renderSideBySideInlineBreakpoint).toBe(0);
+  });
+
   it('prop changes flow through model setValue without recreating the editor', () => {
     const { rerender } = render(
       <InlineDiffPreview original="old" modified="new" />,
