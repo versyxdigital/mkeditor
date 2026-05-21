@@ -458,6 +458,39 @@ export class AppBridge {
       },
     );
 
+    // Write a pasted-image's bytes into the workspace. Renderer
+    // gathers the bytes from `event.clipboardData`, the settings
+    // directory and the active editable file path, hands them over,
+    // and inserts a `![](relative-path)` markdown link once the path
+    // returned here is in hand. `AppStorage.writePastedImage` runs
+    // the same workspace-containment check as the other write tools
+    // (`assertInWorkspace`) — paste targets outside the workspace
+    // are rejected with a structured error.
+    this.handle(
+      'mked:fs:pasteimage',
+      async (
+        _e,
+        opts: {
+          sourceFile: string;
+          directory: string;
+          bytes: Uint8Array;
+          extension: string;
+        },
+      ) => {
+        try {
+          return await AppStorage.writePastedImage(
+            opts.sourceFile,
+            opts.directory,
+            opts.bytes,
+            opts.extension,
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { ok: false as const, error: message };
+        }
+      },
+    );
+
     this.on('mked:open-url', (_e, url: string) => {
       try {
         this.handleMkedUrl(url);
