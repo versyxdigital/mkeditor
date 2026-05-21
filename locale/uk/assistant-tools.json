@@ -34,5 +34,11 @@
   "retry_prompt_with_args": "Будь ласка, повторіть {{toolName}} з аргументами: {{args}}",
 
   "diff_view_unified": "Переключити на єдиний дифф",
-  "diff_view_side_by_side": "Переключити на дифф порівнянням"
+  "diff_view_side_by_side": "Переключити на дифф порівнянням",
+
+  "preview_show_full": "Показати повністю",
+  "preview_show_less": "Показати менше",
+  "preview_loading": "Завантаження…",
+  "preview_retry": "Повторити",
+  "preview_truncated_hint": "Попередній перегляд обрізано"
 }

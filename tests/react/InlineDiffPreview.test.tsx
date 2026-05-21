@@ -18,7 +18,15 @@
  */
 
 import * as React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react';
+
+import { PREVIEW_TRUNCATION_MARKER } from '../../src/browser/core/AssistantTools';
 
 interface MockModel {
   __id: string;
@@ -200,5 +208,116 @@ describe('<InlineDiffPreview>', () => {
       throw new Error('already disposed');
     });
     expect(() => unmount()).not.toThrow();
+  });
+
+  it('shows no expander when neither side is truncated', () => {
+    render(<InlineDiffPreview original="a" modified="b" />);
+    expect(screen.queryByTestId('inline-diff-expand-toggle')).toBeNull();
+  });
+
+  it('shows no expander when truncated but no fetcher prop supplied', () => {
+    render(
+      <InlineDiffPreview
+        original={`head${PREVIEW_TRUNCATION_MARKER}`}
+        modified="short"
+      />,
+    );
+    expect(screen.queryByTestId('inline-diff-expand-toggle')).toBeNull();
+  });
+
+  it('expand button fetches both sides in parallel and pushes full content into the models', async () => {
+    const truncatedOrig = `orig-head${PREVIEW_TRUNCATION_MARKER}`;
+    const truncatedMod = `mod-head${PREVIEW_TRUNCATION_MARKER}`;
+    const fetchFullOriginal = jest.fn(() => Promise.resolve('orig-FULL'));
+    const fetchFullModified = jest.fn(() => Promise.resolve('mod-FULL'));
+
+    render(
+      <InlineDiffPreview
+        original={truncatedOrig}
+        modified={truncatedMod}
+        fetchFullOriginal={fetchFullOriginal}
+        fetchFullModified={fetchFullModified}
+      />,
+    );
+
+    const expandToggle = screen.getByTestId('inline-diff-expand-toggle');
+    expect(expandToggle.textContent).toBe('assistant-tools:preview_show_full');
+
+    await act(async () => {
+      fireEvent.click(expandToggle);
+    });
+
+    await waitFor(() => {
+      expect(fetchFullOriginal).toHaveBeenCalledTimes(1);
+      expect(fetchFullModified).toHaveBeenCalledTimes(1);
+    });
+
+    // Models should have been setValue'd to the full content via the
+    // data-update effect. Inspect mock setValue calls.
+    expect(models[0].setValue).toHaveBeenCalledWith('orig-FULL');
+    expect(models[1].setValue).toHaveBeenCalledWith('mod-FULL');
+    expect(screen.getByTestId('inline-diff-expand-toggle').textContent).toBe(
+      'assistant-tools:preview_show_less',
+    );
+  });
+
+  it('expand button skips fetcher for an untruncated side', async () => {
+    const fetchFullOriginal = jest.fn();
+    const fetchFullModified = jest.fn(() => Promise.resolve('mod-FULL'));
+
+    render(
+      <InlineDiffPreview
+        original="orig is fine"
+        modified={`mod-head${PREVIEW_TRUNCATION_MARKER}`}
+        fetchFullOriginal={fetchFullOriginal}
+        fetchFullModified={fetchFullModified}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('inline-diff-expand-toggle'));
+    });
+
+    await waitFor(() => {
+      expect(fetchFullModified).toHaveBeenCalledTimes(1);
+    });
+    expect(fetchFullOriginal).not.toHaveBeenCalled();
+    expect(models[1].setValue).toHaveBeenCalledWith('mod-FULL');
+  });
+
+  it('collapse + re-expand uses cached full content (no second fetch)', async () => {
+    const truncatedOrig = `o${PREVIEW_TRUNCATION_MARKER}`;
+    const truncatedMod = `m${PREVIEW_TRUNCATION_MARKER}`;
+    const fetchFullOriginal = jest.fn(() => Promise.resolve('OFULL'));
+    const fetchFullModified = jest.fn(() => Promise.resolve('MFULL'));
+
+    render(
+      <InlineDiffPreview
+        original={truncatedOrig}
+        modified={truncatedMod}
+        fetchFullOriginal={fetchFullOriginal}
+        fetchFullModified={fetchFullModified}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('inline-diff-expand-toggle'));
+    });
+    await waitFor(() => {
+      expect(fetchFullOriginal).toHaveBeenCalledTimes(1);
+      expect(fetchFullModified).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('inline-diff-expand-toggle'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('inline-diff-expand-toggle'));
+    });
+
+    // Still exactly one call each — cache reused.
+    expect(fetchFullOriginal).toHaveBeenCalledTimes(1);
+    expect(fetchFullModified).toHaveBeenCalledTimes(1);
   });
 });

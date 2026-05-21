@@ -110,7 +110,12 @@
     "retry_prompt": "Per favore riprova la chiamata {{toolName}}.",
     "retry_prompt_with_args": "Per favore riprova {{toolName}} con gli argomenti: {{args}}",
     "diff_view_unified": "Passa a diff unificato",
-    "diff_view_side_by_side": "Passa a diff affiancato"
+    "diff_view_side_by_side": "Passa a diff affiancato",
+    "preview_show_full": "Mostra tutto",
+    "preview_show_less": "Mostra meno",
+    "preview_loading": "Caricamento…",
+    "preview_retry": "Riprova",
+    "preview_truncated_hint": "Anteprima troncata"
   },
   "assistant": {
     "title": "Assistente IA",

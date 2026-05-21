@@ -54,11 +54,24 @@ interface ToolContext {
   bridge: BridgeManager;
 }
 
-const PREVIEW_TRUNCATE_AT = 4000;
+/**
+ * Cap on `ToolConfirmPreview.before` / `after` strings. The inline
+ * diff card adds a "show full" expander when content hits this cap;
+ * see `useExpandableContent` in the renderer.
+ */
+export const PREVIEW_TRUNCATE_AT = 4000;
+
+/**
+ * Suffix appended to a truncated preview string. Used by
+ * `useExpandableContent` (and by tests) to detect that a `before` or
+ * `after` was truncated client-side — i.e. that a "show full"
+ * affordance is meaningful.
+ */
+export const PREVIEW_TRUNCATION_MARKER = '\n\n…[truncated]';
 
 function truncate(text: string): string {
   if (text.length <= PREVIEW_TRUNCATE_AT) return text;
-  return text.slice(0, PREVIEW_TRUNCATE_AT) + '\n\n…[truncated]';
+  return text.slice(0, PREVIEW_TRUNCATE_AT) + PREVIEW_TRUNCATION_MARKER;
 }
 
 /** Wait for a path to land in FileManager.models (idempotent if already there). */

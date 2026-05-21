@@ -34,5 +34,11 @@
   "retry_prompt_with_args": "Bitte {{toolName}} mit den Argumenten erneut versuchen: {{args}}",
 
   "diff_view_unified": "Zur vereinheitlichten Diff-Ansicht wechseln",
-  "diff_view_side_by_side": "Zur Seite-an-Seite-Diff-Ansicht wechseln"
+  "diff_view_side_by_side": "Zur Seite-an-Seite-Diff-Ansicht wechseln",
+
+  "preview_show_full": "Vollständig anzeigen",
+  "preview_show_less": "Weniger anzeigen",
+  "preview_loading": "Wird geladen…",
+  "preview_retry": "Wiederholen",
+  "preview_truncated_hint": "Vorschau gekürzt"
 }

@@ -110,7 +110,12 @@
     "retry_prompt": "Por favor tente novamente a chamada {{toolName}}.",
     "retry_prompt_with_args": "Por favor tente novamente {{toolName}} com os argumentos: {{args}}",
     "diff_view_unified": "Mudar para diff unificado",
-    "diff_view_side_by_side": "Mudar para diff lado a lado"
+    "diff_view_side_by_side": "Mudar para diff lado a lado",
+    "preview_show_full": "Mostrar tudo",
+    "preview_show_less": "Mostrar menos",
+    "preview_loading": "A carregar…",
+    "preview_retry": "Tentar novamente",
+    "preview_truncated_hint": "Pré-visualização truncada"
   },
   "assistant": {
     "title": "Assistente de IA",

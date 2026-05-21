@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { editor } from 'monaco-editor';
 
+import { PREVIEW_TRUNCATION_MARKER } from '../../../core/AssistantTools';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { Button } from '../ui/button';
@@ -43,6 +44,15 @@ export interface InlineDiffPreviewProps {
    * cards.
    */
   height?: number;
+  /**
+   * Returns the untruncated `original`. Required only when `original`
+   * ends with the truncation marker — when supplied alongside its
+   * `modified` counterpart, a single "show full" button appears in
+   * the header and fetches both sides in parallel.
+   */
+  fetchFullOriginal?: () => Promise<string>;
+  /** Returns the untruncated `modified`. */
+  fetchFullModified?: () => Promise<string>;
 }
 
 export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
@@ -50,6 +60,8 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
   modified,
   language = 'markdown',
   height = 240,
+  fetchFullOriginal,
+  fetchFullModified,
 }) => {
   const { settings } = useSettings();
   const { t } = useTranslation();
@@ -58,6 +70,88 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
   const originalModelRef = React.useRef<editor.ITextModel | null>(null);
   const modifiedModelRef = React.useRef<editor.ITextModel | null>(null);
   const [sideBySide, setSideBySide] = React.useState(false);
+
+  // Truncation-expander state. The diff editor takes two correlated
+  // streams, so we coordinate a single expand/collapse for the pair
+  // rather than letting each side toggle independently (which would
+  // produce a diff between two contents-from-different-eras and
+  // surface meaningless +/- chunks).
+  const originalTruncated = original.endsWith(PREVIEW_TRUNCATION_MARKER);
+  const modifiedTruncated = modified.endsWith(PREVIEW_TRUNCATION_MARKER);
+  const canExpand =
+    (originalTruncated && fetchFullOriginal !== undefined) ||
+    (modifiedTruncated && fetchFullModified !== undefined);
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  const [isExpandLoading, setIsExpandLoading] = React.useState(false);
+  const [expandError, setExpandError] = React.useState<string | null>(null);
+  const [fullOriginal, setFullOriginal] = React.useState<string | null>(null);
+  const [fullModified, setFullModified] = React.useState<string | null>(null);
+
+  // Reset cached full content + collapse when the source pair changes.
+  // Without this, swapping to a different tool's preview would keep
+  // showing the previous tool's expanded content.
+  React.useEffect(() => {
+    setIsExpanded(false);
+    setIsExpandLoading(false);
+    setExpandError(null);
+    setFullOriginal(null);
+    setFullModified(null);
+  }, [original, modified]);
+
+  // What actually flows into Monaco's models.
+  const effectiveOriginal =
+    isExpanded && fullOriginal !== null ? fullOriginal : original;
+  const effectiveModified =
+    isExpanded && fullModified !== null ? fullModified : modified;
+
+  const toggleExpand = React.useCallback(() => {
+    if (!canExpand) return;
+    if (isExpanded) {
+      setIsExpanded(false);
+      return;
+    }
+    if (fullOriginal !== null && fullModified !== null) {
+      setIsExpanded(true);
+      setExpandError(null);
+      return;
+    }
+    setIsExpandLoading(true);
+    setExpandError(null);
+    const origPromise =
+      originalTruncated && fetchFullOriginal && fullOriginal === null
+        ? fetchFullOriginal()
+        : Promise.resolve(fullOriginal ?? original);
+    const modPromise =
+      modifiedTruncated && fetchFullModified && fullModified === null
+        ? fetchFullModified()
+        : Promise.resolve(fullModified ?? modified);
+    void Promise.all([origPromise, modPromise])
+      .then(([origRes, modRes]) => {
+        setFullOriginal(origRes);
+        setFullModified(modRes);
+        setIsExpanded(true);
+        setIsExpandLoading(false);
+      })
+      .catch((err: unknown) => {
+        setExpandError(err instanceof Error ? err.message : String(err));
+        setIsExpandLoading(false);
+      });
+    // No AbortController — same rationale as `useExpandableContent`:
+    // these are one-shot IPC round-trips and the wasted bytes on
+    // cancel are negligible. React 18 swallows setState on unmounted
+    // components safely.
+  }, [
+    canExpand,
+    isExpanded,
+    fullOriginal,
+    fullModified,
+    original,
+    modified,
+    originalTruncated,
+    modifiedTruncated,
+    fetchFullOriginal,
+    fetchFullModified,
+  ]);
 
   // Mount + dispose. One-shot effect with [] deps so we don't recreate
   // the diff editor on every prop change — the data-update effect
@@ -113,15 +207,19 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
     // Intentionally one-shot — see comment block above.
   }, []);
 
-  // Push prop changes into the existing models via setValue. Cheap;
-  // avoids remounting the editor when the user clicks Accept on one
-  // confirmation card and the next one renders in the same DOM slot.
+  // Push effective content into the existing models via setValue.
+  // Cheap; avoids remounting the editor when the user clicks Accept
+  // on one confirmation card and the next one renders in the same
+  // DOM slot, OR when the truncation expander flips between the
+  // capped and full content.
   React.useEffect(() => {
     const om = originalModelRef.current;
-    if (om && om.getValue() !== original) om.setValue(original);
+    if (om && om.getValue() !== effectiveOriginal)
+      om.setValue(effectiveOriginal);
     const mm = modifiedModelRef.current;
-    if (mm && mm.getValue() !== modified) mm.setValue(modified);
-  }, [original, modified]);
+    if (mm && mm.getValue() !== effectiveModified)
+      mm.setValue(effectiveModified);
+  }, [effectiveOriginal, effectiveModified]);
 
   // Side-by-side toggle is a hot option — updateOptions, no remount.
   React.useEffect(() => {
@@ -140,7 +238,35 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
       className="relative rounded border border-border bg-background"
       data-testid="inline-diff-preview"
     >
-      <div className="absolute right-1 top-1 z-10">
+      <div className="absolute right-1 top-1 z-10 flex items-center gap-1">
+        {canExpand && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs"
+            onClick={toggleExpand}
+            disabled={isExpandLoading}
+            data-testid="inline-diff-expand-toggle"
+            title={
+              expandError
+                ? expandError
+                : isExpandLoading
+                  ? t('assistant-tools:preview_loading')
+                  : isExpanded
+                    ? t('assistant-tools:preview_show_less')
+                    : t('assistant-tools:preview_show_full')
+            }
+          >
+            {isExpandLoading
+              ? t('assistant-tools:preview_loading')
+              : isExpanded
+                ? t('assistant-tools:preview_show_less')
+                : expandError
+                  ? t('assistant-tools:preview_retry')
+                  : t('assistant-tools:preview_show_full')}
+          </Button>
+        )}
         <Button
           type="button"
           size="sm"

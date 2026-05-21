@@ -8,13 +8,14 @@
  */
 
 import * as React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 
 jest.mock('../../src/browser/react/hooks/useTranslation', () => ({
   useTranslation: () => ({ t: (k: string) => k, language: 'en' }),
 }));
 
 import { InsertPreview } from '../../src/browser/react/components/assistant/InsertPreview';
+import { PREVIEW_TRUNCATION_MARKER } from '../../src/browser/core/AssistantTools';
 
 describe('<InsertPreview>', () => {
   it('renders the content verbatim inside a scrollable block', () => {
@@ -63,5 +64,75 @@ describe('<InsertPreview>', () => {
       .getByTestId('insert-preview')
       .querySelector('pre') as HTMLPreElement;
     expect(pre.style.maxHeight).toBe('240px');
+  });
+
+  it('shows no expander when content is not truncated, even with a fetcher', () => {
+    render(
+      <InsertPreview
+        content="short"
+        fetchFull={() => Promise.resolve('full')}
+      />,
+    );
+    expect(screen.queryByTestId('insert-preview-toggle')).toBeNull();
+  });
+
+  it('shows no expander when content is truncated but no fetcher was supplied', () => {
+    render(<InsertPreview content={`head${PREVIEW_TRUNCATION_MARKER}`} />);
+    expect(screen.queryByTestId('insert-preview-toggle')).toBeNull();
+  });
+
+  it('shows the expander and swaps in the full content on click when truncated + fetcher supplied', async () => {
+    const truncated = `head${PREVIEW_TRUNCATION_MARKER}`;
+    const fetchFull = jest.fn(() => Promise.resolve('head + tail'));
+    render(<InsertPreview content={truncated} fetchFull={fetchFull} />);
+
+    const toggle = screen.getByTestId('insert-preview-toggle');
+    expect(toggle.textContent).toBe('assistant-tools:preview_show_full');
+
+    await act(async () => {
+      toggle.click();
+    });
+
+    await waitFor(() => expect(fetchFull).toHaveBeenCalledTimes(1));
+    const pre = screen
+      .getByTestId('insert-preview')
+      .querySelector('pre') as HTMLPreElement;
+    expect(pre.textContent).toBe('head + tail');
+    expect(screen.getByTestId('insert-preview-toggle').textContent).toBe(
+      'assistant-tools:preview_show_less',
+    );
+  });
+
+  it('surfaces a fetcher error with a Retry button', async () => {
+    const truncated = `head${PREVIEW_TRUNCATION_MARKER}`;
+    let calls = 0;
+    const fetchFull = jest.fn(async () => {
+      calls += 1;
+      if (calls === 1) throw new Error('disk error');
+      return 'eventually full';
+    });
+    render(<InsertPreview content={truncated} fetchFull={fetchFull} />);
+
+    await act(async () => {
+      screen.getByTestId('insert-preview-toggle').click();
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('insert-preview-error').textContent).toBe(
+        'disk error',
+      ),
+    );
+    expect(screen.getByTestId('insert-preview-toggle').textContent).toBe(
+      'assistant-tools:preview_retry',
+    );
+
+    // Retry — succeeds.
+    await act(async () => {
+      screen.getByTestId('insert-preview-toggle').click();
+    });
+    await waitFor(() => expect(fetchFull).toHaveBeenCalledTimes(2));
+    const pre = screen
+      .getByTestId('insert-preview')
+      .querySelector('pre') as HTMLPreElement;
+    expect(pre.textContent).toBe('eventually full');
   });
 });
