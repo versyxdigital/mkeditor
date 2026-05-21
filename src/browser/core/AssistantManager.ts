@@ -25,11 +25,7 @@ import type {
 } from '../../app/interfaces/Assistant';
 import type { ToolExecutor } from './AssistantTools';
 import { encryptForMain } from './SecureChannelClient';
-import {
-  cancelToolConfirmForToolCallId,
-  cancelToolConfirmsForCallId,
-  confirmToolCallExternal,
-} from '../toolConfirm';
+import { cancelToolConfirmsForCallId } from '../toolConfirm';
 
 /**
  * Surface AssistantManager uses to gather context at send time
@@ -995,24 +991,21 @@ export class AssistantManager {
   }
 
   /**
-   * Open the confirm dialog AND register an inline-confirmation entry,
-   * then execute or reject based on whichever the user interacts with
-   * first.
+   * Register an inline-confirmation entry in `pendingConfirms` and
+   * await the user's Accept/Reject from `<ToolCallCard>`.
    *
-   * Two paths race for the user's decision:
+   * The legacy `<ConfirmToolCall>` modal is intentionally NOT fired
+   * here. Earlier phases opened both surfaces and raced them, but the
+   * modal's overlay-click-to-dismiss behaviour intercepts mouse
+   * events before they reach the inline card, making the inline UI
+   * unusable. The modal infrastructure (`confirmToolCallExternal`,
+   * `<ConfirmToolCall>`, `ToolConfirmContext`) is left in place as
+   * latent code so a future "modal-only when sidebar collapsed"
+   * fallback can be wired without re-introducing the seams from
+   * scratch.
    *
-   *  1. **Modal** (`<ConfirmToolCall>`) — the legacy popup. Still
-   *     fires today; will be the fallback once the inline diff card
-   *     ships.
-   *  2. **Inline** (`<ToolCallCard>` reading
-   *     `chatSnapshot.pendingConfirms[toolCallId]`) — Accept/Reject
-   *     buttons on the chat card call `respondToConfirm(toolCallId, ok)`.
-   *
-   * Both routes resolve the same unified Promise. Whichever wins, the
-   * other side is dismissed: an inline win calls
-   * `cancelToolConfirmForToolCallId(toolCallId)` so the modal doesn't
-   * linger; a modal win deletes the `pendingConfirms` entry so the
-   * inline card stops rendering.
+   * `respondToConfirm(toolCallId, ok)` is the single entrypoint the
+   * inline UI uses to resolve the awaited Promise.
    */
   private async runWithConfirmation(
     payload: ChatToolCallEvent,
@@ -1025,46 +1018,24 @@ export class AssistantManager {
       callId: payload.callId,
       preview,
     };
-    // Unified Promise resolved by whichever path the user uses first.
-    // Subsequent resolves are harmless no-ops (Promises can only
-    // resolve once). `decided` guards the cleanup work so we don't
-    // dismiss the modal twice.
     let decided = false;
     let resolveUnified!: (ok: boolean) => void;
     const unified = new Promise<boolean>((r) => {
       resolveUnified = r;
     });
-    const settle = (ok: boolean, source: 'inline' | 'modal'): void => {
+    const settle = (ok: boolean): void => {
       if (decided) return;
       decided = true;
       this.pendingConfirms.delete(payload.toolCallId);
-      // Dismiss the OTHER path. Inline → kill the modal entry;
-      // modal → nothing extra (the modal is already closing itself).
-      if (source === 'inline') {
-        cancelToolConfirmForToolCallId(payload.toolCallId);
-      }
       this.rebuildChatSnapshot();
       resolveUnified(ok);
     };
 
     this.pendingConfirms.set(payload.toolCallId, {
       entry,
-      resolve: (ok) => settle(ok, 'inline'),
+      resolve: settle,
     });
     this.rebuildChatSnapshot();
-
-    // Fire-and-forget the modal: its Promise resolves through the
-    // same `settle` helper so the manager only awaits one path.
-    void confirmToolCallExternal({
-      toolCallId: payload.toolCallId,
-      toolName: payload.toolName,
-      arguments: payload.arguments,
-      preview,
-      // Tag with the in-flight chat id so `cancelCall(callId)` can
-      // drop this confirmation (and any others queued behind it) when
-      // the user cancels mid-stream.
-      callId: payload.callId,
-    }).then((modalOk) => settle(modalOk, 'modal'));
 
     const ok = await unified;
     const inflight = this.inflightChats.get(payload.callId);

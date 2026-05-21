@@ -950,25 +950,14 @@ describe('AssistantManager.onToolCall — read-class auto-execute', () => {
 });
 
 describe('AssistantManager.onToolCall — write-class confirmation', () => {
-  // The confirm dialog lives in React; AssistantManager opens it via
-  // the module-level `confirmToolCallExternal` seam. We register a
-  // fake opener that resolves with our chosen verdict.
-  let resolveOpen: ((ok: boolean) => void) | null = null;
-  beforeEach(() => {
-    resolveOpen = null;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const {
-      registerToolConfirmOpener,
-    } = require('../src/browser/react/contexts/ToolConfirmContext');
-    registerToolConfirmOpener(
-      () =>
-        new Promise<boolean>((resolve) => {
-          resolveOpen = resolve;
-        }),
-    );
-  });
+  // The confirmation surface is the inline `<ToolCallCard>` Accept /
+  // Reject row, which calls `mgr.respondToConfirm(toolCallId, ok)`.
+  // The legacy `<ConfirmToolCall>` modal is no longer fired — its
+  // overlay-click-to-dismiss behaviour was intercepting clicks
+  // destined for the inline card. We drive the same accept/reject
+  // verdicts directly via the manager's public API here.
 
-  it('opens the confirm dialog; on accept executes the tool', async () => {
+  it('records pending-confirm; respondToConfirm(true) executes the tool', async () => {
     const { bridge, sent } = makeBridge();
     const mgr = new AssistantManager(bridge as never, {
       disablePacedReveal: true,
@@ -994,7 +983,8 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
       toolName: 'write_file',
       arguments: { path: '/x.md', content: 'new' },
     });
-    // Initial state: pending-confirm, dialog open, executor NOT called.
+    // Initial state: pending-confirm, awaiting the inline button,
+    // executor NOT called.
     await Promise.resolve();
     let msg = mgr
       .getChatSnapshot()
@@ -1003,8 +993,8 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
     expect(msg?.toolCalls?.[0].status).toBe('pending-confirm');
     expect(executor.execute).not.toHaveBeenCalled();
 
-    // Accept the dialog.
-    resolveOpen!(true);
+    // Accept via the inline path.
+    mgr.respondToConfirm('tc-1', true);
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
@@ -1022,7 +1012,7 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
     expect(toolResultSend).toBeDefined();
   });
 
-  it('opens the confirm dialog; on reject ships an error-shaped tool-result + marks failed/rejected', async () => {
+  it('respondToConfirm(false) ships an error-shaped tool-result + marks failed/rejected', async () => {
     const { bridge, sent } = makeBridge();
     const mgr = new AssistantManager(bridge as never, {
       disablePacedReveal: true,
@@ -1044,7 +1034,7 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
       arguments: {},
     });
     await Promise.resolve();
-    resolveOpen!(false);
+    mgr.respondToConfirm('tc-1', false);
     await Promise.resolve();
     await Promise.resolve();
 
@@ -1086,32 +1076,19 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(executor.execute).toHaveBeenCalled();
-    expect(resolveOpen).toBeNull(); // confirm seam never invoked
+    // No pendingConfirms entry should ever have been created either —
+    // auto-accept bypasses runWithConfirmation entirely.
+    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
   });
 });
 
 describe('AssistantManager — inline confirmation (pendingConfirms + respondToConfirm)', () => {
-  // The modal opener is registered but its Promise is held open
-  // forever in these tests — the inline path is what we want to race
-  // against and verify. A `cancelForToolCallId` registration captures
-  // dismissal attempts so we can assert the inline-wins path tells
-  // the modal to close.
-  let dismissedToolCallIds: string[] = [];
-  beforeEach(() => {
-    dismissedToolCallIds = [];
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const {
-      registerToolConfirmOpener,
-      registerToolConfirmToolCallCanceller,
-    } = require('../src/browser/react/contexts/ToolConfirmContext');
-    // Modal opener that never resolves — forces the test to win via
-    // the inline path (mirrors the production scenario where the user
-    // clicks Accept/Reject on the chat card instead of the modal).
-    registerToolConfirmOpener(() => new Promise<boolean>(() => {}));
-    registerToolConfirmToolCallCanceller((id: string) => {
-      dismissedToolCallIds.push(id);
-    });
-  });
+  // The inline path is the only confirmation surface in production —
+  // the legacy `<ConfirmToolCall>` modal is no longer fired by
+  // `runWithConfirmation`. Its overlay-click-to-dismiss behaviour was
+  // intercepting clicks intended for the inline card, making the
+  // inline UI unusable. The modal infrastructure stays in place as
+  // latent code; the manager simply doesn't drive it.
 
   it('populates pendingConfirms in the chat snapshot before awaiting the user', async () => {
     const { bridge } = makeBridge();
@@ -1149,7 +1126,7 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     });
   });
 
-  it('respondToConfirm(toolCallId, true) executes the tool and dismisses the modal', async () => {
+  it('respondToConfirm(toolCallId, true) executes the tool', async () => {
     const { bridge, sent } = makeBridge();
     const mgr = new AssistantManager(bridge as never, {
       disablePacedReveal: true,
@@ -1184,8 +1161,6 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     expect(executor.execute).toHaveBeenCalled();
     // pendingConfirms cleared after the inline path resolved.
     expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
-    // Modal dismiss fired so the redundant dialog doesn't linger.
-    expect(dismissedToolCallIds).toContain('tc-1');
     // Tool result was shipped.
     expect(sent.some((s) => s.channel === 'to:ai:tool-result')).toBe(true);
   });
@@ -1219,7 +1194,6 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
 
     expect(executor.execute).not.toHaveBeenCalled();
     expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
-    expect(dismissedToolCallIds).toContain('tc-1');
     const toolResult = sent.find((s) => s.channel === 'to:ai:tool-result');
     expect(
       (toolResult!.data as { result: { error: string } }).result.error,
@@ -1231,9 +1205,8 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     const mgr = new AssistantManager(bridge as never, {
       disablePacedReveal: true,
     });
-    // Smoke: shouldn't throw, shouldn't dismiss anything.
+    // Smoke: shouldn't throw.
     expect(() => mgr.respondToConfirm('nope', true)).not.toThrow();
-    expect(dismissedToolCallIds).not.toContain('nope');
   });
 
   it('cancelCall drops pendingConfirms for that chat', async () => {
@@ -1261,54 +1234,6 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
 
     mgr.cancelCall(callId);
     expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
-  });
-
-  it('a modal win (resolves first) clears the pendingConfirms entry so the inline card unmounts', async () => {
-    // Re-register the opener with a controllable resolver so we can
-    // simulate the user clicking Accept in the modal.
-    let resolveModal: ((ok: boolean) => void) | null = null;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const {
-      registerToolConfirmOpener,
-    } = require('../src/browser/react/contexts/ToolConfirmContext');
-    registerToolConfirmOpener(
-      () =>
-        new Promise<boolean>((resolve) => {
-          resolveModal = resolve;
-        }),
-    );
-
-    const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, {
-      disablePacedReveal: true,
-    });
-    const conv = mgr.createConversation('anthropic');
-    const callId = mgr.startCall('anthropic', conv, 'hi')!;
-    mgr.setToolExecutor({
-      hasTool: () => true,
-      describe: () => [],
-      classify: () => 'write' as const,
-      buildPreview: () => null,
-      execute: jest.fn(async () => ({ ok: true })),
-    });
-    mgr.onToolCall({
-      callId,
-      toolCallId: 'tc-1',
-      toolName: 'write_file',
-      arguments: {},
-    });
-    await Promise.resolve();
-    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeDefined();
-
-    // Modal wins.
-    resolveModal!(true);
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
-    // Modal-won path does NOT call cancelForToolCallId (the modal is
-    // closing itself; no need to dismiss it).
-    expect(dismissedToolCallIds).not.toContain('tc-1');
   });
 });
 
