@@ -153,23 +153,59 @@ describe('<InlineDiffPreview>', () => {
     expect(createOpts.renderSideBySide).toBe(false);
   });
 
-  it('toggle button flips renderSideBySide via updateOptions (no remount)', () => {
+  it('toggle button recreates the diff editor with the flipped renderSideBySide option', () => {
+    // Monaco 0.55's IDiffEditor.updateOptions({renderSideBySide}) doesn't
+    // reliably flip the render mode at runtime — the editor honours
+    // the value supplied at createDiffEditor time. Editor + models
+    // are torn down and rebuilt as a single unit on toggle (single
+    // useEffect so cleanup runs editor-first then models, matching
+    // Monaco's required dispose ordering).
     render(<InlineDiffPreview original="a" modified="b" />);
-    const editor = diffEditors[0];
+    expect(diffEditors).toHaveLength(1);
+    expect(models).toHaveLength(2);
     const toggle = screen.getByTestId('inline-diff-side-by-side-toggle');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const monaco = require('monaco-editor');
 
     fireEvent.click(toggle);
-    // Last call to updateOptions should set renderSideBySide: true.
-    const calls = editor.__updateOptions.mock.calls;
-    expect(calls[calls.length - 1][0]).toEqual({ renderSideBySide: true });
-
-    // No remount — still exactly one diff editor instance.
-    expect(diffEditors).toHaveLength(1);
+    expect(diffEditors).toHaveLength(2);
+    // Last createDiffEditor call carries renderSideBySide: true.
+    const lastCall =
+      monaco.editor.createDiffEditor.mock.calls[
+        monaco.editor.createDiffEditor.mock.calls.length - 1
+      ];
+    expect(lastCall[1].renderSideBySide).toBe(true);
+    // Models are recreated too (single combined lifecycle). Newest
+    // pair carries the same content.
+    expect(models).toHaveLength(4);
+    expect(models[2].getValue()).toBe('a');
+    expect(models[3].getValue()).toBe('b');
+    expect(diffEditors[1].__setModel).toHaveBeenCalledWith({
+      original: models[2],
+      modified: models[3],
+    });
+    // The previous editor's pair was disposed before the new editor
+    // got built.
+    expect(models[0].dispose).toHaveBeenCalled();
+    expect(models[1].dispose).toHaveBeenCalled();
+    expect(diffEditors[0].__dispose).toHaveBeenCalled();
 
     fireEvent.click(toggle);
-    const calls2 = editor.__updateOptions.mock.calls;
-    expect(calls2[calls2.length - 1][0]).toEqual({ renderSideBySide: false });
-    expect(diffEditors).toHaveLength(1);
+    expect(diffEditors).toHaveLength(3);
+    const lastCall2 =
+      monaco.editor.createDiffEditor.mock.calls[
+        monaco.editor.createDiffEditor.mock.calls.length - 1
+      ];
+    expect(lastCall2[1].renderSideBySide).toBe(false);
+  });
+
+  it('disables line numbers + glyph margin so the gutter does not eat the narrow chat panel', () => {
+    render(<InlineDiffPreview original="a" modified="b" />);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const monaco = require('monaco-editor');
+    const opts = monaco.editor.createDiffEditor.mock.calls[0][1];
+    expect(opts.lineNumbers).toBe('off');
+    expect(opts.glyphMargin).toBe(false);
   });
 
   it('prop changes flow through model setValue without recreating the editor', () => {

@@ -153,23 +153,44 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
     fetchFullModified,
   ]);
 
-  // Mount + dispose. One-shot effect with [] deps so we don't recreate
-  // the diff editor on every prop change — the data-update effect
-  // below mutates models in place instead.
+  // Editor + model lifecycle. Recreates on side-by-side toggle
+  // because Monaco 0.55's `IDiffEditor.updateOptions({renderSideBySide})`
+  // doesn't reliably flip the render mode at runtime in our embedded
+  // usage — the editor honours the value supplied at
+  // `createDiffEditor` time. Bundled with model creation in a single
+  // effect so the cleanup function disposes the editor BEFORE the
+  // models in one pass (React unwinds effect cleanups in declaration
+  // order, so splitting model/editor into separate effects would
+  // dispose models first — the same "Cannot read properties of
+  // undefined (_isDisposed)" Monaco crash the workspace-switch close
+  // path hit).
+  //
+  // Content updates flow through the data-sync effect below (setValue
+  // on the existing models), so prop changes between toggles don't
+  // remount the editor.
   React.useEffect(() => {
     const host = containerRef.current;
     if (!host) return;
-    const originalModel = editor.createModel(original, language);
-    const modifiedModel = editor.createModel(modified, language);
+    // Initialise with the EFFECTIVE values so a toggle after the user
+    // clicked "Show full" doesn't revert to the truncated content.
+    const originalModel = editor.createModel(effectiveOriginal, language);
+    const modifiedModel = editor.createModel(effectiveModified, language);
     originalModelRef.current = originalModel;
     modifiedModelRef.current = modifiedModel;
     const diff = editor.createDiffEditor(host, {
-      renderSideBySide: false,
+      renderSideBySide: sideBySide,
       readOnly: true,
       automaticLayout: true,
       scrollBeyondLastLine: false,
       minimap: { enabled: false },
-      lineNumbers: 'on',
+      // Line numbers are noise inside a narrow chat panel — the diff's
+      // `detail` line already carries "Lines X–Y" for context-bounded
+      // previews. Killing them reclaims ~50px of horizontal space
+      // (default `lineNumbersMinChars: 5` × two columns in unified
+      // mode + indicator gutter).
+      lineNumbers: 'off',
+      glyphMargin: false,
+      folding: false,
       wordWrap: 'on',
       renderOverviewRuler: false,
       // Hide the per-pane scrollbars in unified mode where they cause
@@ -179,12 +200,9 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
     });
     diff.setModel({ original: originalModel, modified: modifiedModel });
     diffEditorRef.current = diff;
-
     return () => {
       // Editor first, then models — disposing a model that an editor
-      // still references throws inside Monaco's internals (the same
-      // class of "Cannot read properties of undefined (_isDisposed)"
-      // crash the workspace-switch close hit).
+      // still references throws inside Monaco's internals.
       try {
         diff.dispose();
       } catch {
@@ -204,8 +222,10 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
       originalModelRef.current = null;
       modifiedModelRef.current = null;
     };
-    // Intentionally one-shot — see comment block above.
-  }, []);
+    // Intentionally only depending on `sideBySide` — content changes
+    // flow through setValue in the data-sync effect below to avoid
+    // recreating the editor on every prop change.
+  }, [sideBySide]);
 
   // Push effective content into the existing models via setValue.
   // Cheap; avoids remounting the editor when the user clicks Accept
@@ -220,11 +240,6 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
     if (mm && mm.getValue() !== effectiveModified)
       mm.setValue(effectiveModified);
   }, [effectiveOriginal, effectiveModified]);
-
-  // Side-by-side toggle is a hot option — updateOptions, no remount.
-  React.useEffect(() => {
-    diffEditorRef.current?.updateOptions({ renderSideBySide: sideBySide });
-  }, [sideBySide]);
 
   // Theme follows the effective rendered theme (NOT the stored
   // preference) so the diff matches the surrounding editor when
