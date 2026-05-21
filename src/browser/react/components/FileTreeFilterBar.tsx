@@ -1,9 +1,9 @@
 import * as React from 'react';
 
 import {
-  FILE_EXPLORER_EXTENSION_GROUPS,
-  FILE_EXPLORER_CURATED_EXTENSIONS,
-} from '../../config';
+  WORKSPACE_EXTENSION_GROUPS,
+  WORKSPACE_EXTENSIONS,
+} from '../../../app/shared/fileExtensions';
 import { useSettings } from '../contexts/SettingsContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { Button } from './ui/button';
@@ -46,7 +46,7 @@ export const FileTreeFilterBar: React.FC<FileTreeFilterBarProps> = ({
       // Preserve the curated order so the persisted shape is stable
       // across saves (avoids spurious settings.json diffs when the
       // only change is checkbox toggling).
-      const next = FILE_EXPLORER_CURATED_EXTENSIONS.filter((e) => set.has(e));
+      const next = WORKSPACE_EXTENSIONS.filter((e) => set.has(e));
       updateSetting('fileExplorer', { extensions: next });
     },
     [extensions, updateSetting],
@@ -107,7 +107,7 @@ export const FileTreeFilterBar: React.FC<FileTreeFilterBarProps> = ({
             {t('sidebar:filter_types')}
           </div>
           <div className="flex flex-col gap-2">
-            {FILE_EXPLORER_EXTENSION_GROUPS.map((group) => (
+            {WORKSPACE_EXTENSION_GROUPS.map((group) => (
               <div key={group.key}>
                 <div className="mb-1 px-1 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground/80">
                   {t(`sidebar:filter_section_${group.key}`)}

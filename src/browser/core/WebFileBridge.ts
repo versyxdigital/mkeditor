@@ -1,5 +1,5 @@
 import { HTMLExporter } from './HTMLExporter';
-import { FILE_EXPLORER_CURATED_EXTENSIONS } from '../config';
+import { WORKSPACE_EXTENSIONS_DOTTED } from '../../app/shared/fileExtensions';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type {
   SessionPayload,
@@ -7,14 +7,6 @@ import type {
   SessionTab,
 } from '../interfaces/Session';
 import { logger } from '../util';
-
-/**
- * Pre-built set (lower-case, with leading dot) of extensions the web
- * directory listing will surface.
- */
-const WEB_WORKSPACE_EXTENSIONS: ReadonlySet<string> = new Set(
-  FILE_EXPLORER_CURATED_EXTENSIONS.map((ext) => `.${ext.toLowerCase()}`),
-);
 
 const IDB_NAME = 'mkeditor';
 const IDB_STORE = 'handles';
@@ -478,7 +470,7 @@ export class WebFileBridge implements ContextBridgeAPI {
       } else {
         const lower = name.toLowerCase();
         const dot = lower.lastIndexOf('.');
-        if (dot >= 0 && WEB_WORKSPACE_EXTENSIONS.has(lower.slice(dot))) {
+        if (dot >= 0 && WORKSPACE_EXTENSIONS_DOTTED.has(lower.slice(dot))) {
           this.handles.set(fullPath, child);
           items.push({ type: 'file', name, path: fullPath });
         }
