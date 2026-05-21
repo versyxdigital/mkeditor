@@ -71,6 +71,17 @@ function makeModel(content: string, eol: '\n' | '\r\n' = '\n'): FakeModel {
 function makeBridgeManager(
   opts: {
     activeFile?: string | null;
+    /**
+     * What `FileManager.getActiveEditablePath()` should return for
+     * this fake. Defaults to `activeFile` (filtered for untitled-
+     * prefixes) so existing tests don't have to opt in. Tests that
+     * exercise the diff-overlay regression set both `activeFile` and
+     * `editablePath` independently — the synthetic `diff://...` id
+     * goes in `activeFile`, the underlying real file goes in
+     * `editablePath` — and assert that write-tool execution routes
+     * the latter (and only the latter) into `mked.saveFile`.
+     */
+    editablePath?: string | null;
     models?: Map<string, FakeModel>;
     treeSnapshot?: {
       treeRoot: string | null;
@@ -109,6 +120,16 @@ function makeBridgeManager(
   const fileManager = {
     activeFile: opts.activeFile ?? null,
     models,
+    // Mirror the real FileManager accessor. Defaults to the
+    // active-file value (filtered for untitled-) so existing tests
+    // keep working; the diff-overlay regression test passes
+    // `editablePath` explicitly to break the mirroring.
+    getActiveEditablePath: jest.fn(() => {
+      if (opts.editablePath !== undefined) return opts.editablePath;
+      const active = opts.activeFile ?? null;
+      if (!active || active.startsWith('untitled-')) return null;
+      return active;
+    }),
     on: jest.fn((event: string, listener: () => void) => {
       if (event !== 'change') throw new Error(`unsupported event ${event}`);
       changeListeners.add(listener);
@@ -165,10 +186,21 @@ function makeBridgeManager(
     _emitTreeChange: () => treeListeners.forEach((l) => l()),
   };
 
+  // Monaco's "current model" is the editable file Monaco is actually
+  // backing — i.e. the editable path, not the diff-overlay id. Use
+  // the same resolution the production `getActiveEditablePath`
+  // accessor uses so tests where `activeFile` is `diff://...` still
+  // see Monaco's value coming from the underlying file model.
+  const resolveEditableForEditor = (): string | null => {
+    if (opts.editablePath !== undefined) return opts.editablePath;
+    const active = opts.activeFile ?? null;
+    if (!active || active.startsWith('untitled-')) return null;
+    return active;
+  };
   const mkeditor = {
     getSelection: jest.fn(() => opts.selection ?? null),
     getModel: jest.fn(() => {
-      const path = opts.activeFile;
+      const path = resolveEditableForEditor();
       if (!path) return null;
       const m = models.get(path);
       if (!m) return null;
@@ -179,7 +211,7 @@ function makeBridgeManager(
     getPosition: jest.fn(() => opts.cursorPosition ?? null),
     executeEdits: jest.fn(),
     getValue: jest.fn(() => {
-      const path = opts.activeFile;
+      const path = resolveEditableForEditor();
       if (!path) return '';
       return models.get(path)?.getValue() ?? '';
     }),
@@ -1315,6 +1347,55 @@ describe('AssistantTools — write-class execution', () => {
     expect(edits[0].range.endLineNumber).toBe(1);
     expect(edits[0].range.endColumn).toBe(2);
     expect(edits[0].text).toBe('X');
+  });
+
+  // Diff-overlay regression: when the user pops out a tool-call diff
+  // preview into a full editor tab, `FileManager.activeFile` becomes a
+  // synthetic `diff://...` id. The selection-write tools must route
+  // through `getActiveEditablePath()` so the underlying real file gets
+  // saved — not a fictitious `diff://...` path that would crash main's
+  // `to:file:save` handler. Mirror this for both write-class
+  // selection tools so neither path regresses.
+
+  it('replace_selection writes to the editable file (not the diff overlay id) when a diff tab is the active surface', async () => {
+    const model = makeModel('abc');
+    const models = new Map<string, FakeModel>();
+    models.set('/real-file.md', model);
+    const bm = makeBridgeManager({
+      activeFile: 'diff://tool-call-xyz',
+      editablePath: '/real-file.md',
+      models,
+      selection: {
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: 1,
+        endColumn: 2,
+      },
+    });
+    const tools = new AssistantTools(bm as never);
+    await tools.execute('replace_selection', { content: 'X' });
+    expect(saveFile).toHaveBeenCalledTimes(1);
+    const [savedPath] = saveFile.mock.calls[0] as [string, string];
+    expect(savedPath).toBe('/real-file.md');
+    expect(savedPath).not.toMatch(/^diff:\/\//);
+  });
+
+  it('insert_at_cursor writes to the editable file (not the diff overlay id) when a diff tab is the active surface', async () => {
+    const model = makeModel('abc');
+    const models = new Map<string, FakeModel>();
+    models.set('/real-file.md', model);
+    const bm = makeBridgeManager({
+      activeFile: 'diff://tool-call-xyz',
+      editablePath: '/real-file.md',
+      models,
+      cursorPosition: { lineNumber: 1, column: 2 },
+    });
+    const tools = new AssistantTools(bm as never);
+    await tools.execute('insert_at_cursor', { content: 'X' });
+    expect(saveFile).toHaveBeenCalledTimes(1);
+    const [savedPath] = saveFile.mock.calls[0] as [string, string];
+    expect(savedPath).toBe('/real-file.md');
+    expect(savedPath).not.toMatch(/^diff:\/\//);
   });
 });
 

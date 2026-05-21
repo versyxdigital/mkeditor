@@ -705,7 +705,11 @@ const CATALOG: Record<string, ToolSpec> = {
     toolClass: 'read',
     async execute(_args, ctx) {
       const fm = ctx.bridge.fileManager;
-      const path = fm.activeFile;
+      // Resolve through `getActiveEditablePath` so a popped-out diff
+      // tab (active path = `diff://...`) doesn't surface as the
+      // "current file" — Monaco's actual model is still pointing at
+      // the editable file underneath the overlay.
+      const path = fm.getActiveEditablePath();
       if (!path) return { path: null };
       const model = fm.models.get(path);
       if (!model) return { path };
@@ -1152,7 +1156,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const before = selection && model ? model.getValueInRange(selection) : '';
       return {
         kind: 'replace',
-        path: ctx.bridge.fileManager.activeFile ?? undefined,
+        path: ctx.bridge.fileManager.getActiveEditablePath() ?? undefined,
         before: truncate(before),
         after: truncate(content),
       };
@@ -1178,8 +1182,12 @@ const CATALOG: Record<string, ToolSpec> = {
           forceMoveMarkers: true,
         },
       ]);
-      const path = ctx.bridge.fileManager.activeFile;
-      if (path && !path.startsWith('untitled-')) {
+      // Save against the editable path so a popped-out diff overlay
+      // (`activeFile === 'diff://...'`) doesn't cause us to ship a
+      // synthetic id to `to:file:save`. `getActiveEditablePath`
+      // already filters out untitled-, so no extra guard is needed.
+      const path = ctx.bridge.fileManager.getActiveEditablePath();
+      if (path) {
         await awaitedSaveFile(path, editor.getValue());
       }
       return { ok: true };
@@ -1200,7 +1208,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const { content } = args as { content: string };
       return {
         kind: 'insert',
-        path: ctx.bridge.fileManager.activeFile ?? undefined,
+        path: ctx.bridge.fileManager.getActiveEditablePath() ?? undefined,
         after: truncate(content),
       };
     },
@@ -1228,8 +1236,11 @@ const CATALOG: Record<string, ToolSpec> = {
           forceMoveMarkers: true,
         },
       ]);
-      const path = ctx.bridge.fileManager.activeFile;
-      if (path && !path.startsWith('untitled-')) {
+      // Save against the editable path so a popped-out diff overlay
+      // doesn't route a `diff://...` id into `to:file:save`. The
+      // accessor already filters out untitled- ids.
+      const path = ctx.bridge.fileManager.getActiveEditablePath();
+      if (path) {
         await awaitedSaveFile(path, editor.getValue());
       }
       return { ok: true };

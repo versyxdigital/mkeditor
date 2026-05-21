@@ -75,6 +75,20 @@ export class FileManager {
   /** The current active file */
   public activeFile: string | null = null;
 
+  /**
+   * The most recently active *editable* (non-diff, non-untitled) tab
+   * path. Diff tabs cover the Monaco surface with a read-only overlay
+   * but don't swap the underlying model — Monaco is still pointing at
+   * whichever file tab was active before. Callsites that need to
+   * operate on the editor's current backing file (selection-based
+   * tools, save IPC, dirname lookups, the `mked://` link provider)
+   * read this via `getActiveEditablePath()` instead of `activeFile`,
+   * so they don't accidentally route a `diff://...` id into the file
+   * system. `null` while only diff/untitled tabs have ever been
+   * active in this session.
+   */
+  private lastEditableFile: string | null = null;
+
   /** Flag to determine whether the content has changed */
   public contentHasChanged = false;
 
@@ -233,6 +247,40 @@ export class FileManager {
    */
   public getSnapshot(): FilesSnapshot {
     return this.snapshot;
+  }
+
+  /**
+   * Resolve the path of the file currently visible in Monaco — the
+   * "editable" file underneath whatever overlay (diff tab) may be
+   * showing. Used by everything that needs a real filesystem path:
+   * the AI tool catalog's selection-based tools, write previews,
+   * `AssistantContextSource.getSelection`, `MkedLinkProvider`,
+   * and any code about to send `to:file:save` with a path.
+   *
+   * Returns:
+   *   - the active tab path when it's a normal file tab (and not untitled)
+   *   - the most recent editable tab path when the active tab is a
+   *     diff tab (Monaco's model is still pointing there)
+   *   - `null` for untitled-only sessions or when no editable tab
+   *     has ever been active
+   */
+  public getActiveEditablePath(): string | null {
+    const active = this.activeFile;
+    if (active) {
+      const tab = this.tabs.get(active);
+      const kind = tab?.kind ?? 'file';
+      if (kind === 'file' && !active.startsWith('untitled-')) {
+        return active;
+      }
+    }
+    if (
+      this.lastEditableFile &&
+      this.tabs.has(this.lastEditableFile) &&
+      (this.tabs.get(this.lastEditableFile)?.kind ?? 'file') === 'file'
+    ) {
+      return this.lastEditableFile;
+    }
+    return null;
   }
 
   /** Rebuild the snapshot and notify all subscribed listeners. */
@@ -401,6 +449,7 @@ export class FileManager {
     // invalidates them along with everything else.
     this.diffTabs.clear();
     this.activeFile = null;
+    this.lastEditableFile = null;
 
     // Attach the fresh untitled model BEFORE tearing down the
     // outgoing ones so Monaco never observes a "current model is
@@ -494,6 +543,12 @@ export class FileManager {
     this.tabs.delete(path);
     this.viewStates.delete(path);
     this.detachTabTracking(path);
+    // If we're closing the path we'd been falling back to for the
+    // "editable" lookup, drop it — the upcoming `activateFile` call
+    // (or fresh-untitled path) will repopulate it if appropriate.
+    if (this.lastEditableFile === path) {
+      this.lastEditableFile = null;
+    }
 
     if (this.activeFile === path) {
       this.activeFile = null;
@@ -606,6 +661,9 @@ export class FileManager {
     }
     this.tabs = next;
     this.activeFile = newPath;
+    if (!newPath.startsWith('untitled-')) {
+      this.lastEditableFile = newPath;
+    }
     this.emitChange();
     this.scheduleSessionSave();
     return true;
@@ -648,6 +706,10 @@ export class FileManager {
     }
     if (wasDirty) {
       this.dirtyByPath.set(newPath, true);
+    }
+
+    if (this.lastEditableFile === oldPath) {
+      this.lastEditableFile = newPath.startsWith('untitled-') ? null : newPath;
     }
 
     if (this.tabs.has(oldPath)) {
@@ -879,6 +941,14 @@ export class FileManager {
       // refresh the title and re-emit below so rename / no-op
       // activations behave consistently.
       this.activeFile = path;
+    }
+
+    // Remember the last editable (non-diff, non-untitled) tab path so
+    // `getActiveEditablePath()` can surface it while a diff overlay is
+    // active. Untitled tabs are excluded — saving `untitled-N` via IPC
+    // is meaningless.
+    if (!path.startsWith('untitled-')) {
+      this.lastEditableFile = path;
     }
 
     const filename = name || path.split(/[\\/]/).pop() || '';
@@ -1163,6 +1233,9 @@ export class FileManager {
       // about the new model — clean transition, no stale-state mixing.
       if (this.activeFile && !desiredPaths.has(this.activeFile)) {
         this.activeFile = null;
+      }
+      if (this.lastEditableFile && !desiredPaths.has(this.lastEditableFile)) {
+        this.lastEditableFile = null;
       }
 
       // Advance the untitled counter past every restored synthetic id so

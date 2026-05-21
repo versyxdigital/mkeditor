@@ -307,3 +307,103 @@ describe('FileManager.serializeSession (diff-tab filter)', () => {
     ).toBe(true);
   });
 });
+
+describe('FileManager.getActiveEditablePath', () => {
+  // `activeFile` is polymorphic — for `kind: 'diff'` tabs it holds a
+  // synthetic id (`diff://...`) rather than a filesystem path. The
+  // selection-write tools, MkedLinkProvider, and the menu File-New
+  // unsaved-prompt all need the path Monaco is actually backing
+  // (which is the file UNDER the overlay, not the overlay itself).
+  // These tests pin down the resolution rules so a future refactor
+  // doesn't accidentally let a `diff://...` id leak back out.
+
+  it('returns null for an untitled-only session', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+    fm.seedUntitled('');
+    expect(fm.activeFile?.startsWith('untitled-')).toBe(true);
+    expect(fm.getActiveEditablePath()).toBeNull();
+  });
+
+  it('returns the active path when a normal file tab is focused', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+    // Simulate a real-file tab landing in FileManager the way
+    // BridgeListeners does for `from:file:opened`.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { editor } = require('monaco-editor');
+    const mdl = editor.createModel('hello');
+    fm.models.set('/abs/README.md', mdl);
+    fm.originals.set('/abs/README.md', 'hello');
+    fm.trackTab('/abs/README.md', mdl);
+    fm.addTab('README.md', '/abs/README.md');
+    fm.activateFile('/abs/README.md', 'README.md');
+
+    expect(fm.getActiveEditablePath()).toBe('/abs/README.md');
+  });
+
+  it('falls back to the last-active file tab when a diff overlay is focused', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { editor } = require('monaco-editor');
+    const mdl = editor.createModel('hello');
+    fm.models.set('/abs/README.md', mdl);
+    fm.originals.set('/abs/README.md', 'hello');
+    fm.trackTab('/abs/README.md', mdl);
+    fm.addTab('README.md', '/abs/README.md');
+    fm.activateFile('/abs/README.md', 'README.md');
+
+    fm.openDiffTab({
+      id: 'diff://tc-1',
+      name: 'Δ README.md',
+      original: 'old',
+      modified: 'new',
+      sourcePath: '/abs/README.md',
+    });
+
+    // `activeFile` is now the diff overlay id — but the editable
+    // accessor still surfaces the file Monaco is actually backing.
+    expect(fm.activeFile).toBe('diff://tc-1');
+    expect(fm.getActiveEditablePath()).toBe('/abs/README.md');
+  });
+
+  it('returns null after the last-active file tab is closed (no editable file remains)', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { editor } = require('monaco-editor');
+    const mdl = editor.createModel('hello');
+    fm.models.set('/abs/README.md', mdl);
+    fm.originals.set('/abs/README.md', 'hello');
+    fm.trackTab('/abs/README.md', mdl);
+    fm.addTab('README.md', '/abs/README.md');
+    fm.activateFile('/abs/README.md', 'README.md');
+
+    await fm.closeTab('/abs/README.md');
+
+    // closeTab's "no tabs left" branch seeds a fresh untitled; the
+    // editable accessor should now report null (only an untitled).
+    expect(fm.getActiveEditablePath()).toBeNull();
+  });
+});

@@ -25,8 +25,11 @@ export class AssistantContextSource implements AssistantContextProvider {
    */
   getActiveFile(): { path: string; content: string } | null {
     const fm = this.bridge.fileManager;
-    const path = fm.activeFile;
-    if (!path || path.startsWith('untitled-')) return null;
+    // `getActiveEditablePath` filters out diff-tab ids + untitled-
+    // ids, so when the user has popped out a diff preview the
+    // assistant still sees the editable file beneath the overlay.
+    const path = fm.getActiveEditablePath();
+    if (!path) return null;
     const model = fm.models.get(path);
     if (!model) return null;
     return { path, content: model.getValue() };
@@ -52,8 +55,10 @@ export class AssistantContextSource implements AssistantContextProvider {
     const text = model.getValueInRange(selection);
     if (!text) return null;
     const fm = this.bridge.fileManager;
-    const active = fm.activeFile;
-    const path = active && !active.startsWith('untitled-') ? active : null;
+    // Selection's owning file is whatever Monaco is actually backing —
+    // i.e. the editable file underneath any diff overlay, NOT the
+    // diff-tab id. Falls back to null for untitled-only sessions.
+    const path = fm.getActiveEditablePath();
     return {
       path,
       text,
