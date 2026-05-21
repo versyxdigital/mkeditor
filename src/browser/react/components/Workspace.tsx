@@ -8,6 +8,7 @@ import {
 
 import { useManagers } from '../contexts/ManagersContext';
 import { EditorHost } from './EditorHost';
+import { EditorPaneDiffOverlay } from './EditorPaneDiffOverlay';
 import { PreviewPane } from './PreviewPane';
 
 interface WorkspaceProps {
@@ -45,7 +46,14 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         // Monaco entirely.
         style={{ overflow: 'hidden' }}
       >
-        <EditorHost onReady={onEditorReady} />
+        {/* `position: relative` anchor for the diff overlay below.
+            The overlay absolute-fills this wrapper when the active
+            tab is a popped-out diff; otherwise it returns null and
+            Monaco renders unobstructed. */}
+        <div className="relative h-full w-full">
+          <EditorHost onReady={onEditorReady} />
+          <EditorPaneDiffOverlay />
+        </div>
       </Panel>
       <Separator className="gutter gutter-horizontal" />
       <Panel id="preview-pane">

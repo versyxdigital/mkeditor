@@ -1,10 +1,17 @@
 import * as React from 'react';
 
-import type { ToolInvocation } from '../../../../app/interfaces/Assistant';
+import type {
+  PendingConfirm,
+  ToolInvocation,
+} from '../../../../app/interfaces/Assistant';
 import { useAssistantChat } from '../../contexts/AssistantContext';
+import { useManagers } from '../../contexts/ManagersContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
+import { Button } from '../ui/button';
 import { Icon } from '../Icon';
+import { InlineDiffPreview } from './InlineDiffPreview';
+import { InsertPreview } from './InsertPreview';
 
 /**
  * Inline collapsible card for a single `ToolInvocation`. Rendered
@@ -66,6 +73,16 @@ export const ToolCallCard: React.FC<{ invocation: ToolInvocation }> = ({
     manager.startCall(activeProvider, conversationId, prompt);
   }, [manager, chat, invocation, t]);
 
+  // Inline confirmation card: rendered above the standard expand row
+  // when this tool is awaiting the user's OK AND the manager has
+  // surfaced the preview in `chat.pendingConfirms`. The modal opens
+  // alongside; whichever the user interacts with first wins (manager
+  // dismisses the other via the race-resolution in `runWithConfirmation`).
+  const pending: PendingConfirm | undefined =
+    invocation.status === 'pending-confirm'
+      ? chat.pendingConfirms[invocation.toolCallId]
+      : undefined;
+
   return (
     <div
       data-testid={`tool-call-${invocation.toolCallId}`}
@@ -90,6 +107,16 @@ export const ToolCallCard: React.FC<{ invocation: ToolInvocation }> = ({
           <StatusBadge status={invocation.status} />
         </span>
       </button>
+
+      {pending && (
+        <InlineConfirm
+          invocation={invocation}
+          pending={pending}
+          onRespond={(ok) =>
+            manager?.respondToConfirm(invocation.toolCallId, ok)
+          }
+        />
+      )}
 
       {expanded && (
         <div className="mt-2 flex flex-col gap-2 border-t border-current/20 pt-2">
@@ -141,6 +168,191 @@ export const ToolCallCard: React.FC<{ invocation: ToolInvocation }> = ({
     </div>
   );
 };
+
+/* -------------------------------------------------------------------- */
+/*  Inline confirmation card                                            */
+/* -------------------------------------------------------------------- */
+
+/**
+ * Inline tool-confirmation surface — Monaco diff (for write / edit /
+ * replace) or single-block (for insert / create) above a sticky Accept
+ * / Reject footer. The modal version of this card (`<ConfirmToolCall>`)
+ * still opens in parallel as a fallback; the manager races the two,
+ * dismissing the loser.
+ */
+const InlineConfirm: React.FC<{
+  invocation: ToolInvocation;
+  pending: PendingConfirm;
+  onRespond: (ok: boolean) => void;
+}> = ({ invocation, pending, onRespond }) => {
+  const { t } = useTranslation();
+  const { fileManager } = useManagers();
+  const { manager } = useAssistantChat();
+  const { preview } = pending;
+  const { diffProps, blockProps } = useInlineConfirmContent(
+    invocation,
+    preview,
+    manager,
+  );
+
+  // Pop-out handler: lifts the currently-visible diff content out of
+  // the chat card and into a real editor tab via FileManager. The
+  // tab id is keyed off `toolCallId` so re-clicking pop-out for the
+  // same tool just re-focuses the existing tab (openDiffTab handles
+  // the upsert). Disabled (handler undefined) for non-diff previews
+  // — the InsertPreview component doesn't take an onPopOut.
+  const popOut = React.useCallback(
+    (current: { original: string; modified: string }) => {
+      if (!fileManager) return;
+      const path = preview?.path;
+      const baseName = path
+        ? (path.split(/[\\/]/).pop() ?? path)
+        : invocation.toolName;
+      fileManager.openDiffTab({
+        id: `diff://${invocation.toolCallId}`,
+        name: `Δ ${baseName}`,
+        original: current.original,
+        modified: current.modified,
+        language: 'markdown',
+        sourcePath: path,
+      });
+    },
+    [fileManager, invocation.toolCallId, invocation.toolName, preview?.path],
+  );
+
+  return (
+    <div className="mt-2 flex flex-col gap-2 border-t border-current/20 pt-2">
+      {preview && preview.path ? (
+        <p className="break-all text-xs font-semibold opacity-80">
+          {t(PREVIEW_KIND_LABEL[preview.kind], { path: preview.path })}
+          {preview.detail ? ` · ${preview.detail}` : ''}
+        </p>
+      ) : null}
+      {diffProps ? (
+        <InlineDiffPreview
+          {...diffProps}
+          onPopOut={fileManager ? popOut : undefined}
+        />
+      ) : blockProps ? (
+        <InsertPreview {...blockProps} />
+      ) : null}
+      {/* Sticky footer — Accept / Reject. Stays visible even when the
+          diff editor scrolls inside its own height cap. */}
+      <div className="sticky bottom-0 -mx-2 flex items-center justify-end gap-2 border-t border-current/20 bg-inherit px-2 py-1.5">
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => onRespond(false)}
+          data-testid={`tool-call-reject-${invocation.toolCallId}`}
+        >
+          {t('assistant-tools:confirm_reject')}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="default"
+          onClick={() => onRespond(true)}
+          data-testid={`tool-call-accept-${invocation.toolCallId}`}
+        >
+          {t('assistant-tools:confirm_accept')}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const PREVIEW_KIND_LABEL: Record<
+  NonNullable<PendingConfirm['preview']>['kind'],
+  string
+> = {
+  create: 'assistant-tools:preview_create',
+  write: 'assistant-tools:preview_write',
+  edit: 'assistant-tools:preview_edit',
+  replace: 'assistant-tools:preview_replace',
+  insert: 'assistant-tools:preview_insert',
+};
+
+/**
+ * Per-preview-kind table of which sides are expandable through the
+ * "Show full" button. The expansion itself lives in
+ * `AssistantManager.getFullPreviewContent` (which delegates to the
+ * tool's `getFullContent` in `AssistantTools.ts`); the renderer only
+ * needs to know whether to surface a button per side. Keeping the
+ * file-IO and EOL-normalisation logic on the manager side means the
+ * expanded preview agrees with what the tool actually writes — and
+ * keeps `window.mked.readFile` out of React.
+ */
+const EXPANDABLE_SIDES: Record<
+  NonNullable<PendingConfirm['preview']>['kind'],
+  { before: boolean; after: boolean }
+> = {
+  write: { before: true, after: true },
+  edit: { before: true, after: true },
+  replace: { before: false, after: true },
+  create: { before: false, after: true },
+  insert: { before: false, after: true },
+};
+
+/**
+ * Compute the props for `<InlineDiffPreview>` or `<InsertPreview>`
+ * based on the tool's kind. The "Show full" fetchers all route
+ * through `manager.getFullPreviewContent(toolCallId, side)` — the
+ * React layer never touches `window.mked` directly. When `manager`
+ * is null (initial mount before composition root wires it) the
+ * fetchers are omitted entirely so no expander button appears.
+ */
+function useInlineConfirmContent(
+  invocation: ToolInvocation,
+  preview: PendingConfirm['preview'],
+  manager: import('../../../core/AssistantManager').AssistantManager | null,
+): {
+  diffProps?: React.ComponentProps<typeof InlineDiffPreview>;
+  blockProps?: React.ComponentProps<typeof InsertPreview>;
+} {
+  return React.useMemo(() => {
+    if (!preview) return {};
+    const expandable = EXPANDABLE_SIDES[preview.kind];
+    const buildFetcher = (
+      side: 'before' | 'after',
+    ): (() => Promise<string>) | undefined => {
+      if (!manager) return undefined;
+      if (!expandable[side]) return undefined;
+      return async () => {
+        const content = await manager.getFullPreviewContent(
+          invocation.toolCallId,
+          side,
+        );
+        if (content === undefined) {
+          // The tool's `getFullContent` returned no content for this
+          // side (no executor wired, or — more commonly — the
+          // confirmation already resolved out from under us). Throw
+          // so the hook surfaces a Retry affordance instead of
+          // silently swapping in empty content.
+          throw new Error('Full content unavailable.');
+        }
+        return content;
+      };
+    };
+    if (preview.kind === 'insert' || preview.kind === 'create') {
+      return {
+        blockProps: {
+          content: preview.after,
+          detail: preview.detail,
+          fetchFull: buildFetcher('after'),
+        },
+      };
+    }
+    return {
+      diffProps: {
+        original: preview.before ?? '',
+        modified: preview.after,
+        fetchFullOriginal: buildFetcher('before'),
+        fetchFullModified: buildFetcher('after'),
+      },
+    };
+  }, [invocation.toolCallId, preview, manager]);
+}
 
 const StatusBadge: React.FC<{ status: ToolInvocation['status'] }> = ({
   status,

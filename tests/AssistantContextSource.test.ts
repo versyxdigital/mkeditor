@@ -26,6 +26,7 @@ interface FakeBridgeManager {
   fileManager: {
     activeFile: string | null;
     models: Map<string, FakeModel>;
+    getActiveEditablePath: jest.Mock<string | null, []>;
   };
   mkeditor: {
     getSelection: jest.Mock;
@@ -36,6 +37,15 @@ interface FakeBridgeManager {
 function makeBridge(
   opts: {
     activeFile?: string | null;
+    /**
+     * Opt-in override for `FileManager.getActiveEditablePath()`. Tests
+     * that simulate a popped-out diff overlay set `activeFile` to the
+     * synthetic `diff://...` id AND `editablePath` to the underlying
+     * real file path, and assert the source returns the latter.
+     * When omitted the stub mirrors the real accessor (active path
+     * unless it's `null` or `untitled-`).
+     */
+    editablePath?: string | null;
     models?: Record<string, string>;
     selection?: FakeRange | null;
     selectionText?: string;
@@ -48,15 +58,29 @@ function makeBridge(
       getValueInRange: jest.fn(() => opts.selectionText ?? ''),
     });
   }
+  const resolveEditable = (): string | null => {
+    if (opts.editablePath !== undefined) return opts.editablePath;
+    const active = opts.activeFile ?? null;
+    if (!active || active.startsWith('untitled-')) return null;
+    return active;
+  };
   return {
     fileManager: {
       activeFile: opts.activeFile ?? null,
       models,
+      getActiveEditablePath: jest.fn(resolveEditable),
     },
     mkeditor: {
       getSelection: jest.fn(() => opts.selection ?? null),
       getModel: jest.fn(() => {
-        const path = opts.activeFile;
+        // Monaco's "current model" is whatever the editor is actually
+        // backing. For a normal file or untitled tab that's the
+        // activeFile's model; for a popped-out diff overlay Monaco
+        // keeps backing the file UNDERNEATH (`editablePath`) because
+        // we never `setModel`-swap when a diff tab activates.
+        const active = opts.activeFile ?? null;
+        const path =
+          active && active.startsWith('diff://') ? resolveEditable() : active;
         if (!path) return null;
         return models.get(path) ?? null;
       }),
@@ -123,6 +147,25 @@ describe('AssistantContextSource.getActiveFile', () => {
       makeBridge({ activeFile: '/w/gone.md' }) as never,
     );
     expect(src.getActiveFile()).toBeNull();
+  });
+
+  it('returns the underlying editable file when a popped-out diff overlay is the active tab', () => {
+    // Regression: `FileManager.activeFile` becomes a `diff://...`
+    // synthetic id while a tool-call confirmation has been popped
+    // out into a full editor tab. The context surface must surface
+    // the file Monaco is actually backing — not the diff id — so the
+    // assistant doesn't see a phantom `diff://...` chip.
+    const src = new AssistantContextSource(
+      makeBridge({
+        activeFile: 'diff://tool-call-1',
+        editablePath: '/w/under-the-overlay.md',
+        models: { '/w/under-the-overlay.md': 'real body' },
+      }) as never,
+    );
+    expect(src.getActiveFile()).toEqual({
+      path: '/w/under-the-overlay.md',
+      content: 'real body',
+    });
   });
 });
 
@@ -195,6 +238,32 @@ describe('AssistantContextSource.getSelection', () => {
       text: 'scr',
       startLine: 1,
       endLine: 1,
+    });
+  });
+
+  it('reports the underlying editable path when a popped-out diff overlay is active', () => {
+    // Same regression as `getActiveFile`: the selection chip must
+    // carry the real filesystem path the agent can act on, not the
+    // synthetic `diff://...` overlay id.
+    const src = new AssistantContextSource(
+      makeBridge({
+        activeFile: 'diff://tool-call-1',
+        editablePath: '/w/under-the-overlay.md',
+        models: { '/w/under-the-overlay.md': 'body' },
+        selection: {
+          startLineNumber: 2,
+          startColumn: 1,
+          endLineNumber: 2,
+          endColumn: 5,
+        },
+        selectionText: 'body',
+      }) as never,
+    );
+    expect(src.getSelection()).toEqual({
+      path: '/w/under-the-overlay.md',
+      text: 'body',
+      startLine: 2,
+      endLine: 2,
     });
   });
 });

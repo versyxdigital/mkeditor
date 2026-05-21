@@ -19,12 +19,14 @@ import { faEyeSlash } from '@fortawesome/free-solid-svg-icons/faEyeSlash';
 import { faFileExport } from '@fortawesome/free-solid-svg-icons/faFileExport';
 import { faFile } from '@fortawesome/free-solid-svg-icons/faFile';
 import { faFilePdf } from '@fortawesome/free-solid-svg-icons/faFilePdf';
+import { faFilter } from '@fortawesome/free-solid-svg-icons/faFilter';
 import { faFolder } from '@fortawesome/free-solid-svg-icons/faFolder';
 import { faFolderOpen } from '@fortawesome/free-solid-svg-icons/faFolderOpen';
 import { faItalic } from '@fortawesome/free-solid-svg-icons/faItalic';
 import { faLink } from '@fortawesome/free-solid-svg-icons/faLink';
 import { faListOl } from '@fortawesome/free-solid-svg-icons/faListOl';
 import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
+import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons/faMagnifyingGlass';
 import { faMoon } from '@fortawesome/free-solid-svg-icons/faMoon';
 import { faQuestionCircle } from '@fortawesome/free-solid-svg-icons/faQuestionCircle';
 import { faRefresh } from '@fortawesome/free-solid-svg-icons/faRefresh';
@@ -37,6 +39,7 @@ import { faTasks } from '@fortawesome/free-solid-svg-icons/faTasks';
 import { faTerminal } from '@fortawesome/free-solid-svg-icons/faTerminal';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
+import { faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons/faUpRightFromSquare';
 
 library.add(
   faBars,
@@ -61,10 +64,12 @@ library.add(
   faFolderOpen,
   faFileExport,
   faFilePdf,
+  faFilter,
   faItalic,
   faLink,
   faListUl,
   faListOl,
+  faMagnifyingGlass,
   faMoon,
   faQuestionCircle,
   faRefresh,
@@ -77,6 +82,7 @@ library.add(
   faTerminal,
   faTimes,
   faTrash,
+  faUpRightFromSquare,
 );
 
 dom.watch();

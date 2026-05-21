@@ -108,7 +108,15 @@
     "show_less": "Mostrar menos",
     "retry": "Reintentar",
     "retry_prompt": "Por favor vuelva a intentar la llamada {{toolName}}.",
-    "retry_prompt_with_args": "Por favor reintente {{toolName}} con los argumentos: {{args}}"
+    "retry_prompt_with_args": "Por favor reintente {{toolName}} con los argumentos: {{args}}",
+    "diff_view_unified": "Cambiar a diff unificado",
+    "diff_view_side_by_side": "Cambiar a diff lado a lado",
+    "diff_pop_out": "Abrir en pestaña del editor",
+    "preview_show_full": "Mostrar completo",
+    "preview_show_less": "Mostrar menos",
+    "preview_loading": "Cargando…",
+    "preview_retry": "Reintentar",
+    "preview_truncated_hint": "Vista previa truncada"
   },
   "assistant": {
     "title": "Asistente de IA",
@@ -372,7 +380,14 @@
     "open_folder": "Abrir carpeta",
     "restore_workspace": "Restaurar carpeta anterior",
     "disconnect_folder": "Desconectar carpeta",
-    "chromium_only_warning": "El acceso a carpetas solo está disponible en navegadores basados en Chromium (Chrome, Edge, Brave, Opera)."
+    "chromium_only_warning": "El acceso a carpetas solo está disponible en navegadores basados en Chromium (Chrome, Edge, Brave, Opera).",
+    "search_placeholder": "Buscar archivos",
+    "filter_label": "Filtrar tipos de archivo",
+    "filter_types": "Tipos de archivo",
+    "filter_section_markdown": "Markdown",
+    "filter_section_images": "Imágenes",
+    "filter_section_documents": "Documentos",
+    "filter_reset_to_md": "Restablecer a solo .md"
   },
   "toolbar": {
     "reset_split": "Restablecer división editor/vista previa",

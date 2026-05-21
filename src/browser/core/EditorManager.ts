@@ -42,6 +42,30 @@ interface EditorCreateOptions {
   watch?: boolean;
 }
 
+/**
+ * Per-instance configuration for a diff-preview surface. The Monaco
+ * tuning (line numbers, gutters, scrollbars, narrow-panel overrides)
+ * is fixed inside `createDiffPreview` — this struct only carries the
+ * values that vary per call: the language and the render mode.
+ */
+export interface DiffPreviewOptions {
+  language: string;
+  renderSideBySide: boolean;
+}
+
+/**
+ * Handle returned from `EditorManager.createDiffPreview`. Callers
+ * update content via `setOriginal` / `setModified` (no remount) and
+ * tear the whole thing down with `dispose` (editor-first, then both
+ * models — the order Monaco requires to avoid a
+ * `Cannot read properties of undefined (_isDisposed)` crash).
+ */
+export interface DiffPreviewHandle {
+  setOriginal(value: string): void;
+  setModified(value: string): void;
+  dispose(): void;
+}
+
 export class EditorManager {
   /** Editor instance */
   private mkeditor: editor.IStandaloneCodeEditor | null = null;
@@ -221,6 +245,101 @@ export class EditorManager {
     if (!this.mkeditor) return;
     this.mkeditor.dispose();
     this.mkeditor = null;
+  }
+
+  /**
+   * Spin up a read-only Monaco diff-editor surface backed by two
+   * throwaway models. Called by `<InlineDiffPreview>` so the chat
+   * tool-confirmation card can render an inline diff without
+   * importing `monaco-editor` itself — the manager/React rule keeps
+   * every `monaco-editor` create call inside `core/`.
+   *
+   * The returned handle exposes:
+   *   - `setOriginal(value)` / `setModified(value)` — push new
+   *     content into the existing models (Monaco recovers from
+   *     setValue cleanly, but NOT from setModel(disposed); the
+   *     React component uses these to avoid a remount on prop
+   *     changes).
+   *   - `dispose()` — tear down editor THEN models (Monaco crashes
+   *     if a model is disposed while an editor still references it).
+   *
+   * The chat-panel-specific Monaco tuning (no line numbers / glyph
+   * margin, fontSize 12, narrow-panel overrides, etc.) is fixed
+   * here rather than parameterised — there's only one diff-preview
+   * surface in the app, and exposing every Monaco knob would defeat
+   * the seam.
+   */
+  public createDiffPreview(
+    host: HTMLElement,
+    original: string,
+    modified: string,
+    options: DiffPreviewOptions,
+  ): DiffPreviewHandle {
+    const originalModel = editor.createModel(original, options.language);
+    const modifiedModel = editor.createModel(modified, options.language);
+    const diff = editor.createDiffEditor(host, {
+      renderSideBySide: options.renderSideBySide,
+      // Monaco silently forces inline view when the editor is
+      // narrower than `renderSideBySideInlineBreakpoint` (default
+      // ~900px) and `useInlineViewWhenSpaceIsLimited` is true (also
+      // default). The chat panel is well under 900px, so without
+      // these overrides the side-by-side toggle would have no
+      // visible effect — Monaco overrides `renderSideBySide` on
+      // every layout pass.
+      useInlineViewWhenSpaceIsLimited: false,
+      renderSideBySideInlineBreakpoint: 0,
+      // Smaller than Monaco's 14px default — the chat panel is tight
+      // and the diff is a preview, not the main editing surface.
+      fontSize: 12,
+      readOnly: true,
+      automaticLayout: true,
+      scrollBeyondLastLine: false,
+      minimap: { enabled: false },
+      // Line numbers are noise inside a narrow chat panel — the
+      // tool-card's `detail` line already carries "Lines X–Y" for
+      // context-bounded previews. Killing them reclaims ~50px of
+      // horizontal space.
+      lineNumbers: 'off',
+      glyphMargin: false,
+      folding: false,
+      wordWrap: 'on',
+      renderOverviewRuler: false,
+      // Hide per-pane scrollbars in unified mode where they cause
+      // double-scrollbar noise; the inline diff fits the chat panel
+      // better without them.
+      scrollbar: { vertical: 'auto', horizontal: 'hidden' },
+    });
+    diff.setModel({ original: originalModel, modified: modifiedModel });
+
+    return {
+      setOriginal(value: string) {
+        if (originalModel.getValue() !== value) originalModel.setValue(value);
+      },
+      setModified(value: string) {
+        if (modifiedModel.getValue() !== value) modifiedModel.setValue(value);
+      },
+      dispose() {
+        // Editor first, then models — disposing a model that an
+        // editor still references throws inside Monaco's internals.
+        // Per-step try/catch so an already-disposed downstream
+        // doesn't strand the others.
+        try {
+          diff.dispose();
+        } catch {
+          // already-disposed; nothing to do
+        }
+        try {
+          originalModel.dispose();
+        } catch {
+          // already-disposed; nothing to do
+        }
+        try {
+          modifiedModel.dispose();
+        } catch {
+          // already-disposed; nothing to do
+        }
+      },
+    };
   }
 
   /**

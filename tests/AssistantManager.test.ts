@@ -782,6 +782,66 @@ describe('AssistantManager — paced streaming reveal (P8)', () => {
     );
   });
 
+  it('drains the buffer when a tool call arrives mid-burst (no split words around the tool card)', async () => {
+    // Regression: the model emits a burst that includes a tool-call
+    // event before the paced reveal has finished painting the preceding
+    // text. Without draining the buffer first, the post-tool reveal
+    // tick paints those leftover chars into a fresh text segment AFTER
+    // the tool card — splitting whatever was mid-word ("…two new v" →
+    // [tool] → "erses!…"). The buffer must drain so the pre-tool text
+    // settles into the segment BEFORE the tool card.
+    const { bridge } = makeBridge();
+    const clock = fakeFrameClock();
+    const mgr = new AssistantManager(bridge as never, {
+      requestFrame: clock.requestFrame,
+      cancelFrame: clock.cancelFrame,
+    });
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'read' as const,
+      buildPreview: () => null,
+      execute: async () => ({ ok: true }),
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+
+    // Burst the model's full pre-tool text. Only a fraction will have
+    // been revealed before the tool call arrives.
+    mgr.appendChunk(
+      callId,
+      "I'll read the poem first, then add two new verses!",
+    );
+    clock.tick(); // reveal a slice, buffer still has the rest
+
+    // Tool call lands mid-reveal.
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'read_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Post-tool text arrives later.
+    mgr.appendChunk(callId, 'Done!');
+    for (let i = 0; i < 10; i++) clock.tick();
+
+    const msg = mgr
+      .getChatSnapshot()
+      .conversations.anthropic.find((c) => c.id === conv)!
+      .messages.find((m) => m.role === 'assistant')!;
+    expect(msg.segments).toEqual([
+      {
+        type: 'text',
+        text: "I'll read the poem first, then add two new verses!",
+      },
+      { type: 'tool-call', toolCallId: 'tc-1' },
+      { type: 'text', text: 'Done!' },
+    ]);
+  });
+
   it('drains the buffer on cancelCall too (no token loss when user hits Stop mid-burst)', () => {
     const { bridge } = makeBridge();
     const clock = fakeFrameClock();
@@ -950,25 +1010,14 @@ describe('AssistantManager.onToolCall — read-class auto-execute', () => {
 });
 
 describe('AssistantManager.onToolCall — write-class confirmation', () => {
-  // The confirm dialog lives in React; AssistantManager opens it via
-  // the module-level `confirmToolCallExternal` seam. We register a
-  // fake opener that resolves with our chosen verdict.
-  let resolveOpen: ((ok: boolean) => void) | null = null;
-  beforeEach(() => {
-    resolveOpen = null;
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const {
-      registerToolConfirmOpener,
-    } = require('../src/browser/react/contexts/ToolConfirmContext');
-    registerToolConfirmOpener(
-      () =>
-        new Promise<boolean>((resolve) => {
-          resolveOpen = resolve;
-        }),
-    );
-  });
+  // The confirmation surface is the inline `<ToolCallCard>` Accept /
+  // Reject row, which calls `mgr.respondToConfirm(toolCallId, ok)`.
+  // The legacy `<ConfirmToolCall>` modal is no longer fired — its
+  // overlay-click-to-dismiss behaviour was intercepting clicks
+  // destined for the inline card. We drive the same accept/reject
+  // verdicts directly via the manager's public API here.
 
-  it('opens the confirm dialog; on accept executes the tool', async () => {
+  it('records pending-confirm; respondToConfirm(true) executes the tool', async () => {
     const { bridge, sent } = makeBridge();
     const mgr = new AssistantManager(bridge as never, {
       disablePacedReveal: true,
@@ -994,7 +1043,8 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
       toolName: 'write_file',
       arguments: { path: '/x.md', content: 'new' },
     });
-    // Initial state: pending-confirm, dialog open, executor NOT called.
+    // Initial state: pending-confirm, awaiting the inline button,
+    // executor NOT called.
     await Promise.resolve();
     let msg = mgr
       .getChatSnapshot()
@@ -1003,8 +1053,8 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
     expect(msg?.toolCalls?.[0].status).toBe('pending-confirm');
     expect(executor.execute).not.toHaveBeenCalled();
 
-    // Accept the dialog.
-    resolveOpen!(true);
+    // Accept via the inline path.
+    mgr.respondToConfirm('tc-1', true);
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
@@ -1022,7 +1072,7 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
     expect(toolResultSend).toBeDefined();
   });
 
-  it('opens the confirm dialog; on reject ships an error-shaped tool-result + marks failed/rejected', async () => {
+  it('respondToConfirm(false) ships an error-shaped tool-result + marks failed/rejected', async () => {
     const { bridge, sent } = makeBridge();
     const mgr = new AssistantManager(bridge as never, {
       disablePacedReveal: true,
@@ -1044,7 +1094,7 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
       arguments: {},
     });
     await Promise.resolve();
-    resolveOpen!(false);
+    mgr.respondToConfirm('tc-1', false);
     await Promise.resolve();
     await Promise.resolve();
 
@@ -1086,7 +1136,262 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(executor.execute).toHaveBeenCalled();
-    expect(resolveOpen).toBeNull(); // confirm seam never invoked
+    // No pendingConfirms entry should ever have been created either —
+    // auto-accept bypasses runWithConfirmation entirely.
+    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
+  });
+});
+
+describe('AssistantManager — inline confirmation (pendingConfirms + respondToConfirm)', () => {
+  // The inline path is the only confirmation surface in production —
+  // the legacy `<ConfirmToolCall>` modal is no longer fired by
+  // `runWithConfirmation`. Its overlay-click-to-dismiss behaviour was
+  // intercepting clicks intended for the inline card, making the
+  // inline UI unusable. The modal infrastructure stays in place as
+  // latent code; the manager simply doesn't drive it.
+
+  it('populates pendingConfirms in the chat snapshot before awaiting the user', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const preview = {
+      kind: 'write' as const,
+      path: '/x.md',
+      after: 'new content',
+    };
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => preview,
+      execute: jest.fn(),
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: { path: '/x.md', content: 'new content' },
+    });
+    await Promise.resolve();
+
+    const snapshot = mgr.getChatSnapshot();
+    expect(snapshot.pendingConfirms['tc-1']).toEqual({
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      callId,
+      preview,
+    });
+  });
+
+  it('respondToConfirm(toolCallId, true) executes the tool', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const executor = {
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => ({
+        kind: 'write' as const,
+        path: '/x.md',
+        after: 'new',
+      }),
+      execute: jest.fn(async () => ({ ok: true })),
+    };
+    mgr.setToolExecutor(executor);
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: { path: '/x.md', content: 'new' },
+    });
+    await Promise.resolve();
+
+    mgr.respondToConfirm('tc-1', true);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(executor.execute).toHaveBeenCalled();
+    // pendingConfirms cleared after the inline path resolved.
+    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
+    // Tool result was shipped.
+    expect(sent.some((s) => s.channel === 'to:ai:tool-result')).toBe(true);
+  });
+
+  it('respondToConfirm(toolCallId, false) ships an error-shaped tool-result and marks the call failed/rejected', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const executor = {
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => null,
+      execute: jest.fn(),
+    };
+    mgr.setToolExecutor(executor);
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+
+    mgr.respondToConfirm('tc-1', false);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(executor.execute).not.toHaveBeenCalled();
+    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
+    const toolResult = sent.find((s) => s.channel === 'to:ai:tool-result');
+    expect(
+      (toolResult!.data as { result: { error: string } }).result.error,
+    ).toBe('rejected');
+  });
+
+  it('respondToConfirm is a no-op for unknown toolCallIds', () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    // Smoke: shouldn't throw.
+    expect(() => mgr.respondToConfirm('nope', true)).not.toThrow();
+  });
+
+  it('cancelCall drops pendingConfirms for that chat', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => null,
+      execute: jest.fn(),
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeDefined();
+
+    mgr.cancelCall(callId);
+    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
+  });
+
+  it('getFullPreviewContent forwards to the executor with the entry toolName + args', async () => {
+    // Regression: the previous inline-confirm UI fetched full content
+    // by reaching into `window.mked.readFile` from React. That violated
+    // the manager/React boundary AND produced wrong previews on CRLF
+    // files (naive `original.replace(oldText, newText)` ignored Monaco's
+    // EOL normalisation). The fetcher now routes through the manager,
+    // which hands off to the executor — same code path execute() uses.
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const getFullPreviewContent = jest.fn(
+      async (
+        _name: string,
+        _args: unknown,
+        side: 'before' | 'after',
+      ): Promise<string | undefined> =>
+        side === 'before' ? 'BEFORE-FULL' : 'AFTER-FULL',
+    );
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => ({
+        kind: 'write' as const,
+        path: '/x.md',
+        after: 'new',
+      }),
+      getFullPreviewContent,
+      execute: jest.fn(async () => ({ ok: true })),
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: { path: '/x.md', content: 'NEW CONTENT' },
+    });
+    await Promise.resolve();
+
+    const before = await mgr.getFullPreviewContent('tc-1', 'before');
+    const after = await mgr.getFullPreviewContent('tc-1', 'after');
+    expect(before).toBe('BEFORE-FULL');
+    expect(after).toBe('AFTER-FULL');
+    // Toolname + args came from the pendingConfirms entry — the
+    // executor must see the same args the agent fired with.
+    expect(getFullPreviewContent).toHaveBeenCalledWith(
+      'write_file',
+      { path: '/x.md', content: 'NEW CONTENT' },
+      'before',
+    );
+    expect(getFullPreviewContent).toHaveBeenCalledWith(
+      'write_file',
+      { path: '/x.md', content: 'NEW CONTENT' },
+      'after',
+    );
+  });
+
+  it('getFullPreviewContent returns undefined once the confirmation resolves (entry dropped)', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => null,
+      getFullPreviewContent: jest.fn(async () => 'should-not-be-returned'),
+      execute: jest.fn(async () => ({ ok: true })),
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+    mgr.respondToConfirm('tc-1', true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // pendingConfirms entry is gone — the expander has no source.
+    expect(await mgr.getFullPreviewContent('tc-1', 'before')).toBeUndefined();
+  });
+
+  it('getFullPreviewContent returns undefined when no executor is wired yet', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    // No setToolExecutor call — toolExecutor stays null.
+    expect(await mgr.getFullPreviewContent('tc-1', 'before')).toBeUndefined();
   });
 });
 

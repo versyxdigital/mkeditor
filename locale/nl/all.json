@@ -108,7 +108,15 @@
     "show_less": "Minder tonen",
     "retry": "Opnieuw proberen",
     "retry_prompt": "Probeer de {{toolName}}-aanroep opnieuw.",
-    "retry_prompt_with_args": "Probeer {{toolName}} opnieuw met argumenten: {{args}}"
+    "retry_prompt_with_args": "Probeer {{toolName}} opnieuw met argumenten: {{args}}",
+    "diff_view_unified": "Schakelen naar uniforme diff-weergave",
+    "diff_view_side_by_side": "Schakelen naar diff-weergave naast elkaar",
+    "diff_pop_out": "Openen in een editor-tabblad",
+    "preview_show_full": "Volledig tonen",
+    "preview_show_less": "Minder tonen",
+    "preview_loading": "Laden…",
+    "preview_retry": "Opnieuw proberen",
+    "preview_truncated_hint": "Voorbeeld ingekort"
   },
   "assistant": {
     "title": "AI-assistent",
@@ -372,7 +380,14 @@
     "open_folder": "Map openen",
     "restore_workspace": "Vorige map herstellen",
     "disconnect_folder": "Map loskoppelen",
-    "chromium_only_warning": "Toegang tot mappen is alleen beschikbaar in op Chromium gebaseerde browsers (Chrome, Edge, Brave, Opera)."
+    "chromium_only_warning": "Toegang tot mappen is alleen beschikbaar in op Chromium gebaseerde browsers (Chrome, Edge, Brave, Opera).",
+    "search_placeholder": "Bestanden zoeken",
+    "filter_label": "Bestandstypen filteren",
+    "filter_types": "Bestandstypen",
+    "filter_section_markdown": "Markdown",
+    "filter_section_images": "Afbeeldingen",
+    "filter_section_documents": "Documenten",
+    "filter_reset_to_md": "Terug naar alleen .md"
   },
   "toolbar": {
     "reset_split": "Indeling editor/voorbeeld resetten",

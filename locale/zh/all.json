@@ -108,7 +108,15 @@
     "show_less": "显示更少",
     "retry": "重试",
     "retry_prompt": "请重试 {{toolName}} 调用。",
-    "retry_prompt_with_args": "请使用以下参数重试 {{toolName}}: {{args}}"
+    "retry_prompt_with_args": "请使用以下参数重试 {{toolName}}: {{args}}",
+    "diff_view_unified": "切换到统一差异视图",
+    "diff_view_side_by_side": "切换到并排差异视图",
+    "diff_pop_out": "在编辑器选项卡中打开",
+    "preview_show_full": "显示全部",
+    "preview_show_less": "显示更少",
+    "preview_loading": "加载中…",
+    "preview_retry": "重试",
+    "preview_truncated_hint": "预览已截断"
   },
   "assistant": {
     "title": "AI 助手",
@@ -372,7 +380,14 @@
     "open_folder": "打开文件夹",
     "restore_workspace": "恢复上一个文件夹",
     "disconnect_folder": "断开文件夹",
-    "chromium_only_warning": "文件夹访问仅在基于 Chromium 的浏览器（Chrome、Edge、Brave、Opera）中可用。"
+    "chromium_only_warning": "文件夹访问仅在基于 Chromium 的浏览器（Chrome、Edge、Brave、Opera）中可用。",
+    "search_placeholder": "搜索文件",
+    "filter_label": "筛选文件类型",
+    "filter_types": "文件类型",
+    "filter_section_markdown": "Markdown",
+    "filter_section_images": "图片",
+    "filter_section_documents": "文档",
+    "filter_reset_to_md": "仅重置为 .md"
   },
   "toolbar": {
     "reset_split": "重置编辑器/预览分屏",

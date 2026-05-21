@@ -35,6 +35,7 @@ import {
   ToolConfirmProvider,
   registerToolConfirmCanceller,
   registerToolConfirmOpener,
+  registerToolConfirmToolCallCanceller,
   useToolConfirm,
 } from './contexts/ToolConfirmContext';
 import {
@@ -357,11 +358,12 @@ const PropertiesBridge: React.FC = () => {
  * callers) can drive the dialog without importing React.
  */
 const ToolConfirmBridge: React.FC = () => {
-  const { open, cancelForCallId } = useToolConfirm();
+  const { open, cancelForCallId, cancelForToolCallId } = useToolConfirm();
   React.useEffect(() => {
     registerToolConfirmOpener(open);
     registerToolConfirmCanceller(cancelForCallId);
-  }, [open, cancelForCallId]);
+    registerToolConfirmToolCallCanceller(cancelForToolCallId);
+  }, [open, cancelForCallId, cancelForToolCallId]);
   return null;
 };
 

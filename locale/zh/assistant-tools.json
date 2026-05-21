@@ -31,5 +31,15 @@
   "show_less": "显示更少",
   "retry": "重试",
   "retry_prompt": "请重试 {{toolName}} 调用。",
-  "retry_prompt_with_args": "请使用以下参数重试 {{toolName}}: {{args}}"
+  "retry_prompt_with_args": "请使用以下参数重试 {{toolName}}: {{args}}",
+
+  "diff_view_unified": "切换到统一差异视图",
+  "diff_view_side_by_side": "切换到并排差异视图",
+  "diff_pop_out": "在编辑器选项卡中打开",
+
+  "preview_show_full": "显示全部",
+  "preview_show_less": "显示更少",
+  "preview_loading": "加载中…",
+  "preview_retry": "重试",
+  "preview_truncated_hint": "预览已截断"
 }

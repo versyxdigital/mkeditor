@@ -410,6 +410,44 @@ export interface ToolInvocation {
   errorMessage?: string;
 }
 
+/**
+ * Preview payload built by the executor when a write-class tool fires.
+ * Shown in both the legacy `<ConfirmToolCall>` modal and (inline tool
+ * confirmation work) the in-chat diff card. Lives in the shared
+ * interfaces file so the renderer snapshot can carry it without
+ * pulling browser-side modules through `AssistantChatSnapshot`.
+ *
+ * `before`/`after` are pre-truncated to 4000 chars by the manager —
+ * the inline diff card offers a "show full" expander that fetches the
+ * untruncated content via `mked:fs:readfile` on demand.
+ */
+export interface ToolConfirmPreview {
+  kind: 'edit' | 'write' | 'create' | 'replace' | 'insert';
+  path?: string;
+  /** Text being replaced (undefined for `create` and `insert`). */
+  before?: string;
+  /** Text the tool will write. */
+  after: string;
+  /** Optional descriptive line (e.g. line range for `edit`). */
+  detail?: string;
+}
+
+/**
+ * A tool-call awaiting user confirmation, surfaced through the chat
+ * snapshot so the renderer can render the inline diff card. Keyed by
+ * `toolCallId` in `AssistantChatSnapshot.pendingConfirms`. Does NOT
+ * carry the resolver function — that lives only inside AssistantManager
+ * and is invoked through `respondToConfirm(toolCallId, ok)`.
+ */
+export interface PendingConfirm {
+  toolCallId: string;
+  toolName: string;
+  /** In-flight chat the confirmation belongs to. */
+  callId: string;
+  /** Same shape AssistantTools.buildPreview returns; null when the tool didn't supply one. */
+  preview: ToolConfirmPreview | null;
+}
+
 /** A single conversation tracked under one provider tab. */
 export interface ChatConversation {
   id: string;
@@ -475,6 +513,15 @@ export interface AssistantChatSnapshot {
    * turns. The chat UI uses this to toggle the send/stop button.
    */
   inflight: Record<string, InflightChatCall>;
+  /**
+   * Write-class tool calls awaiting user confirmation, keyed by
+   * `toolCallId`. Surfaced through the snapshot so `<ToolCallCard>`
+   * can render the inline diff + Accept/Reject row alongside the
+   * existing `<ConfirmToolCall>` modal (which still fires as the
+   * primary UI today and as the fallback after the inline UI lands).
+   * Empty when no tool is awaiting confirmation.
+   */
+  pendingConfirms: Record<string, PendingConfirm>;
 }
 
 /** Per-call bookkeeping kept while a chat turn streams. */

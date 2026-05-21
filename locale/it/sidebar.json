@@ -4,5 +4,12 @@
   "open_folder": "Apri cartella",
   "restore_workspace": "Ripristina cartella precedente",
   "disconnect_folder": "Disconnetti cartella",
-  "chromium_only_warning": "L'accesso alle cartelle è disponibile solo nei browser basati su Chromium (Chrome, Edge, Brave, Opera)."
+  "chromium_only_warning": "L'accesso alle cartelle è disponibile solo nei browser basati su Chromium (Chrome, Edge, Brave, Opera).",
+  "search_placeholder": "Cerca file",
+  "filter_label": "Filtra tipi di file",
+  "filter_types": "Tipi di file",
+  "filter_section_markdown": "Markdown",
+  "filter_section_images": "Immagini",
+  "filter_section_documents": "Documenti",
+  "filter_reset_to_md": "Ripristina solo .md"
 }

@@ -71,6 +71,17 @@ function makeModel(content: string, eol: '\n' | '\r\n' = '\n'): FakeModel {
 function makeBridgeManager(
   opts: {
     activeFile?: string | null;
+    /**
+     * What `FileManager.getActiveEditablePath()` should return for
+     * this fake. Defaults to `activeFile` (filtered for untitled-
+     * prefixes) so existing tests don't have to opt in. Tests that
+     * exercise the diff-overlay regression set both `activeFile` and
+     * `editablePath` independently — the synthetic `diff://...` id
+     * goes in `activeFile`, the underlying real file goes in
+     * `editablePath` — and assert that write-tool execution routes
+     * the latter (and only the latter) into `mked.saveFile`.
+     */
+    editablePath?: string | null;
     models?: Map<string, FakeModel>;
     treeSnapshot?: {
       treeRoot: string | null;
@@ -109,6 +120,16 @@ function makeBridgeManager(
   const fileManager = {
     activeFile: opts.activeFile ?? null,
     models,
+    // Mirror the real FileManager accessor. Defaults to the
+    // active-file value (filtered for untitled-) so existing tests
+    // keep working; the diff-overlay regression test passes
+    // `editablePath` explicitly to break the mirroring.
+    getActiveEditablePath: jest.fn(() => {
+      if (opts.editablePath !== undefined) return opts.editablePath;
+      const active = opts.activeFile ?? null;
+      if (!active || active.startsWith('untitled-')) return null;
+      return active;
+    }),
     on: jest.fn((event: string, listener: () => void) => {
       if (event !== 'change') throw new Error(`unsupported event ${event}`);
       changeListeners.add(listener);
@@ -165,10 +186,21 @@ function makeBridgeManager(
     _emitTreeChange: () => treeListeners.forEach((l) => l()),
   };
 
+  // Monaco's "current model" is the editable file Monaco is actually
+  // backing — i.e. the editable path, not the diff-overlay id. Use
+  // the same resolution the production `getActiveEditablePath`
+  // accessor uses so tests where `activeFile` is `diff://...` still
+  // see Monaco's value coming from the underlying file model.
+  const resolveEditableForEditor = (): string | null => {
+    if (opts.editablePath !== undefined) return opts.editablePath;
+    const active = opts.activeFile ?? null;
+    if (!active || active.startsWith('untitled-')) return null;
+    return active;
+  };
   const mkeditor = {
     getSelection: jest.fn(() => opts.selection ?? null),
     getModel: jest.fn(() => {
-      const path = opts.activeFile;
+      const path = resolveEditableForEditor();
       if (!path) return null;
       const m = models.get(path);
       if (!m) return null;
@@ -179,7 +211,7 @@ function makeBridgeManager(
     getPosition: jest.fn(() => opts.cursorPosition ?? null),
     executeEdits: jest.fn(),
     getValue: jest.fn(() => {
-      const path = opts.activeFile;
+      const path = resolveEditableForEditor();
       if (!path) return '';
       return models.get(path)?.getValue() ?? '';
     }),
@@ -1316,6 +1348,55 @@ describe('AssistantTools — write-class execution', () => {
     expect(edits[0].range.endColumn).toBe(2);
     expect(edits[0].text).toBe('X');
   });
+
+  // Diff-overlay regression: when the user pops out a tool-call diff
+  // preview into a full editor tab, `FileManager.activeFile` becomes a
+  // synthetic `diff://...` id. The selection-write tools must route
+  // through `getActiveEditablePath()` so the underlying real file gets
+  // saved — not a fictitious `diff://...` path that would crash main's
+  // `to:file:save` handler. Mirror this for both write-class
+  // selection tools so neither path regresses.
+
+  it('replace_selection writes to the editable file (not the diff overlay id) when a diff tab is the active surface', async () => {
+    const model = makeModel('abc');
+    const models = new Map<string, FakeModel>();
+    models.set('/real-file.md', model);
+    const bm = makeBridgeManager({
+      activeFile: 'diff://tool-call-xyz',
+      editablePath: '/real-file.md',
+      models,
+      selection: {
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: 1,
+        endColumn: 2,
+      },
+    });
+    const tools = new AssistantTools(bm as never);
+    await tools.execute('replace_selection', { content: 'X' });
+    expect(saveFile).toHaveBeenCalledTimes(1);
+    const [savedPath] = saveFile.mock.calls[0] as [string, string];
+    expect(savedPath).toBe('/real-file.md');
+    expect(savedPath).not.toMatch(/^diff:\/\//);
+  });
+
+  it('insert_at_cursor writes to the editable file (not the diff overlay id) when a diff tab is the active surface', async () => {
+    const model = makeModel('abc');
+    const models = new Map<string, FakeModel>();
+    models.set('/real-file.md', model);
+    const bm = makeBridgeManager({
+      activeFile: 'diff://tool-call-xyz',
+      editablePath: '/real-file.md',
+      models,
+      cursorPosition: { lineNumber: 1, column: 2 },
+    });
+    const tools = new AssistantTools(bm as never);
+    await tools.execute('insert_at_cursor', { content: 'X' });
+    expect(saveFile).toHaveBeenCalledTimes(1);
+    const [savedPath] = saveFile.mock.calls[0] as [string, string];
+    expect(savedPath).toBe('/real-file.md');
+    expect(savedPath).not.toMatch(/^diff:\/\//);
+  });
 });
 
 describe('AssistantTools — preview building', () => {
@@ -1343,11 +1424,13 @@ describe('AssistantTools — preview building', () => {
     });
   });
 
-  it('buildPreview for edit_file shows oldText (before) and newText (after) directly', () => {
-    // Preview anchors on the same string `execute` searches for, so
-    // the dialog can't ever disagree with the resulting edit — the
-    // original line-range design hid the actual replacement target
-    // behind line numbers the agent often miscounted on CRLF files.
+  it('buildPreview for edit_file surrounds the match with ±3 lines of context from the open file (phase 6)', () => {
+    // Phase 6: when the target file is open in a Monaco model, the
+    // preview shows the change in situ — surrounding lines come from
+    // the live file so the user can see WHERE the edit lands. The
+    // snippet covers the entire file here (only 4 lines), so no
+    // truncation marker is appended. `detail` reports the lines
+    // BEING EDITED (not the snippet range, which would be misleading).
     const models = new Map<string, FakeModel>();
     models.set('/x.md', makeModel('line A\nline B\nline C\nline D'));
     const bm = makeBridgeManager({ models });
@@ -1359,10 +1442,126 @@ describe('AssistantTools — preview building', () => {
     });
     expect(preview?.kind).toBe('edit');
     expect(preview?.path).toBe('/x.md');
-    expect(preview?.before).toBe('line B\nline C');
+    expect(preview?.before).toBe('line A\nline B\nline C\nline D');
+    expect(preview?.after).toBe('line A\nNEW\nline D');
+    // oldText spans lines 2 and 3 (1-indexed) — those are the edited
+    // lines. Lines 1 and 4 are surrounding context, NOT part of the
+    // detail label.
+    expect(preview?.detail).toBe('Lines 2–3');
+  });
+
+  it('buildPreview for edit_file falls back to oldText → newText when the file is not open', () => {
+    // Closed-file case: no Monaco model in the FileManager map → the
+    // preview can't build a context snippet, so it reverts to the
+    // literal oldText / newText pair. The agent and the user still
+    // see the same substring `execute` will search for.
+    const bm = makeBridgeManager();
+    const tools = new AssistantTools(bm as never);
+    const preview = tools.buildPreview('edit_file', {
+      path: '/x.md',
+      oldText: 'some search string',
+      newText: 'replacement',
+    });
+    expect(preview?.kind).toBe('edit');
+    expect(preview?.before).toBe('some search string');
+    expect(preview?.after).toBe('replacement');
+    expect(preview?.detail).toBeUndefined();
+  });
+
+  it('buildPreview for edit_file appends the truncation marker when context does not cover the whole file', () => {
+    // 20-line file with the match on line 10 — ±3 context covers
+    // lines 7–13. The remaining lines are truncated; both sides
+    // carry the marker so the inline diff offers the "Show full"
+    // expander (which fetches the full file from disk via the
+    // ToolCallCard fetcher).
+    const lines: string[] = [];
+    for (let i = 1; i <= 20; i++) lines.push(`line ${i}`);
+    const fileText = lines.join('\n');
+    const models = new Map<string, FakeModel>();
+    models.set('/big.md', makeModel(fileText));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const preview = tools.buildPreview('edit_file', {
+      path: '/big.md',
+      oldText: 'line 10',
+      newText: 'TEN',
+    });
+    // Single-line edit on line 10 — detail reports just that line.
+    expect(preview?.detail).toBe('Line 10');
+    expect(preview?.before?.endsWith('…[truncated]')).toBe(true);
+    expect(preview?.after?.endsWith('…[truncated]')).toBe(true);
+    // Snippet body: lines 7-13 around the match (±3 context).
+    expect(preview?.before).toContain('line 7\nline 8\nline 9\nline 10');
+    expect(preview?.after).toContain('line 7\nline 8\nline 9\nTEN');
+  });
+
+  it('buildPreview for edit_file matches an LF-only oldText against a CRLF file (parity with execute normalisation)', () => {
+    // Regression: `execute` runs `normaliseForEol(oldText, model.getEOL())`
+    // so a `\n`-only oldText (the natural JSON wire shape) matches a
+    // CRLF-on-disk file. The preview MUST agree — without normalisation
+    // here, `fileText.indexOf(oldText)` would return -1 on Windows-saved
+    // markdown and the user would see the "plain pair" fallback while
+    // execute happily applied the edit on Accept.
+    const fileText = '# Heading\r\n\r\nThnk you\r\n\r\nIf you hve\r\n';
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', makeModel(fileText, '\r\n'));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const preview = tools.buildPreview('edit_file', {
+      path: '/x.md',
+      oldText: 'Thnk you\n\nIf you hve', // LF — JSON wire shape
+      newText: 'Thank you\n\nIf you have',
+    });
+    expect(preview?.kind).toBe('edit');
+    expect(preview?.path).toBe('/x.md');
+    // Snippet is LF-normalised — diff editor renders cleanly without
+    // mixed line endings.
+    expect(preview?.before).toContain('Thnk you\n\nIf you hve');
+    expect(preview?.after).toContain('Thank you\n\nIf you have');
+    // oldText spans CRLF lines 3 + 4 + 5 (Thnk you, blank, If you hve).
+    expect(preview?.detail).toBe('Lines 3–5');
+  });
+
+  it('buildPreview for edit_file falls back to plain oldText/newText when oldText matches multiple places', () => {
+    // Regression: previously the preview ran a single `indexOf` and
+    // happily showed the FIRST occurrence as the target — but execute
+    // throws "matched multiple places" so the edit never lands. The
+    // user would Accept expecting one outcome and get an error. Now
+    // the snippet builder returns null on multi-match and the preview
+    // shows the plain oldText/newText pair (signalling ambiguity)
+    // instead of pinning a specific location.
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', makeModel('TODO\nbody\nTODO\nmore\n'));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const preview = tools.buildPreview('edit_file', {
+      path: '/x.md',
+      oldText: 'TODO',
+      newText: 'DONE',
+    });
+    expect(preview?.kind).toBe('edit');
+    expect(preview?.before).toBe('TODO');
+    expect(preview?.after).toBe('DONE');
+    // No detail label — the plain-pair fallback path doesn't set one.
+    expect(preview?.detail).toBeUndefined();
+  });
+
+  it('buildPreview for edit_file falls back to plain oldText/newText when the match is not found', () => {
+    // Open file but `oldText` doesn't appear → can't build a snippet.
+    // execute() would throw the same "not found" error on Accept, but
+    // the preview falls through to the plain pair so the user sees
+    // what the agent proposed.
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', makeModel('line A\nline B'));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const preview = tools.buildPreview('edit_file', {
+      path: '/x.md',
+      oldText: 'not-there',
+      newText: 'NEW',
+    });
+    expect(preview?.before).toBe('not-there');
     expect(preview?.after).toBe('NEW');
-    // No more line-range detail — the before/after blocks are
-    // self-describing now.
     expect(preview?.detail).toBeUndefined();
   });
 
@@ -1376,6 +1575,144 @@ describe('AssistantTools — preview building', () => {
     expect(preview?.kind).toBe('create');
     expect(preview?.before).toBeUndefined();
     expect(preview?.after).toBe('content');
+  });
+});
+
+describe('AssistantTools — getFullPreviewContent ("Show full" expander)', () => {
+  it('write_file: before pulls from the open Monaco model (live, includes unsaved edits)', async () => {
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', makeModel('LIVE UNSAVED CONTENT'));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const before = await tools.getFullPreviewContent(
+      'write_file',
+      { path: '/x.md', content: 'NEW' },
+      'before',
+    );
+    expect(before).toBe('LIVE UNSAVED CONTENT');
+  });
+
+  it('write_file: after returns args.content verbatim (no truncation)', async () => {
+    const bm = makeBridgeManager();
+    const tools = new AssistantTools(bm as never);
+    const big = 'x'.repeat(10_000);
+    const after = await tools.getFullPreviewContent(
+      'write_file',
+      { path: '/x.md', content: big },
+      'after',
+    );
+    expect(after).toBe(big);
+  });
+
+  it('edit_file: before pulls from the open Monaco model', async () => {
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', makeModel('line A\nline B\nline C'));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const before = await tools.getFullPreviewContent(
+      'edit_file',
+      { path: '/x.md', oldText: 'line B', newText: 'TWO' },
+      'before',
+    );
+    expect(before).toBe('line A\nline B\nline C');
+  });
+
+  it('edit_file: after applies the EOL-normalised replacement on a CRLF file (matches execute())', async () => {
+    // Regression: the previous renderer-side fetcher did a plain
+    // `original.replace(oldText, newText)` which fails to match on a
+    // CRLF file when oldText uses LF newlines. The agent's
+    // `execute()` normalises to model EOL; the expander now follows
+    // suit so the preview agrees with what execute would write.
+    const models = new Map<string, FakeModel>();
+    models.set(
+      '/crlf.md',
+      makeModel('alpha\r\nbeta\r\ngamma\r\ndelta', '\r\n'),
+    );
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const after = await tools.getFullPreviewContent(
+      'edit_file',
+      {
+        path: '/crlf.md',
+        // Agent hands LF; execute() normalises; the expander must too.
+        oldText: 'beta\ngamma',
+        newText: 'TWO\nTHREE',
+      },
+      'after',
+    );
+    // Replacement also normalised to CRLF so the final file's EOL is
+    // consistent — same byte stream Monaco's executeEdits produces.
+    expect(after).toBe('alpha\r\nTWO\r\nTHREE\r\ndelta');
+  });
+
+  it('edit_file: when oldText does not match, after surfaces the unchanged file', async () => {
+    // The Accept path would throw "oldText not found" — the preview
+    // expander mirrors that by NOT inventing a fake replacement.
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', makeModel('original body'));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const after = await tools.getFullPreviewContent(
+      'edit_file',
+      { path: '/x.md', oldText: 'no-such-needle', newText: 'NEW' },
+      'after',
+    );
+    expect(after).toBe('original body');
+  });
+
+  it('replace_selection: before is undefined (selection cannot be safely refetched)', async () => {
+    const bm = makeBridgeManager();
+    const tools = new AssistantTools(bm as never);
+    const before = await tools.getFullPreviewContent(
+      'replace_selection',
+      { content: 'replacement' },
+      'before',
+    );
+    expect(before).toBeUndefined();
+  });
+
+  it('insert_at_cursor / create_file: before is undefined; after returns args.content', async () => {
+    const bm = makeBridgeManager();
+    const tools = new AssistantTools(bm as never);
+    expect(
+      await tools.getFullPreviewContent(
+        'insert_at_cursor',
+        { content: 'snip' },
+        'before',
+      ),
+    ).toBeUndefined();
+    expect(
+      await tools.getFullPreviewContent(
+        'insert_at_cursor',
+        { content: 'snip' },
+        'after',
+      ),
+    ).toBe('snip');
+    expect(
+      await tools.getFullPreviewContent(
+        'create_file',
+        { path: '/new.md', content: 'fresh' },
+        'before',
+      ),
+    ).toBeUndefined();
+    expect(
+      await tools.getFullPreviewContent(
+        'create_file',
+        { path: '/new.md', content: 'fresh' },
+        'after',
+      ),
+    ).toBe('fresh');
+  });
+
+  it('returns undefined for read-class / unknown tools (no getFullContent spec)', async () => {
+    const bm = makeBridgeManager();
+    const tools = new AssistantTools(bm as never);
+    expect(
+      await tools.getFullPreviewContent('read_file', { path: '/x' }, 'before'),
+    ).toBeUndefined();
+    expect(
+      await tools.getFullPreviewContent('not_a_tool', {}, 'after'),
+    ).toBeUndefined();
   });
 });
 

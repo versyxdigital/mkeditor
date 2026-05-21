@@ -1,5 +1,26 @@
 # CHANGELOG
 
+### 2026-05-21 - v4.1.0
+
+#### Added
+
+- **Inline tool confirmation**: AI Assistant write-class tools (`write_file`, `edit_file`, `replace_in_file`, `insert_at_line`, `create_file`) now confirm inline within the chat bubble — a Monaco diff (or insertion preview) renders directly inside the tool card with Accept / Reject. A pop-out button lifts the diff into a full editor tab when you want more screen space. Long previews collapse behind a "Show more" toggle, and `edit_file` shows the change in situ with ±3 lines of context.
+- **File explorer filter bar**: A search box + funnel dropdown above the file tree. Search narrows by case-insensitive filename substring, auto-expanding matching subdirectories; the funnel toggles which file types are visible across a curated allowlist (Markdown, common images, HTML/PDF/TXT). Defaults to `.md`-only so the existing experience is preserved; filter state persists across launches. Translated across all 13 supported locales.
+- **Workspace-relative image previews**: The preview pane now resolves relative image and link paths (`![](collector.png)`, `[manual](doc.pdf)`) against the active markdown file's directory, so embedded images display correctly. Resolved paths — including explicit `file://` URLs — are rejected unless they sit inside the open workspace, so preview HTML can't be used to reach arbitrary on-disk files.
+
+#### Changed
+
+- **Sidebar file-type surface**: The directory listing now also includes common image and document types (PNG, JPG, JPEG, GIF, SVG, WEBP, HTML, PDF, TXT) in addition to `.md`. Non-markdown files render dimmed and stay hidden by default until enabled via the new filter funnel.
+- **Active editable path**: Save, the assistant's active-file chip, the preview's asset base directory, and Monaco's `mked://` link resolver now all route through a single `getActiveEditablePath()` accessor, so they stay correct when a diff overlay tab is the active surface instead of pointing at a `diff://...` id.
+
+#### Fixed
+
+- **Mid-stream word splits around tool calls**: The assistant's text no longer splits mid-word ("two new v" + tool card + "erses!") when a tool call arrives during paced reveal. The chunk buffer drains before the tool-call segment is recorded, so prose and tool cards arrive in clean order.
+- **Inline confirmation overflow**: The pending-confirm card's file path wraps inside the yellow box when the sidebar is dragged narrow, instead of overflowing past the edge.
+- **Preview image 404 on relaunch**: Fixed a console `net::ERR_FILE_NOT_FOUND` on session restore where the preview's first paint fired before the active file propagated through React context. Relative image srcs are now suppressed during that single-frame window rather than fetched against the bundle directory; the next render restores the proper URL.
+
+---
+
 ### 2026-05-19 - v4.0.0
 
 #### Added

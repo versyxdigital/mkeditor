@@ -108,7 +108,15 @@
     "show_less": "접기",
     "retry": "다시 시도",
     "retry_prompt": "{{toolName}} 호출을 다시 시도해 주세요.",
-    "retry_prompt_with_args": "다음 인수로 {{toolName}}을(를) 다시 시도해 주세요: {{args}}"
+    "retry_prompt_with_args": "다음 인수로 {{toolName}}을(를) 다시 시도해 주세요: {{args}}",
+    "diff_view_unified": "통합 diff 보기로 전환",
+    "diff_view_side_by_side": "나란히 diff 보기로 전환",
+    "diff_pop_out": "에디터 탭에서 열기",
+    "preview_show_full": "전체 표시",
+    "preview_show_less": "간략히 표시",
+    "preview_loading": "불러오는 중…",
+    "preview_retry": "다시 시도",
+    "preview_truncated_hint": "미리보기가 잘렸습니다"
   },
   "assistant": {
     "title": "AI 어시스턴트",
@@ -372,7 +380,14 @@
     "open_folder": "폴더 열기",
     "restore_workspace": "이전 폴더 복원",
     "disconnect_folder": "폴더 연결 해제",
-    "chromium_only_warning": "폴더 접근은 Chromium 기반 브라우저(Chrome, Edge, Brave, Opera)에서만 사용할 수 있습니다."
+    "chromium_only_warning": "폴더 접근은 Chromium 기반 브라우저(Chrome, Edge, Brave, Opera)에서만 사용할 수 있습니다.",
+    "search_placeholder": "파일 검색",
+    "filter_label": "파일 형식 필터",
+    "filter_types": "파일 형식",
+    "filter_section_markdown": "Markdown",
+    "filter_section_images": "이미지",
+    "filter_section_documents": "문서",
+    "filter_reset_to_md": ".md만 표시로 재설정"
   },
   "toolbar": {
     "reset_split": "에디터/미리보기 분할 초기화",
