@@ -1,8 +1,8 @@
 import * as React from 'react';
-import { editor } from 'monaco-editor';
 
+import type { DiffPreviewHandle } from '../../../core/EditorManager';
 import { PREVIEW_TRUNCATION_MARKER } from '../../../core/AssistantTools';
-import { useSettings } from '../../contexts/SettingsContext';
+import { useManagers } from '../../contexts/ManagersContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { Button } from '../ui/button';
 import { Icon } from '../Icon';
@@ -79,12 +79,10 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
   fetchFullModified,
   onPopOut,
 }) => {
-  const { settings } = useSettings();
+  const { editorManager } = useManagers();
   const { t } = useTranslation();
   const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const diffEditorRef = React.useRef<editor.IStandaloneDiffEditor | null>(null);
-  const originalModelRef = React.useRef<editor.ITextModel | null>(null);
-  const modifiedModelRef = React.useRef<editor.ITextModel | null>(null);
+  const diffHandleRef = React.useRef<DiffPreviewHandle | null>(null);
   const [sideBySide, setSideBySide] = React.useState(false);
 
   // Truncation-expander state. The diff editor takes two correlated
@@ -173,110 +171,48 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
   // because Monaco 0.55's `IDiffEditor.updateOptions({renderSideBySide})`
   // doesn't reliably flip the render mode at runtime in our embedded
   // usage — the editor honours the value supplied at
-  // `createDiffEditor` time. Bundled with model creation in a single
-  // effect so the cleanup function disposes the editor BEFORE the
-  // models in one pass (React unwinds effect cleanups in declaration
-  // order, so splitting model/editor into separate effects would
-  // dispose models first — the same "Cannot read properties of
-  // undefined (_isDisposed)" Monaco crash the workspace-switch close
-  // path hit).
+  // `createDiffEditor` time. The handle returned by EditorManager
+  // owns the editor-first-then-models cleanup contract internally,
+  // so the React layer just calls `dispose()` and lets the manager
+  // unwind in the correct order.
   //
-  // Content updates flow through the data-sync effect below (setValue
-  // on the existing models), so prop changes between toggles don't
-  // remount the editor.
+  // Content updates flow through the data-sync effect below
+  // (`setOriginal`/`setModified` on the existing models), so prop
+  // changes between toggles don't remount the editor.
   React.useEffect(() => {
     const host = containerRef.current;
-    if (!host) return;
+    if (!host || !editorManager) return;
     // Initialise with the EFFECTIVE values so a toggle after the user
     // clicked "Show full" doesn't revert to the truncated content.
-    const originalModel = editor.createModel(effectiveOriginal, language);
-    const modifiedModel = editor.createModel(effectiveModified, language);
-    originalModelRef.current = originalModel;
-    modifiedModelRef.current = modifiedModel;
-    const diff = editor.createDiffEditor(host, {
-      renderSideBySide: sideBySide,
-      // Monaco silently forces inline view when the editor is
-      // narrower than `renderSideBySideInlineBreakpoint` (default
-      // ~900px) and `useInlineViewWhenSpaceIsLimited` is true (also
-      // default). The chat panel is well under 900px, so without
-      // these overrides the side-by-side toggle would have no
-      // visible effect — Monaco overrides `renderSideBySide` on
-      // every layout pass. Disabling the auto-switch lets the user's
-      // explicit toggle stick.
-      useInlineViewWhenSpaceIsLimited: false,
-      renderSideBySideInlineBreakpoint: 0,
-      // Smaller than Monaco's 14px default — the chat panel is tight
-      // and the diff is a preview, not the main editing surface.
-      // Matches the chat's text-xs tone.
-      fontSize: 12,
-      readOnly: true,
-      automaticLayout: true,
-      scrollBeyondLastLine: false,
-      minimap: { enabled: false },
-      // Line numbers are noise inside a narrow chat panel — the diff's
-      // `detail` line already carries "Lines X–Y" for context-bounded
-      // previews. Killing them reclaims ~50px of horizontal space
-      // (default `lineNumbersMinChars: 5` × two columns in unified
-      // mode + indicator gutter).
-      lineNumbers: 'off',
-      glyphMargin: false,
-      folding: false,
-      wordWrap: 'on',
-      renderOverviewRuler: false,
-      // Hide the per-pane scrollbars in unified mode where they cause
-      // double-scrollbar noise; the inline diff fits the chat panel
-      // better without them.
-      scrollbar: { vertical: 'auto', horizontal: 'hidden' },
-    });
-    diff.setModel({ original: originalModel, modified: modifiedModel });
-    diffEditorRef.current = diff;
+    const handle = editorManager.createDiffPreview(
+      host,
+      effectiveOriginal,
+      effectiveModified,
+      { language, renderSideBySide: sideBySide },
+    );
+    diffHandleRef.current = handle;
     return () => {
-      // Editor first, then models — disposing a model that an editor
-      // still references throws inside Monaco's internals.
-      try {
-        diff.dispose();
-      } catch {
-        // already-disposed; nothing to do
-      }
-      try {
-        originalModel.dispose();
-      } catch {
-        // already-disposed; nothing to do
-      }
-      try {
-        modifiedModel.dispose();
-      } catch {
-        // already-disposed; nothing to do
-      }
-      diffEditorRef.current = null;
-      originalModelRef.current = null;
-      modifiedModelRef.current = null;
+      handle.dispose();
+      diffHandleRef.current = null;
     };
-    // Intentionally only depending on `sideBySide` — content changes
-    // flow through setValue in the data-sync effect below to avoid
-    // recreating the editor on every prop change.
-  }, [sideBySide]);
+    // Intentionally only depending on `sideBySide` (+ `editorManager`,
+    // which is stable across the component's lifetime once the
+    // composition root has wired it). Content changes flow through
+    // the data-sync effect below to avoid recreating the editor on
+    // every prop change; `effectiveOriginal/effectiveModified/language`
+    // feed the initial values inline so the latest "Show full" state
+    // is honoured without re-running this effect.
+  }, [sideBySide, editorManager]);
 
-  // Push effective content into the existing models via setValue.
-  // Cheap; avoids remounting the editor when the user clicks Accept
-  // on one confirmation card and the next one renders in the same
-  // DOM slot, OR when the truncation expander flips between the
+  // Push effective content into the existing models via the handle's
+  // setters. Cheap; avoids remounting the editor when the user clicks
+  // Accept on one confirmation card and the next one renders in the
+  // same DOM slot, OR when the truncation expander flips between the
   // capped and full content.
   React.useEffect(() => {
-    const om = originalModelRef.current;
-    if (om && om.getValue() !== effectiveOriginal)
-      om.setValue(effectiveOriginal);
-    const mm = modifiedModelRef.current;
-    if (mm && mm.getValue() !== effectiveModified)
-      mm.setValue(effectiveModified);
+    diffHandleRef.current?.setOriginal(effectiveOriginal);
+    diffHandleRef.current?.setModified(effectiveModified);
   }, [effectiveOriginal, effectiveModified]);
-
-  // Theme follows the effective rendered theme (NOT the stored
-  // preference) so the diff matches the surrounding editor when
-  // systemtheme is following a contrary OS.
-  React.useEffect(() => {
-    editor.setTheme(settings.effectiveDarkmode ? 'vs-dark' : 'vs');
-  }, [settings.effectiveDarkmode]);
 
   return (
     <div
