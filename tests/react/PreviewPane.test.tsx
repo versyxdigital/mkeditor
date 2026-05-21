@@ -241,6 +241,115 @@ describe('<PreviewPane>', () => {
     });
   });
 
+  it('strips an out-of-workspace <img src="file:///..."> URL (workspace-containment guarantee)', async () => {
+    // Preview HTML must not be able to reach arbitrary on-disk files
+    // via an explicit `file://` URL. The resolver returns null on
+    // policy reject; the caller strips the attribute so the browser
+    // never issues the fetch.
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<p><img src="file:///C:/Users/victim/Pictures/secret.png"></p>',
+    );
+    const dispatcher = fakeDispatcher();
+    const editorManager = {
+      getValue: jest.fn(
+        () => '![](file:///C:/Users/victim/Pictures/secret.png)',
+      ),
+      getMkEditor: jest.fn(),
+      layout: jest.fn(),
+      resetContent: jest.fn(),
+      providers: {} as any,
+    };
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        dispatcher: dispatcher as any,
+        editorManager: editorManager as any,
+        fileManager: fakeFileManager({
+          activeFile: 'C:/Users/chris/workspace/foo/readme.md',
+        }) as any,
+        fileTreeManager: fakeFileTreeManager({
+          nodes: [],
+          treeRoot: 'C:/Users/chris/workspace/foo',
+        }) as any,
+      },
+    });
+    await waitFor(() => {
+      const img = container.querySelector('img');
+      expect(img).not.toBeNull();
+      expect(img!.hasAttribute('src')).toBe(false);
+    });
+  });
+
+  it('rewrites an in-workspace <img src="file:///..."> URL through the resolver', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<p><img src="file:///C:/Users/chris/workspace/foo/cover.png"></p>',
+    );
+    const dispatcher = fakeDispatcher();
+    const editorManager = {
+      getValue: jest.fn(() => ''),
+      getMkEditor: jest.fn(),
+      layout: jest.fn(),
+      resetContent: jest.fn(),
+      providers: {} as any,
+    };
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        dispatcher: dispatcher as any,
+        editorManager: editorManager as any,
+        fileManager: fakeFileManager({
+          activeFile: 'C:/Users/chris/workspace/foo/readme.md',
+        }) as any,
+        fileTreeManager: fakeFileTreeManager({
+          nodes: [],
+          treeRoot: 'C:/Users/chris/workspace/foo',
+        }) as any,
+      },
+    });
+    await waitFor(() => {
+      const img = container.querySelector('img');
+      expect(img!.getAttribute('src')).toBe(
+        'file:///C:/Users/chris/workspace/foo/cover.png',
+      );
+    });
+  });
+
+  it('strips an out-of-workspace <a href="file:///..."> link (no shell.openExternal escape)', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<p><a href="file:///C:/Users/victim/secret.pdf">link</a></p>',
+    );
+    const dispatcher = fakeDispatcher();
+    const editorManager = {
+      getValue: jest.fn(() => ''),
+      getMkEditor: jest.fn(),
+      layout: jest.fn(),
+      resetContent: jest.fn(),
+      providers: {} as any,
+    };
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        dispatcher: dispatcher as any,
+        editorManager: editorManager as any,
+        fileManager: fakeFileManager({
+          activeFile: 'C:/Users/chris/workspace/foo/readme.md',
+        }) as any,
+        fileTreeManager: fakeFileTreeManager({
+          nodes: [],
+          treeRoot: 'C:/Users/chris/workspace/foo',
+        }) as any,
+      },
+    });
+    await waitFor(() => {
+      const a = container.querySelector('a');
+      expect(a).not.toBeNull();
+      expect(a!.hasAttribute('href')).toBe(false);
+    });
+  });
+
   it('does not rewrite anything in web mode (separate blob-URL workstream)', async () => {
     const { Markdown } = require('../../src/browser/core/Markdown');
     (Markdown.render as jest.Mock).mockReturnValueOnce(

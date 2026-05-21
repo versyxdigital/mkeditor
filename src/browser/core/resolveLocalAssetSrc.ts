@@ -21,14 +21,25 @@ export function isPurelyRelativeAssetPath(src: string): boolean {
   return true;
 }
 
+/**
+ * Returns true if `src` is an explicit `file://...` URL.
+ */
+export function isFileSchemeUrl(src: string): boolean {
+  return /^file:/i.test(src);
+}
+
 export function resolveLocalAssetSrc(
   src: string,
   ctx: ResolveContext,
 ): string | null {
   if (!src) return null;
 
-  // Pre-existing absolute URL with a scheme (`http://`, `https://`,
-  // `data:`, `file:`, `mked:`, `blob:`, …).
+  if (isFileSchemeUrl(src)) {
+    return resolveFileSchemeUrl(src, ctx.workspaceRoot);
+  }
+
+  // Other absolute URL schemes (`http://`, `https://`, `data:`,
+  // `mked:`, `blob:`, …) are pass-through.
   if (/^[a-zA-Z][a-zA-Z0-9+.-]+:/.test(src)) return null;
 
   // Protocol-relative (`//example.com/img.png`) and in-page anchors
@@ -58,6 +69,51 @@ export function resolveLocalAssetSrc(
     return null;
   }
 
+  return toFileUrl(normalized);
+}
+
+/**
+ * Parse a `file://` URL, run the same workspace-containment check
+ * the relative branch runs, and return either a normalised
+ * `file:///...` URL (contained) or null (rejected / unparsable).
+ */
+function resolveFileSchemeUrl(
+  src: string,
+  workspaceRoot: string | null,
+): string | null {
+  let url: URL;
+  try {
+    url = new URL(src);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'file:') return null;
+  // Chromium's `new URL('file://example.com/foo')` parses `example.com`
+  // as the authority and `/foo` as the path. A non-empty, non-local
+  // authority points at a foreign location, reject.
+  if (url.host !== '' && url.host.toLowerCase() !== 'localhost') {
+    return null;
+  }
+  // `url.pathname` is percent-encoded; decode for the containment
+  // comparison and the segment walk. On Windows, Chromium encodes
+  // `C:\foo` as `/C:/foo`, so strip the leading slash so it looks
+  // like a real Windows path.
+  let path: string;
+  try {
+    path = decodeURIComponent(url.pathname);
+  } catch {
+    return null;
+  }
+  path = path.replace(/\\/g, '/');
+  if (/^\/[a-zA-Z]:\//.test(path)) {
+    path = path.slice(1);
+  }
+  if (!isFilesystemPath(path)) return null;
+
+  const normalized = normalizeSegments(path);
+  if (workspaceRoot !== null && !isWithinWorkspace(normalized, workspaceRoot)) {
+    return null;
+  }
   return toFileUrl(normalized);
 }
 

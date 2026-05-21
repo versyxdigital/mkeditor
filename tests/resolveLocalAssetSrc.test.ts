@@ -1,5 +1,6 @@
 import {
   dirnameOf,
+  isFileSchemeUrl,
   isPurelyRelativeAssetPath,
   resolveLocalAssetSrc,
 } from '../src/browser/core/resolveLocalAssetSrc';
@@ -25,7 +26,7 @@ describe('resolveLocalAssetSrc', () => {
     ).toBeNull();
   });
 
-  it('leaves data: / blob: / mked: / file: URLs alone', () => {
+  it('leaves data: / blob: / mked: URLs alone (pass-through schemes)', () => {
     expect(
       resolveLocalAssetSrc('data:image/png;base64,iVBOR…', {
         baseDir: '/work',
@@ -41,12 +42,6 @@ describe('resolveLocalAssetSrc', () => {
     expect(
       resolveLocalAssetSrc('mked://open?path=/w/foo.md', {
         baseDir: '/w',
-        workspaceRoot: null,
-      }),
-    ).toBeNull();
-    expect(
-      resolveLocalAssetSrc('file:///C:/x/y.png', {
-        baseDir: 'C:/w',
         workspaceRoot: null,
       }),
     ).toBeNull();
@@ -303,6 +298,110 @@ describe('resolveLocalAssetSrc', () => {
   });
 
   /* -------------------------------------------------------------------- */
+  /*  file: scheme containment (preview-HTML escape guard)                  */
+  /* -------------------------------------------------------------------- */
+
+  it('allows a file:/// URL that sits inside the workspace', () => {
+    // Windows: `file:///C:/work/notes/logo.png` → inside `C:/work` →
+    // returned as a normalised `file:///` URL.
+    expect(
+      resolveLocalAssetSrc('file:///C:/work/notes/logo.png', {
+        baseDir: 'C:/work/notes',
+        workspaceRoot: 'C:/work',
+      }),
+    ).toBe('file:///C:/work/notes/logo.png');
+    expect(
+      resolveLocalAssetSrc('file:///home/chris/notes/logo.png', {
+        baseDir: '/home/chris/notes',
+        workspaceRoot: '/home/chris',
+      }),
+    ).toBe('file:///home/chris/notes/logo.png');
+  });
+
+  it('rejects a file:/// URL that sits outside the workspace', () => {
+    // Preview HTML must not be able to reach arbitrary on-disk
+    // paths via `<img src="file:///c:/users/victim/...">`. The
+    // resolver returns null so the caller strips the attribute.
+    expect(
+      resolveLocalAssetSrc('file:///C:/Users/victim/Pictures/secret.png', {
+        baseDir: 'C:/work',
+        workspaceRoot: 'C:/work',
+      }),
+    ).toBeNull();
+    expect(
+      resolveLocalAssetSrc('file:///etc/passwd', {
+        baseDir: '/home/chris/notes',
+        workspaceRoot: '/home/chris',
+      }),
+    ).toBeNull();
+  });
+
+  it('rejects a file:/// URL that uses a `..` to escape the workspace', () => {
+    expect(
+      resolveLocalAssetSrc('file:///C:/work/notes/../../secret.png', {
+        baseDir: 'C:/work/notes',
+        workspaceRoot: 'C:/work',
+      }),
+    ).toBeNull();
+  });
+
+  it('rejects a file:// URL that carries a foreign authority', () => {
+    // `file://example.com/foo.png` — non-local host. Chromium itself
+    // refuses to load these; we reject so the caller strips the
+    // attribute and the URL never reaches the live DOM.
+    expect(
+      resolveLocalAssetSrc('file://example.com/foo.png', {
+        baseDir: 'C:/work',
+        workspaceRoot: 'C:/work',
+      }),
+    ).toBeNull();
+  });
+
+  it('decodes percent-encoded path segments before the containment check', () => {
+    // `My%20Photos` decodes to `My Photos`; the resolver must
+    // compare the decoded form against the workspace root.
+    expect(
+      resolveLocalAssetSrc('file:///C:/work/My%20Photos/cover.png', {
+        baseDir: 'C:/work',
+        workspaceRoot: 'C:/work',
+      }),
+    ).toBe('file:///C:/work/My%20Photos/cover.png');
+  });
+
+  it('treats Windows file:/// containment case-insensitively', () => {
+    expect(
+      resolveLocalAssetSrc('file:///c:/Work/Notes/Logo.png', {
+        baseDir: 'C:/work/notes',
+        workspaceRoot: 'C:/Work',
+      }),
+    ).toBe('file:///c:/Work/Notes/Logo.png');
+  });
+
+  it('does not police file:/// URLs when no workspaceRoot is enforced (single-file mode)', () => {
+    // Single-file edit mode has no containment policy. The URL is
+    // normalised and returned; the policy kicks in once the user
+    // opens a folder.
+    expect(
+      resolveLocalAssetSrc('file:///C:/work/logo.png', {
+        baseDir: null,
+        workspaceRoot: null,
+      }),
+    ).toBe('file:///C:/work/logo.png');
+  });
+
+  it('returns null for a malformed file: URL (unparsable)', () => {
+    // `file:` with no path is unparsable by the URL constructor on
+    // some engines; even if it parses, the empty pathname fails the
+    // `isFilesystemPath` check.
+    expect(
+      resolveLocalAssetSrc('file:', {
+        baseDir: 'C:/work',
+        workspaceRoot: 'C:/work',
+      }),
+    ).toBeNull();
+  });
+
+  /* -------------------------------------------------------------------- */
   /*  baseDir validation                                                    */
   /* -------------------------------------------------------------------- */
 
@@ -361,6 +460,25 @@ describe('isPurelyRelativeAssetPath', () => {
     expect(isPurelyRelativeAssetPath('/abs/posix.png')).toBe(false);
     expect(isPurelyRelativeAssetPath('C:/abs/windows.png')).toBe(false);
     expect(isPurelyRelativeAssetPath('C:\\abs\\windows.png')).toBe(false);
+  });
+});
+
+describe('isFileSchemeUrl', () => {
+  it('detects the file: scheme (case-insensitive)', () => {
+    expect(isFileSchemeUrl('file:///C:/foo.png')).toBe(true);
+    expect(isFileSchemeUrl('file:///etc/passwd')).toBe(true);
+    expect(isFileSchemeUrl('FILE:///C:/foo.png')).toBe(true);
+    expect(isFileSchemeUrl('file:foo')).toBe(true);
+  });
+
+  it('returns false for other schemes and bare paths', () => {
+    expect(isFileSchemeUrl('http://example.com/foo.png')).toBe(false);
+    expect(isFileSchemeUrl('mked://open?path=/w/foo.md')).toBe(false);
+    expect(isFileSchemeUrl('data:image/png;base64,')).toBe(false);
+    expect(isFileSchemeUrl('/abs/foo.png')).toBe(false);
+    expect(isFileSchemeUrl('C:/foo.png')).toBe(false);
+    expect(isFileSchemeUrl('logo.png')).toBe(false);
+    expect(isFileSchemeUrl('')).toBe(false);
   });
 });
 

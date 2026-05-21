@@ -6,7 +6,7 @@
 
 - **Inline tool confirmation**: AI Assistant write-class tools (`write_file`, `edit_file`, `replace_in_file`, `insert_at_line`, `create_file`) now confirm inline within the chat bubble — a Monaco diff (or insertion preview) renders directly inside the tool card with Accept / Reject. A pop-out button lifts the diff into a full editor tab when you want more screen space. Long previews collapse behind a "Show more" toggle, and `edit_file` shows the change in situ with ±3 lines of context.
 - **File explorer filter bar**: A search box + funnel dropdown above the file tree. Search narrows by case-insensitive filename substring, auto-expanding matching subdirectories; the funnel toggles which file types are visible across a curated allowlist (Markdown, common images, HTML/PDF/TXT). Defaults to `.md`-only so the existing experience is preserved; filter state persists across launches. Translated across all 13 supported locales.
-- **Workspace-relative image previews**: The preview pane now resolves relative image and link paths (`![](collector.png)`, `[manual](doc.pdf)`) against the active markdown file's directory, so embedded images display correctly. Resolved paths are rejected unless they sit inside the open workspace — preview HTML can't be used to reach arbitrary locations on disk.
+- **Workspace-relative image previews**: The preview pane now resolves relative image and link paths (`![](collector.png)`, `[manual](doc.pdf)`) against the active markdown file's directory, so embedded images display correctly. Resolved paths — including explicit `file://` URLs — are rejected unless they sit inside the open workspace, so preview HTML can't be used to reach arbitrary on-disk files.
 
 #### Changed
 

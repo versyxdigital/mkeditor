@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import {
   dirnameOf,
+  isFileSchemeUrl,
   isPurelyRelativeAssetPath,
   resolveLocalAssetSrc,
 } from '../../core/resolveLocalAssetSrc';
@@ -194,6 +195,9 @@ function buildPreviewFragment(
       // re-render triggered by activeFile/treeRoot landing puts the
       // correct `file:///…` URL in place a moment later.
       img.removeAttribute('src');
+    } else if (isFileSchemeUrl(src)) {
+      // Explicit `file://...` URL that the resolver rejected.
+      img.removeAttribute('src');
     }
   }
   // Same treatment for anchor hrefs that point at on-disk assets
@@ -209,7 +213,12 @@ function buildPreviewFragment(
       baseDir,
       workspaceRoot: ctx.treeRoot,
     });
-    if (resolved) a.setAttribute('href', resolved);
+    if (resolved) {
+      a.setAttribute('href', resolved);
+    } else if (isFileSchemeUrl(href)) {
+      // Same containment policy as <img>: `file://...`.
+      a.removeAttribute('href');
+    }
   }
 
   return template.content;
