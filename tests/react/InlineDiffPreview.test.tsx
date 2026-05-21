@@ -221,6 +221,14 @@ describe('<InlineDiffPreview>', () => {
     expect(opts.renderSideBySideInlineBreakpoint).toBe(0);
   });
 
+  it('uses a small font size suited to the chat panel (12px, down from Monaco default 14px)', () => {
+    render(<InlineDiffPreview original="a" modified="b" />);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const monaco = require('monaco-editor');
+    const opts = monaco.editor.createDiffEditor.mock.calls[0][1];
+    expect(opts.fontSize).toBe(12);
+  });
+
   it('prop changes flow through model setValue without recreating the editor', () => {
     const { rerender } = render(
       <InlineDiffPreview original="old" modified="new" />,

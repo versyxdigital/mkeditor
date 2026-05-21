@@ -189,6 +189,10 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
       // explicit toggle stick.
       useInlineViewWhenSpaceIsLimited: false,
       renderSideBySideInlineBreakpoint: 0,
+      // Smaller than Monaco's 14px default — the chat panel is tight
+      // and the diff is a preview, not the main editing surface.
+      // Matches the chat's text-xs tone.
+      fontSize: 12,
       readOnly: true,
       automaticLayout: true,
       scrollBeyondLastLine: false,
