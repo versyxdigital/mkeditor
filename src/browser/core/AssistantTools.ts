@@ -112,10 +112,18 @@ export function buildEditContextSnippet(
   const allLines = fileText.split(/\r?\n/);
   const totalLines = allLines.length;
 
-  // Find the line index of the first character of the match.
+  // 0-indexed line where the match starts (the line containing the
+  // first character of `oldText`).
   const matchStartLine = countLines(fileText, 0, idx);
-  // And the last line touched by the match.
-  const matchEndLine = matchStartLine + countLines(oldText, 0, oldText.length);
+  // Lines actually covered by `oldText`. If oldText is "line A\nline B",
+  // it covers TWO lines (start + 1). If it ends with a trailing
+  // newline ("line A\n"), Monaco still considers only one line edited
+  // — the trailing `\n` is the EOL of the last line, not a separate
+  // line. We strip a single trailing newline before counting so the
+  // detail line reports the lines a human would call "edited".
+  const trimmedOld = oldText.replace(/\r?\n$/, '');
+  const matchSpan = countLines(trimmedOld, 0, trimmedOld.length);
+  const matchEndLine = matchStartLine + matchSpan;
 
   const contextStart = Math.max(0, matchStartLine - contextLines);
   const contextEnd = Math.min(totalLines - 1, matchEndLine + contextLines);
@@ -127,10 +135,19 @@ export function buildEditContextSnippet(
   const after = before.replace(oldText, newText);
 
   const truncated = contextStart > 0 || contextEnd < totalLines - 1;
+  // `detail` reports the LINES BEING EDITED — single line if the
+  // match is one line, range otherwise. Earlier this reported the
+  // SNIPPET range (the ±contextLines window around the match), which
+  // was misleading: users read "Lines 7–13" as "the edit touches
+  // those 7 lines" when in reality the snippet is mostly context.
+  const detail =
+    matchStartLine === matchEndLine
+      ? `Line ${matchStartLine + 1}`
+      : `Lines ${matchStartLine + 1}–${matchEndLine + 1}`;
   return {
     before: truncated ? before + PREVIEW_TRUNCATION_MARKER : before,
     after: truncated ? after + PREVIEW_TRUNCATION_MARKER : after,
-    detail: `Lines ${contextStart + 1}–${contextEnd + 1}`,
+    detail,
     truncated,
   };
 }

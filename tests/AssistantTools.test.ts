@@ -1348,7 +1348,8 @@ describe('AssistantTools — preview building', () => {
     // preview shows the change in situ — surrounding lines come from
     // the live file so the user can see WHERE the edit lands. The
     // snippet covers the entire file here (only 4 lines), so no
-    // truncation marker is appended.
+    // truncation marker is appended. `detail` reports the lines
+    // BEING EDITED (not the snippet range, which would be misleading).
     const models = new Map<string, FakeModel>();
     models.set('/x.md', makeModel('line A\nline B\nline C\nline D'));
     const bm = makeBridgeManager({ models });
@@ -1362,7 +1363,10 @@ describe('AssistantTools — preview building', () => {
     expect(preview?.path).toBe('/x.md');
     expect(preview?.before).toBe('line A\nline B\nline C\nline D');
     expect(preview?.after).toBe('line A\nNEW\nline D');
-    expect(preview?.detail).toBe('Lines 1–4');
+    // oldText spans lines 2 and 3 (1-indexed) — those are the edited
+    // lines. Lines 1 and 4 are surrounding context, NOT part of the
+    // detail label.
+    expect(preview?.detail).toBe('Lines 2–3');
   });
 
   it('buildPreview for edit_file falls back to oldText → newText when the file is not open', () => {
@@ -1401,10 +1405,11 @@ describe('AssistantTools — preview building', () => {
       oldText: 'line 10',
       newText: 'TEN',
     });
-    expect(preview?.detail).toBe('Lines 7–13');
+    // Single-line edit on line 10 — detail reports just that line.
+    expect(preview?.detail).toBe('Line 10');
     expect(preview?.before?.endsWith('…[truncated]')).toBe(true);
     expect(preview?.after?.endsWith('…[truncated]')).toBe(true);
-    // Snippet body: lines 7-13 around the match.
+    // Snippet body: lines 7-13 around the match (±3 context).
     expect(preview?.before).toContain('line 7\nline 8\nline 9\nline 10');
     expect(preview?.after).toContain('line 7\nline 8\nline 9\nTEN');
   });

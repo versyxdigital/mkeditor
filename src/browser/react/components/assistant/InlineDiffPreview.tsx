@@ -301,7 +301,15 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
           <Icon name={sideBySide ? 'list-ul' : 'table-columns'} />
         </Button>
       </div>
+      {/* `key` flips on the side-by-side toggle so React tears down
+          the old container DOM and mounts a fresh one. Without this,
+          Monaco's `createDiffEditor` is called on the same div the
+          previous (now-disposed) editor left behind, and the new
+          render mode doesn't visually apply — even though the
+          createDiffEditor call carries the correct `renderSideBySide`.
+          The fresh container guarantees Monaco gets a clean canvas. */}
       <div
+        key={`diff-host-${sideBySide ? 'sbs' : 'unified'}`}
         ref={containerRef}
         style={{ height: `${height}px`, width: '100%' }}
       />
