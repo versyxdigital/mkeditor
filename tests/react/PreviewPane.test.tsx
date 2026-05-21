@@ -193,6 +193,54 @@ describe('<PreviewPane>', () => {
     });
   });
 
+  it('uses the last editable file path when the active tab is a diff:// overlay (desktop)', async () => {
+    // Regression: when a tool-call inline diff is the active tab,
+    // `FileManager.activeFile` holds a synthetic `diff://<toolCallId>`
+    // id. Previously PreviewPane fed that straight into the asset
+    // resolver as `baseDir`, producing `diff:/...` paths that
+    // `isFilesystemPath` rejects, leaving the relative `<img src>`
+    // intact and 404-ing against the bundle. Routing through
+    // `getActiveEditablePath()` recovers the most-recent real file
+    // and the preview keeps resolving images against it.
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<p><img src="collector.png"></p>',
+    );
+    const dispatcher = fakeDispatcher();
+    const editorManager = {
+      getValue: jest.fn(() => '![](collector.png)'),
+      getMkEditor: jest.fn(),
+      layout: jest.fn(),
+      resetContent: jest.fn(),
+      providers: {} as any,
+    };
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        dispatcher: dispatcher as any,
+        editorManager: editorManager as any,
+        fileManager: fakeFileManager({
+          // Active tab is the diff overlay …
+          activeFile: 'diff://tc-1',
+          // … but the underlying real file is the editable path the
+          // preview should resolve images against.
+          activeEditablePath: 'C:/Users/chris/workspace/foo/readme.md',
+        }) as any,
+        fileTreeManager: fakeFileTreeManager({
+          nodes: [],
+          treeRoot: 'C:/Users/chris/workspace/foo',
+        }) as any,
+      },
+    });
+    await waitFor(() => {
+      const img = container.querySelector('img');
+      expect(img).not.toBeNull();
+      expect(img!.getAttribute('src')).toBe(
+        'file:///C:/Users/chris/workspace/foo/collector.png',
+      );
+    });
+  });
+
   it('does not rewrite anything in web mode (separate blob-URL workstream)', async () => {
     const { Markdown } = require('../../src/browser/core/Markdown');
     (Markdown.render as jest.Mock).mockReturnValueOnce(

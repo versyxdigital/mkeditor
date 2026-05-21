@@ -29,12 +29,14 @@ export function fakeFileManager(
   init: {
     tabs?: { path: string; name: string }[];
     activeFile?: string | null;
+    activeEditablePath?: string | null;
   } = {},
 ) {
   let snapshot = {
     tabs: init.tabs ?? [],
     activeFile: init.activeFile ?? null,
   };
+  const editablePathOverride = init.activeEditablePath;
   const listeners = new Set<() => void>();
   const emit = () => listeners.forEach((l) => l());
 
@@ -47,6 +49,14 @@ export function fakeFileManager(
     reorderTabs: jest.fn(),
     openFileFromPath: jest.fn(),
     createUntitledTab: jest.fn(),
+    // Default mirrors the production behaviour for a "normal" tab —
+    // the active file path IS the editable path. Tests that need the
+    // diff-tab behaviour pass `activeEditablePath` explicitly.
+    getActiveEditablePath: jest.fn(() =>
+      editablePathOverride !== undefined
+        ? editablePathOverride
+        : snapshot.activeFile,
+    ),
     on: jest.fn((event: 'change', listener: () => void) => {
       if (event !== 'change') throw new Error(`unsupported event ${event}`);
       listeners.add(listener);
