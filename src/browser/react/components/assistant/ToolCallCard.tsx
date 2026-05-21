@@ -223,7 +223,7 @@ const InlineConfirm: React.FC<{
   return (
     <div className="mt-2 flex flex-col gap-2 border-t border-current/20 pt-2">
       {preview && preview.path ? (
-        <p className="text-xs font-semibold opacity-80">
+        <p className="break-all text-xs font-semibold opacity-80">
           {t(PREVIEW_KIND_LABEL[preview.kind], { path: preview.path })}
           {preview.detail ? ` · ${preview.detail}` : ''}
         </p>
