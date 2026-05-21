@@ -35,6 +35,7 @@
 
   "diff_view_unified": "Birleşik diff görünümüne geç",
   "diff_view_side_by_side": "Yan yana diff görünümüne geç",
+  "diff_pop_out": "Editör sekmesinde aç",
 
   "preview_show_full": "Tümünü göster",
   "preview_show_less": "Daha az göster",

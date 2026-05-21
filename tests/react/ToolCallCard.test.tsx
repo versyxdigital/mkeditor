@@ -138,6 +138,7 @@ jest.mock(
       modified: string;
       fetchFullOriginal?: () => Promise<string>;
       fetchFullModified?: () => Promise<string>;
+      onPopOut?: (s: { original: string; modified: string }) => void;
     }) => (
       <div
         data-testid="inline-diff-preview-stub"
@@ -145,7 +146,21 @@ jest.mock(
         data-modified={props.modified}
         data-has-fetch-original={props.fetchFullOriginal !== undefined}
         data-has-fetch-modified={props.fetchFullModified !== undefined}
-      />
+        data-has-pop-out={props.onPopOut !== undefined}
+      >
+        {props.onPopOut && (
+          <button
+            type="button"
+            data-testid="inline-diff-pop-out-stub"
+            onClick={() =>
+              props.onPopOut!({
+                original: props.original,
+                modified: props.modified,
+              })
+            }
+          />
+        )}
+      </div>
     ),
   }),
 );
@@ -325,5 +340,50 @@ describe('<ToolCallCard> inline confirmation', () => {
       { managers: { assistantManager: am } },
     );
     expect(screen.queryByTestId('inline-diff-preview-stub')).toBeNull();
+  });
+
+  it('clicking pop-out forwards the visible content to fileManager.openDiffTab', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { fakeAssistantManager } = require('../utils/render');
+    const am = fakeAssistantManager({
+      initialChatSnapshot: pendingChatSnapshot({
+        toolCallId: 'tc-pending',
+        toolName: 'write_file',
+        callId: 'chat-1',
+        preview: {
+          kind: 'write',
+          path: '/abs/README.md',
+          before: 'OLD',
+          after: 'NEW CONTENT',
+        },
+      }),
+    });
+    // FilesContext.useSyncExternalStore requires getSnapshot to return
+    // a STABLE reference between emits — returning a fresh object
+    // would loop React forever. Cache once.
+    const filesSnap = { tabs: [], activeFile: null };
+    const fileManager = {
+      // Only the methods <ToolCallCard> reaches for. Other FileManager
+      // surface stays absent to keep the failure mode loud if we
+      // accidentally reach for something else.
+      openDiffTab: jest.fn(),
+      on: jest.fn(() => () => {}),
+      getSnapshot: jest.fn(() => filesSnap),
+    };
+    render(<ToolCallCard invocation={pendingInvocation()} />, {
+      managers: {
+        assistantManager: am,
+        fileManager: fileManager as never,
+      },
+    });
+    fireEvent.click(screen.getByTestId('inline-diff-pop-out-stub'));
+    expect(fileManager.openDiffTab).toHaveBeenCalledTimes(1);
+    const call = fileManager.openDiffTab.mock.calls[0][0];
+    expect(call.id).toBe('diff://tc-pending');
+    // Tab name derives from the basename of preview.path.
+    expect(call.name).toBe('Δ README.md');
+    expect(call.original).toBe('OLD');
+    expect(call.modified).toBe('NEW CONTENT');
+    expect(call.sourcePath).toBe('/abs/README.md');
   });
 });

@@ -37,6 +37,7 @@ import { faTasks } from '@fortawesome/free-solid-svg-icons/faTasks';
 import { faTerminal } from '@fortawesome/free-solid-svg-icons/faTerminal';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
+import { faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons/faUpRightFromSquare';
 
 library.add(
   faBars,
@@ -77,6 +78,7 @@ library.add(
   faTerminal,
   faTimes,
   faTrash,
+  faUpRightFromSquare,
 );
 
 dom.watch();

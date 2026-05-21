@@ -35,6 +35,7 @@
 
   "diff_view_unified": "통합 diff 보기로 전환",
   "diff_view_side_by_side": "나란히 diff 보기로 전환",
+  "diff_pop_out": "에디터 탭에서 열기",
 
   "preview_show_full": "전체 표시",
   "preview_show_less": "간략히 표시",

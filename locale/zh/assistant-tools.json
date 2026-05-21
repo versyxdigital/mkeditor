@@ -35,6 +35,7 @@
 
   "diff_view_unified": "切换到统一差异视图",
   "diff_view_side_by_side": "切换到并排差异视图",
+  "diff_pop_out": "在编辑器选项卡中打开",
 
   "preview_show_full": "显示全部",
   "preview_show_less": "显示更少",

@@ -5,6 +5,7 @@ import type {
   ToolInvocation,
 } from '../../../../app/interfaces/Assistant';
 import { useAssistantChat } from '../../contexts/AssistantContext';
+import { useManagers } from '../../contexts/ManagersContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
@@ -185,10 +186,36 @@ const InlineConfirm: React.FC<{
   onRespond: (ok: boolean) => void;
 }> = ({ invocation, pending, onRespond }) => {
   const { t } = useTranslation();
+  const { fileManager } = useManagers();
   const { preview } = pending;
   const { diffProps, blockProps } = useInlineConfirmContent(
     invocation,
     preview,
+  );
+
+  // Pop-out handler: lifts the currently-visible diff content out of
+  // the chat card and into a real editor tab via FileManager. The
+  // tab id is keyed off `toolCallId` so re-clicking pop-out for the
+  // same tool just re-focuses the existing tab (openDiffTab handles
+  // the upsert). Disabled (handler undefined) for non-diff previews
+  // — the InsertPreview component doesn't take an onPopOut.
+  const popOut = React.useCallback(
+    (current: { original: string; modified: string }) => {
+      if (!fileManager) return;
+      const path = preview?.path;
+      const baseName = path
+        ? (path.split(/[\\/]/).pop() ?? path)
+        : invocation.toolName;
+      fileManager.openDiffTab({
+        id: `diff://${invocation.toolCallId}`,
+        name: `Δ ${baseName}`,
+        original: current.original,
+        modified: current.modified,
+        language: 'markdown',
+        sourcePath: path,
+      });
+    },
+    [fileManager, invocation.toolCallId, invocation.toolName, preview?.path],
   );
 
   return (
@@ -200,7 +227,10 @@ const InlineConfirm: React.FC<{
         </p>
       ) : null}
       {diffProps ? (
-        <InlineDiffPreview {...diffProps} />
+        <InlineDiffPreview
+          {...diffProps}
+          onPopOut={fileManager ? popOut : undefined}
+        />
       ) : blockProps ? (
         <InsertPreview {...blockProps} />
       ) : null}

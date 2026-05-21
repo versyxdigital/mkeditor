@@ -41,9 +41,15 @@ export interface InlineDiffPreviewProps {
   /**
    * Pixel height of the diff editor. Default 240px keeps narrow chat
    * panels usable; callers can pass a smaller value for tight tool
-   * cards.
+   * cards. Ignored when `fill` is set.
    */
   height?: number;
+  /**
+   * Fill the parent container. Used by the editor-pane diff overlay
+   * (the "pop out" target) so the diff stretches the full pane
+   * instead of taking a fixed 240px slot.
+   */
+  fill?: boolean;
   /**
    * Returns the untruncated `original`. Required only when `original`
    * ends with the truncation marker — when supplied alongside its
@@ -53,6 +59,14 @@ export interface InlineDiffPreviewProps {
   fetchFullOriginal?: () => Promise<string>;
   /** Returns the untruncated `modified`. */
   fetchFullModified?: () => Promise<string>;
+  /**
+   * When set, renders a "pop out" button in the toolbar that, on
+   * click, hands back the currently-visible original / modified
+   * content. The caller is expected to open a full-pane diff tab
+   * with that snapshot (the chat card can't reach FileManager
+   * directly — same one-way separation as the rest of the file).
+   */
+  onPopOut?: (current: { original: string; modified: string }) => void;
 }
 
 export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
@@ -60,8 +74,10 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
   modified,
   language = 'markdown',
   height = 240,
+  fill = false,
   fetchFullOriginal,
   fetchFullModified,
+  onPopOut,
 }) => {
   const { settings } = useSettings();
   const { t } = useTranslation();
@@ -264,10 +280,32 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
 
   return (
     <div
-      className="relative rounded border border-border bg-background"
+      className={
+        fill
+          ? 'relative h-full w-full bg-background'
+          : 'relative rounded border border-border bg-background'
+      }
       data-testid="inline-diff-preview"
     >
       <div className="absolute right-1 top-1 z-10 flex items-center gap-1">
+        {onPopOut && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs"
+            onClick={() =>
+              onPopOut({
+                original: effectiveOriginal,
+                modified: effectiveModified,
+              })
+            }
+            data-testid="inline-diff-pop-out"
+            title={t('assistant-tools:diff_pop_out')}
+          >
+            <Icon name="up-right-from-square" />
+          </Button>
+        )}
         {canExpand && (
           <Button
             type="button"
@@ -325,7 +363,10 @@ export const InlineDiffPreview: React.FC<InlineDiffPreviewProps> = ({
       <div
         key={`diff-host-${sideBySide ? 'sbs' : 'unified'}`}
         ref={containerRef}
-        style={{ height: `${height}px`, width: '100%' }}
+        style={{
+          height: fill ? '100%' : `${height}px`,
+          width: '100%',
+        }}
       />
     </div>
   );

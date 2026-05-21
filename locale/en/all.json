@@ -111,6 +111,7 @@
     "retry_prompt_with_args": "Please retry {{toolName}} with arguments: {{args}}",
     "diff_view_unified": "Switch to unified diff",
     "diff_view_side_by_side": "Switch to side-by-side diff",
+    "diff_pop_out": "Open in editor tab",
     "preview_show_full": "Show full",
     "preview_show_less": "Show less",
     "preview_loading": "Loading…",

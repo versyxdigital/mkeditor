@@ -18,9 +18,36 @@ export interface TabInfo {
    * True when the tab's Monaco model has unsaved changes (current
    * alternative-version-id differs from the baseline captured at
    * load/save time). Flips back to false when the user undoes back
-   * to baseline, and after a successful save.
+   * to baseline, and after a successful save. Always false for
+   * `kind: 'diff'` tabs (no editable model).
    */
   dirty: boolean;
+  /**
+   * Discriminator. `'file'` (default, omitted in older snapshots) is
+   * a real editable file or an untitled buffer. `'diff'` is the
+   * read-only popped-out diff view from an assistant tool
+   * confirmation — no backing model, no save semantics, not persisted
+   * to the session file.
+   */
+  kind?: 'file' | 'diff';
+}
+
+/**
+ * Read-only side-by-side payload behind a `kind: 'diff'` tab. The
+ * pop-out button on `<InlineDiffPreview>` writes one of these into
+ * `FileManager.diffTabs` and creates a matching TabInfo; the editor
+ * pane then renders a full Monaco diff editor on top of the regular
+ * editor surface when the diff tab is active.
+ */
+export interface DiffTabPayload {
+  /** Original (left / "before") content. */
+  original: string;
+  /** Modified (right / "after") content. */
+  modified: string;
+  /** Monaco language id; defaults to 'markdown' when omitted. */
+  language?: string;
+  /** Source file path the diff refers to. Optional — display only. */
+  sourcePath?: string;
 }
 
 export interface FilesSnapshot {
@@ -59,6 +86,16 @@ export class FileManager {
 
   /** Insertion-ordered map of tab metadata. */
   public tabs: Map<string, TabInfo> = new Map();
+
+  /**
+   * Diff-tab payloads keyed by tab id. Holds the original/modified
+   * content + language for tabs whose `kind === 'diff'` so the
+   * editor pane can render the read-only Monaco diff editor. Kept
+   * separate from `models` because diff tabs have no editable
+   * ITextModel — the diff editor creates throwaway models from these
+   * strings on activate.
+   */
+  public diffTabs: Map<string, DiffTabPayload> = new Map();
 
   /** Per-tab Monaco view state. */
   private viewStates: Map<string, editor.ICodeEditorViewState> = new Map();
@@ -360,6 +397,9 @@ export class FileManager {
     this.baselineVersions.clear();
     this.dirtyByPath.clear();
     this.modelListeners.clear();
+    // Diff tabs are ephemeral preview surfaces; a workspace switch
+    // invalidates them along with everything else.
+    this.diffTabs.clear();
     this.activeFile = null;
 
     // Attach the fresh untitled model BEFORE tearing down the
@@ -392,8 +432,16 @@ export class FileManager {
   /**
    * Close a tab. If the buffer is dirty, opens a three-button prompt
    * (Save & close / Close without saving / Cancel) via openPromptExternal.
+   *
+   * Diff tabs (`kind: 'diff'`) skip the prompt entirely — there's no
+   * editable model to save — and just drop the tab metadata + payload.
    */
   public async closeTab(path: string) {
+    const tabInfo = this.tabs.get(path);
+    if (tabInfo && (tabInfo.kind ?? 'file') === 'diff') {
+      this.closeDiffTab(path);
+      return;
+    }
     const mdl = this.models.get(path);
     if (!mdl) return;
 
@@ -667,6 +715,104 @@ export class FileManager {
     this.seedUntitled('');
   }
 
+  /**
+   * Open (or focus an existing) read-only diff tab. Created by the
+   * "pop out" button on the inline tool-call confirmation card so
+   * the user can review a proposed change in the full editor pane
+   * instead of inside the narrow chat panel. No backing ITextModel
+   * and no save semantics — closing is the only mutation.
+   *
+   * If a tab with the same `id` already exists, it's updated in
+   * place (new original/modified) and re-activated. That way
+   * clicking "Pop out" twice on the same tool doesn't accumulate
+   * duplicate tabs.
+   */
+  public openDiffTab(opts: {
+    id: string;
+    name: string;
+    original: string;
+    modified: string;
+    language?: string;
+    sourcePath?: string;
+  }): void {
+    this.diffTabs.set(opts.id, {
+      original: opts.original,
+      modified: opts.modified,
+      language: opts.language ?? 'markdown',
+      sourcePath: opts.sourcePath,
+    });
+    if (this.tabs.has(opts.id)) {
+      // Re-activate the existing diff tab; the payload was updated above.
+      const existing = this.tabs.get(opts.id)!;
+      this.activateFile(opts.id, existing.name);
+      return;
+    }
+    // Capture the outgoing tab's view state before we promote the
+    // new diff tab to active — same hand-off the regular activate
+    // path does.
+    const previousPath = this.activeFile;
+    if (previousPath) {
+      const prevInfo = this.tabs.get(previousPath);
+      if (prevInfo && (prevInfo.kind ?? 'file') === 'file') {
+        const state = this.mkeditor.saveViewState();
+        if (state) this.viewStates.set(previousPath, state);
+      }
+    }
+    this.tabs.set(opts.id, {
+      path: opts.id,
+      name: opts.name,
+      dirty: false,
+      kind: 'diff',
+    });
+    this.activeFile = opts.id;
+    this.bridge.send('to:title:set', opts.name === '' ? 'New File' : opts.name);
+    this.emitChange();
+    this.scheduleSessionSave();
+  }
+
+  /** Lookup helper for the editor pane's diff-overlay rendering. */
+  public getDiffTab(id: string): DiffTabPayload | undefined {
+    return this.diffTabs.get(id);
+  }
+
+  /**
+   * Drop a diff tab — payload + TabInfo. No save prompt (read-only).
+   * If the tab was active, falls back to the next remaining tab or
+   * seeds a fresh untitled if none remain. Called by `closeTab` when
+   * it detects a `kind: 'diff'` tab.
+   */
+  private closeDiffTab(path: string): void {
+    this.diffTabs.delete(path);
+    this.tabs.delete(path);
+
+    if (this.activeFile === path) {
+      this.activeFile = null;
+      const next = this.tabs.keys().next();
+      if (!next.done) {
+        const nextPath = next.value;
+        const nextInfo = this.tabs.get(nextPath);
+        this.activateFile(nextPath, nextInfo?.name);
+        this.scheduleSessionSave();
+        return;
+      }
+      // No tabs left — open a fresh untitled (same fallback the
+      // regular closeTab path uses when the last tab closes).
+      const newPath = `untitled-${this.untitledCounter++}`;
+      const newName = `Untitled ${this.untitledCounter - 1}`;
+      const model = editor.createModel('', 'markdown');
+      this.models.set(newPath, model);
+      this.originals.set(newPath, '');
+      this.tabs.set(newPath, { path: newPath, name: newName, dirty: false });
+      this.trackTab(newPath, model);
+      this.activateFile(newPath, newName);
+      this.scheduleSessionSave();
+      return;
+    }
+
+    this.emitChange();
+    this.scheduleSessionSave();
+  }
+
   // ---------------------------------------------------------------------
   // Activation, opening, saving
   // ---------------------------------------------------------------------
@@ -677,6 +823,30 @@ export class FileManager {
    * the window title.
    */
   public activateFile(path: string, name?: string) {
+    // Diff tabs are handled by the editor pane's overlay, not by
+    // swapping the Monaco model. We still need to set `activeFile`
+    // and emit so the tab strip + editor pane update.
+    const tabInfo = this.tabs.get(path);
+    if (tabInfo && (tabInfo.kind ?? 'file') === 'diff') {
+      const previousPath = this.activeFile;
+      // Capture the outgoing FILE tab's view state before we cover
+      // Monaco with the diff overlay. Diff tabs themselves don't
+      // have view states.
+      if (previousPath && previousPath !== path) {
+        const prevInfo = this.tabs.get(previousPath);
+        if (prevInfo && (prevInfo.kind ?? 'file') === 'file') {
+          const state = this.mkeditor.saveViewState();
+          if (state) this.viewStates.set(previousPath, state);
+        }
+      }
+      this.activeFile = path;
+      const filename = name || tabInfo.name;
+      this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
+      this.emitChange();
+      this.scheduleSessionSave();
+      return;
+    }
+
     const mdl = this.models.get(path);
     if (!mdl) return;
 
@@ -685,10 +855,16 @@ export class FileManager {
 
     if (switching) {
       // Capture the outgoing tab's cursor/selection/scroll/folding so
-      // we can restore it when the user comes back.
+      // we can restore it when the user comes back. Skip when the
+      // outgoing tab is a diff tab — those have no Monaco view state
+      // (Monaco was sitting beneath the overlay, not driving the
+      // active content).
       if (previousPath) {
-        const state = this.mkeditor.saveViewState();
-        if (state) this.viewStates.set(previousPath, state);
+        const prevInfo = this.tabs.get(previousPath);
+        if (!prevInfo || (prevInfo.kind ?? 'file') === 'file') {
+          const state = this.mkeditor.saveViewState();
+          if (state) this.viewStates.set(previousPath, state);
+        }
       }
 
       this.activeFile = path;
@@ -877,13 +1053,25 @@ export class FileManager {
    * without a final tab switch still records where the user was.
    */
   public serializeSession(): SessionPayload {
-    if (this.activeFile) {
+    // Skip view-state capture when the active tab is a diff tab —
+    // Monaco's saveViewState would return the state of whatever
+    // file tab was underneath the overlay, not the diff itself.
+    const activeInfo = this.activeFile
+      ? this.tabs.get(this.activeFile)
+      : undefined;
+    const activeIsDiff = activeInfo && (activeInfo.kind ?? 'file') === 'diff';
+    if (this.activeFile && !activeIsDiff) {
       const state = this.mkeditor.saveViewState();
       if (state) this.viewStates.set(this.activeFile, state);
     }
 
     const tabs: SessionTab[] = [];
     for (const info of this.tabs.values()) {
+      // Diff tabs are ephemeral pop-outs from in-memory tool
+      // confirmations — relaunching after the tool already accepted
+      // / rejected would leave a stale tab with no way to interact.
+      // Filter them out of the persisted snapshot.
+      if ((info.kind ?? 'file') === 'diff') continue;
       const viewState = this.viewStates.get(info.path) ?? null;
       const tab: SessionTab = {
         path: info.path,
@@ -899,10 +1087,19 @@ export class FileManager {
       tabs.push(tab);
     }
 
+    // If the currently active tab is a diff tab, don't persist it as
+    // the active file — the relaunched session would otherwise try
+    // to focus a tab that's about to be filtered out. Fall back to
+    // the first surviving tab, or null when there are none.
+    let activeFile = this.activeFile;
+    if (activeIsDiff) {
+      activeFile = tabs.length > 0 ? tabs[0].path : null;
+    }
+
     const payload: SessionPayload = {
       version: 2,
       tabs,
-      activeFile: this.activeFile,
+      activeFile,
       workspaceRoot: this.workspaceRootGetter?.() ?? null,
     };
     const assistant = this.assistantStateGetter?.();

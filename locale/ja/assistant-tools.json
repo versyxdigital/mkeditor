@@ -35,6 +35,7 @@
 
   "diff_view_unified": "統合差分表示に切り替え",
   "diff_view_side_by_side": "並列差分表示に切り替え",
+  "diff_pop_out": "エディタタブで開く",
 
   "preview_show_full": "全文表示",
   "preview_show_less": "折りたたむ",

@@ -35,6 +35,7 @@
 
   "diff_view_unified": "Переключить на единый дифф",
   "diff_view_side_by_side": "Переключить на дифф сравнением",
+  "diff_pop_out": "Открыть во вкладке редактора",
 
   "preview_show_full": "Показать полностью",
   "preview_show_less": "Показать меньше",

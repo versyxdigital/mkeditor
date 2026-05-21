@@ -35,6 +35,7 @@
 
   "diff_view_unified": "Passa a diff unificato",
   "diff_view_side_by_side": "Passa a diff affiancato",
+  "diff_pop_out": "Apri in una scheda dell'editor",
 
   "preview_show_full": "Mostra tutto",
   "preview_show_less": "Mostra meno",
