@@ -11,9 +11,11 @@ import { useFiles } from '../contexts/FilesContext';
 import { useFileTree } from '../contexts/FileTreeContext';
 import { useManagers } from '../contexts/ManagersContext';
 import { useModals } from '../contexts/ModalsContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { useUIState } from '../contexts/UIStateContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { Button } from './ui/button';
+import { FileTreeFilterBar } from './FileTreeFilterBar';
 import { Icon } from './Icon';
 import {
   ContextMenu,
@@ -46,6 +48,12 @@ export const FileTreePanel: React.FC = () => {
   const { activeFile } = useFiles();
   const { openModal } = useModals();
   const { sidebarOpen, setSidebarOpen, toggleSidebar } = useUIState();
+  const { settings } = useSettings();
+  const activeExtensions = React.useMemo(
+    () => new Set(settings.fileExplorer?.extensions ?? ['md']),
+    [settings.fileExplorer?.extensions],
+  );
+  const [search, setSearch] = React.useState('');
   // `getContextMenuItems` calls `t(...)` and bakes the resolved strings
   // into the items array. We need the memo to invalidate when i18next
   // finishes loading (its first init resolves AFTER React mounts) and
@@ -224,6 +232,18 @@ export const FileTreePanel: React.FC = () => {
     setContextNode(node ?? null);
   };
 
+  // Apply the extension + search filter to the tree. Files are kept
+  // only if their extension is in the active set AND (search empty
+  // OR name matches case-insensitive substring). Directories are kept
+  // only if some descendant survives. When the user is searching, the
+  // surviving directories must auto-expand so the matches are visible
+  // without further clicks — collected in `searchExpansion` and OR'd
+  // with the user-driven `expandedPaths` set inside `<NodeRow>`.
+  const { filteredNodes, searchExpansion } = React.useMemo(
+    () => filterTree(nodes, activeExtensions, search),
+    [nodes, activeExtensions, search],
+  );
+
   // Web mode empty-state. Surfaces the "Open folder" affordance
   // inline so the user doesn't have to discover the right-click menu.
   // The "Restore previous folder" button appears only when a handle
@@ -306,11 +326,17 @@ export const FileTreePanel: React.FC = () => {
               </div>
             </li>
           )}
-          {nodes.map((node) => (
+          {showWorkspaceHeader && (
+            <li className="list-none">
+              <FileTreeFilterBar search={search} onSearchChange={setSearch} />
+            </li>
+          )}
+          {filteredNodes.map((node) => (
             <NodeRow
               key={node.path}
               node={node}
               expandedPaths={expandedPaths}
+              searchExpansion={searchExpansion}
               activeFile={activeFile}
               onToggle={toggleExpanded}
               onOpen={(p) => fileManager?.openFileFromPath(p)}
@@ -341,6 +367,12 @@ export const FileTreePanel: React.FC = () => {
 interface NodeRowProps {
   node: TreeNode;
   expandedPaths: Set<string>;
+  /**
+   * Paths that should be force-expanded while a search query is active.
+   * OR'd with `expandedPaths` so the user's manual collapse state is
+   * preserved once they clear the search.
+   */
+  searchExpansion: Set<string>;
   activeFile: string | null;
   onToggle: (node: TreeNode) => void;
   onOpen: (path: string) => void;
@@ -349,27 +381,33 @@ interface NodeRowProps {
 const NodeRow: React.FC<NodeRowProps> = ({
   node,
   expandedPaths,
+  searchExpansion,
   activeFile,
   onToggle,
   onOpen,
 }) => {
   // "Visually expanded" requires both the user intent (path in
-  // expandedPaths) AND that the directory's children have actually
-  // been loaded. Without the `loaded` gate, a tree refresh that
-  // replaces a previously-expanded directory's children with a
-  // fresh shallow listing (e.g. after a file/folder delete) would
-  // leave the chevron / folder-open icons in the expanded pose
-  // while the children block bails on the undefined `children`
-  // array — a visual mismatch the user reads as "tree collapsed
-  // but icons stuck". Gating on `loaded` keeps the icons honest;
-  // when the user re-clicks, the lazy-load repopulates and the
-  // icons flip back open.
+  // expandedPaths or search expansion) AND that the directory's
+  // children have actually been loaded. Without the `loaded` gate,
+  // a tree refresh that replaces a previously-expanded directory's
+  // children with a fresh shallow listing (e.g. after a file/folder
+  // delete) would leave the chevron / folder-open icons in the
+  // expanded pose while the children block bails on the undefined
+  // `children` array — a visual mismatch the user reads as "tree
+  // collapsed but icons stuck". Gating on `loaded` keeps the icons
+  // honest; when the user re-clicks, the lazy-load repopulates and
+  // the icons flip back open.
   const expanded =
     node.type === 'directory' &&
-    expandedPaths.has(node.path) &&
+    (expandedPaths.has(node.path) || searchExpansion.has(node.path)) &&
     node.loaded === true;
   const isActiveFile = node.type === 'file' && node.path === activeFile;
   const hasChevron = node.type === 'directory' && node.hasChildren;
+  // Non-markdown files render dimmed to reinforce that markdown is
+  // still MKEditor's focus. Directories aren't muted (they're
+  // organisational, not content).
+  const muted =
+    node.type === 'file' && !node.name.toLowerCase().endsWith('.md');
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -380,11 +418,14 @@ const NodeRow: React.FC<NodeRowProps> = ({
 
   return (
     <li
-      className={`ft-node ${node.type}`}
+      className={`ft-node ${node.type}${muted ? ' ft-node-muted' : ''}`}
       data-path={node.path}
+      data-muted={muted ? 'true' : undefined}
       onClick={handleClick}
     >
-      <span className={`file-name ${isActiveFile ? 'active' : ''}`}>
+      <span
+        className={`file-name ${isActiveFile ? 'active' : ''} ${muted ? 'text-muted-foreground' : ''}`}
+      >
         <span
           className={`mr-1 inline-block text-[0.7em] ${hasChevron ? '' : 'invisible'}`}
         >
@@ -410,6 +451,7 @@ const NodeRow: React.FC<NodeRowProps> = ({
               key={child.path}
               node={child}
               expandedPaths={expandedPaths}
+              searchExpansion={searchExpansion}
               activeFile={activeFile}
               onToggle={onToggle}
               onOpen={onOpen}
@@ -420,6 +462,64 @@ const NodeRow: React.FC<NodeRowProps> = ({
     </li>
   );
 };
+
+/**
+ * Walk the tree, dropping files whose extension isn't in the active
+ * set or whose name doesn't match `searchQuery` (when non-empty), and
+ * dropping directories whose entire subtree disappeared as a result.
+ */
+export function filterTree(
+  nodes: TreeNode[],
+  activeExtensions: Set<string>,
+  searchQuery: string,
+): { filteredNodes: TreeNode[]; searchExpansion: Set<string> } {
+  // Normalise once so callers don't have to remember. Search is
+  // case-insensitive substring on the file name.
+  const query = searchQuery.trim().toLowerCase();
+  const searchExpansion = new Set<string>();
+
+  function visit(input: TreeNode[]): TreeNode[] {
+    const out: TreeNode[] = [];
+    for (const node of input) {
+      if (node.type === 'file') {
+        if (!fileExtensionMatches(node.name, activeExtensions)) continue;
+        if (query && !node.name.toLowerCase().includes(query)) {
+          continue;
+        }
+        out.push(node);
+        continue;
+      }
+      // Directory
+      if (node.children && node.children.length > 0) {
+        const filteredChildren = visit(node.children);
+        if (filteredChildren.length > 0) {
+          if (query) searchExpansion.add(node.path);
+          out.push({ ...node, children: filteredChildren });
+          continue;
+        }
+        // No surviving descendants. Drop the directory unless its
+        // subtree might still load in (hasChildren && !loaded).
+        if (node.hasChildren && !node.loaded) {
+          out.push(node);
+        }
+        continue;
+      }
+      // No children loaded yet (or known-empty directory).
+      if (node.hasChildren && !node.loaded) {
+        out.push(node);
+      }
+    }
+    return out;
+  }
+
+  return { filteredNodes: visit(nodes), searchExpansion };
+}
+
+function fileExtensionMatches(name: string, active: Set<string>): boolean {
+  const dot = name.lastIndexOf('.');
+  if (dot < 0) return false;
+  return active.has(name.slice(dot + 1).toLowerCase());
+}
 
 function findNodeByPath(nodes: TreeNode[], path: string): TreeNode | null {
   for (const node of nodes) {

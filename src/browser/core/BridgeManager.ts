@@ -257,7 +257,12 @@ export class BridgeManager {
     this.bridge.send('to:title:set', '');
     this.bridge.send('to:file:new', {
       content: this.mkeditor.getValue(),
-      file: this.fileManager.activeFile,
+      // Use the editable path rather than the raw `activeFile`, which
+      // can be a `diff://...` overlay id while a popped-out diff
+      // preview is showing. Main resolves this against the filesystem
+      // for the unsaved-changes prompt; a synthetic id would have no
+      // hope of mapping to anything sensible there.
+      file: this.fileManager.getActiveEditablePath(),
     });
   }
 

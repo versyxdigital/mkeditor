@@ -4,5 +4,12 @@
   "open_folder": "Ouvrir un dossier",
   "restore_workspace": "Restaurer le dossier précédent",
   "disconnect_folder": "Déconnecter le dossier",
-  "chromium_only_warning": "L'accès aux dossiers n'est disponible que dans les navigateurs basés sur Chromium (Chrome, Edge, Brave, Opera)."
+  "chromium_only_warning": "L'accès aux dossiers n'est disponible que dans les navigateurs basés sur Chromium (Chrome, Edge, Brave, Opera).",
+  "search_placeholder": "Rechercher des fichiers",
+  "filter_label": "Filtrer les types de fichiers",
+  "filter_types": "Types de fichiers",
+  "filter_section_markdown": "Markdown",
+  "filter_section_images": "Images",
+  "filter_section_documents": "Documents",
+  "filter_reset_to_md": "Réinitialiser à .md uniquement"
 }

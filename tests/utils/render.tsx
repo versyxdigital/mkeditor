@@ -83,6 +83,7 @@ type ChatSnapshot = {
   };
   drafts: Record<string, string>;
   inflight: Record<string, unknown>;
+  pendingConfirms: Record<string, unknown>;
 };
 
 const EMPTY_CHAT_SNAPSHOT: ChatSnapshot = {
@@ -90,6 +91,7 @@ const EMPTY_CHAT_SNAPSHOT: ChatSnapshot = {
   activeConversation: { anthropic: null, openai: null, ollama: null },
   drafts: {},
   inflight: {},
+  pendingConfirms: {},
 };
 
 export function fakeAssistantManager(
@@ -160,6 +162,8 @@ export function fakeAssistantManager(
     setToolExecutor: jest.fn(),
     setAutoAcceptWrites: jest.fn(),
     onToolCall: jest.fn(),
+    respondToConfirm: jest.fn(),
+    getFullPreviewContent: jest.fn(async () => undefined),
 
     // P6 context surface
     setContextProvider: jest.fn(),

@@ -87,6 +87,12 @@ describe('SettingsProvider.loadSettingsFromLocalStorage (web)', () => {
     expect(provider.getSetting('autoindent')).toBe(true);
     expect(provider.getSetting('wordwrap')).toBe(false);
     expect(provider.getSetting('sessionRestore')).toBe(true);
+    // `fileExplorer` is a newer field — pre-existing settings get the
+    // markdown-only default rather than `undefined`, so the React
+    // filter bar doesn't crash trying to read `extensions` off undef.
+    expect(provider.getSetting('fileExplorer')).toEqual({
+      extensions: ['md'],
+    });
 
     // The merged shape was persisted back so subsequent loads are
     // consistent (sessionRestore now present in storage).
@@ -95,6 +101,7 @@ describe('SettingsProvider.loadSettingsFromLocalStorage (web)', () => {
     );
     expect(upgraded.sessionRestore).toBe(true);
     expect(upgraded.autoindent).toBe(true);
+    expect(upgraded.fileExplorer).toEqual({ extensions: ['md'] });
   });
 
   it('skips re-persisting when stored already has every key', () => {
@@ -108,6 +115,7 @@ describe('SettingsProvider.loadSettingsFromLocalStorage (web)', () => {
       scrollsync: true,
       sessionRestore: false,
       locale: 'en',
+      fileExplorer: { extensions: ['md'] },
     };
     localStorage.setItem('mkeditor-settings', JSON.stringify(full));
 

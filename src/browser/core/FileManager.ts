@@ -18,9 +18,36 @@ export interface TabInfo {
    * True when the tab's Monaco model has unsaved changes (current
    * alternative-version-id differs from the baseline captured at
    * load/save time). Flips back to false when the user undoes back
-   * to baseline, and after a successful save.
+   * to baseline, and after a successful save. Always false for
+   * `kind: 'diff'` tabs (no editable model).
    */
   dirty: boolean;
+  /**
+   * Discriminator. `'file'` (default, omitted in older snapshots) is
+   * a real editable file or an untitled buffer. `'diff'` is the
+   * read-only popped-out diff view from an assistant tool
+   * confirmation — no backing model, no save semantics, not persisted
+   * to the session file.
+   */
+  kind?: 'file' | 'diff';
+}
+
+/**
+ * Read-only side-by-side payload behind a `kind: 'diff'` tab. The
+ * pop-out button on `<InlineDiffPreview>` writes one of these into
+ * `FileManager.diffTabs` and creates a matching TabInfo; the editor
+ * pane then renders a full Monaco diff editor on top of the regular
+ * editor surface when the diff tab is active.
+ */
+export interface DiffTabPayload {
+  /** Original (left / "before") content. */
+  original: string;
+  /** Modified (right / "after") content. */
+  modified: string;
+  /** Monaco language id; defaults to 'markdown' when omitted. */
+  language?: string;
+  /** Source file path the diff refers to. Optional — display only. */
+  sourcePath?: string;
 }
 
 export interface FilesSnapshot {
@@ -48,6 +75,20 @@ export class FileManager {
   /** The current active file */
   public activeFile: string | null = null;
 
+  /**
+   * The most recently active *editable* (non-diff, non-untitled) tab
+   * path. Diff tabs cover the Monaco surface with a read-only overlay
+   * but don't swap the underlying model — Monaco is still pointing at
+   * whichever file tab was active before. Callsites that need to
+   * operate on the editor's current backing file (selection-based
+   * tools, save IPC, dirname lookups, the `mked://` link provider)
+   * read this via `getActiveEditablePath()` instead of `activeFile`,
+   * so they don't accidentally route a `diff://...` id into the file
+   * system. `null` while only diff/untitled tabs have ever been
+   * active in this session.
+   */
+  private lastEditableFile: string | null = null;
+
   /** Flag to determine whether the content has changed */
   public contentHasChanged = false;
 
@@ -59,6 +100,16 @@ export class FileManager {
 
   /** Insertion-ordered map of tab metadata. */
   public tabs: Map<string, TabInfo> = new Map();
+
+  /**
+   * Diff-tab payloads keyed by tab id. Holds the original/modified
+   * content + language for tabs whose `kind === 'diff'` so the
+   * editor pane can render the read-only Monaco diff editor. Kept
+   * separate from `models` because diff tabs have no editable
+   * ITextModel — the diff editor creates throwaway models from these
+   * strings on activate.
+   */
+  public diffTabs: Map<string, DiffTabPayload> = new Map();
 
   /** Per-tab Monaco view state. */
   private viewStates: Map<string, editor.ICodeEditorViewState> = new Map();
@@ -196,6 +247,40 @@ export class FileManager {
    */
   public getSnapshot(): FilesSnapshot {
     return this.snapshot;
+  }
+
+  /**
+   * Resolve the path of the file currently visible in Monaco — the
+   * "editable" file underneath whatever overlay (diff tab) may be
+   * showing. Used by everything that needs a real filesystem path:
+   * the AI tool catalog's selection-based tools, write previews,
+   * `AssistantContextSource.getSelection`, `MkedLinkProvider`,
+   * and any code about to send `to:file:save` with a path.
+   *
+   * Returns:
+   *   - the active tab path when it's a normal file tab (and not untitled)
+   *   - the most recent editable tab path when the active tab is a
+   *     diff tab (Monaco's model is still pointing there)
+   *   - `null` for untitled-only sessions or when no editable tab
+   *     has ever been active
+   */
+  public getActiveEditablePath(): string | null {
+    const active = this.activeFile;
+    if (active) {
+      const tab = this.tabs.get(active);
+      const kind = tab?.kind ?? 'file';
+      if (kind === 'file' && !active.startsWith('untitled-')) {
+        return active;
+      }
+    }
+    if (
+      this.lastEditableFile &&
+      this.tabs.has(this.lastEditableFile) &&
+      (this.tabs.get(this.lastEditableFile)?.kind ?? 'file') === 'file'
+    ) {
+      return this.lastEditableFile;
+    }
+    return null;
   }
 
   /** Rebuild the snapshot and notify all subscribed listeners. */
@@ -360,7 +445,11 @@ export class FileManager {
     this.baselineVersions.clear();
     this.dirtyByPath.clear();
     this.modelListeners.clear();
+    // Diff tabs are ephemeral preview surfaces; a workspace switch
+    // invalidates them along with everything else.
+    this.diffTabs.clear();
     this.activeFile = null;
+    this.lastEditableFile = null;
 
     // Attach the fresh untitled model BEFORE tearing down the
     // outgoing ones so Monaco never observes a "current model is
@@ -392,8 +481,16 @@ export class FileManager {
   /**
    * Close a tab. If the buffer is dirty, opens a three-button prompt
    * (Save & close / Close without saving / Cancel) via openPromptExternal.
+   *
+   * Diff tabs (`kind: 'diff'`) skip the prompt entirely — there's no
+   * editable model to save — and just drop the tab metadata + payload.
    */
   public async closeTab(path: string) {
+    const tabInfo = this.tabs.get(path);
+    if (tabInfo && (tabInfo.kind ?? 'file') === 'diff') {
+      this.closeDiffTab(path);
+      return;
+    }
     const mdl = this.models.get(path);
     if (!mdl) return;
 
@@ -446,6 +543,12 @@ export class FileManager {
     this.tabs.delete(path);
     this.viewStates.delete(path);
     this.detachTabTracking(path);
+    // If we're closing the path we'd been falling back to for the
+    // "editable" lookup, drop it — the upcoming `activateFile` call
+    // (or fresh-untitled path) will repopulate it if appropriate.
+    if (this.lastEditableFile === path) {
+      this.lastEditableFile = null;
+    }
 
     if (this.activeFile === path) {
       this.activeFile = null;
@@ -558,6 +661,9 @@ export class FileManager {
     }
     this.tabs = next;
     this.activeFile = newPath;
+    if (!newPath.startsWith('untitled-')) {
+      this.lastEditableFile = newPath;
+    }
     this.emitChange();
     this.scheduleSessionSave();
     return true;
@@ -600,6 +706,10 @@ export class FileManager {
     }
     if (wasDirty) {
       this.dirtyByPath.set(newPath, true);
+    }
+
+    if (this.lastEditableFile === oldPath) {
+      this.lastEditableFile = newPath.startsWith('untitled-') ? null : newPath;
     }
 
     if (this.tabs.has(oldPath)) {
@@ -667,6 +777,104 @@ export class FileManager {
     this.seedUntitled('');
   }
 
+  /**
+   * Open (or focus an existing) read-only diff tab. Created by the
+   * "pop out" button on the inline tool-call confirmation card so
+   * the user can review a proposed change in the full editor pane
+   * instead of inside the narrow chat panel. No backing ITextModel
+   * and no save semantics — closing is the only mutation.
+   *
+   * If a tab with the same `id` already exists, it's updated in
+   * place (new original/modified) and re-activated. That way
+   * clicking "Pop out" twice on the same tool doesn't accumulate
+   * duplicate tabs.
+   */
+  public openDiffTab(opts: {
+    id: string;
+    name: string;
+    original: string;
+    modified: string;
+    language?: string;
+    sourcePath?: string;
+  }): void {
+    this.diffTabs.set(opts.id, {
+      original: opts.original,
+      modified: opts.modified,
+      language: opts.language ?? 'markdown',
+      sourcePath: opts.sourcePath,
+    });
+    if (this.tabs.has(opts.id)) {
+      // Re-activate the existing diff tab; the payload was updated above.
+      const existing = this.tabs.get(opts.id)!;
+      this.activateFile(opts.id, existing.name);
+      return;
+    }
+    // Capture the outgoing tab's view state before we promote the
+    // new diff tab to active — same hand-off the regular activate
+    // path does.
+    const previousPath = this.activeFile;
+    if (previousPath) {
+      const prevInfo = this.tabs.get(previousPath);
+      if (prevInfo && (prevInfo.kind ?? 'file') === 'file') {
+        const state = this.mkeditor.saveViewState();
+        if (state) this.viewStates.set(previousPath, state);
+      }
+    }
+    this.tabs.set(opts.id, {
+      path: opts.id,
+      name: opts.name,
+      dirty: false,
+      kind: 'diff',
+    });
+    this.activeFile = opts.id;
+    this.bridge.send('to:title:set', opts.name === '' ? 'New File' : opts.name);
+    this.emitChange();
+    this.scheduleSessionSave();
+  }
+
+  /** Lookup helper for the editor pane's diff-overlay rendering. */
+  public getDiffTab(id: string): DiffTabPayload | undefined {
+    return this.diffTabs.get(id);
+  }
+
+  /**
+   * Drop a diff tab — payload + TabInfo. No save prompt (read-only).
+   * If the tab was active, falls back to the next remaining tab or
+   * seeds a fresh untitled if none remain. Called by `closeTab` when
+   * it detects a `kind: 'diff'` tab.
+   */
+  private closeDiffTab(path: string): void {
+    this.diffTabs.delete(path);
+    this.tabs.delete(path);
+
+    if (this.activeFile === path) {
+      this.activeFile = null;
+      const next = this.tabs.keys().next();
+      if (!next.done) {
+        const nextPath = next.value;
+        const nextInfo = this.tabs.get(nextPath);
+        this.activateFile(nextPath, nextInfo?.name);
+        this.scheduleSessionSave();
+        return;
+      }
+      // No tabs left — open a fresh untitled (same fallback the
+      // regular closeTab path uses when the last tab closes).
+      const newPath = `untitled-${this.untitledCounter++}`;
+      const newName = `Untitled ${this.untitledCounter - 1}`;
+      const model = editor.createModel('', 'markdown');
+      this.models.set(newPath, model);
+      this.originals.set(newPath, '');
+      this.tabs.set(newPath, { path: newPath, name: newName, dirty: false });
+      this.trackTab(newPath, model);
+      this.activateFile(newPath, newName);
+      this.scheduleSessionSave();
+      return;
+    }
+
+    this.emitChange();
+    this.scheduleSessionSave();
+  }
+
   // ---------------------------------------------------------------------
   // Activation, opening, saving
   // ---------------------------------------------------------------------
@@ -677,6 +885,30 @@ export class FileManager {
    * the window title.
    */
   public activateFile(path: string, name?: string) {
+    // Diff tabs are handled by the editor pane's overlay, not by
+    // swapping the Monaco model. We still need to set `activeFile`
+    // and emit so the tab strip + editor pane update.
+    const tabInfo = this.tabs.get(path);
+    if (tabInfo && (tabInfo.kind ?? 'file') === 'diff') {
+      const previousPath = this.activeFile;
+      // Capture the outgoing FILE tab's view state before we cover
+      // Monaco with the diff overlay. Diff tabs themselves don't
+      // have view states.
+      if (previousPath && previousPath !== path) {
+        const prevInfo = this.tabs.get(previousPath);
+        if (prevInfo && (prevInfo.kind ?? 'file') === 'file') {
+          const state = this.mkeditor.saveViewState();
+          if (state) this.viewStates.set(previousPath, state);
+        }
+      }
+      this.activeFile = path;
+      const filename = name || tabInfo.name;
+      this.bridge.send('to:title:set', filename === '' ? 'New File' : filename);
+      this.emitChange();
+      this.scheduleSessionSave();
+      return;
+    }
+
     const mdl = this.models.get(path);
     if (!mdl) return;
 
@@ -685,10 +917,16 @@ export class FileManager {
 
     if (switching) {
       // Capture the outgoing tab's cursor/selection/scroll/folding so
-      // we can restore it when the user comes back.
+      // we can restore it when the user comes back. Skip when the
+      // outgoing tab is a diff tab — those have no Monaco view state
+      // (Monaco was sitting beneath the overlay, not driving the
+      // active content).
       if (previousPath) {
-        const state = this.mkeditor.saveViewState();
-        if (state) this.viewStates.set(previousPath, state);
+        const prevInfo = this.tabs.get(previousPath);
+        if (!prevInfo || (prevInfo.kind ?? 'file') === 'file') {
+          const state = this.mkeditor.saveViewState();
+          if (state) this.viewStates.set(previousPath, state);
+        }
       }
 
       this.activeFile = path;
@@ -703,6 +941,14 @@ export class FileManager {
       // refresh the title and re-emit below so rename / no-op
       // activations behave consistently.
       this.activeFile = path;
+    }
+
+    // Remember the last editable (non-diff, non-untitled) tab path so
+    // `getActiveEditablePath()` can surface it while a diff overlay is
+    // active. Untitled tabs are excluded — saving `untitled-N` via IPC
+    // is meaningless.
+    if (!path.startsWith('untitled-')) {
+      this.lastEditableFile = path;
     }
 
     const filename = name || path.split(/[\\/]/).pop() || '';
@@ -877,13 +1123,25 @@ export class FileManager {
    * without a final tab switch still records where the user was.
    */
   public serializeSession(): SessionPayload {
-    if (this.activeFile) {
+    // Skip view-state capture when the active tab is a diff tab —
+    // Monaco's saveViewState would return the state of whatever
+    // file tab was underneath the overlay, not the diff itself.
+    const activeInfo = this.activeFile
+      ? this.tabs.get(this.activeFile)
+      : undefined;
+    const activeIsDiff = activeInfo && (activeInfo.kind ?? 'file') === 'diff';
+    if (this.activeFile && !activeIsDiff) {
       const state = this.mkeditor.saveViewState();
       if (state) this.viewStates.set(this.activeFile, state);
     }
 
     const tabs: SessionTab[] = [];
     for (const info of this.tabs.values()) {
+      // Diff tabs are ephemeral pop-outs from in-memory tool
+      // confirmations — relaunching after the tool already accepted
+      // / rejected would leave a stale tab with no way to interact.
+      // Filter them out of the persisted snapshot.
+      if ((info.kind ?? 'file') === 'diff') continue;
       const viewState = this.viewStates.get(info.path) ?? null;
       const tab: SessionTab = {
         path: info.path,
@@ -899,10 +1157,19 @@ export class FileManager {
       tabs.push(tab);
     }
 
+    // If the currently active tab is a diff tab, don't persist it as
+    // the active file — the relaunched session would otherwise try
+    // to focus a tab that's about to be filtered out. Fall back to
+    // the first surviving tab, or null when there are none.
+    let activeFile = this.activeFile;
+    if (activeIsDiff) {
+      activeFile = tabs.length > 0 ? tabs[0].path : null;
+    }
+
     const payload: SessionPayload = {
       version: 2,
       tabs,
-      activeFile: this.activeFile,
+      activeFile,
       workspaceRoot: this.workspaceRootGetter?.() ?? null,
     };
     const assistant = this.assistantStateGetter?.();
@@ -966,6 +1233,9 @@ export class FileManager {
       // about the new model — clean transition, no stale-state mixing.
       if (this.activeFile && !desiredPaths.has(this.activeFile)) {
         this.activeFile = null;
+      }
+      if (this.lastEditableFile && !desiredPaths.has(this.lastEditableFile)) {
+        this.lastEditableFile = null;
       }
 
       // Advance the untitled counter past every restored synthetic id so

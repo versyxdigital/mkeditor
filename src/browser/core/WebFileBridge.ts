@@ -1,4 +1,5 @@
 import { HTMLExporter } from './HTMLExporter';
+import { WORKSPACE_EXTENSIONS_DOTTED } from '../../app/shared/fileExtensions';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type {
   SessionPayload,
@@ -466,9 +467,13 @@ export class WebFileBridge implements ContextBridgeAPI {
           path: fullPath,
           hasChildren: true,
         });
-      } else if (name.toLowerCase().endsWith('.md')) {
-        this.handles.set(fullPath, child);
-        items.push({ type: 'file', name, path: fullPath });
+      } else {
+        const lower = name.toLowerCase();
+        const dot = lower.lastIndexOf('.');
+        if (dot >= 0 && WORKSPACE_EXTENSIONS_DOTTED.has(lower.slice(dot))) {
+          this.handles.set(fullPath, child);
+          items.push({ type: 'file', name, path: fullPath });
+        }
       }
     }
     return items;

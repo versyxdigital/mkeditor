@@ -31,5 +31,15 @@
   "show_less": "Afficher moins",
   "retry": "Réessayer",
   "retry_prompt": "Veuillez réessayer l'appel {{toolName}}.",
-  "retry_prompt_with_args": "Veuillez réessayer {{toolName}} avec les arguments : {{args}}"
+  "retry_prompt_with_args": "Veuillez réessayer {{toolName}} avec les arguments : {{args}}",
+
+  "diff_view_unified": "Passer au diff unifié",
+  "diff_view_side_by_side": "Passer au diff côte à côte",
+  "diff_pop_out": "Ouvrir dans un onglet de l'éditeur",
+
+  "preview_show_full": "Afficher tout",
+  "preview_show_less": "Afficher moins",
+  "preview_loading": "Chargement…",
+  "preview_retry": "Réessayer",
+  "preview_truncated_hint": "Aperçu tronqué"
 }

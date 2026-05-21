@@ -255,12 +255,16 @@ function onEditorReadyInner() {
     bridgeManager.fileManager.notifyAssistantStateChanged(),
   );
 
-  // Source the active file from FileManager (renderer-side, always
-  // current). Reading via the main process here would lag tab switches
-  // — main only learns about `from:file:opened`, not about renderer-
-  // driven `activateFile` calls — so relative links in any non-most-
-  // recently-opened tab would resolve against the wrong base dir.
-  new MkedLinkProvider(mkeditor, () => bridgeManager.fileManager.activeFile);
+  // Source the active editable path from FileManager (renderer-side,
+  // always current). `getActiveEditablePath` returns the file Monaco
+  // is actually backing — including when a popped-out diff preview
+  // has covered the editor with a `diff://...` overlay — so relative
+  // link resolution stays anchored to the user's real working
+  // document. Reading via the main process here would lag tab
+  // switches (main only learns about `from:file:opened`).
+  new MkedLinkProvider(mkeditor, () =>
+    bridgeManager.fileManager.getActiveEditablePath(),
+  );
 
   if (api !== 'web') {
     api.receive('from:i18n:set', (lng: string) => {

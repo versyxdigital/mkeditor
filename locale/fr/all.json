@@ -108,7 +108,15 @@
     "show_less": "Afficher moins",
     "retry": "Réessayer",
     "retry_prompt": "Veuillez réessayer l'appel {{toolName}}.",
-    "retry_prompt_with_args": "Veuillez réessayer {{toolName}} avec les arguments : {{args}}"
+    "retry_prompt_with_args": "Veuillez réessayer {{toolName}} avec les arguments : {{args}}",
+    "diff_view_unified": "Passer au diff unifié",
+    "diff_view_side_by_side": "Passer au diff côte à côte",
+    "diff_pop_out": "Ouvrir dans un onglet de l'éditeur",
+    "preview_show_full": "Afficher tout",
+    "preview_show_less": "Afficher moins",
+    "preview_loading": "Chargement…",
+    "preview_retry": "Réessayer",
+    "preview_truncated_hint": "Aperçu tronqué"
   },
   "assistant": {
     "title": "Assistant IA",
@@ -372,7 +380,14 @@
     "open_folder": "Ouvrir un dossier",
     "restore_workspace": "Restaurer le dossier précédent",
     "disconnect_folder": "Déconnecter le dossier",
-    "chromium_only_warning": "L'accès aux dossiers n'est disponible que dans les navigateurs basés sur Chromium (Chrome, Edge, Brave, Opera)."
+    "chromium_only_warning": "L'accès aux dossiers n'est disponible que dans les navigateurs basés sur Chromium (Chrome, Edge, Brave, Opera).",
+    "search_placeholder": "Rechercher des fichiers",
+    "filter_label": "Filtrer les types de fichiers",
+    "filter_types": "Types de fichiers",
+    "filter_section_markdown": "Markdown",
+    "filter_section_images": "Images",
+    "filter_section_documents": "Documents",
+    "filter_reset_to_md": "Réinitialiser à .md uniquement"
   },
   "toolbar": {
     "reset_split": "Réinitialiser la division éditeur/aperçu",

@@ -1,5 +1,9 @@
 import type { Selection, editor } from 'monaco-editor';
 
+export interface FileExplorerSettings {
+  extensions: string[];
+}
+
 export interface EditorSettings {
   autoindent: boolean;
   darkmode: boolean;
@@ -11,6 +15,7 @@ export interface EditorSettings {
   /** Persist + restore tabs / cursor across launches. See SessionPayload. */
   sessionRestore: boolean;
   locale: string;
+  fileExplorer: FileExplorerSettings;
 }
 
 export type EditorSettingsSnapshot = EditorSettings & {

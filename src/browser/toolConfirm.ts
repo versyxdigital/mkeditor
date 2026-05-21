@@ -1,4 +1,4 @@
-import type { ToolConfirmPreview } from './core/AssistantTools';
+import type { ToolConfirmPreview } from '../app/interfaces/Assistant';
 
 /**
  * Module-level seam for the tool-call confirm dialog.
@@ -38,6 +38,7 @@ export interface ToolConfirmRequest {
 
 let externalOpen: ((req: ToolConfirmRequest) => Promise<boolean>) | null = null;
 let externalCancelForCallId: ((callId: string) => void) | null = null;
+let externalCancelForToolCallId: ((toolCallId: string) => void) | null = null;
 
 export function registerToolConfirmOpener(
   fn: (req: ToolConfirmRequest) => Promise<boolean>,
@@ -57,6 +58,20 @@ export function registerToolConfirmCanceller(
   fn: (callId: string) => void,
 ): void {
   externalCancelForCallId = fn;
+}
+
+/**
+ * Register the React-side hook that drops a single queued or
+ * in-flight modal confirmation by `toolCallId`. Used by the inline
+ * confirmation path (`<ToolCallCard>`) to dismiss the redundant modal
+ * dialog the moment the user accepts/rejects inline — otherwise the
+ * modal would sit there showing stale content for an action the user
+ * already responded to.
+ */
+export function registerToolConfirmToolCallCanceller(
+  fn: (toolCallId: string) => void,
+): void {
+  externalCancelForToolCallId = fn;
 }
 
 /**
@@ -88,4 +103,14 @@ export function confirmToolCallExternal(
  */
 export function cancelToolConfirmsForCallId(callId: string): void {
   externalCancelForCallId?.(callId);
+}
+
+/**
+ * Drop a single modal confirmation by `toolCallId`. Fired by
+ * `AssistantManager` after the inline path resolves an entry, so the
+ * redundant modal doesn't linger on screen. No-op when no provider
+ * is registered.
+ */
+export function cancelToolConfirmForToolCallId(toolCallId: string): void {
+  externalCancelForToolCallId?.(toolCallId);
 }

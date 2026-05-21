@@ -1,5 +1,8 @@
 import type { BridgeManager } from './BridgeManager';
-import type { ToolDescriptor } from '../../app/interfaces/Assistant';
+import type {
+  ToolConfirmPreview,
+  ToolDescriptor,
+} from '../../app/interfaces/Assistant';
 
 /**
  * Tool class — read-class tools auto-execute, write-class tools
@@ -8,21 +11,12 @@ import type { ToolDescriptor } from '../../app/interfaces/Assistant';
  */
 export type ToolClass = 'read' | 'write' | 'unknown';
 
-/**
- * Preview payload shown in `<ConfirmToolCall>` for write-class tools.
- * Built by the executor before the dialog opens so the dialog itself
- * stays stateless about file system / editor state.
- */
-export interface ToolConfirmPreview {
-  kind: 'edit' | 'write' | 'create' | 'replace' | 'insert';
-  path?: string;
-  /** Text being replaced (undefined for `create` and `insert`). */
-  before?: string;
-  /** Text the tool will write. */
-  after: string;
-  /** Optional descriptive line (e.g. line range for `edit`). */
-  detail?: string;
-}
+// `ToolConfirmPreview` moved to `src/app/interfaces/Assistant.ts` so
+// the renderer chat snapshot can carry it without browser-side modules
+// flowing through `AssistantChatSnapshot`. Re-exported here for
+// backwards compatibility with existing imports from
+// `../core/AssistantTools`.
+export type { ToolConfirmPreview };
 
 /**
  * The contract `AssistantManager` consumes. `AssistantTools`
@@ -39,6 +33,19 @@ export interface ToolExecutor {
   classify(name: string): ToolClass;
   /** Build the confirm-dialog preview for write-class tools. */
   buildPreview(name: string, args: unknown): ToolConfirmPreview | null;
+  /**
+   * Resolve the untruncated content of one side of the preview. Used
+   * by the inline diff card's "Show full" expander so the React layer
+   * doesn't have to source from disk / models itself. Returns
+   * undefined when the side has no meaningful expansion (e.g.
+   * `replace_selection`'s before) or when the tool has no full-content
+   * support (read-class tools, missing per-tool implementation).
+   */
+  getFullPreviewContent(
+    name: string,
+    args: unknown,
+    side: 'before' | 'after',
+  ): Promise<string | undefined>;
   /** Execute a tool. Throws on internal failure. */
   execute(name: string, args: unknown): Promise<unknown>;
 }
@@ -53,6 +60,22 @@ interface ToolSpec {
   toolClass: ToolClass;
   execute(args: unknown, ctx: ToolContext): Promise<unknown>;
   preview?(args: unknown, ctx: ToolContext): ToolConfirmPreview;
+  /**
+   * Resolve the FULL (untruncated) content for one side of the
+   * preview. Powers the inline diff card's "Show full" expander
+   * without surfacing `window.mked` to React. Returns `undefined`
+   * when the side has no meaningful expansion (e.g.
+   * `replace_selection`'s before is the user's editor selection at
+   * tool-fire time and there's nothing to refetch). Sources the
+   * before content the same way `execute` would (open Monaco model
+   * first, then disk read via `mked:fs:readfile`) so the expanded
+   * preview agrees with what the tool would actually write.
+   */
+  getFullContent?(
+    args: unknown,
+    ctx: ToolContext,
+    side: 'before' | 'after',
+  ): Promise<string | undefined>;
 }
 
 /** Cross-cutting deps each tool needs. */
@@ -60,11 +83,158 @@ interface ToolContext {
   bridge: BridgeManager;
 }
 
-const PREVIEW_TRUNCATE_AT = 4000;
+/**
+ * Cap on `ToolConfirmPreview.before` / `after` strings. The inline
+ * diff card adds a "show full" expander when content hits this cap;
+ * see `useExpandableContent` in the renderer.
+ */
+export const PREVIEW_TRUNCATE_AT = 4000;
+
+/**
+ * Suffix appended to a truncated preview string. Used by
+ * `useExpandableContent` (and by tests) to detect that a `before` or
+ * `after` was truncated client-side — i.e. that a "show full"
+ * affordance is meaningful.
+ */
+export const PREVIEW_TRUNCATION_MARKER = '\n\n…[truncated]';
 
 function truncate(text: string): string {
   if (text.length <= PREVIEW_TRUNCATE_AT) return text;
-  return text.slice(0, PREVIEW_TRUNCATE_AT) + '\n\n…[truncated]';
+  return text.slice(0, PREVIEW_TRUNCATE_AT) + PREVIEW_TRUNCATION_MARKER;
+}
+
+/**
+ * For `edit_file` previews, surface the change in situ — surround the
+ * matched `oldText` with ±`contextLines` lines from the live file so
+ * the user sees where the edit lands, not just the search/replace pair.
+ *
+ * Returns `null` if `oldText` doesn't occur in `fileText` (the agent
+ * fired an edit that won't match; the preview falls back to the plain
+ * oldText→newText diff and the same `execute` failure surfaces on Accept).
+ *
+ * When the snippet doesn't cover the whole file, `PREVIEW_TRUNCATION_MARKER`
+ * is appended to both sides — the inline diff's "Show full" expander
+ * then fetches the entire file via `mked:fs:readfile`.
+ */
+export interface EditContextSnippet {
+  before: string;
+  after: string;
+  /** Human-readable line range, e.g. "Lines 12–18". */
+  detail: string;
+  /** True iff the snippet doesn't cover the whole file. */
+  truncated: boolean;
+}
+
+export function buildEditContextSnippet(
+  fileText: string,
+  oldText: string,
+  newText: string,
+  contextLines = 3,
+): EditContextSnippet | null {
+  if (!oldText) return null;
+  const idx = fileText.indexOf(oldText);
+  if (idx < 0) return null;
+
+  // Split for line-based slicing. We accept either LF or CRLF in the
+  // source; the snippet rejoins on `\n` (the diff editor doesn't care
+  // about line-ending fidelity here — preview is for human eyes).
+  const allLines = fileText.split(/\r?\n/);
+  const totalLines = allLines.length;
+
+  // 0-indexed line where the match starts (the line containing the
+  // first character of `oldText`).
+  const matchStartLine = countLines(fileText, 0, idx);
+  // Lines actually covered by `oldText`. If oldText is "line A\nline B",
+  // it covers TWO lines (start + 1). If it ends with a trailing
+  // newline ("line A\n"), Monaco still considers only one line edited
+  // — the trailing `\n` is the EOL of the last line, not a separate
+  // line. We strip a single trailing newline before counting so the
+  // detail line reports the lines a human would call "edited".
+  const trimmedOld = oldText.replace(/\r?\n$/, '');
+  const matchSpan = countLines(trimmedOld, 0, trimmedOld.length);
+  const matchEndLine = matchStartLine + matchSpan;
+
+  const contextStart = Math.max(0, matchStartLine - contextLines);
+  const contextEnd = Math.min(totalLines - 1, matchEndLine + contextLines);
+
+  const snippetLines = allLines.slice(contextStart, contextEnd + 1);
+  const before = snippetLines.join('\n');
+  // The match is guaranteed to occur exactly once in `fileText`; the
+  // sliced snippet contains it once too. Single-shot replace.
+  const after = before.replace(oldText, newText);
+
+  const truncated = contextStart > 0 || contextEnd < totalLines - 1;
+  // `detail` reports the LINES BEING EDITED — single line if the
+  // match is one line, range otherwise. Earlier this reported the
+  // SNIPPET range (the ±contextLines window around the match), which
+  // was misleading: users read "Lines 7–13" as "the edit touches
+  // those 7 lines" when in reality the snippet is mostly context.
+  const detail =
+    matchStartLine === matchEndLine
+      ? `Line ${matchStartLine + 1}`
+      : `Lines ${matchStartLine + 1}–${matchEndLine + 1}`;
+  return {
+    before: truncated ? before + PREVIEW_TRUNCATION_MARKER : before,
+    after: truncated ? after + PREVIEW_TRUNCATION_MARKER : after,
+    detail,
+    truncated,
+  };
+}
+
+/** Count `\n` and `\r\n` line breaks in `text[start..end]`. */
+function countLines(text: string, start: number, end: number): number {
+  let count = 0;
+  for (let i = start; i < end; i++) {
+    const ch = text.charCodeAt(i);
+    if (ch === 0x0a) {
+      count += 1;
+    } else if (ch === 0x0d && text.charCodeAt(i + 1) === 0x0a) {
+      count += 1;
+      i += 1;
+    } else if (ch === 0x0d) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+/**
+ * Normalise line endings in `text` to match Monaco's EOL setting. The
+ * `edit_file` tool's `execute` matches its `oldText` against the model
+ * after this normalisation — so a `\n`-only search string still matches
+ * a CRLF file. Exposed so the preview-expansion path
+ * (`AssistantTools.getFullPreviewContent`) can apply the same
+ * normalisation and produce an "after" string that matches what
+ * `execute` actually writes.
+ */
+function normaliseForEol(text: string, eol: string): string {
+  return eol === '\r\n'
+    ? text.replace(/\r?\n/g, '\r\n')
+    : text.replace(/\r\n/g, '\n');
+}
+
+/**
+ * Read the full content of a file the agent's tool is targeting. The
+ * open Monaco model wins over disk so we surface the user's *unsaved*
+ * edits — the same hierarchy `AssistantContextSource.readFile` uses
+ * for the read-class tool path. Falls back to the `mked:fs:readfile`
+ * IPC when the file isn't currently a tab.
+ *
+ * Throws when the bridge is unavailable (web mode — the AI assistant
+ * is desktop-only, so reaching this branch in practice means a
+ * misconfigured test) or when the IPC read rejects.
+ */
+async function readFullFile(ctx: ToolContext, path: string): Promise<string> {
+  const model = ctx.bridge.fileManager.models.get(path);
+  if (model) return model.getValue();
+  const mked = window.mked;
+  if (!mked?.readFile) {
+    throw new Error(
+      'Filesystem bridge unavailable; cannot read full file content.',
+    );
+  }
+  const { content } = await mked.readFile(path);
+  return content;
 }
 
 /** Wait for a path to land in FileManager.models (idempotent if already there). */
@@ -535,7 +705,11 @@ const CATALOG: Record<string, ToolSpec> = {
     toolClass: 'read',
     async execute(_args, ctx) {
       const fm = ctx.bridge.fileManager;
-      const path = fm.activeFile;
+      // Resolve through `getActiveEditablePath` so a popped-out diff
+      // tab (active path = `diff://...`) doesn't surface as the
+      // "current file" — Monaco's actual model is still pointing at
+      // the editable file underneath the overlay.
+      const path = fm.getActiveEditablePath();
       if (!path) return { path: null };
       const model = fm.models.get(path);
       if (!model) return { path };
@@ -630,6 +804,23 @@ const CATALOG: Record<string, ToolSpec> = {
         after: truncate(content),
       };
     },
+    async getFullContent(args, ctx, side) {
+      const { path: input, content } = args as {
+        path: string;
+        content: string;
+      };
+      let path = input;
+      try {
+        path = resolveWorkspacePath(ctx, input);
+      } catch {
+        /* same fallback as preview() */
+      }
+      if (side === 'after') return content;
+      // before: live model first (catches unsaved edits the user
+      // typed while the agent was thinking), then disk fallback.
+      // Same hierarchy preview() uses for the truncated `before`.
+      return readFullFile(ctx, path);
+    },
     async execute(args, ctx) {
       const { path: input, content } = args as {
         path: string;
@@ -690,15 +881,73 @@ const CATALOG: Record<string, ToolSpec> = {
       } catch {
         /* preview is non-fatal */
       }
-      // Preview shows the literal text being replaced (oldText), so
-      // the dialog can never disagree with what `execute` actually
-      // does — they both anchor on the same substring.
+      // When the target file is open in a Monaco model (the common
+      // case — the agent has just read it), build a context-bounded
+      // preview that shows ±3 lines around the match. The user sees
+      // WHERE the edit lands instead of an isolated oldText/newText
+      // pair that's easy to mis-evaluate.
+      //
+      // Falls back to the literal oldText → newText pair when the
+      // file isn't open or `oldText` doesn't match (the agent fired
+      // an edit that will fail; the same error surfaces on Accept).
+      const openModel = ctx.bridge.fileManager.models.get(path);
+      if (openModel) {
+        const snippet = buildEditContextSnippet(
+          openModel.getValue(),
+          oldText,
+          newText,
+        );
+        if (snippet) {
+          return {
+            kind: 'edit',
+            path,
+            before: snippet.before,
+            after: snippet.after,
+            detail: snippet.detail,
+          };
+        }
+      }
       return {
         kind: 'edit',
         path,
         before: truncate(oldText),
         after: truncate(newText),
       };
+    },
+    async getFullContent(args, ctx, side) {
+      const {
+        path: input,
+        oldText,
+        newText,
+      } = args as {
+        path: string;
+        oldText: string;
+        newText: string;
+      };
+      let path = input;
+      try {
+        path = resolveWorkspacePath(ctx, input);
+      } catch {
+        /* same fallback as preview() */
+      }
+      // `before` is the full file (live model > disk) — same hierarchy
+      // execute() uses (it always operates on the open model). For
+      // `after` we additionally apply the EOL-normalised replacement
+      // that execute() would actually perform, so the expanded diff
+      // mirrors the on-disk result Monaco's executeEdits produces.
+      const before = await readFullFile(ctx, path);
+      if (side === 'before') return before;
+      const model = ctx.bridge.fileManager.models.get(path);
+      const eol = model ? model.getEOL() : '\n';
+      const needle = normaliseForEol(oldText, eol);
+      const replacement = normaliseForEol(newText, eol);
+      // If the needle isn't in the file (the agent's edit would fail
+      // on Accept), surface the unchanged content so the diff renders
+      // honestly — no fake replacement. The Accept path will then
+      // throw the same "oldText not found" the user expects.
+      return before.includes(needle)
+        ? before.replace(needle, replacement)
+        : before;
     },
     async execute(args, ctx) {
       const {
@@ -724,12 +973,12 @@ const CATALOG: Record<string, ToolSpec> = {
       // activating gives the user immediate visual feedback.
       fm.activateFile(path);
       // Normalise the search text to the model's EOL so a `\n`-only
-      // oldText matches a CRLF file (and vice versa).
+      // oldText matches a CRLF file (and vice versa). The
+      // preview-expansion path (`getFullPreviewContent` below) uses the
+      // same helper so its "after" string mirrors what executeEdits
+      // would actually write.
       const eol = model.getEOL();
-      const needle =
-        eol === '\r\n'
-          ? oldText.replace(/\r?\n/g, '\r\n')
-          : oldText.replace(/\r\n/g, '\n');
+      const needle = normaliseForEol(oldText, eol);
       // We do a plain `indexOf` on the model's text instead of
       // `model.findMatches(...)` because Monaco's non-regex searcher
       // is line-bounded — it won't match a substring that spans
@@ -805,6 +1054,13 @@ const CATALOG: Record<string, ToolSpec> = {
         path,
         after: truncate(content),
       };
+    },
+    async getFullContent(args, _ctx, side) {
+      // `create_file` has no `before` (the file doesn't exist yet);
+      // `after` is the full agent payload from args.
+      if (side === 'before') return undefined;
+      const { content } = args as { content: string };
+      return content;
     },
     async execute(args, ctx) {
       const { path: input, content } = args as {
@@ -900,10 +1156,19 @@ const CATALOG: Record<string, ToolSpec> = {
       const before = selection && model ? model.getValueInRange(selection) : '';
       return {
         kind: 'replace',
-        path: ctx.bridge.fileManager.activeFile ?? undefined,
+        path: ctx.bridge.fileManager.getActiveEditablePath() ?? undefined,
         before: truncate(before),
         after: truncate(content),
       };
+    },
+    async getFullContent(args, _ctx, side) {
+      // `before` is the user's selection at tool-fire time — already
+      // captured in the preview; there's nothing further to refetch
+      // (re-reading the selection now could disagree with what the
+      // tool will actually replace).
+      if (side === 'before') return undefined;
+      const { content } = args as { content: string };
+      return content;
     },
     async execute(args, ctx) {
       const { content } = args as { content: string };
@@ -917,8 +1182,12 @@ const CATALOG: Record<string, ToolSpec> = {
           forceMoveMarkers: true,
         },
       ]);
-      const path = ctx.bridge.fileManager.activeFile;
-      if (path && !path.startsWith('untitled-')) {
+      // Save against the editable path so a popped-out diff overlay
+      // (`activeFile === 'diff://...'`) doesn't cause us to ship a
+      // synthetic id to `to:file:save`. `getActiveEditablePath`
+      // already filters out untitled-, so no extra guard is needed.
+      const path = ctx.bridge.fileManager.getActiveEditablePath();
+      if (path) {
         await awaitedSaveFile(path, editor.getValue());
       }
       return { ok: true };
@@ -939,9 +1208,16 @@ const CATALOG: Record<string, ToolSpec> = {
       const { content } = args as { content: string };
       return {
         kind: 'insert',
-        path: ctx.bridge.fileManager.activeFile ?? undefined,
+        path: ctx.bridge.fileManager.getActiveEditablePath() ?? undefined,
         after: truncate(content),
       };
+    },
+    async getFullContent(args, _ctx, side) {
+      // Pure insertion — no `before` to expand. `after` is the
+      // full args payload.
+      if (side === 'before') return undefined;
+      const { content } = args as { content: string };
+      return content;
     },
     async execute(args, ctx) {
       const { content } = args as { content: string };
@@ -960,8 +1236,11 @@ const CATALOG: Record<string, ToolSpec> = {
           forceMoveMarkers: true,
         },
       ]);
-      const path = ctx.bridge.fileManager.activeFile;
-      if (path && !path.startsWith('untitled-')) {
+      // Save against the editable path so a popped-out diff overlay
+      // doesn't route a `diff://...` id into `to:file:save`. The
+      // accessor already filters out untitled- ids.
+      const path = ctx.bridge.fileManager.getActiveEditablePath();
+      if (path) {
         await awaitedSaveFile(path, editor.getValue());
       }
       return { ok: true };
@@ -1017,6 +1296,16 @@ export class AssistantTools implements ToolExecutor {
       // skip the preview and let the dialog show just the args.
       return null;
     }
+  }
+
+  async getFullPreviewContent(
+    name: string,
+    args: unknown,
+    side: 'before' | 'after',
+  ): Promise<string | undefined> {
+    const spec = CATALOG[name];
+    if (!spec || !spec.getFullContent) return undefined;
+    return spec.getFullContent(args, this.ctx, side);
   }
 
   async execute(name: string, args: unknown): Promise<unknown> {

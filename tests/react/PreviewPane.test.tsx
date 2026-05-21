@@ -2,7 +2,12 @@ import * as React from 'react';
 import { act, waitFor } from '@testing-library/react';
 
 import { PreviewPane } from '../../src/browser/react/components/PreviewPane';
-import { renderWithProviders, fakeDispatcher } from '../utils/render';
+import {
+  renderWithProviders,
+  fakeDispatcher,
+  fakeFileManager,
+  fakeFileTreeManager,
+} from '../utils/render';
 
 // Stub the markdown renderer + ScrollSync helper so we exercise the
 // dispatch-→-innerHTML wiring without depending on markdown-it / KaTeX
@@ -45,6 +50,175 @@ describe('<PreviewPane>', () => {
     // wait for the first render to land.
     await waitFor(() => {
       expect(content?.innerHTML).toBe('<rendered># Hello</rendered>');
+    });
+  });
+
+  it('rewrites a relative <img> src to a file:// URL rooted at the active file directory (desktop)', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<p><img src="collector.png" alt="c"></p>',
+    );
+    const dispatcher = fakeDispatcher();
+    const editorManager = {
+      getValue: jest.fn(() => '![c](collector.png)'),
+      getMkEditor: jest.fn(),
+      layout: jest.fn(),
+      resetContent: jest.fn(),
+      providers: {} as any,
+    };
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        dispatcher: dispatcher as any,
+        editorManager: editorManager as any,
+        fileManager: fakeFileManager({
+          activeFile: 'C:/Users/chris/workspace/foo/readme.md',
+        }) as any,
+        fileTreeManager: fakeFileTreeManager({
+          nodes: [],
+          treeRoot: 'C:/Users/chris/workspace/foo',
+        }) as any,
+      },
+    });
+    await waitFor(() => {
+      const img = container.querySelector('img');
+      expect(img).not.toBeNull();
+      expect(img!.getAttribute('src')).toBe(
+        'file:///C:/Users/chris/workspace/foo/collector.png',
+      );
+    });
+  });
+
+  it('falls back to the workspace tree root when there is no active file (desktop)', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<p><img src="cover.png"></p>',
+    );
+    const dispatcher = fakeDispatcher();
+    const editorManager = {
+      getValue: jest.fn(() => '![](cover.png)'),
+      getMkEditor: jest.fn(),
+      layout: jest.fn(),
+      resetContent: jest.fn(),
+      providers: {} as any,
+    };
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        dispatcher: dispatcher as any,
+        editorManager: editorManager as any,
+        fileManager: fakeFileManager({ activeFile: null }) as any,
+        fileTreeManager: fakeFileTreeManager({
+          nodes: [],
+          treeRoot: '/home/chris/notes',
+        }) as any,
+      },
+    });
+    await waitFor(() => {
+      const img = container.querySelector('img');
+      expect(img!.getAttribute('src')).toBe(
+        'file:///home/chris/notes/cover.png',
+      );
+    });
+  });
+
+  it('does not rewrite an http(s) <img> src', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<p><img src="https://example.com/foo.png"></p>',
+    );
+    const dispatcher = fakeDispatcher();
+    const editorManager = {
+      getValue: jest.fn(() => '![](https://example.com/foo.png)'),
+      getMkEditor: jest.fn(),
+      layout: jest.fn(),
+      resetContent: jest.fn(),
+      providers: {} as any,
+    };
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        dispatcher: dispatcher as any,
+        editorManager: editorManager as any,
+        fileManager: fakeFileManager({
+          activeFile: 'C:/work/readme.md',
+        }) as any,
+      },
+    });
+    await waitFor(() => {
+      const img = container.querySelector('img');
+      expect(img!.getAttribute('src')).toBe('https://example.com/foo.png');
+    });
+  });
+
+  it('strips a relative <img> src on the first render before session restore propagates (avoids bundle-dir 404)', async () => {
+    // Regression for the console error users saw on relaunch with a
+    // saved tab open: PreviewPane's first paint runs after the
+    // markdown chunk lands but before the restored activeFile makes
+    // it through FilesContext, so the resolver has no baseDir to
+    // work with. Leaving the relative src in place lets the browser
+    // fetch `dist/collector.png` and 404. Blanking the src suppresses
+    // the bad fetch; the next render (triggered by activeFile / tree
+    // root effect) restores the proper file:// URL.
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<p><img src="collector.png"></p>',
+    );
+    const dispatcher = fakeDispatcher();
+    const editorManager = {
+      getValue: jest.fn(() => '![](collector.png)'),
+      getMkEditor: jest.fn(),
+      layout: jest.fn(),
+      resetContent: jest.fn(),
+      providers: {} as any,
+    };
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        dispatcher: dispatcher as any,
+        editorManager: editorManager as any,
+        // No active file and no tree root — the transitional state.
+        fileManager: fakeFileManager({ activeFile: null }) as any,
+        fileTreeManager: fakeFileTreeManager({
+          nodes: [],
+          treeRoot: null,
+        }) as any,
+      },
+    });
+    await waitFor(() => {
+      const img = container.querySelector('img');
+      expect(img).not.toBeNull();
+      // The img element renders but with no src — no fetch issued.
+      expect(img!.hasAttribute('src')).toBe(false);
+    });
+  });
+
+  it('does not rewrite anything in web mode (separate blob-URL workstream)', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<p><img src="cover.png"></p>',
+    );
+    const dispatcher = fakeDispatcher();
+    const editorManager = {
+      getValue: jest.fn(() => '![](cover.png)'),
+      getMkEditor: jest.fn(),
+      layout: jest.fn(),
+      resetContent: jest.fn(),
+      providers: {} as any,
+    };
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'web',
+        dispatcher: dispatcher as any,
+        editorManager: editorManager as any,
+        fileManager: fakeFileManager({
+          activeFile: '/workspace/readme.md',
+        }) as any,
+      },
+    });
+    await waitFor(() => {
+      const img = container.querySelector('img');
+      expect(img!.getAttribute('src')).toBe('cover.png');
     });
   });
 

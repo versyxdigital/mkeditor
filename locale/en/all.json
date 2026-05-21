@@ -108,7 +108,15 @@
     "show_less": "Show less",
     "retry": "Retry",
     "retry_prompt": "Please retry the {{toolName}} call.",
-    "retry_prompt_with_args": "Please retry {{toolName}} with arguments: {{args}}"
+    "retry_prompt_with_args": "Please retry {{toolName}} with arguments: {{args}}",
+    "diff_view_unified": "Switch to unified diff",
+    "diff_view_side_by_side": "Switch to side-by-side diff",
+    "diff_pop_out": "Open in editor tab",
+    "preview_show_full": "Show full",
+    "preview_show_less": "Show less",
+    "preview_loading": "Loading…",
+    "preview_retry": "Retry",
+    "preview_truncated_hint": "Preview truncated"
   },
   "assistant": {
     "title": "AI Assistant",
@@ -378,7 +386,14 @@
     "open_folder": "Open folder",
     "restore_workspace": "Restore previous folder",
     "disconnect_folder": "Disconnect folder",
-    "chromium_only_warning": "Folder access is only available in Chromium-based browsers (Chrome, Edge, Brave, Opera)."
+    "chromium_only_warning": "Folder access is only available in Chromium-based browsers (Chrome, Edge, Brave, Opera).",
+    "search_placeholder": "Search files",
+    "filter_label": "Filter file types",
+    "filter_types": "File types",
+    "filter_section_markdown": "Markdown",
+    "filter_section_images": "Images",
+    "filter_section_documents": "Documents",
+    "filter_reset_to_md": "Reset to .md only"
   },
   "toolbar": {
     "reset_split": "Reset editor/preview split",

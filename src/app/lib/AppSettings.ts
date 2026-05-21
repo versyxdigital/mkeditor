@@ -38,6 +38,7 @@ export class AppSettings {
     scrollsync: true,
     sessionRestore: true,
     locale: normalizeLanguage(app.getLocale()),
+    fileExplorer: { extensions: ['md'] },
     exportSettings: {
       withStyles: true,
       container: 'container-fluid',

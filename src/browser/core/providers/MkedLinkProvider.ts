@@ -1,15 +1,18 @@
 import { type editor, languages } from 'monaco-editor';
 
 /**
- * Getter returning the absolute path of the currently-active tab,
- * or `null` if the active tab is an untitled scratch buffer (no
- * stable base directory for relative-path resolution).
+ * Getter returning the absolute path of the currently-editable tab —
+ * the file Monaco is actually backing — or `null` when there's no
+ * such tab (untitled-only session, or only diff overlays open).
  *
- * Sourced from `FileManager.activeFile` in the composition root.
- * Reading from the renderer here (instead of `mked.getActiveFilePath()`
- * via IPC) is what makes link resolution stay correct when the user
- * switches tabs — the main process never learns about tab switches,
- * only about `from:file:opened`, so its `activeFilePath` lags reality.
+ * Sourced from `FileManager.getActiveEditablePath()` in the
+ * composition root (not raw `activeFile`, which can hold a
+ * synthetic `diff://...` id while a popped-out diff preview is
+ * showing). Reading from the renderer here (instead of
+ * `mked.getActiveFilePath()` via IPC) is what makes link
+ * resolution stay correct when the user switches tabs — the main
+ * process never learns about tab switches, only about
+ * `from:file:opened`, so its `activeFilePath` lags reality.
  */
 export type ActiveFilePathGetter = () => string | null;
 

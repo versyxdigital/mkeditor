@@ -16,6 +16,7 @@ import {
   sep,
 } from 'path';
 import type { SaveFileOptions } from '../interfaces/Storage';
+import { WORKSPACE_EXTENSIONS_DOTTED } from '../shared/fileExtensions';
 
 /**
  * AppStorage
@@ -648,14 +649,22 @@ export class AppStorage {
   /**
    * Read directory contents.
    *
+   * Surfaces directories plus the curated set of workspace-relevant
+   * file types (see `WORKSPACE_EXTENSIONS_DOTTED` in
+   * `src/app/shared/fileExtensions.ts` — the single source of truth
+   * shared with `WebFileBridge.listChildren` and the React funnel UI).
+   *
    * @param dir - the directory to read
    * @returns - the directory contents
    */
   private static async readDirectory(dir: string): Promise<any[]> {
     const entries = await fs.readdir(dir, { withFileTypes: true });
-    const filtered = entries.filter(
-      (d) => d.isDirectory() || d.name.endsWith('.md'),
-    );
+    const filtered = entries.filter((d) => {
+      if (d.isDirectory()) return true;
+      const dot = d.name.lastIndexOf('.');
+      if (dot < 0) return false;
+      return WORKSPACE_EXTENSIONS_DOTTED.has(d.name.slice(dot).toLowerCase());
+    });
     return Promise.all(
       filtered.map(async (entry) => {
         const full = join(dir, entry.name);

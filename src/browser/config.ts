@@ -13,6 +13,7 @@ export const settings: EditorSettings = {
   scrollsync: true,
   sessionRestore: true,
   locale: normalizeLanguage(navigator.language),
+  fileExplorer: { extensions: ['md'] },
 };
 
 export const exportSettings: ExportSettings = {
