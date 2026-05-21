@@ -1495,6 +1495,57 @@ describe('AssistantTools — preview building', () => {
     expect(preview?.after).toContain('line 7\nline 8\nline 9\nTEN');
   });
 
+  it('buildPreview for edit_file matches an LF-only oldText against a CRLF file (parity with execute normalisation)', () => {
+    // Regression: `execute` runs `normaliseForEol(oldText, model.getEOL())`
+    // so a `\n`-only oldText (the natural JSON wire shape) matches a
+    // CRLF-on-disk file. The preview MUST agree — without normalisation
+    // here, `fileText.indexOf(oldText)` would return -1 on Windows-saved
+    // markdown and the user would see the "plain pair" fallback while
+    // execute happily applied the edit on Accept.
+    const fileText = '# Heading\r\n\r\nThnk you\r\n\r\nIf you hve\r\n';
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', makeModel(fileText, '\r\n'));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const preview = tools.buildPreview('edit_file', {
+      path: '/x.md',
+      oldText: 'Thnk you\n\nIf you hve', // LF — JSON wire shape
+      newText: 'Thank you\n\nIf you have',
+    });
+    expect(preview?.kind).toBe('edit');
+    expect(preview?.path).toBe('/x.md');
+    // Snippet is LF-normalised — diff editor renders cleanly without
+    // mixed line endings.
+    expect(preview?.before).toContain('Thnk you\n\nIf you hve');
+    expect(preview?.after).toContain('Thank you\n\nIf you have');
+    // oldText spans CRLF lines 3 + 4 + 5 (Thnk you, blank, If you hve).
+    expect(preview?.detail).toBe('Lines 3–5');
+  });
+
+  it('buildPreview for edit_file falls back to plain oldText/newText when oldText matches multiple places', () => {
+    // Regression: previously the preview ran a single `indexOf` and
+    // happily showed the FIRST occurrence as the target — but execute
+    // throws "matched multiple places" so the edit never lands. The
+    // user would Accept expecting one outcome and get an error. Now
+    // the snippet builder returns null on multi-match and the preview
+    // shows the plain oldText/newText pair (signalling ambiguity)
+    // instead of pinning a specific location.
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', makeModel('TODO\nbody\nTODO\nmore\n'));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const preview = tools.buildPreview('edit_file', {
+      path: '/x.md',
+      oldText: 'TODO',
+      newText: 'DONE',
+    });
+    expect(preview?.kind).toBe('edit');
+    expect(preview?.before).toBe('TODO');
+    expect(preview?.after).toBe('DONE');
+    // No detail label — the plain-pair fallback path doesn't set one.
+    expect(preview?.detail).toBeUndefined();
+  });
+
   it('buildPreview for edit_file falls back to plain oldText/newText when the match is not found', () => {
     // Open file but `oldText` doesn't appear → can't build a snippet.
     // execute() would throw the same "not found" error on Accept, but

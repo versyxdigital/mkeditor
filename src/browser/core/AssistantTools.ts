@@ -132,13 +132,23 @@ export function buildEditContextSnippet(
   contextLines = 3,
 ): EditContextSnippet | null {
   if (!oldText) return null;
+
+  // Normalise every input to LF before searching.
+  fileText = fileText.replace(/\r\n/g, '\n');
+  oldText = oldText.replace(/\r\n/g, '\n');
+  newText = newText.replace(/\r\n/g, '\n');
+
   const idx = fileText.indexOf(oldText);
   if (idx < 0) return null;
 
-  // Split for line-based slicing. We accept either LF or CRLF in the
-  // source; the snippet rejoins on `\n` (the diff editor doesn't care
-  // about line-ending fidelity here — preview is for human eyes).
-  const allLines = fileText.split(/\r?\n/);
+  // Mirror execute's uniqueness check.
+  const secondIdx = fileText.indexOf(oldText, idx + oldText.length);
+  if (secondIdx >= 0) return null;
+
+  // Split for line-based slicing. Source is LF-normalised above so
+  // `\n` is sufficient; rejoin on `\n` too (the diff editor doesn't
+  // care about line-ending fidelity here — preview is for human eyes).
+  const allLines = fileText.split('\n');
   const totalLines = allLines.length;
 
   // 0-indexed line where the match starts (the line containing the
