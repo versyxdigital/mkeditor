@@ -108,7 +108,9 @@
     "show_less": "Показать меньше",
     "retry": "Повторить",
     "retry_prompt": "Пожалуйста, повторите вызов {{toolName}}.",
-    "retry_prompt_with_args": "Пожалуйста, повторите {{toolName}} с аргументами: {{args}}"
+    "retry_prompt_with_args": "Пожалуйста, повторите {{toolName}} с аргументами: {{args}}",
+    "diff_view_unified": "Переключить на единый дифф",
+    "diff_view_side_by_side": "Переключить на дифф сравнением"
   },
   "assistant": {
     "title": "ИИ-ассистент",

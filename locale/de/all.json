@@ -108,7 +108,9 @@
     "show_less": "Weniger anzeigen",
     "retry": "Wiederholen",
     "retry_prompt": "Bitte {{toolName}} erneut aufrufen.",
-    "retry_prompt_with_args": "Bitte {{toolName}} mit den Argumenten erneut versuchen: {{args}}"
+    "retry_prompt_with_args": "Bitte {{toolName}} mit den Argumenten erneut versuchen: {{args}}",
+    "diff_view_unified": "Zur vereinheitlichten Diff-Ansicht wechseln",
+    "diff_view_side_by_side": "Zur Seite-an-Seite-Diff-Ansicht wechseln"
   },
   "assistant": {
     "title": "KI-Assistent",

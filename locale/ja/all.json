@@ -108,7 +108,9 @@
     "show_less": "折りたたむ",
     "retry": "再試行",
     "retry_prompt": "{{toolName}} の呼び出しを再試行してください。",
-    "retry_prompt_with_args": "次の引数で {{toolName}} を再試行してください: {{args}}"
+    "retry_prompt_with_args": "次の引数で {{toolName}} を再試行してください: {{args}}",
+    "diff_view_unified": "統合差分表示に切り替え",
+    "diff_view_side_by_side": "並列差分表示に切り替え"
   },
   "assistant": {
     "title": "AI アシスタント",

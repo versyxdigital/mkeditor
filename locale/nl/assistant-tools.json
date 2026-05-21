@@ -31,5 +31,8 @@
   "show_less": "Minder tonen",
   "retry": "Opnieuw proberen",
   "retry_prompt": "Probeer de {{toolName}}-aanroep opnieuw.",
-  "retry_prompt_with_args": "Probeer {{toolName}} opnieuw met argumenten: {{args}}"
+  "retry_prompt_with_args": "Probeer {{toolName}} opnieuw met argumenten: {{args}}",
+
+  "diff_view_unified": "Schakelen naar uniforme diff-weergave",
+  "diff_view_side_by_side": "Schakelen naar diff-weergave naast elkaar"
 }
