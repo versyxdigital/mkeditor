@@ -168,7 +168,10 @@ function buildPreviewFragment(
   for (const img of imgs) {
     const src = img.getAttribute('src');
     if (!src) continue;
-    const resolved = resolveLocalAssetSrc(src, { baseDir });
+    const resolved = resolveLocalAssetSrc(src, {
+      baseDir,
+      workspaceRoot: ctx.treeRoot,
+    });
     if (resolved) {
       img.setAttribute('src', resolved);
     } else if (!baseDir && isPurelyRelativeAssetPath(src)) {
@@ -191,7 +194,10 @@ function buildPreviewFragment(
   for (const a of anchors) {
     const href = a.getAttribute('href');
     if (!href) continue;
-    const resolved = resolveLocalAssetSrc(href, { baseDir });
+    const resolved = resolveLocalAssetSrc(href, {
+      baseDir,
+      workspaceRoot: ctx.treeRoot,
+    });
     if (resolved) a.setAttribute('href', resolved);
   }
 

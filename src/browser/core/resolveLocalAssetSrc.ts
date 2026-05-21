@@ -6,6 +6,7 @@
  */
 export interface ResolveContext {
   baseDir: string | null;
+  workspaceRoot: string | null;
 }
 
 /**
@@ -41,14 +42,38 @@ export function resolveLocalAssetSrc(
   let absolute: string;
   if (isWindowsAbs || isPosixAbs) {
     absolute = srcNorm;
-  } else if (ctx.baseDir) {
+  } else if (ctx.baseDir && isFilesystemPath(ctx.baseDir)) {
     const base = ctx.baseDir.replace(/\\/g, '/').replace(/\/+$/, '');
     absolute = `${base}/${srcNorm}`;
   } else {
     return null;
   }
 
-  return toFileUrl(normalizeSegments(absolute));
+  const normalized = normalizeSegments(absolute);
+
+  if (
+    ctx.workspaceRoot !== null &&
+    !isWithinWorkspace(normalized, ctx.workspaceRoot)
+  ) {
+    return null;
+  }
+
+  return toFileUrl(normalized);
+}
+
+function isFilesystemPath(p: string): boolean {
+  const norm = p.replace(/\\/g, '/');
+  return /^[a-zA-Z]:\//.test(norm) || norm.startsWith('/');
+}
+
+function isWithinWorkspace(absolute: string, workspaceRoot: string): boolean {
+  const root = workspaceRoot.replace(/\\/g, '/').replace(/\/+$/, '');
+  if (!root) return false;
+  const windowsSide =
+    /^[a-zA-Z]:\//.test(root) || /^[a-zA-Z]:\//.test(absolute);
+  const a = windowsSide ? absolute.toLowerCase() : absolute;
+  const r = windowsSide ? root.toLowerCase() : root;
+  return a === r || a.startsWith(`${r}/`);
 }
 
 /**
