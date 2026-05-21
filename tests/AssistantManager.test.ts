@@ -1235,6 +1235,104 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     mgr.cancelCall(callId);
     expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
   });
+
+  it('getFullPreviewContent forwards to the executor with the entry toolName + args', async () => {
+    // Regression: the previous inline-confirm UI fetched full content
+    // by reaching into `window.mked.readFile` from React. That violated
+    // the manager/React boundary AND produced wrong previews on CRLF
+    // files (naive `original.replace(oldText, newText)` ignored Monaco's
+    // EOL normalisation). The fetcher now routes through the manager,
+    // which hands off to the executor — same code path execute() uses.
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const getFullPreviewContent = jest.fn(
+      async (
+        _name: string,
+        _args: unknown,
+        side: 'before' | 'after',
+      ): Promise<string | undefined> =>
+        side === 'before' ? 'BEFORE-FULL' : 'AFTER-FULL',
+    );
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => ({
+        kind: 'write' as const,
+        path: '/x.md',
+        after: 'new',
+      }),
+      getFullPreviewContent,
+      execute: jest.fn(async () => ({ ok: true })),
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: { path: '/x.md', content: 'NEW CONTENT' },
+    });
+    await Promise.resolve();
+
+    const before = await mgr.getFullPreviewContent('tc-1', 'before');
+    const after = await mgr.getFullPreviewContent('tc-1', 'after');
+    expect(before).toBe('BEFORE-FULL');
+    expect(after).toBe('AFTER-FULL');
+    // Toolname + args came from the pendingConfirms entry — the
+    // executor must see the same args the agent fired with.
+    expect(getFullPreviewContent).toHaveBeenCalledWith(
+      'write_file',
+      { path: '/x.md', content: 'NEW CONTENT' },
+      'before',
+    );
+    expect(getFullPreviewContent).toHaveBeenCalledWith(
+      'write_file',
+      { path: '/x.md', content: 'NEW CONTENT' },
+      'after',
+    );
+  });
+
+  it('getFullPreviewContent returns undefined once the confirmation resolves (entry dropped)', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => null,
+      getFullPreviewContent: jest.fn(async () => 'should-not-be-returned'),
+      execute: jest.fn(async () => ({ ok: true })),
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+    mgr.respondToConfirm('tc-1', true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // pendingConfirms entry is gone — the expander has no source.
+    expect(await mgr.getFullPreviewContent('tc-1', 'before')).toBeUndefined();
+  });
+
+  it('getFullPreviewContent returns undefined when no executor is wired yet', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    // No setToolExecutor call — toolExecutor stays null.
+    expect(await mgr.getFullPreviewContent('tc-1', 'before')).toBeUndefined();
+  });
 });
 
 describe('AssistantManager — startCall ships tools when an executor is set', () => {

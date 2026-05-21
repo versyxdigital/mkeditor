@@ -187,10 +187,12 @@ const InlineConfirm: React.FC<{
 }> = ({ invocation, pending, onRespond }) => {
   const { t } = useTranslation();
   const { fileManager } = useManagers();
+  const { manager } = useAssistantChat();
   const { preview } = pending;
   const { diffProps, blockProps } = useInlineConfirmContent(
     invocation,
     preview,
+    manager,
   );
 
   // Pop-out handler: lifts the currently-visible diff content out of
@@ -272,105 +274,84 @@ const PREVIEW_KIND_LABEL: Record<
 };
 
 /**
+ * Per-preview-kind table of which sides are expandable through the
+ * "Show full" button. The expansion itself lives in
+ * `AssistantManager.getFullPreviewContent` (which delegates to the
+ * tool's `getFullContent` in `AssistantTools.ts`); the renderer only
+ * needs to know whether to surface a button per side. Keeping the
+ * file-IO and EOL-normalisation logic on the manager side means the
+ * expanded preview agrees with what the tool actually writes — and
+ * keeps `window.mked.readFile` out of React.
+ */
+const EXPANDABLE_SIDES: Record<
+  NonNullable<PendingConfirm['preview']>['kind'],
+  { before: boolean; after: boolean }
+> = {
+  write: { before: true, after: true },
+  edit: { before: true, after: true },
+  replace: { before: false, after: true },
+  create: { before: false, after: true },
+  insert: { before: false, after: true },
+};
+
+/**
  * Compute the props for `<InlineDiffPreview>` or `<InsertPreview>`
- * based on the tool's kind, including the "show full" fetchers for
- * each side. Fetchers read from `invocation.arguments` when the full
- * content is already in the snapshot (the common case), or round-trip
- * through `window.mked.readFile` for `write_file`'s `before` which
- * came from disk client-side.
+ * based on the tool's kind. The "Show full" fetchers all route
+ * through `manager.getFullPreviewContent(toolCallId, side)` — the
+ * React layer never touches `window.mked` directly. When `manager`
+ * is null (initial mount before composition root wires it) the
+ * fetchers are omitted entirely so no expander button appears.
  */
 function useInlineConfirmContent(
   invocation: ToolInvocation,
   preview: PendingConfirm['preview'],
+  manager: import('../../../core/AssistantManager').AssistantManager | null,
 ): {
   diffProps?: React.ComponentProps<typeof InlineDiffPreview>;
   blockProps?: React.ComponentProps<typeof InsertPreview>;
 } {
   return React.useMemo(() => {
     if (!preview) return {};
-    const args = invocation.arguments;
-    const getStringArg = (key: string): string | undefined => {
-      if (typeof args !== 'object' || args === null) return undefined;
-      const v = (args as Record<string, unknown>)[key];
-      return typeof v === 'string' ? v : undefined;
-    };
-    const fetchFromDisk = (path: string) => async () => {
-      const result = await window.mked?.readFile(path);
-      if (!result) {
-        throw new Error('Filesystem bridge unavailable.');
-      }
-      return result.content;
+    const expandable = EXPANDABLE_SIDES[preview.kind];
+    const buildFetcher = (
+      side: 'before' | 'after',
+    ): (() => Promise<string>) | undefined => {
+      if (!manager) return undefined;
+      if (!expandable[side]) return undefined;
+      return async () => {
+        const content = await manager.getFullPreviewContent(
+          invocation.toolCallId,
+          side,
+        );
+        if (content === undefined) {
+          // The tool's `getFullContent` returned no content for this
+          // side (no executor wired, or — more commonly — the
+          // confirmation already resolved out from under us). Throw
+          // so the hook surfaces a Retry affordance instead of
+          // silently swapping in empty content.
+          throw new Error('Full content unavailable.');
+        }
+        return content;
+      };
     };
     if (preview.kind === 'insert' || preview.kind === 'create') {
-      const argContent = getStringArg('content');
       return {
         blockProps: {
           content: preview.after,
           detail: preview.detail,
-          fetchFull: argContent ? () => Promise.resolve(argContent) : undefined,
+          fetchFull: buildFetcher('after'),
         },
       };
     }
-    // diff kinds: edit / write / replace
-    const original = preview.before ?? '';
-    const modified = preview.after;
-    let fetchFullOriginal: (() => Promise<string>) | undefined;
-    let fetchFullModified: (() => Promise<string>) | undefined;
-    if (preview.kind === 'write') {
-      // before = open file content (or '' if file didn't exist) →
-      // read from disk if a path was supplied. after = args.content.
-      if (preview.path) fetchFullOriginal = fetchFromDisk(preview.path);
-      const argContent = getStringArg('content');
-      if (argContent !== undefined) {
-        fetchFullModified = () => Promise.resolve(argContent);
-      }
-    } else if (preview.kind === 'edit') {
-      // Phase 6: preview shows ±3 lines of context around the match.
-      // "Show full" expands to the whole file — the original side
-      // reads from disk; the modified side reads from disk AND applies
-      // the agent's replacement so the user sees the entire post-edit
-      // file in situ. When path is missing (snippet builder bailed),
-      // fall back to the args strings so something still expands.
-      const oldText = getStringArg('oldText');
-      const newText = getStringArg('newText');
-      if (preview.path) {
-        const diskPath = preview.path;
-        fetchFullOriginal = fetchFromDisk(diskPath);
-        if (oldText !== undefined && newText !== undefined) {
-          fetchFullModified = async () => {
-            const original = await fetchFromDisk(diskPath)();
-            // The agent's edit_file contract guarantees oldText
-            // matches exactly once in the file. Single-shot replace.
-            return original.replace(oldText, newText);
-          };
-        } else {
-          fetchFullModified = fetchFromDisk(diskPath);
-        }
-      } else {
-        if (oldText !== undefined) {
-          fetchFullOriginal = () => Promise.resolve(oldText);
-        }
-        if (newText !== undefined) {
-          fetchFullModified = () => Promise.resolve(newText);
-        }
-      }
-    } else if (preview.kind === 'replace') {
-      // before = selection text (no source to refetch — selection
-      // could have changed). after = args.content.
-      const argContent = getStringArg('content');
-      if (argContent !== undefined) {
-        fetchFullModified = () => Promise.resolve(argContent);
-      }
-    }
     return {
       diffProps: {
-        original,
-        modified,
-        fetchFullOriginal,
-        fetchFullModified,
+        original: preview.before ?? '',
+        modified: preview.after,
+        fetchFullOriginal: buildFetcher('before'),
+        fetchFullModified: buildFetcher('after'),
       },
     };
-  }, [invocation, preview]);
+  }, [invocation.toolCallId, preview, manager]);
 }
 
 const StatusBadge: React.FC<{ status: ToolInvocation['status'] }> = ({

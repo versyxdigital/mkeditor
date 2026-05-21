@@ -1446,6 +1446,144 @@ describe('AssistantTools — preview building', () => {
   });
 });
 
+describe('AssistantTools — getFullPreviewContent ("Show full" expander)', () => {
+  it('write_file: before pulls from the open Monaco model (live, includes unsaved edits)', async () => {
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', makeModel('LIVE UNSAVED CONTENT'));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const before = await tools.getFullPreviewContent(
+      'write_file',
+      { path: '/x.md', content: 'NEW' },
+      'before',
+    );
+    expect(before).toBe('LIVE UNSAVED CONTENT');
+  });
+
+  it('write_file: after returns args.content verbatim (no truncation)', async () => {
+    const bm = makeBridgeManager();
+    const tools = new AssistantTools(bm as never);
+    const big = 'x'.repeat(10_000);
+    const after = await tools.getFullPreviewContent(
+      'write_file',
+      { path: '/x.md', content: big },
+      'after',
+    );
+    expect(after).toBe(big);
+  });
+
+  it('edit_file: before pulls from the open Monaco model', async () => {
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', makeModel('line A\nline B\nline C'));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const before = await tools.getFullPreviewContent(
+      'edit_file',
+      { path: '/x.md', oldText: 'line B', newText: 'TWO' },
+      'before',
+    );
+    expect(before).toBe('line A\nline B\nline C');
+  });
+
+  it('edit_file: after applies the EOL-normalised replacement on a CRLF file (matches execute())', async () => {
+    // Regression: the previous renderer-side fetcher did a plain
+    // `original.replace(oldText, newText)` which fails to match on a
+    // CRLF file when oldText uses LF newlines. The agent's
+    // `execute()` normalises to model EOL; the expander now follows
+    // suit so the preview agrees with what execute would write.
+    const models = new Map<string, FakeModel>();
+    models.set(
+      '/crlf.md',
+      makeModel('alpha\r\nbeta\r\ngamma\r\ndelta', '\r\n'),
+    );
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const after = await tools.getFullPreviewContent(
+      'edit_file',
+      {
+        path: '/crlf.md',
+        // Agent hands LF; execute() normalises; the expander must too.
+        oldText: 'beta\ngamma',
+        newText: 'TWO\nTHREE',
+      },
+      'after',
+    );
+    // Replacement also normalised to CRLF so the final file's EOL is
+    // consistent — same byte stream Monaco's executeEdits produces.
+    expect(after).toBe('alpha\r\nTWO\r\nTHREE\r\ndelta');
+  });
+
+  it('edit_file: when oldText does not match, after surfaces the unchanged file', async () => {
+    // The Accept path would throw "oldText not found" — the preview
+    // expander mirrors that by NOT inventing a fake replacement.
+    const models = new Map<string, FakeModel>();
+    models.set('/x.md', makeModel('original body'));
+    const bm = makeBridgeManager({ models });
+    const tools = new AssistantTools(bm as never);
+    const after = await tools.getFullPreviewContent(
+      'edit_file',
+      { path: '/x.md', oldText: 'no-such-needle', newText: 'NEW' },
+      'after',
+    );
+    expect(after).toBe('original body');
+  });
+
+  it('replace_selection: before is undefined (selection cannot be safely refetched)', async () => {
+    const bm = makeBridgeManager();
+    const tools = new AssistantTools(bm as never);
+    const before = await tools.getFullPreviewContent(
+      'replace_selection',
+      { content: 'replacement' },
+      'before',
+    );
+    expect(before).toBeUndefined();
+  });
+
+  it('insert_at_cursor / create_file: before is undefined; after returns args.content', async () => {
+    const bm = makeBridgeManager();
+    const tools = new AssistantTools(bm as never);
+    expect(
+      await tools.getFullPreviewContent(
+        'insert_at_cursor',
+        { content: 'snip' },
+        'before',
+      ),
+    ).toBeUndefined();
+    expect(
+      await tools.getFullPreviewContent(
+        'insert_at_cursor',
+        { content: 'snip' },
+        'after',
+      ),
+    ).toBe('snip');
+    expect(
+      await tools.getFullPreviewContent(
+        'create_file',
+        { path: '/new.md', content: 'fresh' },
+        'before',
+      ),
+    ).toBeUndefined();
+    expect(
+      await tools.getFullPreviewContent(
+        'create_file',
+        { path: '/new.md', content: 'fresh' },
+        'after',
+      ),
+    ).toBe('fresh');
+  });
+
+  it('returns undefined for read-class / unknown tools (no getFullContent spec)', async () => {
+    const bm = makeBridgeManager();
+    const tools = new AssistantTools(bm as never);
+    expect(
+      await tools.getFullPreviewContent('read_file', { path: '/x' }, 'before'),
+    ).toBeUndefined();
+    expect(
+      await tools.getFullPreviewContent('not_a_tool', {}, 'after'),
+    ).toBeUndefined();
+  });
+});
+
 describe('AssistantTools — error paths', () => {
   it('execute() throws UnknownToolError for tools not in the catalog', async () => {
     const bm = makeBridgeManager();

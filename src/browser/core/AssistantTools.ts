@@ -33,6 +33,19 @@ export interface ToolExecutor {
   classify(name: string): ToolClass;
   /** Build the confirm-dialog preview for write-class tools. */
   buildPreview(name: string, args: unknown): ToolConfirmPreview | null;
+  /**
+   * Resolve the untruncated content of one side of the preview. Used
+   * by the inline diff card's "Show full" expander so the React layer
+   * doesn't have to source from disk / models itself. Returns
+   * undefined when the side has no meaningful expansion (e.g.
+   * `replace_selection`'s before) or when the tool has no full-content
+   * support (read-class tools, missing per-tool implementation).
+   */
+  getFullPreviewContent(
+    name: string,
+    args: unknown,
+    side: 'before' | 'after',
+  ): Promise<string | undefined>;
   /** Execute a tool. Throws on internal failure. */
   execute(name: string, args: unknown): Promise<unknown>;
 }
@@ -47,6 +60,22 @@ interface ToolSpec {
   toolClass: ToolClass;
   execute(args: unknown, ctx: ToolContext): Promise<unknown>;
   preview?(args: unknown, ctx: ToolContext): ToolConfirmPreview;
+  /**
+   * Resolve the FULL (untruncated) content for one side of the
+   * preview. Powers the inline diff card's "Show full" expander
+   * without surfacing `window.mked` to React. Returns `undefined`
+   * when the side has no meaningful expansion (e.g.
+   * `replace_selection`'s before is the user's editor selection at
+   * tool-fire time and there's nothing to refetch). Sources the
+   * before content the same way `execute` would (open Monaco model
+   * first, then disk read via `mked:fs:readfile`) so the expanded
+   * preview agrees with what the tool would actually write.
+   */
+  getFullContent?(
+    args: unknown,
+    ctx: ToolContext,
+    side: 'before' | 'after',
+  ): Promise<string | undefined>;
 }
 
 /** Cross-cutting deps each tool needs. */
@@ -167,6 +196,45 @@ function countLines(text: string, start: number, end: number): number {
     }
   }
   return count;
+}
+
+/**
+ * Normalise line endings in `text` to match Monaco's EOL setting. The
+ * `edit_file` tool's `execute` matches its `oldText` against the model
+ * after this normalisation — so a `\n`-only search string still matches
+ * a CRLF file. Exposed so the preview-expansion path
+ * (`AssistantTools.getFullPreviewContent`) can apply the same
+ * normalisation and produce an "after" string that matches what
+ * `execute` actually writes.
+ */
+function normaliseForEol(text: string, eol: string): string {
+  return eol === '\r\n'
+    ? text.replace(/\r?\n/g, '\r\n')
+    : text.replace(/\r\n/g, '\n');
+}
+
+/**
+ * Read the full content of a file the agent's tool is targeting. The
+ * open Monaco model wins over disk so we surface the user's *unsaved*
+ * edits — the same hierarchy `AssistantContextSource.readFile` uses
+ * for the read-class tool path. Falls back to the `mked:fs:readfile`
+ * IPC when the file isn't currently a tab.
+ *
+ * Throws when the bridge is unavailable (web mode — the AI assistant
+ * is desktop-only, so reaching this branch in practice means a
+ * misconfigured test) or when the IPC read rejects.
+ */
+async function readFullFile(ctx: ToolContext, path: string): Promise<string> {
+  const model = ctx.bridge.fileManager.models.get(path);
+  if (model) return model.getValue();
+  const mked = window.mked;
+  if (!mked?.readFile) {
+    throw new Error(
+      'Filesystem bridge unavailable; cannot read full file content.',
+    );
+  }
+  const { content } = await mked.readFile(path);
+  return content;
 }
 
 /** Wait for a path to land in FileManager.models (idempotent if already there). */
@@ -732,6 +800,23 @@ const CATALOG: Record<string, ToolSpec> = {
         after: truncate(content),
       };
     },
+    async getFullContent(args, ctx, side) {
+      const { path: input, content } = args as {
+        path: string;
+        content: string;
+      };
+      let path = input;
+      try {
+        path = resolveWorkspacePath(ctx, input);
+      } catch {
+        /* same fallback as preview() */
+      }
+      if (side === 'after') return content;
+      // before: live model first (catches unsaved edits the user
+      // typed while the agent was thinking), then disk fallback.
+      // Same hierarchy preview() uses for the truncated `before`.
+      return readFullFile(ctx, path);
+    },
     async execute(args, ctx) {
       const { path: input, content } = args as {
         path: string;
@@ -825,6 +910,41 @@ const CATALOG: Record<string, ToolSpec> = {
         after: truncate(newText),
       };
     },
+    async getFullContent(args, ctx, side) {
+      const {
+        path: input,
+        oldText,
+        newText,
+      } = args as {
+        path: string;
+        oldText: string;
+        newText: string;
+      };
+      let path = input;
+      try {
+        path = resolveWorkspacePath(ctx, input);
+      } catch {
+        /* same fallback as preview() */
+      }
+      // `before` is the full file (live model > disk) — same hierarchy
+      // execute() uses (it always operates on the open model). For
+      // `after` we additionally apply the EOL-normalised replacement
+      // that execute() would actually perform, so the expanded diff
+      // mirrors the on-disk result Monaco's executeEdits produces.
+      const before = await readFullFile(ctx, path);
+      if (side === 'before') return before;
+      const model = ctx.bridge.fileManager.models.get(path);
+      const eol = model ? model.getEOL() : '\n';
+      const needle = normaliseForEol(oldText, eol);
+      const replacement = normaliseForEol(newText, eol);
+      // If the needle isn't in the file (the agent's edit would fail
+      // on Accept), surface the unchanged content so the diff renders
+      // honestly — no fake replacement. The Accept path will then
+      // throw the same "oldText not found" the user expects.
+      return before.includes(needle)
+        ? before.replace(needle, replacement)
+        : before;
+    },
     async execute(args, ctx) {
       const {
         path: input,
@@ -849,12 +969,12 @@ const CATALOG: Record<string, ToolSpec> = {
       // activating gives the user immediate visual feedback.
       fm.activateFile(path);
       // Normalise the search text to the model's EOL so a `\n`-only
-      // oldText matches a CRLF file (and vice versa).
+      // oldText matches a CRLF file (and vice versa). The
+      // preview-expansion path (`getFullPreviewContent` below) uses the
+      // same helper so its "after" string mirrors what executeEdits
+      // would actually write.
       const eol = model.getEOL();
-      const needle =
-        eol === '\r\n'
-          ? oldText.replace(/\r?\n/g, '\r\n')
-          : oldText.replace(/\r\n/g, '\n');
+      const needle = normaliseForEol(oldText, eol);
       // We do a plain `indexOf` on the model's text instead of
       // `model.findMatches(...)` because Monaco's non-regex searcher
       // is line-bounded — it won't match a substring that spans
@@ -930,6 +1050,13 @@ const CATALOG: Record<string, ToolSpec> = {
         path,
         after: truncate(content),
       };
+    },
+    async getFullContent(args, _ctx, side) {
+      // `create_file` has no `before` (the file doesn't exist yet);
+      // `after` is the full agent payload from args.
+      if (side === 'before') return undefined;
+      const { content } = args as { content: string };
+      return content;
     },
     async execute(args, ctx) {
       const { path: input, content } = args as {
@@ -1030,6 +1157,15 @@ const CATALOG: Record<string, ToolSpec> = {
         after: truncate(content),
       };
     },
+    async getFullContent(args, _ctx, side) {
+      // `before` is the user's selection at tool-fire time — already
+      // captured in the preview; there's nothing further to refetch
+      // (re-reading the selection now could disagree with what the
+      // tool will actually replace).
+      if (side === 'before') return undefined;
+      const { content } = args as { content: string };
+      return content;
+    },
     async execute(args, ctx) {
       const { content } = args as { content: string };
       const editor = ctx.bridge.mkeditor;
@@ -1067,6 +1203,13 @@ const CATALOG: Record<string, ToolSpec> = {
         path: ctx.bridge.fileManager.activeFile ?? undefined,
         after: truncate(content),
       };
+    },
+    async getFullContent(args, _ctx, side) {
+      // Pure insertion — no `before` to expand. `after` is the
+      // full args payload.
+      if (side === 'before') return undefined;
+      const { content } = args as { content: string };
+      return content;
     },
     async execute(args, ctx) {
       const { content } = args as { content: string };
@@ -1142,6 +1285,16 @@ export class AssistantTools implements ToolExecutor {
       // skip the preview and let the dialog show just the args.
       return null;
     }
+  }
+
+  async getFullPreviewContent(
+    name: string,
+    args: unknown,
+    side: 'before' | 'after',
+  ): Promise<string | undefined> {
+    const spec = CATALOG[name];
+    if (!spec || !spec.getFullContent) return undefined;
+    return spec.getFullContent(args, this.ctx, side);
   }
 
   async execute(name: string, args: unknown): Promise<unknown> {

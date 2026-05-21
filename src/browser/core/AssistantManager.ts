@@ -229,7 +229,19 @@ export class AssistantManager {
    */
   private pendingConfirms = new Map<
     string,
-    { entry: PendingConfirm; resolve: (ok: boolean) => void }
+    {
+      entry: PendingConfirm;
+      /**
+       * Original tool-call arguments, kept here so
+       * `getFullPreviewContent` can hand them back to the executor
+       * without forcing the React layer to ship args through every
+       * call. PendingConfirm itself is the snapshot-facing shape and
+       * doesn't carry them (args are usually small but can be huge
+       * for write_file — no need to ship through the snapshot churn).
+       */
+      args: unknown;
+      resolve: (ok: boolean) => void;
+    }
   >();
 
   /**
@@ -1033,6 +1045,7 @@ export class AssistantManager {
 
     this.pendingConfirms.set(payload.toolCallId, {
       entry,
+      args: payload.arguments,
       resolve: settle,
     });
     this.rebuildChatSnapshot();
@@ -1075,6 +1088,39 @@ export class AssistantManager {
     const entry = this.pendingConfirms.get(toolCallId);
     if (!entry) return;
     entry.resolve(ok);
+  }
+
+  /**
+   * Resolve the FULL (untruncated) content of one side of the
+   * inline-confirm preview for a tool currently awaiting confirmation.
+   * Powers `<InlineDiffPreview>`'s "Show full" expander without
+   * surfacing IPC (`window.mked.readFile`) to React.
+   *
+   * Returns `undefined` when the toolCallId is unknown, the tool has
+   * no executor registered, or the tool itself doesn't support
+   * expansion for the requested side (e.g. `replace_selection`'s
+   * before, where the source — the user's editor selection — can't
+   * be refetched without disagreeing with what the tool will actually
+   * replace).
+   *
+   * Lookup uses the live `pendingConfirms` map: only tools the user
+   * is actively considering can be expanded. Once the confirmation
+   * resolves, the entry is dropped and subsequent calls return
+   * `undefined`. That matches the inline card's lifetime — the
+   * "Show full" button only exists while the card is on screen.
+   */
+  public async getFullPreviewContent(
+    toolCallId: string,
+    side: 'before' | 'after',
+  ): Promise<string | undefined> {
+    const pending = this.pendingConfirms.get(toolCallId);
+    if (!pending) return undefined;
+    if (!this.toolExecutor) return undefined;
+    return this.toolExecutor.getFullPreviewContent(
+      pending.entry.toolName,
+      pending.args,
+      side,
+    );
   }
 
   /**

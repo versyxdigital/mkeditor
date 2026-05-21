@@ -163,6 +163,7 @@ export function fakeAssistantManager(
     setAutoAcceptWrites: jest.fn(),
     onToolCall: jest.fn(),
     respondToConfirm: jest.fn(),
+    getFullPreviewContent: jest.fn(async () => undefined),
 
     // P6 context surface
     setContextProvider: jest.fn(),
