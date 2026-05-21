@@ -380,7 +380,14 @@
     "open_folder": "フォルダーを開く",
     "restore_workspace": "前のフォルダーを復元",
     "disconnect_folder": "フォルダーを切断",
-    "chromium_only_warning": "フォルダーへのアクセスは Chromium ベースのブラウザー (Chrome、Edge、Brave、Opera) でのみ利用できます。"
+    "chromium_only_warning": "フォルダーへのアクセスは Chromium ベースのブラウザー (Chrome、Edge、Brave、Opera) でのみ利用できます。",
+    "search_placeholder": "ファイルを検索",
+    "filter_label": "ファイルタイプをフィルター",
+    "filter_types": "ファイルタイプ",
+    "filter_section_markdown": "Markdown",
+    "filter_section_images": "画像",
+    "filter_section_documents": "ドキュメント",
+    "filter_reset_to_md": ".md のみにリセット"
   },
   "toolbar": {
     "reset_split": "エディター/プレビューの分割をリセット",

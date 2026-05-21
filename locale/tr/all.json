@@ -380,7 +380,14 @@
     "open_folder": "Klasör aç",
     "restore_workspace": "Önceki klasörü geri yükle",
     "disconnect_folder": "Klasörü ayır",
-    "chromium_only_warning": "Klasör erişimi yalnızca Chromium tabanlı tarayıcılarda (Chrome, Edge, Brave, Opera) kullanılabilir."
+    "chromium_only_warning": "Klasör erişimi yalnızca Chromium tabanlı tarayıcılarda (Chrome, Edge, Brave, Opera) kullanılabilir.",
+    "search_placeholder": "Dosya ara",
+    "filter_label": "Dosya türlerini filtrele",
+    "filter_types": "Dosya türleri",
+    "filter_section_markdown": "Markdown",
+    "filter_section_images": "Görseller",
+    "filter_section_documents": "Belgeler",
+    "filter_reset_to_md": "Yalnızca .md yap"
   },
   "toolbar": {
     "reset_split": "Editör/önizleme bölmesini sıfırla",

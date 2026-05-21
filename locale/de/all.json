@@ -380,7 +380,14 @@
     "open_folder": "Ordner öffnen",
     "restore_workspace": "Vorherigen Ordner wiederherstellen",
     "disconnect_folder": "Ordner trennen",
-    "chromium_only_warning": "Ordnerzugriff ist nur in Chromium-basierten Browsern verfügbar (Chrome, Edge, Brave, Opera)."
+    "chromium_only_warning": "Ordnerzugriff ist nur in Chromium-basierten Browsern verfügbar (Chrome, Edge, Brave, Opera).",
+    "search_placeholder": "Dateien suchen",
+    "filter_label": "Dateitypen filtern",
+    "filter_types": "Dateitypen",
+    "filter_section_markdown": "Markdown",
+    "filter_section_images": "Bilder",
+    "filter_section_documents": "Dokumente",
+    "filter_reset_to_md": "Auf .md zurücksetzen"
   },
   "toolbar": {
     "reset_split": "Editor/Vorschau-Aufteilung zurücksetzen",

@@ -1,3 +1,7 @@
+export interface FileExplorerSettings {
+  extensions: string[];
+}
+
 export interface EditorSettings {
   autoindent: boolean;
   darkmode: boolean;
@@ -8,6 +12,7 @@ export interface EditorSettings {
   scrollsync: boolean;
   sessionRestore: boolean;
   locale: string;
+  fileExplorer: FileExplorerSettings;
 }
 
 export interface ExportSettings {

@@ -380,7 +380,14 @@
     "open_folder": "Map openen",
     "restore_workspace": "Vorige map herstellen",
     "disconnect_folder": "Map loskoppelen",
-    "chromium_only_warning": "Toegang tot mappen is alleen beschikbaar in op Chromium gebaseerde browsers (Chrome, Edge, Brave, Opera)."
+    "chromium_only_warning": "Toegang tot mappen is alleen beschikbaar in op Chromium gebaseerde browsers (Chrome, Edge, Brave, Opera).",
+    "search_placeholder": "Bestanden zoeken",
+    "filter_label": "Bestandstypen filteren",
+    "filter_types": "Bestandstypen",
+    "filter_section_markdown": "Markdown",
+    "filter_section_images": "Afbeeldingen",
+    "filter_section_documents": "Documenten",
+    "filter_reset_to_md": "Terug naar alleen .md"
   },
   "toolbar": {
     "reset_split": "Indeling editor/voorbeeld resetten",

@@ -651,11 +651,29 @@ export class AppStorage {
    * @param dir - the directory to read
    * @returns - the directory contents
    */
+  private static readonly WORKSPACE_EXTENSIONS: ReadonlySet<string> = new Set([
+    '.md',
+    '.png',
+    '.jpg',
+    '.jpeg',
+    '.gif',
+    '.svg',
+    '.webp',
+    '.html',
+    '.pdf',
+    '.txt',
+  ]);
+
   private static async readDirectory(dir: string): Promise<any[]> {
     const entries = await fs.readdir(dir, { withFileTypes: true });
-    const filtered = entries.filter(
-      (d) => d.isDirectory() || d.name.endsWith('.md'),
-    );
+    const filtered = entries.filter((d) => {
+      if (d.isDirectory()) return true;
+      const dot = d.name.lastIndexOf('.');
+      if (dot < 0) return false;
+      return AppStorage.WORKSPACE_EXTENSIONS.has(
+        d.name.slice(dot).toLowerCase(),
+      );
+    });
     return Promise.all(
       filtered.map(async (entry) => {
         const full = join(dir, entry.name);

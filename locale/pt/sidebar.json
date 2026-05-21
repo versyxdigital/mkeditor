@@ -4,5 +4,12 @@
   "open_folder": "Abrir pasta",
   "restore_workspace": "Restaurar pasta anterior",
   "disconnect_folder": "Desconectar pasta",
-  "chromium_only_warning": "O acesso a pastas só está disponível em navegadores baseados em Chromium (Chrome, Edge, Brave, Opera)."
+  "chromium_only_warning": "O acesso a pastas só está disponível em navegadores baseados em Chromium (Chrome, Edge, Brave, Opera).",
+  "search_placeholder": "Pesquisar arquivos",
+  "filter_label": "Filtrar tipos de arquivo",
+  "filter_types": "Tipos de arquivo",
+  "filter_section_markdown": "Markdown",
+  "filter_section_images": "Imagens",
+  "filter_section_documents": "Documentos",
+  "filter_reset_to_md": "Redefinir para somente .md"
 }

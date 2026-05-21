@@ -4,5 +4,12 @@
   "open_folder": "打开文件夹",
   "restore_workspace": "恢复上一个文件夹",
   "disconnect_folder": "断开文件夹",
-  "chromium_only_warning": "文件夹访问仅在基于 Chromium 的浏览器（Chrome、Edge、Brave、Opera）中可用。"
+  "chromium_only_warning": "文件夹访问仅在基于 Chromium 的浏览器（Chrome、Edge、Brave、Opera）中可用。",
+  "search_placeholder": "搜索文件",
+  "filter_label": "筛选文件类型",
+  "filter_types": "文件类型",
+  "filter_section_markdown": "Markdown",
+  "filter_section_images": "图片",
+  "filter_section_documents": "文档",
+  "filter_reset_to_md": "仅重置为 .md"
 }

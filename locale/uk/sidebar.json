@@ -4,5 +4,12 @@
   "open_folder": "Відкрити папку",
   "restore_workspace": "Відновити попередню папку",
   "disconnect_folder": "Від'єднати папку",
-  "chromium_only_warning": "Доступ до папок можливий лише в браузерах на базі Chromium (Chrome, Edge, Brave, Opera)."
+  "chromium_only_warning": "Доступ до папок можливий лише в браузерах на базі Chromium (Chrome, Edge, Brave, Opera).",
+  "search_placeholder": "Пошук файлів",
+  "filter_label": "Фільтр типів файлів",
+  "filter_types": "Типи файлів",
+  "filter_section_markdown": "Markdown",
+  "filter_section_images": "Зображення",
+  "filter_section_documents": "Документи",
+  "filter_reset_to_md": "Скинути до .md"
 }

@@ -380,7 +380,14 @@
     "open_folder": "Открыть папку",
     "restore_workspace": "Восстановить предыдущую папку",
     "disconnect_folder": "Отключить папку",
-    "chromium_only_warning": "Доступ к папкам возможен только в браузерах на базе Chromium (Chrome, Edge, Brave, Opera)."
+    "chromium_only_warning": "Доступ к папкам возможен только в браузерах на базе Chromium (Chrome, Edge, Brave, Opera).",
+    "search_placeholder": "Поиск файлов",
+    "filter_label": "Фильтр типов файлов",
+    "filter_types": "Типы файлов",
+    "filter_section_markdown": "Markdown",
+    "filter_section_images": "Изображения",
+    "filter_section_documents": "Документы",
+    "filter_reset_to_md": "Сбросить до .md"
   },
   "toolbar": {
     "reset_split": "Сбросить разделение редактор/предпросмотр",
