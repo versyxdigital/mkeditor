@@ -1,5 +1,8 @@
 import type { BridgeManager } from './BridgeManager';
-import type { ToolDescriptor } from '../../app/interfaces/Assistant';
+import type {
+  ToolConfirmPreview,
+  ToolDescriptor,
+} from '../../app/interfaces/Assistant';
 
 /**
  * Tool class — read-class tools auto-execute, write-class tools
@@ -8,21 +11,12 @@ import type { ToolDescriptor } from '../../app/interfaces/Assistant';
  */
 export type ToolClass = 'read' | 'write' | 'unknown';
 
-/**
- * Preview payload shown in `<ConfirmToolCall>` for write-class tools.
- * Built by the executor before the dialog opens so the dialog itself
- * stays stateless about file system / editor state.
- */
-export interface ToolConfirmPreview {
-  kind: 'edit' | 'write' | 'create' | 'replace' | 'insert';
-  path?: string;
-  /** Text being replaced (undefined for `create` and `insert`). */
-  before?: string;
-  /** Text the tool will write. */
-  after: string;
-  /** Optional descriptive line (e.g. line range for `edit`). */
-  detail?: string;
-}
+// `ToolConfirmPreview` moved to `src/app/interfaces/Assistant.ts` so
+// the renderer chat snapshot can carry it without browser-side modules
+// flowing through `AssistantChatSnapshot`. Re-exported here for
+// backwards compatibility with existing imports from
+// `../core/AssistantTools`.
+export type { ToolConfirmPreview };
 
 /**
  * The contract `AssistantManager` consumes. `AssistantTools`

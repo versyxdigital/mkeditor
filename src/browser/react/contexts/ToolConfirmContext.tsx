@@ -1,10 +1,12 @@
 import * as React from 'react';
 
 import {
+  cancelToolConfirmForToolCallId,
   cancelToolConfirmsForCallId,
   confirmToolCallExternal,
   registerToolConfirmCanceller,
   registerToolConfirmOpener,
+  registerToolConfirmToolCallCanceller,
   type ToolConfirmRequest,
 } from '../../toolConfirm';
 
@@ -14,10 +16,12 @@ import {
 // importing React — see the comment at the top of `toolConfirm.ts`.
 export type { ToolConfirmRequest };
 export {
+  cancelToolConfirmForToolCallId,
   cancelToolConfirmsForCallId,
   confirmToolCallExternal,
   registerToolConfirmCanceller,
   registerToolConfirmOpener,
+  registerToolConfirmToolCallCanceller,
 };
 
 interface ToolConfirmState {
@@ -40,6 +44,12 @@ interface ToolConfirmState {
    * resolves false.
    */
   cancelForCallId: (callId: string) => void;
+  /**
+   * Drop a single modal confirmation by `toolCallId`. Used by
+   * `AssistantManager` after the inline confirmation card resolves a
+   * write-class tool so the redundant modal doesn't linger.
+   */
+  cancelForToolCallId: (toolCallId: string) => void;
 }
 
 /** Queue entry: one pending request plus the resolver for its Promise. */
@@ -136,6 +146,34 @@ export const ToolConfirmProvider: React.FC<{ children: React.ReactNode }> = ({
     [showNextFromQueue],
   );
 
+  const cancelForToolCallId = React.useCallback(
+    (toolCallId: string) => {
+      // Single-entry variant used by AssistantManager after the inline
+      // confirmation card resolves a write-class tool. The matching
+      // modal entry (in the queue OR currently shown) is dropped so
+      // the user doesn't see a redundant dialog they've already
+      // responded to. Resolved as false because the Promise the
+      // manager is awaiting has already been resolved by the inline
+      // path; the second resolve is a no-op.
+      const survivors: QueuedConfirm[] = [];
+      for (const entry of queueRef.current) {
+        if (entry.request.toolCallId === toolCallId) {
+          entry.resolve(false);
+        } else {
+          survivors.push(entry);
+        }
+      }
+      queueRef.current = survivors;
+      const currentRequest = requestRef.current;
+      if (currentRequest && currentRequest.toolCallId === toolCallId) {
+        const r = currentResolverRef.current;
+        if (r) r(false);
+        showNextFromQueue();
+      }
+    },
+    [showNextFromQueue],
+  );
+
   // Keep `requestRef` in sync with the rendered request so
   // `cancelForCallId` reads the latest value. The module-level seam
   // registrations (opener + canceller) happen in `<ToolConfirmBridge>`
@@ -146,8 +184,14 @@ export const ToolConfirmProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [request]);
 
   const value = React.useMemo<ToolConfirmState>(
-    () => ({ request, open, resolve, cancelForCallId }),
-    [request, open, resolve, cancelForCallId],
+    () => ({
+      request,
+      open,
+      resolve,
+      cancelForCallId,
+      cancelForToolCallId,
+    }),
+    [request, open, resolve, cancelForCallId, cancelForToolCallId],
   );
 
   return (

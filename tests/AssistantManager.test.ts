@@ -1090,6 +1090,228 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
   });
 });
 
+describe('AssistantManager — inline confirmation (pendingConfirms + respondToConfirm)', () => {
+  // The modal opener is registered but its Promise is held open
+  // forever in these tests — the inline path is what we want to race
+  // against and verify. A `cancelForToolCallId` registration captures
+  // dismissal attempts so we can assert the inline-wins path tells
+  // the modal to close.
+  let dismissedToolCallIds: string[] = [];
+  beforeEach(() => {
+    dismissedToolCallIds = [];
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const {
+      registerToolConfirmOpener,
+      registerToolConfirmToolCallCanceller,
+    } = require('../src/browser/react/contexts/ToolConfirmContext');
+    // Modal opener that never resolves — forces the test to win via
+    // the inline path (mirrors the production scenario where the user
+    // clicks Accept/Reject on the chat card instead of the modal).
+    registerToolConfirmOpener(() => new Promise<boolean>(() => {}));
+    registerToolConfirmToolCallCanceller((id: string) => {
+      dismissedToolCallIds.push(id);
+    });
+  });
+
+  it('populates pendingConfirms in the chat snapshot before awaiting the user', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const preview = {
+      kind: 'write' as const,
+      path: '/x.md',
+      after: 'new content',
+    };
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => preview,
+      execute: jest.fn(),
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: { path: '/x.md', content: 'new content' },
+    });
+    await Promise.resolve();
+
+    const snapshot = mgr.getChatSnapshot();
+    expect(snapshot.pendingConfirms['tc-1']).toEqual({
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      callId,
+      preview,
+    });
+  });
+
+  it('respondToConfirm(toolCallId, true) executes the tool and dismisses the modal', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const executor = {
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => ({
+        kind: 'write' as const,
+        path: '/x.md',
+        after: 'new',
+      }),
+      execute: jest.fn(async () => ({ ok: true })),
+    };
+    mgr.setToolExecutor(executor);
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: { path: '/x.md', content: 'new' },
+    });
+    await Promise.resolve();
+
+    mgr.respondToConfirm('tc-1', true);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(executor.execute).toHaveBeenCalled();
+    // pendingConfirms cleared after the inline path resolved.
+    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
+    // Modal dismiss fired so the redundant dialog doesn't linger.
+    expect(dismissedToolCallIds).toContain('tc-1');
+    // Tool result was shipped.
+    expect(sent.some((s) => s.channel === 'to:ai:tool-result')).toBe(true);
+  });
+
+  it('respondToConfirm(toolCallId, false) ships an error-shaped tool-result and marks the call failed/rejected', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    const executor = {
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => null,
+      execute: jest.fn(),
+    };
+    mgr.setToolExecutor(executor);
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+
+    mgr.respondToConfirm('tc-1', false);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(executor.execute).not.toHaveBeenCalled();
+    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
+    expect(dismissedToolCallIds).toContain('tc-1');
+    const toolResult = sent.find((s) => s.channel === 'to:ai:tool-result');
+    expect(
+      (toolResult!.data as { result: { error: string } }).result.error,
+    ).toBe('rejected');
+  });
+
+  it('respondToConfirm is a no-op for unknown toolCallIds', () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    // Smoke: shouldn't throw, shouldn't dismiss anything.
+    expect(() => mgr.respondToConfirm('nope', true)).not.toThrow();
+    expect(dismissedToolCallIds).not.toContain('nope');
+  });
+
+  it('cancelCall drops pendingConfirms for that chat', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => null,
+      execute: jest.fn(),
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeDefined();
+
+    mgr.cancelCall(callId);
+    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
+  });
+
+  it('a modal win (resolves first) clears the pendingConfirms entry so the inline card unmounts', async () => {
+    // Re-register the opener with a controllable resolver so we can
+    // simulate the user clicking Accept in the modal.
+    let resolveModal: ((ok: boolean) => void) | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const {
+      registerToolConfirmOpener,
+    } = require('../src/browser/react/contexts/ToolConfirmContext');
+    registerToolConfirmOpener(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveModal = resolve;
+        }),
+    );
+
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'hi')!;
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write' as const,
+      buildPreview: () => null,
+      execute: jest.fn(async () => ({ ok: true })),
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'tc-1',
+      toolName: 'write_file',
+      arguments: {},
+    });
+    await Promise.resolve();
+    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeDefined();
+
+    // Modal wins.
+    resolveModal!(true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mgr.getChatSnapshot().pendingConfirms['tc-1']).toBeUndefined();
+    // Modal-won path does NOT call cancelForToolCallId (the modal is
+    // closing itself; no need to dismiss it).
+    expect(dismissedToolCallIds).not.toContain('tc-1');
+  });
+});
+
 describe('AssistantManager — startCall ships tools when an executor is set', () => {
   it('includes the executor.describe() result in ChatRequest.tools', () => {
     const { bridge, sent } = makeBridge();

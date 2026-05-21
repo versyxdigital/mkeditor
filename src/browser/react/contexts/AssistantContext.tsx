@@ -16,6 +16,7 @@ const EMPTY_CHAT_SNAPSHOT: AssistantChatSnapshot = {
   activeProvider: null,
   drafts: {},
   inflight: {},
+  pendingConfirms: {},
 };
 
 interface AssistantContextValue {

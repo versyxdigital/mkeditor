@@ -13,6 +13,7 @@ import type {
   InflightChatCall,
   OllamaListRequest,
   OllamaModelsEvent,
+  PendingConfirm,
   ProviderId,
   SanitizedProviderConfig,
   PersistedChatMessage,
@@ -25,6 +26,7 @@ import type {
 import type { ToolExecutor } from './AssistantTools';
 import { encryptForMain } from './SecureChannelClient';
 import {
+  cancelToolConfirmForToolCallId,
   cancelToolConfirmsForCallId,
   confirmToolCallExternal,
 } from '../toolConfirm';
@@ -123,6 +125,7 @@ const EMPTY_CHAT_SNAPSHOT: AssistantChatSnapshot = {
   activeProvider: null,
   drafts: {},
   inflight: {},
+  pendingConfirms: {},
 };
 
 /**
@@ -213,6 +216,25 @@ export class AssistantManager {
   /** Key shape: `${provider}:${conversationId}`. */
   private drafts = new Map<string, string>();
   private inflightChats = new Map<string, InflightChatCall>();
+
+  /**
+   * Write-class tool calls awaiting user confirmation, keyed by
+   * `toolCallId`. The `entry` half (preview + identifying fields)
+   * lands in the chat snapshot so React can render the inline diff
+   * card; the `resolve` half is held privately and fired by either
+   * `respondToConfirm(toolCallId, ok)` (inline path) or by the modal's
+   * own resolution (`<ConfirmToolCall>` via `confirmToolCallExternal`)
+   * — whichever the user interacts with first wins. The other side
+   * becomes a no-op because resolving a Promise twice is harmless.
+   *
+   * Cleared per-entry on resolve, and en-masse on `cancelCall`,
+   * `deleteConversation`, `onChatDone`, and `onChatError` so a
+   * stranded chat doesn't leave a dialog up.
+   */
+  private pendingConfirms = new Map<
+    string,
+    { entry: PendingConfirm; resolve: (ok: boolean) => void }
+  >();
 
   /**
    * Optional tool executor. Null until `setToolExecutor` is
@@ -548,8 +570,9 @@ export class AssistantManager {
     const map = this.conversations[provider];
     if (!map.has(conversationId)) return;
     // Cancel any in-flight chat against this conversation. Also drop
-    // any open / queued tool-call confirmations for those chats so the
-    // user isn't prompted for a conversation they've just deleted.
+    // any open / queued tool-call confirmations (modal AND inline) for
+    // those chats so the user isn't prompted for a conversation
+    // they've just deleted.
     for (const [callId, inflight] of this.inflightChats) {
       if (
         inflight.provider === provider &&
@@ -558,6 +581,7 @@ export class AssistantManager {
         this.cancelChat(callId);
         this.inflightChats.delete(callId);
         cancelToolConfirmsForCallId(callId);
+        this.dropPendingConfirmsForCallId(callId);
       }
     }
     map.delete(conversationId);
@@ -736,6 +760,10 @@ export class AssistantManager {
     // `if (!inflight) return` bails before shipping a phantom
     // "rejected" tool-result for a chat the user just cancelled.
     cancelToolConfirmsForCallId(callId);
+    // Same for the inline-confirmation entries (snapshot-backed
+    // `<ToolCallCard>` Accept/Reject row). Drops them and the matching
+    // modal entries in one pass.
+    this.dropPendingConfirmsForCallId(callId);
     this.cancelChat(callId);
     this.rebuildChatSnapshot();
     return true;
@@ -966,13 +994,68 @@ export class AssistantManager {
     }
   }
 
-  /** Open the confirm dialog, then execute or reject. */
+  /**
+   * Open the confirm dialog AND register an inline-confirmation entry,
+   * then execute or reject based on whichever the user interacts with
+   * first.
+   *
+   * Two paths race for the user's decision:
+   *
+   *  1. **Modal** (`<ConfirmToolCall>`) — the legacy popup. Still
+   *     fires today; will be the fallback once the inline diff card
+   *     ships.
+   *  2. **Inline** (`<ToolCallCard>` reading
+   *     `chatSnapshot.pendingConfirms[toolCallId]`) — Accept/Reject
+   *     buttons on the chat card call `respondToConfirm(toolCallId, ok)`.
+   *
+   * Both routes resolve the same unified Promise. Whichever wins, the
+   * other side is dismissed: an inline win calls
+   * `cancelToolConfirmForToolCallId(toolCallId)` so the modal doesn't
+   * linger; a modal win deletes the `pendingConfirms` entry so the
+   * inline card stops rendering.
+   */
   private async runWithConfirmation(
     payload: ChatToolCallEvent,
     executor: ToolExecutor,
   ): Promise<void> {
     const preview = executor.buildPreview(payload.toolName, payload.arguments);
-    const ok = await confirmToolCallExternal({
+    const entry: PendingConfirm = {
+      toolCallId: payload.toolCallId,
+      toolName: payload.toolName,
+      callId: payload.callId,
+      preview,
+    };
+    // Unified Promise resolved by whichever path the user uses first.
+    // Subsequent resolves are harmless no-ops (Promises can only
+    // resolve once). `decided` guards the cleanup work so we don't
+    // dismiss the modal twice.
+    let decided = false;
+    let resolveUnified!: (ok: boolean) => void;
+    const unified = new Promise<boolean>((r) => {
+      resolveUnified = r;
+    });
+    const settle = (ok: boolean, source: 'inline' | 'modal'): void => {
+      if (decided) return;
+      decided = true;
+      this.pendingConfirms.delete(payload.toolCallId);
+      // Dismiss the OTHER path. Inline → kill the modal entry;
+      // modal → nothing extra (the modal is already closing itself).
+      if (source === 'inline') {
+        cancelToolConfirmForToolCallId(payload.toolCallId);
+      }
+      this.rebuildChatSnapshot();
+      resolveUnified(ok);
+    };
+
+    this.pendingConfirms.set(payload.toolCallId, {
+      entry,
+      resolve: (ok) => settle(ok, 'inline'),
+    });
+    this.rebuildChatSnapshot();
+
+    // Fire-and-forget the modal: its Promise resolves through the
+    // same `settle` helper so the manager only awaits one path.
+    void confirmToolCallExternal({
       toolCallId: payload.toolCallId,
       toolName: payload.toolName,
       arguments: payload.arguments,
@@ -981,7 +1064,9 @@ export class AssistantManager {
       // drop this confirmation (and any others queued behind it) when
       // the user cancels mid-stream.
       callId: payload.callId,
-    });
+    }).then((modalOk) => settle(modalOk, 'modal'));
+
+    const ok = await unified;
     const inflight = this.inflightChats.get(payload.callId);
     if (!inflight) return; // chat was cancelled while we awaited the user
     if (!ok) {
@@ -1002,6 +1087,43 @@ export class AssistantManager {
       status: 'executing',
     }));
     await this.runImmediate(payload, executor);
+  }
+
+  /**
+   * Public entrypoint for the inline confirmation card. Resolves the
+   * pending Promise the matching `runWithConfirmation` is awaiting,
+   * dismisses the redundant modal for the same `toolCallId`, and
+   * rebuilds the snapshot so the card unmounts.
+   *
+   * No-op for unknown / already-resolved toolCallIds — the inline UI
+   * and the modal both race for the user's input, and the loser's
+   * click should be silently ignored (the manager has already
+   * processed the winning path).
+   */
+  public respondToConfirm(toolCallId: string, ok: boolean): void {
+    const entry = this.pendingConfirms.get(toolCallId);
+    if (!entry) return;
+    entry.resolve(ok);
+  }
+
+  /**
+   * Drop every pending confirmation belonging to a chat callId. Called
+   * by `cancelCall`, `deleteConversation`, `onChatDone`, and
+   * `onChatError` so a stranded chat doesn't leave the inline card
+   * (or its sibling modal) on screen. Each affected entry resolves
+   * false; `runWithConfirmation`'s post-await `if (!inflight) return`
+   * then bails before shipping any phantom tool-result.
+   */
+  private dropPendingConfirmsForCallId(callId: string): void {
+    for (const [toolCallId, entry] of this.pendingConfirms) {
+      if (entry.entry.callId === callId) {
+        // Use the inline-path resolve so the modal is also dismissed
+        // (otherwise a queued modal for this chat could pop up after
+        // we've already cancelled).
+        this.pendingConfirms.delete(toolCallId);
+        entry.resolve(false);
+      }
+    }
   }
 
   private shipToolResult(
@@ -1497,6 +1619,7 @@ export class AssistantManager {
     // first-confirm-then-error race, we don't want to leave a stale
     // dialog up for a chat that's already done.
     cancelToolConfirmsForCallId(callId);
+    this.dropPendingConfirmsForCallId(callId);
     this.rebuildChatSnapshot();
   }
 
@@ -1542,6 +1665,7 @@ export class AssistantManager {
     // queued behind one whose execution errored, don't leave the
     // dialog up for a chat that's now in `failed` status.
     cancelToolConfirmsForCallId(payload.callId);
+    this.dropPendingConfirmsForCallId(payload.callId);
     this.rebuildChatSnapshot();
   }
 
@@ -1624,12 +1748,15 @@ export class AssistantManager {
     for (const [k, v] of this.drafts) drafts[k] = v;
     const inflight: AssistantChatSnapshot['inflight'] = {};
     for (const [k, v] of this.inflightChats) inflight[k] = v;
+    const pendingConfirms: AssistantChatSnapshot['pendingConfirms'] = {};
+    for (const [k, v] of this.pendingConfirms) pendingConfirms[k] = v.entry;
     this.chatSnapshot = {
       conversations,
       activeConversation,
       activeProvider: this.activeProviderTab,
       drafts,
       inflight,
+      pendingConfirms,
     };
     this.chatListeners.forEach((l) => l());
     // Every snapshot rebuild is a state change worth eventually
