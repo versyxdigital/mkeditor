@@ -279,34 +279,18 @@ export class EditorManager {
     const modifiedModel = editor.createModel(modified, options.language);
     const diff = editor.createDiffEditor(host, {
       renderSideBySide: options.renderSideBySide,
-      // Monaco silently forces inline view when the editor is
-      // narrower than `renderSideBySideInlineBreakpoint` (default
-      // ~900px) and `useInlineViewWhenSpaceIsLimited` is true (also
-      // default). The chat panel is well under 900px, so without
-      // these overrides the side-by-side toggle would have no
-      // visible effect — Monaco overrides `renderSideBySide` on
-      // every layout pass.
       useInlineViewWhenSpaceIsLimited: false,
       renderSideBySideInlineBreakpoint: 0,
-      // Smaller than Monaco's 14px default — the chat panel is tight
-      // and the diff is a preview, not the main editing surface.
       fontSize: 12,
       readOnly: true,
       automaticLayout: true,
       scrollBeyondLastLine: false,
       minimap: { enabled: false },
-      // Line numbers are noise inside a narrow chat panel — the
-      // tool-card's `detail` line already carries "Lines X–Y" for
-      // context-bounded previews. Killing them reclaims ~50px of
-      // horizontal space.
       lineNumbers: 'off',
       glyphMargin: false,
       folding: false,
       wordWrap: 'on',
       renderOverviewRuler: false,
-      // Hide per-pane scrollbars in unified mode where they cause
-      // double-scrollbar noise; the inline diff fits the chat panel
-      // better without them.
       scrollbar: { vertical: 'auto', horizontal: 'hidden' },
     });
     diff.setModel({ original: originalModel, modified: modifiedModel });
