@@ -204,6 +204,7 @@ function fakeBridgeManager(
 ) {
   return {
     bridge: { send: jest.fn(), receive: jest.fn() },
+    openInDefaultViewer: jest.fn(),
     moveItem: jest.fn(async (src: string, dst: string) => {
       // Reflect the args back so the default success path is
       // self-consistent.
@@ -419,5 +420,111 @@ describe('<FileTreePanel> — drag-and-drop moves', () => {
       fireEvent.dragStart(source, { dataTransfer: dt });
     });
     expect(dt.setData).toHaveBeenCalledWith(MKED_MIME, '/root/notes.md');
+  });
+});
+
+/* ---------------------------------------------------------------------- */
+/*  Click routing: non-md files don't open in Monaco                        */
+/* ---------------------------------------------------------------------- */
+
+/**
+ * Minimal SettingsProvider stub with a STABLE snapshot reference so
+ * useSyncExternalStore doesn't loop. The default file-explorer
+ * filter is `['md']`; tests that want non-md rows to render in the
+ * tree pass `extensions` to override.
+ */
+function fakeSettingsProvider(extensions: string[]) {
+  const snapshot = {
+    autoindent: false,
+    darkmode: false,
+    wordwrap: true,
+    whitespace: false,
+    minimap: true,
+    systemtheme: true,
+    scrollsync: true,
+    sessionRestore: true,
+    locale: 'en',
+    fileExplorer: { extensions },
+    pasteImages: { directory: './assets' },
+    effectiveDarkmode: false,
+  };
+  return {
+    subscribe: () => () => {},
+    getSnapshot: () => snapshot,
+    updateSetting: () => {},
+  };
+}
+
+describe('<FileTreePanel> — open routing by file extension', () => {
+  const mixed: TreeNode[] = [
+    { type: 'file', name: 'readme.md', path: '/root/readme.md' },
+    { type: 'file', name: 'cover.png', path: '/root/cover.png' },
+    { type: 'file', name: 'manual.pdf', path: '/root/manual.pdf' },
+  ];
+
+  it('clicking a .md row opens it in Monaco (fileManager.openFileFromPath)', () => {
+    const fm = fakeFileManager();
+    const bm = fakeBridgeManager();
+    const { container } = renderWithProviders(<FileTreePanel />, {
+      managers: {
+        fileManager: fm as any,
+        fileTreeManager: fakeFileTreeManager({
+          nodes: mixed,
+          treeRoot: '/root',
+        }) as any,
+        bridgeManager: bm as any,
+        providers: {
+          bridge: null,
+          commands: null,
+          completion: null,
+          settings: fakeSettingsProvider(['md', 'png', 'pdf']) as any,
+          exportSettings: null,
+        },
+      },
+    });
+    fireEvent.click(
+      container.querySelector(
+        'li[data-path="/root/readme.md"]',
+      ) as HTMLLIElement,
+    );
+    expect(fm.openFileFromPath).toHaveBeenCalledWith('/root/readme.md');
+    expect(bm.openInDefaultViewer).not.toHaveBeenCalled();
+  });
+
+  it('clicking a non-md row hands off to OS default viewer (no Monaco open)', () => {
+    const fm = fakeFileManager();
+    const bm = fakeBridgeManager();
+    const { container } = renderWithProviders(<FileTreePanel />, {
+      managers: {
+        fileManager: fm as any,
+        fileTreeManager: fakeFileTreeManager({
+          nodes: mixed,
+          treeRoot: '/root',
+        }) as any,
+        bridgeManager: bm as any,
+        providers: {
+          bridge: null,
+          commands: null,
+          completion: null,
+          settings: fakeSettingsProvider(['md', 'png', 'pdf']) as any,
+          exportSettings: null,
+        },
+      },
+    });
+    fireEvent.click(
+      container.querySelector(
+        'li[data-path="/root/cover.png"]',
+      ) as HTMLLIElement,
+    );
+    expect(bm.openInDefaultViewer).toHaveBeenCalledWith('/root/cover.png');
+    expect(fm.openFileFromPath).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      container.querySelector(
+        'li[data-path="/root/manual.pdf"]',
+      ) as HTMLLIElement,
+    );
+    expect(bm.openInDefaultViewer).toHaveBeenCalledWith('/root/manual.pdf');
+    expect(fm.openFileFromPath).not.toHaveBeenCalled();
   });
 });

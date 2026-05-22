@@ -41,6 +41,7 @@ const senderWhitelist = [
   'to:edit:cut',
   'to:edit:copy',
   'to:edit:paste',
+  'to:shell:openpath',
   // AI Assistant — chat / config / keys / Ollama
   'to:ai:chat',
   'to:ai:cancel',

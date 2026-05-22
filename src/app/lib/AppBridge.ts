@@ -3,6 +3,7 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
+  shell,
   type IpcMainEvent,
   type IpcMainInvokeEvent,
 } from 'electron';
@@ -195,6 +196,28 @@ export class AppBridge {
 
     this.on('to:file:openpath', (event, { path }: { path: string }) => {
       AppStorage.openPath(this.context, path);
+    });
+
+    // Open a workspace-resident file in the OS default application
+    // (Windows Photos for images, Acrobat for PDFs, …).
+    this.on('to:shell:openpath', async (_e, { path }: { path: string }) => {
+      try {
+        const safePath = await AppStorage.assertInWorkspace(path);
+        const errorMsg = await shell.openPath(safePath);
+        // `shell.openPath` resolves with an empty string on success
+        // and an error description otherwise (no association, etc.).
+        if (errorMsg) {
+          this.context.webContents.send('from:notification:display', {
+            status: 'error',
+            key: 'notifications:unable_open_path',
+          });
+        }
+      } catch {
+        this.context.webContents.send('from:notification:display', {
+          status: 'error',
+          key: 'notifications:unable_open_path',
+        });
+      }
     });
 
     // Save an existing file, this is also used by the renderer bridge "from:file:open" listener, if

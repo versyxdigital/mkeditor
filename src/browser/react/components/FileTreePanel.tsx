@@ -235,16 +235,29 @@ export const FileTreePanel: React.FC = () => {
     }
   }, [activeFile, treeRoot, nodes, requestLoad]);
 
+  // Both surfaces (left-click in NodeRow + the context menu's "Open
+  // file" entry) route through `openTreeRow`.
+  const openTreeRow = React.useCallback(
+    (path: string) => {
+      if (isMarkdownPath(path)) {
+        fileManager?.openFileFromPath(path);
+      } else {
+        bridgeManager?.openInDefaultViewer(path);
+      }
+    },
+    [fileManager, bridgeManager],
+  );
+
   const callbacks = React.useMemo(
     () => ({
-      openFile: (path: string) => fileManager?.openFileFromPath(path),
+      openFile: openTreeRow,
       toggleSidebar,
       openSettings: () => openModal('settings'),
       expandFolder,
       openMoveItem: (path: string) =>
         openModal('moveItem', { sourcePath: path }),
     }),
-    [fileManager, toggleSidebar, openModal, expandFolder],
+    [openTreeRow, toggleSidebar, openModal, expandFolder],
   );
 
   const items: MenuItem[] = React.useMemo(() => {
@@ -403,7 +416,7 @@ export const FileTreePanel: React.FC = () => {
               searchExpansion={searchExpansion}
               activeFile={activeFile}
               onToggle={toggleExpanded}
-              onOpen={(p) => fileManager?.openFileFromPath(p)}
+              onOpen={openTreeRow}
               onMove={handleMoveDrop}
             />
           ))}
@@ -645,6 +658,14 @@ function findNodeByPath(nodes: TreeNode[], path: string): TreeNode | null {
     }
   }
   return null;
+}
+
+/**
+ * Markdown rows open in Monaco; everything else routes to the OS
+ * default app via `BridgeManager.openInDefaultViewer`.
+ */
+function isMarkdownPath(path: string): boolean {
+  return path.toLowerCase().endsWith('.md');
 }
 
 /**

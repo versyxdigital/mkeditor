@@ -246,6 +246,14 @@ export class BridgeManager {
   }
 
   /**
+   * Hand off a workspace file to the OS default application
+   * (Windows Photos / macOS Preview / Acrobat / …).
+   */
+  public openInDefaultViewer(path: string): void {
+    this.bridge.send('to:shell:openpath', { path });
+  }
+
+  /**
    * Move a file or folder inside the workspace. Routes through the
    * desktop `window.mked.moveItem` invoke when available; falls back
    * to the web bridge's `moveItem` (added by `WebFileBridge`) so
