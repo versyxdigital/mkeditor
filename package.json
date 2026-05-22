@@ -1,7 +1,7 @@
 {
   "name": "mkeditor",
   "productName": "MKEditor",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "license": "MIT",
   "author": "Chris Rowles <christopher.rowles@outlook.com>",
   "description": "Markdown Editor",
