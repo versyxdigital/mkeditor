@@ -18,6 +18,27 @@ function normalizeImageExtension(extension: string): string {
 }
 
 /**
+ * Resolve `.`/`..` segments in a virtual workspace path.
+ */
+export function normalizeVirtualPath(input: string, rootName: string): string {
+  const segments = input.split('/').filter((s) => s.length > 0);
+  const out: string[] = [];
+  for (const seg of segments) {
+    if (seg === '.') continue;
+    if (seg === '..') {
+      // Clamp at the root.
+      if (out.length > 1) out.pop();
+      continue;
+    }
+    out.push(seg);
+  }
+  if (out.length === 0 || out[0] !== rootName) {
+    return rootName;
+  }
+  return out.join('/');
+}
+
+/**
  * Must stay in sync with `AppStorage.buildPastedImageBasename`.
  */
 function buildPastedImageBasename(now: Date): string {
@@ -661,13 +682,28 @@ export class WebFileBridge implements ContextBridgeAPI {
       .split('/')
       .slice(0, -1)
       .join('/');
+
     let trimmed = directory.replace(/\\/g, '/').trim();
     while (trimmed.startsWith('./')) trimmed = trimmed.slice(2);
+
+    let anchorRoot = false;
     if (trimmed.startsWith('/')) {
-      // Anchor to the workspace root rather than the OS root.
-      return `${this.rootName}${trimmed}`;
+      anchorRoot = true;
+      trimmed = trimmed.slice(1);
     }
-    return sourceDir ? `${sourceDir}/${trimmed}` : trimmed;
+
+    while (trimmed.endsWith('/')) trimmed = trimmed.slice(0, -1);
+
+    let combined: string;
+    if (anchorRoot) {
+      combined = trimmed ? `${this.rootName}/${trimmed}` : this.rootName;
+    } else if (sourceDir) {
+      combined = trimmed ? `${sourceDir}/${trimmed}` : sourceDir;
+    } else {
+      combined = trimmed ? `${this.rootName}/${trimmed}` : this.rootName;
+    }
+
+    return normalizeVirtualPath(combined, this.rootName);
   }
 
   /**
