@@ -168,7 +168,8 @@
     "prompt_rename_folder_title": "Renommer le dossier",
     "confirm_delete_file_title": "Supprimer le fichier ?",
     "confirm_delete_folder_title": "Supprimer le dossier ?",
-    "confirm_delete_button": "Supprimer"
+    "confirm_delete_button": "Supprimer",
+    "move_to": "Déplacer vers…"
   },
   "menus-tables": {
     "rows_label": "Lignes :",
@@ -227,6 +228,12 @@
     "set_font_colour_help": "Définir la couleur de la police.",
     "save_settings": "Enregistrer les paramètres",
     "reset_to_default": "Réinitialiser par défaut"
+  },
+  "modals-move": {
+    "title": "Déplacer vers…",
+    "moving_label": "Déplacement :",
+    "confirm": "Déplacer",
+    "cancel": "Annuler"
   },
   "modals-properties": {
     "title": "Propriétés",
@@ -378,7 +385,12 @@
     "session_cleared": "Session sauvegardée effacée.",
     "pasted_image_saved": "Image collée enregistrée",
     "pasted_image_failed": "Impossible d'enregistrer l'image collée",
-    "pasted_image_no_workspace": "Enregistrez le document avant de coller des images"
+    "pasted_image_no_workspace": "Enregistrez le document avant de coller des images",
+    "move_failed": "Échec du déplacement",
+    "move_into_self_refused": "Impossible de déplacer un dossier dans lui-même",
+    "move_same_source": "Déjà à cet emplacement",
+    "move_collision": "Un fichier ou dossier portant ce nom existe déjà",
+    "move_parent_missing": "Le dossier de destination n'existe pas"
   },
   "sidebar": {
     "explorer": "Explorateur",

@@ -492,6 +492,23 @@ export class AppBridge {
       },
     );
 
+    // Move a file or folder inside the workspace.
+    this.handle(
+      'mked:fs:moveitem',
+      async (_e, opts: { srcPath: string; dstPath: string }) => {
+        try {
+          return await AppStorage.moveItem(
+            this.context,
+            opts.srcPath,
+            opts.dstPath,
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { ok: false as const, error: message };
+        }
+      },
+    );
+
     this.on('mked:open-url', (_e, url: string) => {
       try {
         this.handleMkedUrl(url);

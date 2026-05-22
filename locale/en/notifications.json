@@ -28,5 +28,10 @@
   "session_cleared": "Saved session cleared.",
   "pasted_image_saved": "Pasted image saved",
   "pasted_image_failed": "Couldn't save pasted image",
-  "pasted_image_no_workspace": "Save the document before pasting images"
+  "pasted_image_no_workspace": "Save the document before pasting images",
+  "move_failed": "Move failed",
+  "move_into_self_refused": "Can't move a folder into itself",
+  "move_same_source": "Already in that location",
+  "move_collision": "A file or folder with that name already exists",
+  "move_parent_missing": "Destination folder doesn't exist"
 }

@@ -28,5 +28,10 @@
   "session_cleared": "保存されたセッションをクリアしました。",
   "pasted_image_saved": "貼り付けた画像を保存しました",
   "pasted_image_failed": "貼り付けた画像を保存できませんでした",
-  "pasted_image_no_workspace": "画像を貼り付ける前にドキュメントを保存してください"
+  "pasted_image_no_workspace": "画像を貼り付ける前にドキュメントを保存してください",
+  "move_failed": "移動に失敗しました",
+  "move_into_self_refused": "フォルダを自分自身の中に移動することはできません",
+  "move_same_source": "既にその場所にあります",
+  "move_collision": "同じ名前のファイルまたはフォルダが既に存在します",
+  "move_parent_missing": "移動先のフォルダが存在しません"
 }

@@ -168,7 +168,8 @@
     "prompt_rename_folder_title": "폴더 이름 바꾸기",
     "confirm_delete_file_title": "파일을 삭제하시겠습니까?",
     "confirm_delete_folder_title": "폴더를 삭제하시겠습니까?",
-    "confirm_delete_button": "삭제"
+    "confirm_delete_button": "삭제",
+    "move_to": "이동…"
   },
   "menus-tables": {
     "rows_label": "행:",
@@ -227,6 +228,12 @@
     "set_font_colour_help": "글자색을 설정합니다.",
     "save_settings": "설정 저장",
     "reset_to_default": "기본값으로 재설정"
+  },
+  "modals-move": {
+    "title": "이동…",
+    "moving_label": "이동 중:",
+    "confirm": "이동",
+    "cancel": "취소"
   },
   "modals-properties": {
     "title": "속성",
@@ -378,7 +385,12 @@
     "session_cleared": "저장된 세션을 지웠습니다.",
     "pasted_image_saved": "붙여넣은 이미지를 저장했습니다",
     "pasted_image_failed": "붙여넣은 이미지를 저장할 수 없습니다",
-    "pasted_image_no_workspace": "이미지를 붙여넣기 전에 문서를 저장하세요"
+    "pasted_image_no_workspace": "이미지를 붙여넣기 전에 문서를 저장하세요",
+    "move_failed": "이동 실패",
+    "move_into_self_refused": "폴더를 자신 안으로 이동할 수 없습니다",
+    "move_same_source": "이미 해당 위치에 있습니다",
+    "move_collision": "같은 이름의 파일 또는 폴더가 이미 있습니다",
+    "move_parent_missing": "대상 폴더가 존재하지 않습니다"
   },
   "sidebar": {
     "explorer": "탐색기",

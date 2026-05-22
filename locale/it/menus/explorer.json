@@ -11,7 +11,6 @@
   "expand_folder": "Espandi cartella",
   "rename_folder": "Rinomina cartella...",
   "delete_folder": "Elimina cartella...",
-
   "prompt_new_file_title": "Nome del nuovo file",
   "prompt_new_file_placeholder": "Senza titolo.md",
   "prompt_new_folder_title": "Nome della nuova cartella",
@@ -19,5 +18,6 @@
   "prompt_rename_folder_title": "Rinomina cartella",
   "confirm_delete_file_title": "Eliminare il file?",
   "confirm_delete_folder_title": "Eliminare la cartella?",
-  "confirm_delete_button": "Elimina"
+  "confirm_delete_button": "Elimina",
+  "move_to": "Sposta in…"
 }

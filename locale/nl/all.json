@@ -168,7 +168,8 @@
     "prompt_rename_folder_title": "Map hernoemen",
     "confirm_delete_file_title": "Bestand verwijderen?",
     "confirm_delete_folder_title": "Map verwijderen?",
-    "confirm_delete_button": "Verwijderen"
+    "confirm_delete_button": "Verwijderen",
+    "move_to": "Verplaatsen naar…"
   },
   "menus-tables": {
     "rows_label": "Rijen:",
@@ -227,6 +228,12 @@
     "set_font_colour_help": "Stel de tekstkleur in.",
     "save_settings": "Instellingen opslaan",
     "reset_to_default": "Standaardwaarden herstellen"
+  },
+  "modals-move": {
+    "title": "Verplaatsen naar…",
+    "moving_label": "Verplaatsen:",
+    "confirm": "Verplaatsen",
+    "cancel": "Annuleren"
   },
   "modals-properties": {
     "title": "Eigenschappen",
@@ -378,7 +385,12 @@
     "session_cleared": "Opgeslagen sessie gewist.",
     "pasted_image_saved": "Geplakte afbeelding opgeslagen",
     "pasted_image_failed": "Geplakte afbeelding kon niet worden opgeslagen",
-    "pasted_image_no_workspace": "Sla het document op voordat u afbeeldingen plakt"
+    "pasted_image_no_workspace": "Sla het document op voordat u afbeeldingen plakt",
+    "move_failed": "Verplaatsen mislukt",
+    "move_into_self_refused": "Een map kan niet in zichzelf worden verplaatst",
+    "move_same_source": "Al op die locatie",
+    "move_collision": "Een bestand of map met die naam bestaat al",
+    "move_parent_missing": "Doelmap bestaat niet"
   },
   "sidebar": {
     "explorer": "Verkenner",

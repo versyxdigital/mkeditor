@@ -168,7 +168,8 @@
     "prompt_rename_folder_title": "フォルダー名を変更",
     "confirm_delete_file_title": "ファイルを削除しますか？",
     "confirm_delete_folder_title": "フォルダーを削除しますか？",
-    "confirm_delete_button": "削除"
+    "confirm_delete_button": "削除",
+    "move_to": "移動先…"
   },
   "menus-tables": {
     "rows_label": "行数：",
@@ -227,6 +228,12 @@
     "set_font_colour_help": "文字色を設定します。",
     "save_settings": "設定を保存",
     "reset_to_default": "デフォルトにリセット"
+  },
+  "modals-move": {
+    "title": "移動先…",
+    "moving_label": "移動中:",
+    "confirm": "移動",
+    "cancel": "キャンセル"
   },
   "modals-properties": {
     "title": "プロパティ",
@@ -378,7 +385,12 @@
     "session_cleared": "保存されたセッションをクリアしました。",
     "pasted_image_saved": "貼り付けた画像を保存しました",
     "pasted_image_failed": "貼り付けた画像を保存できませんでした",
-    "pasted_image_no_workspace": "画像を貼り付ける前にドキュメントを保存してください"
+    "pasted_image_no_workspace": "画像を貼り付ける前にドキュメントを保存してください",
+    "move_failed": "移動に失敗しました",
+    "move_into_self_refused": "フォルダを自分自身の中に移動することはできません",
+    "move_same_source": "既にその場所にあります",
+    "move_collision": "同じ名前のファイルまたはフォルダが既に存在します",
+    "move_parent_missing": "移動先のフォルダが存在しません"
   },
   "sidebar": {
     "explorer": "エクスプローラー",

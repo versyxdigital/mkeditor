@@ -21,6 +21,10 @@ export interface ContextMenuCallbacks {
   openSettings: () => void;
   /** Called by the "Expand folder" item to flip a directory's local expand state. */
   expandFolder?: (path: string) => void;
+  /**
+   * Called by the "Move to…" item.
+   */
+  openMoveItem?: (path: string) => void;
 }
 
 /**
@@ -35,7 +39,8 @@ export function getContextMenuItems(
   callbacks: ContextMenuCallbacks,
 ): ContextMenuItem[] {
   const items: ContextMenuItem[] = [];
-  const { openFile, toggleSidebar, openSettings, expandFolder } = callbacks;
+  const { openFile, toggleSidebar, openSettings, expandFolder, openMoveItem } =
+    callbacks;
 
   const promptNewFile = async (parent: string) => {
     const name = await promptExternal({
@@ -151,6 +156,10 @@ export function getContextMenuItems(
           ),
       },
       {
+        label: t('menus-explorer:move_to'),
+        action: () => openMoveItem?.(path),
+      },
+      {
         label: t('menus-explorer:delete_file'),
         action: () =>
           void confirmDelete(path, 'menus-explorer:confirm_delete_file_title'),
@@ -200,6 +209,10 @@ export function getContextMenuItems(
           'menus-explorer:prompt_rename_folder_title',
           false,
         ),
+    },
+    {
+      label: t('menus-explorer:move_to'),
+      action: () => openMoveItem?.(path),
     },
     {
       label: t('menus-explorer:delete_folder'),

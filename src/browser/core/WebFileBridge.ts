@@ -813,6 +813,189 @@ export class WebFileBridge implements ContextBridgeAPI {
     }
   }
 
+  /**
+   * Move a file or folder inside the virtual workspace. Mirrors
+   * `AppStorage.moveItem` on desktop so `BridgeManager.moveItem`
+   * can route through one interface from React.
+   *
+   * Strategy:
+   *   - Validate that both src and dst remain inside the open
+   *     workspace (the rest of the API only exposes the granted
+   *     root anyway, but we check explicitly so a typo in
+   *     `dstPath` returns a structured error instead of throwing
+   *     into the user's face).
+   *   - Refuse collisions, self-into-self, and self-into-descendant
+   *     so behaviour matches the desktop side.
+   *   - Use copy + delete via the same `copyDirectory` helper
+   *     `rename` uses. The native
+   *     `FileSystemDirectoryHandle.move()` is still origin-locked
+   *     in some Chromium builds, and the copy path works the same
+   *     for files and directories.
+   *   - Emit `from:folder:opened` for both ends and
+   *     `from:path:renamed` so open-tab paths update.
+   */
+  public async moveItem(opts: {
+    srcPath: string;
+    dstPath: string;
+  }): Promise<
+    | { ok: true; oldPath: string; newPath: string }
+    | { ok: false; error: string }
+  > {
+    const { srcPath, dstPath } = opts;
+    try {
+      if (!this.rootHandle) {
+        return { ok: false, error: 'No folder is open in the editor.' };
+      }
+      // Both ends must stay rooted under the workspace name. We
+      // check this explicitly because the cached `handles` map
+      // returns nothing for out-of-workspace paths, and we want a
+      // structured `outside the workspace` error rather than a
+      // generic "no handle".
+      const requireInside = (p: string) => {
+        const segments = p.split('/').filter(Boolean);
+        if (segments[0] !== this.rootName) {
+          throw new Error(`Path is outside the workspace: ${p}`);
+        }
+      };
+      requireInside(srcPath);
+      requireInside(dstPath);
+
+      if (srcPath === dstPath) {
+        return { ok: false, error: 'destination_same_as_source' };
+      }
+      if (dstPath === srcPath || dstPath.startsWith(`${srcPath}/`)) {
+        return { ok: false, error: 'destination_inside_source' };
+      }
+
+      const srcHandle = this.handles.get(srcPath);
+      if (!srcHandle) {
+        return { ok: false, error: 'File not found' };
+      }
+
+      const lastSlash = dstPath.lastIndexOf('/');
+      if (lastSlash === -1) {
+        return { ok: false, error: 'destination_parent_missing' };
+      }
+      const dstParentPath = dstPath.slice(0, lastSlash);
+      const dstName = dstPath.slice(lastSlash + 1);
+      if (!dstName) {
+        return { ok: false, error: 'destination_parent_missing' };
+      }
+
+      // Resolve / create the destination parent. `ensureVirtualDirectory`
+      // walks the cached handle tree, creating intermediate
+      // directories on demand — for `moveItem` we want a missing
+      // parent to refuse rather than silently spawn a path. Check
+      // existence in the cache; if the cache doesn't have it, fall
+      // back to a stricter walk that only succeeds when each
+      // intermediate already exists.
+      let dstParent: FileSystemDirectoryHandle | null = null;
+      const cachedParent = this.handles.get(dstParentPath);
+      if (cachedParent && cachedParent.kind === 'directory') {
+        dstParent = cachedParent;
+      } else {
+        const segments = dstParentPath.split('/').filter(Boolean);
+        if (segments[0] !== this.rootName) {
+          return { ok: false, error: 'destination_parent_missing' };
+        }
+        let walker: FileSystemDirectoryHandle = this.rootHandle;
+        try {
+          for (let i = 1; i < segments.length; i++) {
+            walker = await walker.getDirectoryHandle(segments[i], {
+              create: false,
+            });
+          }
+          dstParent = walker;
+        } catch {
+          return { ok: false, error: 'destination_parent_missing' };
+        }
+      }
+
+      // Collision check: if a handle already exists at the
+      // destination name, refuse rather than overwrite.
+      try {
+        await dstParent.getFileHandle(dstName, { create: false });
+        return { ok: false, error: 'destination_exists' };
+      } catch {
+        // not a file — check for a directory of the same name
+        try {
+          await dstParent.getDirectoryHandle(dstName, { create: false });
+          return { ok: false, error: 'destination_exists' };
+        } catch {
+          // ENOENT — slot is free
+        }
+      }
+
+      // Copy + remove. Same primitives `renamePath` uses.
+      const srcParentPath = srcPath.slice(0, srcPath.lastIndexOf('/'));
+      const srcParent =
+        srcParentPath === this.rootName
+          ? this.rootHandle
+          : this.handles.get(srcParentPath);
+      if (!srcParent || srcParent.kind !== 'directory') {
+        return { ok: false, error: 'File not found' };
+      }
+
+      if (srcHandle.kind === 'file') {
+        const newHandle = await dstParent.getFileHandle(dstName, {
+          create: true,
+        });
+        const writable = await newHandle.createWritable();
+        const original = await srcHandle.getFile();
+        await writable.write(await original.arrayBuffer());
+        await writable.close();
+        await srcParent.removeEntry(srcHandle.name);
+        this.handles.delete(srcPath);
+        this.handles.set(dstPath, newHandle);
+      } else {
+        const newDir = await dstParent.getDirectoryHandle(dstName, {
+          create: true,
+        });
+        await copyDirectory(srcHandle, newDir);
+        await srcParent.removeEntry(srcHandle.name, { recursive: true });
+        // Forget every cached descendant of the old path.
+        for (const key of [...this.handles.keys()]) {
+          if (key === srcPath || key.startsWith(`${srcPath}/`)) {
+            this.handles.delete(key);
+          }
+        }
+        this.handles.set(dstPath, newDir);
+      }
+
+      // Refresh both ends. Source parent loses an entry; dest
+      // parent gains one.
+      try {
+        const srcTree = await this.listChildren(srcParent, srcParentPath);
+        this.emit('from:folder:opened', {
+          path: srcParentPath,
+          tree: srcTree,
+        });
+      } catch {
+        // non-fatal
+      }
+      try {
+        const dstTree = await this.listChildren(dstParent, dstParentPath);
+        this.emit('from:folder:opened', {
+          path: dstParentPath,
+          tree: dstTree,
+        });
+      } catch {
+        // non-fatal
+      }
+
+      this.emit('from:path:renamed', {
+        oldPath: srcPath,
+        newPath: dstPath,
+        name: dstName,
+      });
+
+      return { ok: true, oldPath: srcPath, newPath: dstPath };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
+    }
+  }
+
   private async deletePath(path: string): Promise<void> {
     const handle = this.handles.get(path);
     if (!handle) return;

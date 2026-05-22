@@ -168,7 +168,8 @@
     "prompt_rename_folder_title": "Klasörü yeniden adlandır",
     "confirm_delete_file_title": "Dosya silinsin mi?",
     "confirm_delete_folder_title": "Klasör silinsin mi?",
-    "confirm_delete_button": "Sil"
+    "confirm_delete_button": "Sil",
+    "move_to": "Taşı…"
   },
   "menus-tables": {
     "rows_label": "Satırlar:",
@@ -227,6 +228,12 @@
     "set_font_colour_help": "Yazı tipi rengini ayarlayın.",
     "save_settings": "Ayarları kaydet",
     "reset_to_default": "Varsayılanlara sıfırla"
+  },
+  "modals-move": {
+    "title": "Taşı…",
+    "moving_label": "Taşınıyor:",
+    "confirm": "Taşı",
+    "cancel": "İptal"
   },
   "modals-properties": {
     "title": "Özellikler",
@@ -378,7 +385,12 @@
     "session_cleared": "Kaydedilen oturum temizlendi.",
     "pasted_image_saved": "Yapıştırılan görsel kaydedildi",
     "pasted_image_failed": "Yapıştırılan görsel kaydedilemedi",
-    "pasted_image_no_workspace": "Görsel yapıştırmadan önce belgeyi kaydedin"
+    "pasted_image_no_workspace": "Görsel yapıştırmadan önce belgeyi kaydedin",
+    "move_failed": "Taşıma başarısız",
+    "move_into_self_refused": "Bir klasör kendi içine taşınamaz",
+    "move_same_source": "Zaten o konumda",
+    "move_collision": "Bu adda bir dosya veya klasör zaten var",
+    "move_parent_missing": "Hedef klasör mevcut değil"
   },
   "sidebar": {
     "explorer": "Gezgin",

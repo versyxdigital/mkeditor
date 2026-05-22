@@ -93,6 +93,11 @@ const PropertiesModal = React.lazy(() =>
     default: m.PropertiesModal,
   })),
 );
+const MoveItemModal = React.lazy(() =>
+  import('./components/modals/MoveItemModal').then((m) => ({
+    default: m.MoveItemModal,
+  })),
+);
 
 import './styles/tailwind.css';
 
@@ -386,6 +391,7 @@ const LazyModals: React.FC = () => {
     about: false,
     shortcuts: false,
     properties: false,
+    moveItem: false,
   });
 
   React.useEffect(() => {
@@ -405,6 +411,7 @@ const LazyModals: React.FC = () => {
       {seen.about && <AboutModal />}
       {seen.shortcuts && <ShortcutsModal />}
       {seen.properties && <PropertiesModal />}
+      {seen.moveItem && <MoveItemModal />}
     </React.Suspense>
   );
 };

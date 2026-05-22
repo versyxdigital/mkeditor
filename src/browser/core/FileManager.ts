@@ -743,6 +743,31 @@ export class FileManager {
   }
 
   /**
+   * Walk open tabs and rename any whose path is a descendant of
+   * `oldDir`, remapping the prefix `oldDir + sep` → `newDir + sep`.
+   * Triggered by a folder move so descendants stay in sync — the
+   * `from:path:renamed` event for the folder itself fires `renameTab`
+   * (1:1), and this companion handles every open tab inside that
+   * folder so their model keys + tab labels point at the new path.
+   */
+  public renameDescendantTabs(oldDir: string, newDir: string): number {
+    const sep = oldDir.includes('\\') ? '\\' : '/';
+    const prefix = oldDir + sep;
+    // Snapshot the keys first — `renameTab` mutates the models map
+    // mid-iteration, which would otherwise corrupt the walk.
+    const descendants = Array.from(this.models.keys()).filter((p) =>
+      p.startsWith(prefix),
+    );
+    let count = 0;
+    for (const oldPath of descendants) {
+      const newPath = newDir + sep + oldPath.slice(prefix.length);
+      const newName = newPath.split(/[\\/]/).pop() ?? newPath;
+      if (this.renameTab(oldPath, newPath, newName)) count++;
+    }
+    return count;
+  }
+
+  /**
    * Seed an initial `untitled-N` tab from the supplied content. Used in
    * web mode at boot so the navbar/title bar reflect the current Monaco
    * buffer (welcome content or restored localStorage) — desktop normally

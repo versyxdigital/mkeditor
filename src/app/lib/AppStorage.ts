@@ -739,6 +739,146 @@ export class AppStorage {
   }
 
   /**
+   * Move a file or folder to a new location inside the workspace.
+   * Returns a structured result so the renderer can branch on
+   * success / failure for toasts and UI state (drag-and-drop drop
+   * handler, "Move to…" modal). The fire-and-forget shape `rename`
+   * uses doesn't fit drag-drop — the source row needs to know
+   * whether to clear its "dragging" styling on failure.
+   *
+   * Guards:
+   *   - Both `srcPath` and the eventual `dstPath` must sit inside
+   *     the open workspace (same containment check the other write
+   *     tools use).
+   *   - `srcPath` must exist.
+   *   - `dstPath` must NOT exist (collisions refuse — surface the
+   *     conflict instead of overwriting silently).
+   *   - The destination's parent directory must exist. We don't
+   *     auto-create directories for moves; a typo'd target path
+   *     would otherwise silently spawn an unwanted folder tree.
+   *   - For directory moves, `dstPath` must not be inside `srcPath`
+   *     (refuses `mv /a/b /a/b/sub` and self-into-self).
+   *
+   * Writes:
+   *   - Uses `fs.rename` (atomic on-volume). Falls back to
+   *     `fs.cp({recursive:true}) + fs.rm({recursive:true})` when
+   *     `rename` throws `EXDEV` (cross-volume move).
+   *
+   * Effects:
+   *   - Emits `from:folder:opened` for BOTH the source-parent and
+   *     dest-parent directories so the file tree updates both
+   *     ends.
+   *   - Emits `from:path:renamed` so `FileManager` updates the
+   *     path keys of any open tabs backed by the moved file (or
+   *     by descendants of a moved folder).
+   */
+  static async moveItem(
+    context: BrowserWindow,
+    srcPath: string,
+    dstPath: string,
+  ): Promise<
+    | { ok: true; oldPath: string; newPath: string }
+    | { ok: false; error: string }
+  > {
+    try {
+      const safeSrc = await AppStorage.assertInWorkspace(srcPath, {
+        mustExist: true,
+      });
+      const safeDst = await AppStorage.assertInWorkspace(dstPath, {
+        mustExist: false,
+      });
+
+      // Refuse no-op moves so we don't emit churn for nothing.
+      if (safeSrc === safeDst) {
+        return { ok: false, error: 'destination_same_as_source' };
+      }
+
+      // Refuse moving a directory into itself or any of its
+      // descendants. Comparison is on canonical paths with a
+      // trailing separator so `/a/b` doesn't falsely flag `/a/bc`
+      // as a descendant.
+      const srcWithSep = safeSrc.endsWith(sep) ? safeSrc : safeSrc + sep;
+      if (safeDst === safeSrc || safeDst.startsWith(srcWithSep)) {
+        return { ok: false, error: 'destination_inside_source' };
+      }
+
+      // The destination's parent must exist. assertInWorkspace's
+      // `mustExist: false` mode already canonicalises the parent,
+      // but doesn't fail if it doesn't exist — verify explicitly
+      // here so we don't accidentally spawn a deep tree on a typo.
+      const dstParent = dirname(safeDst);
+      try {
+        const parentStat = await fs.stat(dstParent);
+        if (!parentStat.isDirectory()) {
+          return { ok: false, error: 'destination_parent_not_directory' };
+        }
+      } catch {
+        return { ok: false, error: 'destination_parent_missing' };
+      }
+
+      // Refuse collisions — surface the conflict rather than
+      // overwriting silently. `fs.access` resolves when the path
+      // exists, throws ENOENT when it doesn't.
+      try {
+        await fs.access(safeDst);
+        return { ok: false, error: 'destination_exists' };
+      } catch {
+        // ENOENT — slot is free, continue.
+      }
+
+      // Try the atomic rename first. Cross-volume moves throw
+      // EXDEV; fall back to a recursive copy + delete so the user
+      // can still drag a file across drives within a workspace.
+      try {
+        await fs.rename(safeSrc, safeDst);
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code !== 'EXDEV') throw err;
+        await fs.cp(safeSrc, safeDst, { recursive: true });
+        await fs.rm(safeSrc, { recursive: true, force: true });
+      }
+
+      // Refresh both ends of the move. Source-parent loses the
+      // entry; dest-parent gains it.
+      const srcParent = dirname(safeSrc);
+      try {
+        const srcTree = await AppStorage.readDirectory(srcParent);
+        context.webContents.send('from:folder:opened', {
+          path: srcParent,
+          tree: srcTree,
+        });
+      } catch {
+        // Source parent might no longer be readable (deleted out
+        // from under us) — non-fatal; the move itself succeeded.
+      }
+      try {
+        const dstTree = await AppStorage.readDirectory(dstParent);
+        context.webContents.send('from:folder:opened', {
+          path: dstParent,
+          tree: dstTree,
+        });
+      } catch {
+        // ditto
+      }
+
+      // Update any open tabs backed by the moved file (or by
+      // descendants of a moved folder). FileManager already
+      // handles this channel — see the rename path. We pass the
+      // basename so the tab label is updated to match.
+      context.webContents.send('from:path:renamed', {
+        oldPath: safeSrc,
+        newPath: safeDst,
+        name: basename(safeDst),
+      });
+
+      return { ok: true, oldPath: safeSrc, newPath: safeDst };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
+    }
+  }
+
+  /**
    * Delete a file or folder.
    */
   static async deletePath(context: BrowserWindow, path: string) {

@@ -168,7 +168,8 @@
     "prompt_rename_folder_title": "Переименовать папку",
     "confirm_delete_file_title": "Удалить файл?",
     "confirm_delete_folder_title": "Удалить папку?",
-    "confirm_delete_button": "Удалить"
+    "confirm_delete_button": "Удалить",
+    "move_to": "Переместить в…"
   },
   "menus-tables": {
     "rows_label": "Строки:",
@@ -227,6 +228,12 @@
     "set_font_colour_help": "Установить цвет шрифта.",
     "save_settings": "Сохранить настройки",
     "reset_to_default": "Сбросить по умолчанию"
+  },
+  "modals-move": {
+    "title": "Переместить в…",
+    "moving_label": "Перемещение:",
+    "confirm": "Переместить",
+    "cancel": "Отмена"
   },
   "modals-properties": {
     "title": "Свойства",
@@ -378,7 +385,12 @@
     "session_cleared": "Сохранённый сеанс очищен.",
     "pasted_image_saved": "Вставленное изображение сохранено",
     "pasted_image_failed": "Не удалось сохранить вставленное изображение",
-    "pasted_image_no_workspace": "Сохраните документ перед вставкой изображений"
+    "pasted_image_no_workspace": "Сохраните документ перед вставкой изображений",
+    "move_failed": "Не удалось переместить",
+    "move_into_self_refused": "Нельзя переместить папку внутрь самой себя",
+    "move_same_source": "Уже в этом расположении",
+    "move_collision": "Файл или папка с таким именем уже существуют",
+    "move_parent_missing": "Целевая папка не существует"
   },
   "sidebar": {
     "explorer": "Проводник",

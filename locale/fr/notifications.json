@@ -28,5 +28,10 @@
   "session_cleared": "Session sauvegardée effacée.",
   "pasted_image_saved": "Image collée enregistrée",
   "pasted_image_failed": "Impossible d'enregistrer l'image collée",
-  "pasted_image_no_workspace": "Enregistrez le document avant de coller des images"
+  "pasted_image_no_workspace": "Enregistrez le document avant de coller des images",
+  "move_failed": "Échec du déplacement",
+  "move_into_self_refused": "Impossible de déplacer un dossier dans lui-même",
+  "move_same_source": "Déjà à cet emplacement",
+  "move_collision": "Un fichier ou dossier portant ce nom existe déjà",
+  "move_parent_missing": "Le dossier de destination n'existe pas"
 }

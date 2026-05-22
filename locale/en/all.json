@@ -170,7 +170,8 @@
     "confirm_delete_folder_title": "Delete folder?",
     "confirm_delete_button": "Delete",
     "prompt_save": "Save",
-    "prompt_cancel": "Cancel"
+    "prompt_cancel": "Cancel",
+    "move_to": "Move to…"
   },
   "menus-tables": {
     "rows_label": "Rows:",
@@ -229,6 +230,12 @@
     "set_font_colour_help": "Set the font colour.",
     "save_settings": "Save Settings",
     "reset_to_default": "Reset to Default"
+  },
+  "modals-move": {
+    "title": "Move to…",
+    "moving_label": "Moving:",
+    "confirm": "Move",
+    "cancel": "Cancel"
   },
   "modals-properties": {
     "title": "Properties",
@@ -384,7 +391,12 @@
     "session_cleared": "Saved session cleared.",
     "pasted_image_saved": "Pasted image saved",
     "pasted_image_failed": "Couldn't save pasted image",
-    "pasted_image_no_workspace": "Save the document before pasting images"
+    "pasted_image_no_workspace": "Save the document before pasting images",
+    "move_failed": "Move failed",
+    "move_into_self_refused": "Can't move a folder into itself",
+    "move_same_source": "Already in that location",
+    "move_collision": "A file or folder with that name already exists",
+    "move_parent_missing": "Destination folder doesn't exist"
   },
   "sidebar": {
     "explorer": "Explorer",

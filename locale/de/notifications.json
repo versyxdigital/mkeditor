@@ -28,5 +28,10 @@
   "session_cleared": "Gespeicherte Sitzung gelöscht.",
   "pasted_image_saved": "Eingefügtes Bild gespeichert",
   "pasted_image_failed": "Eingefügtes Bild konnte nicht gespeichert werden",
-  "pasted_image_no_workspace": "Speichern Sie das Dokument, bevor Sie Bilder einfügen"
+  "pasted_image_no_workspace": "Speichern Sie das Dokument, bevor Sie Bilder einfügen",
+  "move_failed": "Verschieben fehlgeschlagen",
+  "move_into_self_refused": "Ein Ordner kann nicht in sich selbst verschoben werden",
+  "move_same_source": "Bereits an diesem Ort",
+  "move_collision": "Eine Datei oder ein Ordner mit diesem Namen existiert bereits",
+  "move_parent_missing": "Zielordner existiert nicht"
 }

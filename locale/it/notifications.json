@@ -28,5 +28,10 @@
   "session_cleared": "Sessione salvata cancellata.",
   "pasted_image_saved": "Immagine incollata salvata",
   "pasted_image_failed": "Impossibile salvare l'immagine incollata",
-  "pasted_image_no_workspace": "Salva il documento prima di incollare immagini"
+  "pasted_image_no_workspace": "Salva il documento prima di incollare immagini",
+  "move_failed": "Spostamento non riuscito",
+  "move_into_self_refused": "Impossibile spostare una cartella in se stessa",
+  "move_same_source": "Già in quella posizione",
+  "move_collision": "Esiste già un file o una cartella con quel nome",
+  "move_parent_missing": "La cartella di destinazione non esiste"
 }

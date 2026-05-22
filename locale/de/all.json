@@ -168,7 +168,8 @@
     "prompt_rename_folder_title": "Ordner umbenennen",
     "confirm_delete_file_title": "Datei löschen?",
     "confirm_delete_folder_title": "Ordner löschen?",
-    "confirm_delete_button": "Löschen"
+    "confirm_delete_button": "Löschen",
+    "move_to": "Verschieben nach…"
   },
   "menus-tables": {
     "rows_label": "Zeilen:",
@@ -227,6 +228,12 @@
     "set_font_colour_help": "Schriftfarbe festlegen.",
     "save_settings": "Einstellungen speichern",
     "reset_to_default": "Auf Standard zurücksetzen"
+  },
+  "modals-move": {
+    "title": "Verschieben nach…",
+    "moving_label": "Verschiebe:",
+    "confirm": "Verschieben",
+    "cancel": "Abbrechen"
   },
   "modals-properties": {
     "title": "Eigenschaften",
@@ -378,7 +385,12 @@
     "session_cleared": "Gespeicherte Sitzung gelöscht.",
     "pasted_image_saved": "Eingefügtes Bild gespeichert",
     "pasted_image_failed": "Eingefügtes Bild konnte nicht gespeichert werden",
-    "pasted_image_no_workspace": "Speichern Sie das Dokument, bevor Sie Bilder einfügen"
+    "pasted_image_no_workspace": "Speichern Sie das Dokument, bevor Sie Bilder einfügen",
+    "move_failed": "Verschieben fehlgeschlagen",
+    "move_into_self_refused": "Ein Ordner kann nicht in sich selbst verschoben werden",
+    "move_same_source": "Bereits an diesem Ort",
+    "move_collision": "Eine Datei oder ein Ordner mit diesem Namen existiert bereits",
+    "move_parent_missing": "Zielordner existiert nicht"
   },
   "sidebar": {
     "explorer": "Explorer",

@@ -11,7 +11,6 @@
   "expand_folder": "Développer le dossier",
   "rename_folder": "Renommer le dossier...",
   "delete_folder": "Supprimer le dossier...",
-
   "prompt_new_file_title": "Nom du nouveau fichier",
   "prompt_new_file_placeholder": "Sans titre.md",
   "prompt_new_folder_title": "Nom du nouveau dossier",
@@ -19,5 +18,6 @@
   "prompt_rename_folder_title": "Renommer le dossier",
   "confirm_delete_file_title": "Supprimer le fichier ?",
   "confirm_delete_folder_title": "Supprimer le dossier ?",
-  "confirm_delete_button": "Supprimer"
+  "confirm_delete_button": "Supprimer",
+  "move_to": "Déplacer vers…"
 }

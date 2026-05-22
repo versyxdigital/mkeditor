@@ -6,6 +6,7 @@ import {
   getContextMenuItems,
   type ContextMenuItem as MenuItem,
 } from '../../core/mappings/explorerContextMenu';
+import { sonnerToast } from '../../notify';
 import { basename } from '../../util';
 import { useFiles } from '../contexts/FilesContext';
 import { useFileTree } from '../contexts/FileTreeContext';
@@ -94,6 +95,46 @@ export const FileTreePanel: React.FC = () => {
     const webBridge = bridgeManager.bridge as WebFileBridge;
     void webBridge.restoreWorkspace?.(true);
   }, [bridgeManager]);
+
+  // Drag-and-drop move handler. Triggered from `<NodeRow>` (when a
+  // file or folder is dropped on a directory) and from the workspace
+  // header (drop on workspace root). The destination directory +
+  // source path are passed in; we compute the final dst path here so
+  // separator handling lives in one place.
+  //
+  // Toasts on every refusal so the user always gets feedback. The
+  // main-side `moveItem` is the source of truth — UI checks here are
+  // a fast path for the obvious cases (no-op, into-self) so the user
+  // sees feedback without an IPC round-trip.
+  const handleMoveDrop = React.useCallback(
+    async (srcPath: string, targetDir: string) => {
+      if (!bridgeManager) return;
+      const sep = pickSeparator(treeRoot, srcPath, targetDir);
+      const dstPath = `${targetDir}${sep}${basename(srcPath)}`;
+      // Fast refusal: dropping onto the source's current parent is a
+      // no-op (the file is already there). Main would refuse with
+      // `destination_same_as_source`; we short-circuit so the user
+      // doesn't see a toast for what they probably consider an
+      // accidental drop.
+      if (dstPath === srcPath) return;
+      // Fast refusal: dropping a folder onto itself / a descendant.
+      // Both checks happen authoritatively on the main side too, but
+      // catching them client-side avoids a wasted IPC + the brief
+      // "destination_inside_source" toast the user wouldn't expect.
+      const srcWithSep = srcPath.endsWith(sep) ? srcPath : srcPath + sep;
+      if (dstPath === srcPath || dstPath.startsWith(srcWithSep)) {
+        sonnerToast('warning', t('notifications:move_into_self_refused'));
+        return;
+      }
+      const result = await bridgeManager.moveItem(srcPath, dstPath);
+      if (!result.ok) {
+        const key =
+          MOVE_ERROR_KEYS[result.error] ?? 'notifications:move_failed';
+        sonnerToast('error', `${t(key)} — ${result.error}`);
+      }
+    },
+    [bridgeManager, treeRoot, t],
+  );
 
   const handleDisconnectFolder = React.useCallback(() => {
     if (!bridgeManager || !fileTreeManager) return;
@@ -200,6 +241,8 @@ export const FileTreePanel: React.FC = () => {
       toggleSidebar,
       openSettings: () => openModal('settings'),
       expandFolder,
+      openMoveItem: (path: string) =>
+        openModal('moveItem', { sourcePath: path }),
     }),
     [fileManager, toggleSidebar, openModal, expandFolder],
   );
@@ -267,7 +310,28 @@ export const FileTreePanel: React.FC = () => {
           onContextMenu={handleContextMenu}
         >
           {showWorkspaceHeader && (
-            <li className="mb-1 flex items-center gap-1 border-b border-border px-2 py-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <li
+              className="mb-1 flex items-center gap-1 border-b border-border px-2 py-1 text-xs font-bold uppercase tracking-wider text-muted-foreground data-[drop-target=true]:bg-primary/10 data-[drop-target=true]:text-foreground"
+              onDragOver={(e) => {
+                if (!treeRoot) return;
+                if (!e.dataTransfer.types.includes(MKED_DRAG_MIME)) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                (e.currentTarget as HTMLElement).dataset.dropTarget = 'true';
+              }}
+              onDragLeave={(e) => {
+                (e.currentTarget as HTMLElement).dataset.dropTarget = 'false';
+              }}
+              onDrop={(e) => {
+                (e.currentTarget as HTMLElement).dataset.dropTarget = 'false';
+                if (!treeRoot) return;
+                const src = e.dataTransfer.getData(MKED_DRAG_MIME);
+                if (!src) return;
+                e.preventDefault();
+                e.stopPropagation();
+                void handleMoveDrop(src, treeRoot);
+              }}
+            >
               <Icon name="folder-open" />
               <span className="flex-1 truncate" title={treeRoot ?? undefined}>
                 {workspaceLabel}
@@ -340,6 +404,7 @@ export const FileTreePanel: React.FC = () => {
               activeFile={activeFile}
               onToggle={toggleExpanded}
               onOpen={(p) => fileManager?.openFileFromPath(p)}
+              onMove={handleMoveDrop}
             />
           ))}
         </ul>
@@ -376,6 +441,13 @@ interface NodeRowProps {
   activeFile: string | null;
   onToggle: (node: TreeNode) => void;
   onOpen: (path: string) => void;
+  /**
+   * Drag-and-drop move handler. Fires when a file or folder is
+   * dropped on this row (directory rows only act as drop targets).
+   * The panel computes the final destination path and routes through
+   * `BridgeManager.moveItem`.
+   */
+  onMove: (srcPath: string, targetDir: string) => void;
 }
 
 const NodeRow: React.FC<NodeRowProps> = ({
@@ -385,7 +457,9 @@ const NodeRow: React.FC<NodeRowProps> = ({
   activeFile,
   onToggle,
   onOpen,
+  onMove,
 }) => {
+  const [isDropTarget, setIsDropTarget] = React.useState(false);
   // "Visually expanded" requires both the user intent (path in
   // expandedPaths or search expansion) AND that the directory's
   // children have actually been loaded. Without the `loaded` gate,
@@ -416,11 +490,51 @@ const NodeRow: React.FC<NodeRowProps> = ({
     else onOpen(node.path);
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    // Stamp the source path on the dataTransfer with our own MIME so
+    // external file drags from the OS file manager don't get
+    // mistaken for in-tree moves (those have other MIME types).
+    e.dataTransfer.setData(MKED_DRAG_MIME, node.path);
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
+  };
+
+  // Only directory rows accept drops. Stopping propagation prevents
+  // a nested directory drop from also firing the parent directory's
+  // drop handler — the most specific (innermost) drop target wins.
+  const acceptsDrops = node.type === 'directory';
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!acceptsDrops) return;
+    if (!e.dataTransfer.types.includes(MKED_DRAG_MIME)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    setIsDropTarget(true);
+  };
+  const handleDragLeave = () => {
+    if (isDropTarget) setIsDropTarget(false);
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    setIsDropTarget(false);
+    if (!acceptsDrops) return;
+    const src = e.dataTransfer.getData(MKED_DRAG_MIME);
+    if (!src) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onMove(src, node.path);
+  };
+
   return (
     <li
-      className={`ft-node ${node.type}${muted ? ' ft-node-muted' : ''}`}
+      className={`ft-node ${node.type}${muted ? ' ft-node-muted' : ''}${isDropTarget ? ' bg-primary/10' : ''}`}
       data-path={node.path}
       data-muted={muted ? 'true' : undefined}
+      data-drop-target={isDropTarget ? 'true' : undefined}
+      draggable
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       onClick={handleClick}
     >
       <span
@@ -455,6 +569,7 @@ const NodeRow: React.FC<NodeRowProps> = ({
               activeFile={activeFile}
               onToggle={onToggle}
               onOpen={onOpen}
+              onMove={onMove}
             />
           ))}
         </ul>
@@ -530,4 +645,46 @@ function findNodeByPath(nodes: TreeNode[], path: string): TreeNode | null {
     }
   }
   return null;
+}
+
+/**
+ * Custom MIME used to mark drag payloads that originate inside the
+ * file tree. Lets dragover handlers distinguish in-tree moves from
+ * external OS file drags (which we don't accept — drag-and-drop of
+ * files from the OS would conflict with the paste-image-from-OS path
+ * and is intentionally not supported, see PasteImageHandler).
+ */
+const MKED_DRAG_MIME = 'application/x-mked-path';
+
+/**
+ * Map the structured error codes `AppStorage.moveItem` returns onto
+ * the i18n keys for the toast strings. Falls back to a generic
+ * `move_failed` key for unmapped messages (e.g. raw fs error text
+ * surfaced from main).
+ */
+const MOVE_ERROR_KEYS: Record<string, string> = {
+  destination_same_as_source: 'notifications:move_same_source',
+  destination_inside_source: 'notifications:move_into_self_refused',
+  destination_exists: 'notifications:move_collision',
+  destination_parent_missing: 'notifications:move_parent_missing',
+  destination_parent_not_directory: 'notifications:move_parent_missing',
+  move_unsupported_in_this_mode: 'notifications:move_failed',
+};
+
+/**
+ * Pick the path separator to use when joining a target directory
+ * with a source basename. Prefers the workspace root's separator,
+ * then the source path's, then the target dir's. Mixed-separator
+ * workspaces are rare but possible (e.g. session restore on a
+ * platform other than the one that wrote the session).
+ */
+function pickSeparator(
+  treeRoot: string | null,
+  srcPath: string,
+  targetDir: string,
+): '\\' | '/' {
+  if (treeRoot && treeRoot.includes('\\')) return '\\';
+  if (srcPath.includes('\\')) return '\\';
+  if (targetDir.includes('\\')) return '\\';
+  return '/';
 }

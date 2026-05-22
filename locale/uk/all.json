@@ -168,7 +168,8 @@
     "prompt_rename_folder_title": "Перейменувати папку",
     "confirm_delete_file_title": "Видалити файл?",
     "confirm_delete_folder_title": "Видалити папку?",
-    "confirm_delete_button": "Видалити"
+    "confirm_delete_button": "Видалити",
+    "move_to": "Перемістити до…"
   },
   "menus-tables": {
     "rows_label": "Рядки:",
@@ -227,6 +228,12 @@
     "set_font_colour_help": "Встановити колір шрифту.",
     "save_settings": "Зберегти налаштування",
     "reset_to_default": "Скинути до типових"
+  },
+  "modals-move": {
+    "title": "Перемістити до…",
+    "moving_label": "Переміщення:",
+    "confirm": "Перемістити",
+    "cancel": "Скасувати"
   },
   "modals-properties": {
     "title": "Властивості",
@@ -378,7 +385,12 @@
     "session_cleared": "Збережений сеанс очищено.",
     "pasted_image_saved": "Вставлене зображення збережено",
     "pasted_image_failed": "Не вдалося зберегти вставлене зображення",
-    "pasted_image_no_workspace": "Збережіть документ перед вставленням зображень"
+    "pasted_image_no_workspace": "Збережіть документ перед вставленням зображень",
+    "move_failed": "Не вдалося перемістити",
+    "move_into_self_refused": "Не можна перемістити теку всередину неї самої",
+    "move_same_source": "Вже в цьому розташуванні",
+    "move_collision": "Файл або тека з таким іменем вже існує",
+    "move_parent_missing": "Цільова тека не існує"
   },
   "sidebar": {
     "explorer": "Провідник",

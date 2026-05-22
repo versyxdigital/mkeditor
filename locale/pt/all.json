@@ -168,7 +168,8 @@
     "prompt_rename_folder_title": "Renomear pasta",
     "confirm_delete_file_title": "Excluir arquivo?",
     "confirm_delete_folder_title": "Excluir pasta?",
-    "confirm_delete_button": "Excluir"
+    "confirm_delete_button": "Excluir",
+    "move_to": "Mover para…"
   },
   "menus-tables": {
     "rows_label": "Linhas:",
@@ -227,6 +228,12 @@
     "set_font_colour_help": "Defina a cor da fonte.",
     "save_settings": "Salvar configurações",
     "reset_to_default": "Restaurar padrão"
+  },
+  "modals-move": {
+    "title": "Mover para…",
+    "moving_label": "Movendo:",
+    "confirm": "Mover",
+    "cancel": "Cancelar"
   },
   "modals-properties": {
     "title": "Propriedades",
@@ -378,7 +385,12 @@
     "session_cleared": "Sessão salva limpa.",
     "pasted_image_saved": "Imagem colada salva",
     "pasted_image_failed": "Não foi possível salvar a imagem colada",
-    "pasted_image_no_workspace": "Salve o documento antes de colar imagens"
+    "pasted_image_no_workspace": "Salve o documento antes de colar imagens",
+    "move_failed": "Falha ao mover",
+    "move_into_self_refused": "Não é possível mover uma pasta para dentro de si mesma",
+    "move_same_source": "Já está nesse local",
+    "move_collision": "Já existe um arquivo ou pasta com esse nome",
+    "move_parent_missing": "A pasta de destino não existe"
   },
   "sidebar": {
     "explorer": "Explorador",

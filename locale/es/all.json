@@ -168,7 +168,8 @@
     "prompt_rename_folder_title": "Renombrar carpeta",
     "confirm_delete_file_title": "¿Eliminar archivo?",
     "confirm_delete_folder_title": "¿Eliminar carpeta?",
-    "confirm_delete_button": "Eliminar"
+    "confirm_delete_button": "Eliminar",
+    "move_to": "Mover a…"
   },
   "menus-tables": {
     "rows_label": "Filas:",
@@ -227,6 +228,12 @@
     "set_font_colour_help": "Establece el color de la fuente.",
     "save_settings": "Guardar ajustes",
     "reset_to_default": "Restablecer valores predeterminados"
+  },
+  "modals-move": {
+    "title": "Mover a…",
+    "moving_label": "Moviendo:",
+    "confirm": "Mover",
+    "cancel": "Cancelar"
   },
   "modals-properties": {
     "title": "Propiedades",
@@ -378,7 +385,12 @@
     "session_cleared": "Sesión guardada borrada.",
     "pasted_image_saved": "Imagen pegada guardada",
     "pasted_image_failed": "No se pudo guardar la imagen pegada",
-    "pasted_image_no_workspace": "Guarde el documento antes de pegar imágenes"
+    "pasted_image_no_workspace": "Guarde el documento antes de pegar imágenes",
+    "move_failed": "No se pudo mover",
+    "move_into_self_refused": "No se puede mover una carpeta dentro de sí misma",
+    "move_same_source": "Ya está en esa ubicación",
+    "move_collision": "Ya existe un archivo o carpeta con ese nombre",
+    "move_parent_missing": "La carpeta de destino no existe"
   },
   "sidebar": {
     "explorer": "Explorador",

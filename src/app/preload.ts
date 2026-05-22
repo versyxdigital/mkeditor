@@ -208,6 +208,12 @@ contextBridge.exposeInMainWorld('mked', {
     ipcRenderer.invoke('mked:fs:pasteimage', opts) as Promise<
       { ok: true; path: string } | { ok: false; error: string }
     >,
+
+  moveItem: (opts: { srcPath: string; dstPath: string }) =>
+    ipcRenderer.invoke('mked:fs:moveitem', opts) as Promise<
+      | { ok: true; oldPath: string; newPath: string }
+      | { ok: false; error: string }
+    >,
 });
 
 contextBridge.exposeInMainWorld('logger', {

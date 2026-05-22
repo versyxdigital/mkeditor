@@ -168,7 +168,8 @@
     "prompt_rename_folder_title": "重命名文件夹",
     "confirm_delete_file_title": "删除文件？",
     "confirm_delete_folder_title": "删除文件夹？",
-    "confirm_delete_button": "删除"
+    "confirm_delete_button": "删除",
+    "move_to": "移动到…"
   },
   "menus-tables": {
     "rows_label": "行数：",
@@ -227,6 +228,12 @@
     "set_font_colour_help": "设置字体颜色。",
     "save_settings": "保存设置",
     "reset_to_default": "恢复默认值"
+  },
+  "modals-move": {
+    "title": "移动到…",
+    "moving_label": "移动中:",
+    "confirm": "移动",
+    "cancel": "取消"
   },
   "modals-properties": {
     "title": "属性",
@@ -378,7 +385,12 @@
     "session_cleared": "已保存的会话已清除。",
     "pasted_image_saved": "已保存粘贴的图像",
     "pasted_image_failed": "无法保存粘贴的图像",
-    "pasted_image_no_workspace": "请先保存文档再粘贴图像"
+    "pasted_image_no_workspace": "请先保存文档再粘贴图像",
+    "move_failed": "移动失败",
+    "move_into_self_refused": "无法将文件夹移动到其自身内部",
+    "move_same_source": "已经在该位置",
+    "move_collision": "同名文件或文件夹已存在",
+    "move_parent_missing": "目标文件夹不存在"
   },
   "sidebar": {
     "explorer": "资源管理器",
