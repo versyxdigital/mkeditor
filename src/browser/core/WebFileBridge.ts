@@ -129,6 +129,9 @@ export class WebFileBridge implements ContextBridgeAPI {
       case 'to:file:properties':
         void this.showProperties(data.path);
         break;
+      case 'to:shell:openpath':
+        void this.openPathExternal(data.path);
+        break;
       case 'to:html:export':
         HTMLExporter.webExport(data.content, 'text/html', '.html');
         break;
@@ -491,6 +494,31 @@ export class WebFileBridge implements ContextBridgeAPI {
           key: 'notifications:unable_open_file',
         });
       }
+    }
+  }
+
+  /**
+   * Web counterpart of the desktop `to:shell:openpath` IPC.
+   */
+  private async openPathExternal(path: string): Promise<void> {
+    const handle = this.handles.get(path);
+    if (!handle || handle.kind !== 'file') {
+      this.emit('from:notification:display', {
+        status: 'error',
+        key: 'notifications:unable_open_path',
+      });
+      return;
+    }
+    try {
+      const file = await handle.getFile();
+      const url = URL.createObjectURL(file);
+      window.open(url, '_blank');
+    } catch (err) {
+      logger?.error('WebFileBridge.openPathExternal', JSON.stringify(err));
+      this.emit('from:notification:display', {
+        status: 'error',
+        key: 'notifications:unable_open_path',
+      });
     }
   }
 
