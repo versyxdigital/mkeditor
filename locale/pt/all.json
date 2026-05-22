@@ -275,7 +275,10 @@
     "language_help": "Selecione o idioma da interface.",
     "save_settings": "Salvar configurações",
     "tab_general": "Configurações gerais",
-    "tab_assistant": "Provedores de IA"
+    "tab_assistant": "Provedores de IA",
+    "paste_images": "Imagens coladas",
+    "paste_images_directory_label": "Diretório para imagens coladas",
+    "paste_images_directory_help": "Caminhos relativos (ex.: './assets') são resolvidos em relação à pasta do arquivo Markdown ativo. Caminhos absolutos devem estar dentro do workspace aberto."
   },
   "modals-shortcuts": {
     "title": "Atalhos do MKEditor",
@@ -372,7 +375,10 @@
     "update_available": "A atualização {{version}} está disponível, baixando em segundo plano...",
     "update_downloaded": "A atualização {{version}} foi baixada, reinicie para atualizar.",
     "session_file_missing": "Alguns arquivos anteriormente abertos não foram encontrados e foram ignorados: {{files}}",
-    "session_cleared": "Sessão salva limpa."
+    "session_cleared": "Sessão salva limpa.",
+    "pasted_image_saved": "Imagem colada salva",
+    "pasted_image_failed": "Não foi possível salvar a imagem colada",
+    "pasted_image_no_workspace": "Salve o documento antes de colar imagens"
   },
   "sidebar": {
     "explorer": "Explorador",

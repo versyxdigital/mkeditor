@@ -34,5 +34,8 @@
   "language_help": "Arayüz dilini seçin.",
   "save_settings": "Ayarları kaydet",
   "tab_general": "Genel Ayarlar",
-  "tab_assistant": "AI Sağlayıcıları"
+  "tab_assistant": "AI Sağlayıcıları",
+  "paste_images": "Yapıştırılan görseller",
+  "paste_images_directory_label": "Yapıştırılan görsel klasörü",
+  "paste_images_directory_help": "Göreceli yollar (örn. './assets') etkin Markdown dosyasının klasörüne göre çözümlenir. Mutlak yollar açık çalışma alanı içinde olmalıdır."
 }

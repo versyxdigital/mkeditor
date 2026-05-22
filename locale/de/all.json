@@ -275,7 +275,10 @@
     "language_help": "Wähle die Anzeigesprache.",
     "save_settings": "Einstellungen speichern",
     "tab_general": "Allgemeine Einstellungen",
-    "tab_assistant": "KI-Anbieter"
+    "tab_assistant": "KI-Anbieter",
+    "paste_images": "Eingefügte Bilder",
+    "paste_images_directory_label": "Verzeichnis für eingefügte Bilder",
+    "paste_images_directory_help": "Relative Pfade (z. B. './assets') werden gegen den Ordner der aktiven Markdown-Datei aufgelöst. Absolute Pfade müssen innerhalb des geöffneten Arbeitsbereichs liegen."
   },
   "modals-shortcuts": {
     "title": "MKEditor Tastenkürzel",
@@ -372,7 +375,10 @@
     "update_available": "Update {{version}} ist verfügbar, wird im Hintergrund heruntergeladen...",
     "update_downloaded": "Update {{version}} wurde heruntergeladen, zum Aktualisieren neu starten.",
     "session_file_missing": "Einige zuvor geöffnete Dateien wurden nicht gefunden und übersprungen: {{files}}",
-    "session_cleared": "Gespeicherte Sitzung gelöscht."
+    "session_cleared": "Gespeicherte Sitzung gelöscht.",
+    "pasted_image_saved": "Eingefügtes Bild gespeichert",
+    "pasted_image_failed": "Eingefügtes Bild konnte nicht gespeichert werden",
+    "pasted_image_no_workspace": "Speichern Sie das Dokument, bevor Sie Bilder einfügen"
   },
   "sidebar": {
     "explorer": "Explorer",

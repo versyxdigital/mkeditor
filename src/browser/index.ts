@@ -2,6 +2,7 @@ import './icons';
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 
+import type { PastedImageWriter } from './core/PasteImageHandler';
 import { EditorDispatcher } from './events/EditorDispatcher';
 import { initI18n, changeLanguage } from './i18n';
 import { markdownStylesheet } from './markdownStyles';
@@ -122,6 +123,7 @@ async function boot() {
     { CommandProvider },
     { CompletionProvider },
     { MkedLinkProvider },
+    { PasteImageHandler },
     { SettingsProvider },
     { ExportSettingsProvider },
     { BridgeManager },
@@ -131,6 +133,7 @@ async function boot() {
     import('./core/providers/CommandProvider'),
     import('./core/providers/CompletionProvider'),
     import('./core/providers/MkedLinkProvider'),
+    import('./core/PasteImageHandler'),
     import('./core/providers/SettingsProvider'),
     import('./core/providers/ExportSettingsProvider'),
     import('./core/BridgeManager'),
@@ -156,6 +159,7 @@ async function boot() {
     CommandProvider,
     CompletionProvider,
     MkedLinkProvider,
+    PasteImageHandler,
     SettingsProvider,
     ExportSettingsProvider,
     BridgeManager,
@@ -170,6 +174,7 @@ let pendingFactories: {
   CommandProvider: typeof import('./core/providers/CommandProvider').CommandProvider;
   CompletionProvider: typeof import('./core/providers/CompletionProvider').CompletionProvider;
   MkedLinkProvider: typeof import('./core/providers/MkedLinkProvider').MkedLinkProvider;
+  PasteImageHandler: typeof import('./core/PasteImageHandler').PasteImageHandler;
   SettingsProvider: typeof import('./core/providers/SettingsProvider').SettingsProvider;
   ExportSettingsProvider: typeof import('./core/providers/ExportSettingsProvider').ExportSettingsProvider;
   BridgeManager: typeof import('./core/BridgeManager').BridgeManager;
@@ -203,6 +208,7 @@ function onEditorReadyInner() {
     CommandProvider,
     CompletionProvider,
     MkedLinkProvider,
+    PasteImageHandler,
     SettingsProvider,
     ExportSettingsProvider,
     BridgeManager,
@@ -254,6 +260,22 @@ function onEditorReadyInner() {
   registerAssistantStateChangeListener(() =>
     bridgeManager.fileManager.notifyAssistantStateChanged(),
   );
+
+  // Paste-image plumbing.
+  const settingsProvider = editorManager.providers.settings;
+  if (settingsProvider) {
+    const writer: PastedImageWriter =
+      api !== 'web'
+        ? (opts) => window.mked!.pasteImage(opts)
+        : (opts) =>
+            (bridge as InstanceType<typeof WebFileBridge>).pasteImage(opts);
+    new PasteImageHandler(
+      mkeditor,
+      bridgeManager.fileManager,
+      settingsProvider,
+      writer,
+    ).attach();
+  }
 
   // Source the active editable path from FileManager (renderer-side,
   // always current). `getActiveEditablePath` returns the file Monaco

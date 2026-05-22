@@ -25,5 +25,8 @@
   "update_available": "更新 {{version}} 可用，正在后台下载……",
   "update_downloaded": "更新 {{version}} 已下载，重启以更新。",
   "session_file_missing": "之前打开的部分文件未找到，已跳过：{{files}}",
-  "session_cleared": "已保存的会话已清除。"
+  "session_cleared": "已保存的会话已清除。",
+  "pasted_image_saved": "已保存粘贴的图像",
+  "pasted_image_failed": "无法保存粘贴的图像",
+  "pasted_image_no_workspace": "请先保存文档再粘贴图像"
 }

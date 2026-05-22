@@ -14,6 +14,7 @@ import { Icon } from '../Icon';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import {
   Select,
@@ -240,6 +241,30 @@ export const SettingsModal: React.FC = () => {
                 <small className="text-muted-foreground">
                   {t('modals-settings:clear_session_help')}
                 </small>
+              </Section>
+
+              <Section label={t('modals-settings:paste_images')}>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="paste-images-directory-setting">
+                    {t('modals-settings:paste_images_directory_label')}
+                  </Label>
+                  <Input
+                    id="paste-images-directory-setting"
+                    type="text"
+                    value={settings.pasteImages?.directory ?? './assets'}
+                    onChange={(e) =>
+                      updateSetting('pasteImages', {
+                        directory: e.target.value,
+                      })
+                    }
+                    placeholder="./assets"
+                    className="font-mono text-xs"
+                    data-testid="paste-images-directory-input"
+                  />
+                  <small className="text-muted-foreground">
+                    {t('modals-settings:paste_images_directory_help')}
+                  </small>
+                </div>
               </Section>
 
               <Section label={t('modals-settings:appearance')}>

@@ -34,5 +34,8 @@
   "language_help": "选择界面语言。",
   "save_settings": "保存设置",
   "tab_general": "常规设置",
-  "tab_assistant": "AI 提供商"
+  "tab_assistant": "AI 提供商",
+  "paste_images": "粘贴的图像",
+  "paste_images_directory_label": "粘贴图像目录",
+  "paste_images_directory_help": "相对路径（例如 './assets'）会基于当前 Markdown 文件所在文件夹解析。绝对路径必须位于已打开的工作区内。"
 }

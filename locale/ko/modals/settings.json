@@ -34,5 +34,8 @@
   "language_help": "인터페이스 언어를 선택하세요.",
   "save_settings": "설정 저장",
   "tab_general": "일반 설정",
-  "tab_assistant": "AI 공급자"
+  "tab_assistant": "AI 공급자",
+  "paste_images": "붙여넣은 이미지",
+  "paste_images_directory_label": "붙여넣은 이미지 디렉터리",
+  "paste_images_directory_help": "상대 경로(예: './assets')는 활성 마크다운 파일의 폴더를 기준으로 해석됩니다. 절대 경로는 열려 있는 워크스페이스 안에 있어야 합니다."
 }

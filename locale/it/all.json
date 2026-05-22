@@ -275,7 +275,10 @@
     "language_help": "Seleziona la lingua dell’interfaccia.",
     "save_settings": "Salva impostazioni",
     "tab_general": "Impostazioni generali",
-    "tab_assistant": "Provider IA"
+    "tab_assistant": "Provider IA",
+    "paste_images": "Immagini incollate",
+    "paste_images_directory_label": "Cartella per immagini incollate",
+    "paste_images_directory_help": "I percorsi relativi (es. './assets') vengono risolti rispetto alla cartella del file Markdown attivo. I percorsi assoluti devono rimanere nel workspace aperto."
   },
   "modals-shortcuts": {
     "title": "Scorciatoie di MKEditor",
@@ -372,7 +375,10 @@
     "update_available": "Aggiornamento {{version}} disponibile, download in background in corso...",
     "update_downloaded": "Aggiornamento {{version}} scaricato, riavvia per aggiornare.",
     "session_file_missing": "Alcuni file precedentemente aperti non sono stati trovati e sono stati saltati: {{files}}",
-    "session_cleared": "Sessione salvata cancellata."
+    "session_cleared": "Sessione salvata cancellata.",
+    "pasted_image_saved": "Immagine incollata salvata",
+    "pasted_image_failed": "Impossibile salvare l'immagine incollata",
+    "pasted_image_no_workspace": "Salva il documento prima di incollare immagini"
   },
   "sidebar": {
     "explorer": "Esplora",

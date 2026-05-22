@@ -25,5 +25,8 @@
   "update_available": "La actualización {{version}} está disponible, descargando en segundo plano...",
   "update_downloaded": "La actualización {{version}} se ha descargado, reinicia para actualizar.",
   "session_file_missing": "Algunos archivos previamente abiertos no se encontraron y se omitieron: {{files}}",
-  "session_cleared": "Sesión guardada borrada."
+  "session_cleared": "Sesión guardada borrada.",
+  "pasted_image_saved": "Imagen pegada guardada",
+  "pasted_image_failed": "No se pudo guardar la imagen pegada",
+  "pasted_image_no_workspace": "Guarde el documento antes de pegar imágenes"
 }

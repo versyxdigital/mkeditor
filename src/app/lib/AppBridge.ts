@@ -479,6 +479,7 @@ export class AppBridge {
       ) => {
         try {
           return await AppStorage.writePastedImage(
+            this.context,
             opts.sourceFile,
             opts.directory,
             opts.bytes,

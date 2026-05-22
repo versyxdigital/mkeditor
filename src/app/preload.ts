@@ -195,6 +195,19 @@ contextBridge.exposeInMainWorld('mked', {
     ipcRenderer.invoke('mked:fs:createfolder', parent, name) as Promise<
       { ok: true; path: string } | { ok: false; error: string }
     >,
+  /**
+   * Save a pasted-image's raw bytes into the workspace and return
+   * the absolute on-disk path.
+   */
+  pasteImage: (opts: {
+    sourceFile: string;
+    directory: string;
+    bytes: Uint8Array;
+    extension: string;
+  }) =>
+    ipcRenderer.invoke('mked:fs:pasteimage', opts) as Promise<
+      { ok: true; path: string } | { ok: false; error: string }
+    >,
 });
 
 contextBridge.exposeInMainWorld('logger', {

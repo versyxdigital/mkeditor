@@ -8,6 +8,27 @@ import type {
 } from '../interfaces/Session';
 import { logger } from '../util';
 
+/**
+ * Clamp a paste-image extension to a known image format.
+ */
+function normalizeImageExtension(extension: string): string {
+  const lowered = extension.replace(/^\.+/, '').toLowerCase();
+  const allowed = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp']);
+  return allowed.has(lowered) ? lowered : 'png';
+}
+
+/**
+ * Must stay in sync with `AppStorage.buildPastedImageBasename`.
+ */
+function buildPastedImageBasename(now: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    `img_${now.getFullYear()}${pad(now.getMonth() + 1)}` +
+    `${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}` +
+    `${pad(now.getSeconds())}`
+  );
+}
+
 const IDB_NAME = 'mkeditor';
 const IDB_STORE = 'handles';
 const IDB_VERSION = 1;
@@ -579,6 +600,119 @@ export class WebFileBridge implements ContextBridgeAPI {
       }
     }
     return null;
+  }
+
+  // Paste-image -------------------------------------------------------
+
+  /**
+   * Save pasted-image bytes into the virtual workspace and return the
+   * virtual path.
+   */
+  public async pasteImage(opts: {
+    sourceFile: string;
+    directory: string;
+    bytes: Uint8Array;
+    extension: string;
+  }): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
+    if (!this.rootHandle) {
+      return { ok: false, error: 'No folder is open in the editor.' };
+    }
+    try {
+      const targetDir = this.resolvePasteTargetDir(
+        opts.sourceFile,
+        opts.directory,
+      );
+      const dirHandle = await this.ensureVirtualDirectory(targetDir);
+      const safeExt = normalizeImageExtension(opts.extension);
+      const baseName = buildPastedImageBasename(new Date());
+      const finalName = await this.allocatePastedImageNameWeb(
+        dirHandle,
+        baseName,
+        safeExt,
+      );
+      const fileHandle = await dirHandle.getFileHandle(finalName, {
+        create: true,
+      });
+      const writable = await fileHandle.createWritable();
+      // Copy into a fresh ArrayBuffer.
+      const buffer = new ArrayBuffer(opts.bytes.byteLength);
+      new Uint8Array(buffer).set(opts.bytes);
+      await writable.write(buffer);
+      await writable.close();
+      const fullPath = `${targetDir}/${finalName}`;
+      this.handles.set(fullPath, fileHandle);
+      // Refresh the file-tree row for the target directory.
+      const tree = await this.listChildren(dirHandle, targetDir);
+      this.emit('from:folder:opened', { path: targetDir, tree });
+      return { ok: true, path: fullPath };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
+    }
+  }
+
+  /**
+   * Resolve the user's `directory` setting against `sourceFile`'s
+   * virtual directory.
+   */
+  private resolvePasteTargetDir(sourceFile: string, directory: string): string {
+    const sourceDir = sourceFile
+      .replace(/\\/g, '/')
+      .split('/')
+      .slice(0, -1)
+      .join('/');
+    let trimmed = directory.replace(/\\/g, '/').trim();
+    while (trimmed.startsWith('./')) trimmed = trimmed.slice(2);
+    if (trimmed.startsWith('/')) {
+      // Anchor to the workspace root rather than the OS root.
+      return `${this.rootName}${trimmed}`;
+    }
+    return sourceDir ? `${sourceDir}/${trimmed}` : trimmed;
+  }
+
+  /**
+   * Walk into `virtualPath` from the workspace root, creating any
+   * intermediate directories that don't yet exist.
+   */
+  private async ensureVirtualDirectory(
+    virtualPath: string,
+  ): Promise<FileSystemDirectoryHandle> {
+    if (!this.rootHandle) throw new Error('No workspace is open.');
+    const segments = virtualPath.split('/').filter((s) => s.length > 0);
+    if (segments.length === 0 || segments[0] !== this.rootName) {
+      throw new Error(`Path is outside the workspace: ${virtualPath}`);
+    }
+    let current: FileSystemDirectoryHandle = this.rootHandle;
+    let cursor = this.rootName;
+    for (let i = 1; i < segments.length; i++) {
+      cursor = `${cursor}/${segments[i]}`;
+      current = await current.getDirectoryHandle(segments[i], { create: true });
+      this.handles.set(cursor, current);
+    }
+    return current;
+  }
+
+  /**
+   * Sibling to `AppStorage.allocatePastedImageName`.
+   */
+  private async allocatePastedImageNameWeb(
+    dir: FileSystemDirectoryHandle,
+    baseName: string,
+    extension: string,
+  ): Promise<string> {
+    const candidate = (n: number) =>
+      n === 1 ? `${baseName}.${extension}` : `${baseName}_${n}.${extension}`;
+    for (let n = 1; n <= 1000; n++) {
+      const name = candidate(n);
+      try {
+        await dir.getFileHandle(name, { create: false });
+        // exists — try next
+      } catch {
+        return name;
+      }
+    }
+    const rand = Math.floor(Math.random() * 0xffff).toString(16);
+    return `${baseName}_${Date.now()}-${rand}.${extension}`;
   }
 
   // Create / rename / delete -------------------------------------------

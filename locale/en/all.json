@@ -277,7 +277,10 @@
     "language_help": "Select the interface language.",
     "save_settings": "Save Settings",
     "tab_general": "General Settings",
-    "tab_assistant": "AI Providers"
+    "tab_assistant": "AI Providers",
+    "paste_images": "Pasted images",
+    "paste_images_directory_label": "Pasted-image directory",
+    "paste_images_directory_help": "Relative paths (e.g. './assets') resolve against the active markdown file's folder. Absolute paths must sit inside the open workspace."
   },
   "modals-shortcuts": {
     "title": "MKEditor Shortcuts",
@@ -378,7 +381,10 @@
     "update_available": "Update {{version}} is available, downloading in the background...",
     "update_downloaded": "Update {{version}} has been downloaded, restart to update.",
     "session_file_missing": "Some previously open files were not found and have been skipped: {{files}}",
-    "session_cleared": "Saved session cleared."
+    "session_cleared": "Saved session cleared.",
+    "pasted_image_saved": "Pasted image saved",
+    "pasted_image_failed": "Couldn't save pasted image",
+    "pasted_image_no_workspace": "Save the document before pasting images"
   },
   "sidebar": {
     "explorer": "Explorer",

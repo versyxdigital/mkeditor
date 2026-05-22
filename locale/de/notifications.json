@@ -25,5 +25,8 @@
   "update_available": "Update {{version}} ist verfügbar, wird im Hintergrund heruntergeladen...",
   "update_downloaded": "Update {{version}} wurde heruntergeladen, zum Aktualisieren neu starten.",
   "session_file_missing": "Einige zuvor geöffnete Dateien wurden nicht gefunden und übersprungen: {{files}}",
-  "session_cleared": "Gespeicherte Sitzung gelöscht."
+  "session_cleared": "Gespeicherte Sitzung gelöscht.",
+  "pasted_image_saved": "Eingefügtes Bild gespeichert",
+  "pasted_image_failed": "Eingefügtes Bild konnte nicht gespeichert werden",
+  "pasted_image_no_workspace": "Speichern Sie das Dokument, bevor Sie Bilder einfügen"
 }

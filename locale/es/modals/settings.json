@@ -34,5 +34,8 @@
   "language_help": "Selecciona el idioma de la interfaz.",
   "save_settings": "Guardar ajustes",
   "tab_general": "Configuración general",
-  "tab_assistant": "Proveedores de IA"
+  "tab_assistant": "Proveedores de IA",
+  "paste_images": "Imágenes pegadas",
+  "paste_images_directory_label": "Directorio para imágenes pegadas",
+  "paste_images_directory_help": "Las rutas relativas (p. ej. './assets') se resuelven respecto a la carpeta del archivo Markdown activo. Las rutas absolutas deben estar dentro del workspace abierto."
 }

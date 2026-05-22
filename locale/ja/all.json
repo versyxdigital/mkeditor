@@ -275,7 +275,10 @@
     "language_help": "インターフェースの言語を選択します。",
     "save_settings": "設定を保存",
     "tab_general": "一般設定",
-    "tab_assistant": "AI プロバイダー"
+    "tab_assistant": "AI プロバイダー",
+    "paste_images": "貼り付け画像",
+    "paste_images_directory_label": "貼り付け画像のディレクトリ",
+    "paste_images_directory_help": "相対パス（例: './assets'）はアクティブな Markdown ファイルのフォルダを基準に解決されます。絶対パスは開いているワークスペース内に置く必要があります。"
   },
   "modals-shortcuts": {
     "title": "MKEditor ショートカット",
@@ -372,7 +375,10 @@
     "update_available": "更新 {{version}} が利用可能です。バックグラウンドでダウンロード中…",
     "update_downloaded": "更新 {{version}} がダウンロードされました。再起動して更新してください。",
     "session_file_missing": "以前に開いていた一部のファイルが見つからず、スキップされました: {{files}}",
-    "session_cleared": "保存されたセッションをクリアしました。"
+    "session_cleared": "保存されたセッションをクリアしました。",
+    "pasted_image_saved": "貼り付けた画像を保存しました",
+    "pasted_image_failed": "貼り付けた画像を保存できませんでした",
+    "pasted_image_no_workspace": "画像を貼り付ける前にドキュメントを保存してください"
   },
   "sidebar": {
     "explorer": "エクスプローラー",

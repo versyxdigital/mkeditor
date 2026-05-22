@@ -34,5 +34,8 @@
   "language_help": "Select the interface language.",
   "save_settings": "Save Settings",
   "tab_general": "General Settings",
-  "tab_assistant": "AI Providers"
+  "tab_assistant": "AI Providers",
+  "paste_images": "Pasted images",
+  "paste_images_directory_label": "Pasted-image directory",
+  "paste_images_directory_help": "Relative paths (e.g. './assets') resolve against the active markdown file's folder. Absolute paths must sit inside the open workspace."
 }

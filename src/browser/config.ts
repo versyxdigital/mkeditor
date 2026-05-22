@@ -14,6 +14,7 @@ export const settings: EditorSettings = {
   sessionRestore: true,
   locale: normalizeLanguage(navigator.language),
   fileExplorer: { extensions: ['md'] },
+  pasteImages: { directory: './assets' },
 };
 
 export const exportSettings: ExportSettings = {

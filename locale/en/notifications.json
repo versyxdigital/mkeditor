@@ -4,33 +4,29 @@
   "exported_html_success": "Preview exported to HTML",
   "exported_pdf_success": "Preview exported to PDF",
   "saved_markdown_success": "Markdown file saved",
-
   "generic_error_try_again": "An error has occurred, please try again.",
-
   "unable_open_file": "Unable to open file.",
   "path_not_exist": "The path does not exist.",
   "permission_denied_open_path": "Permission denied, cannot open path.",
   "unable_open_path": "Unable to open path.",
   "unable_open_folder": "Unable to open folder.",
-
   "file_created": "File created.",
   "unable_create_file": "Unable to create file.",
   "folder_created": "Folder created.",
   "unable_create_folder": "Unable to create folder.",
-
   "renamed_success": "Renamed.",
   "unable_rename": "Unable to rename.",
   "deleted_success": "Deleted.",
   "unable_delete": "Unable to delete.",
-
   "settings_file_corrupted_reset": "Settings file corrupted. Returning to default settings.",
   "settings_update_success": "Settings successfully updated.",
   "unable_save_settings_permission_denied": "Unable to save settings: permission denied.",
   "unable_save_settings_unknown_error": "Unable to save settings: unknown error.",
-
   "update_available": "Update {{version}} is available, downloading in the background...",
   "update_downloaded": "Update {{version}} has been downloaded, restart to update.",
-
   "session_file_missing": "Some previously open files were not found and have been skipped: {{files}}",
-  "session_cleared": "Saved session cleared."
+  "session_cleared": "Saved session cleared.",
+  "pasted_image_saved": "Pasted image saved",
+  "pasted_image_failed": "Couldn't save pasted image",
+  "pasted_image_no_workspace": "Save the document before pasting images"
 }

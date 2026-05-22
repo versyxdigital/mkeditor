@@ -34,5 +34,8 @@
   "language_help": "Selecteer de taal van de interface.",
   "save_settings": "Instellingen opslaan",
   "tab_general": "Algemene instellingen",
-  "tab_assistant": "AI-providers"
+  "tab_assistant": "AI-providers",
+  "paste_images": "Geplakte afbeeldingen",
+  "paste_images_directory_label": "Map voor geplakte afbeeldingen",
+  "paste_images_directory_help": "Relatieve paden (bijv. './assets') worden opgelost ten opzichte van de map van het actieve Markdown-bestand. Absolute paden moeten binnen de geopende workspace blijven."
 }

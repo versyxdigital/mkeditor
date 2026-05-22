@@ -34,5 +34,8 @@
   "language_help": "インターフェースの言語を選択します。",
   "save_settings": "設定を保存",
   "tab_general": "一般設定",
-  "tab_assistant": "AI プロバイダー"
+  "tab_assistant": "AI プロバイダー",
+  "paste_images": "貼り付け画像",
+  "paste_images_directory_label": "貼り付け画像のディレクトリ",
+  "paste_images_directory_help": "相対パス（例: './assets'）はアクティブな Markdown ファイルのフォルダを基準に解決されます。絶対パスは開いているワークスペース内に置く必要があります。"
 }

@@ -568,6 +568,7 @@ export class AppStorage {
    * markdown link.
    */
   static async writePastedImage(
+    context: BrowserWindow,
     sourceFile: string,
     directory: string,
     bytes: Uint8Array,
@@ -608,6 +609,19 @@ export class AppStorage {
       await fs.writeFile(tmpPath, Buffer.from(bytes));
       await fs.rename(tmpPath, finalPath);
 
+      // Refresh the file-tree row for the target directory so the
+      // newly-written image surfaces in the sidebar.
+      try {
+        const tree = await AppStorage.readDirectory(safeTargetDir);
+        context.webContents.send('from:folder:opened', {
+          path: safeTargetDir,
+          tree,
+        });
+      } catch {
+        // Non-fatal: the file is on disk; the user can refresh the
+        // tree manually if this listing read fails.
+      }
+
       return { ok: true, path: finalPath };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -626,11 +640,14 @@ export class AppStorage {
     return allowed.has(lowered) ? lowered : 'png';
   }
 
-  /** "Pasted image 20260521143015". Second-resolution; sortable. */
+  /**
+   * `img_20260521143015` — second-resolution timestamp, sortable,
+   * no spaces.
+   */
   private static buildPastedImageBasename(now: Date): string {
     const pad = (n: number) => String(n).padStart(2, '0');
     return (
-      `Pasted image ${now.getFullYear()}${pad(now.getMonth() + 1)}` +
+      `img_${now.getFullYear()}${pad(now.getMonth() + 1)}` +
       `${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}` +
       `${pad(now.getSeconds())}`
     );
@@ -638,8 +655,8 @@ export class AppStorage {
 
   /**
    * Return the first non-colliding filename for `baseName.<ext>` in
-   * `directory`. If `baseName.<ext>` exists, tries `baseName (2).<ext>`,
-   * then `(3)`, … up to a sane cap. The cap exists so a broken
+   * `directory`. If `baseName.<ext>` exists, tries `baseName_2.<ext>`,
+   * then `_3`, … up to a sane cap. The cap exists so a broken
    * filesystem can't spin this forever.
    */
   private static async allocatePastedImageName(
@@ -648,7 +665,7 @@ export class AppStorage {
     extension: string,
   ): Promise<string> {
     const candidate = (n: number) =>
-      n === 1 ? `${baseName}.${extension}` : `${baseName} (${n}).${extension}`;
+      n === 1 ? `${baseName}.${extension}` : `${baseName}_${n}.${extension}`;
     for (let n = 1; n <= 1000; n++) {
       const name = candidate(n);
       try {
@@ -663,7 +680,7 @@ export class AppStorage {
     // Fall through with a timestamp+random suffix so we still
     // succeed instead of throwing into the user's face.
     const rand = Math.floor(Math.random() * 0xffff).toString(16);
-    return `${baseName} (${Date.now()}-${rand}).${extension}`;
+    return `${baseName}_${Date.now()}-${rand}.${extension}`;
   }
 
   /**

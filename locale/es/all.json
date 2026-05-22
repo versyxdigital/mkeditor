@@ -275,7 +275,10 @@
     "language_help": "Selecciona el idioma de la interfaz.",
     "save_settings": "Guardar ajustes",
     "tab_general": "Configuración general",
-    "tab_assistant": "Proveedores de IA"
+    "tab_assistant": "Proveedores de IA",
+    "paste_images": "Imágenes pegadas",
+    "paste_images_directory_label": "Directorio para imágenes pegadas",
+    "paste_images_directory_help": "Las rutas relativas (p. ej. './assets') se resuelven respecto a la carpeta del archivo Markdown activo. Las rutas absolutas deben estar dentro del workspace abierto."
   },
   "modals-shortcuts": {
     "title": "Atajos de MKEditor",
@@ -372,7 +375,10 @@
     "update_available": "La actualización {{version}} está disponible, descargando en segundo plano...",
     "update_downloaded": "La actualización {{version}} se ha descargado, reinicia para actualizar.",
     "session_file_missing": "Algunos archivos previamente abiertos no se encontraron y se omitieron: {{files}}",
-    "session_cleared": "Sesión guardada borrada."
+    "session_cleared": "Sesión guardada borrada.",
+    "pasted_image_saved": "Imagen pegada guardada",
+    "pasted_image_failed": "No se pudo guardar la imagen pegada",
+    "pasted_image_no_workspace": "Guarde el documento antes de pegar imágenes"
   },
   "sidebar": {
     "explorer": "Explorador",

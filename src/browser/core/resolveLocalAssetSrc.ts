@@ -46,7 +46,16 @@ export function resolveLocalAssetSrc(
   // (`#section`) are user intent we don't rewrite.
   if (src.startsWith('//') || src.startsWith('#')) return null;
 
-  const srcNorm = src.replace(/\\/g, '/');
+  // Decode percent-encoded sequences (e.g. `my%20notes.png` →
+  // `my notes.png`) so the segment walk operates on real path
+  // characters.
+  let decoded: string;
+  try {
+    decoded = decodeURI(src);
+  } catch {
+    decoded = src;
+  }
+  const srcNorm = decoded.replace(/\\/g, '/');
   const isWindowsAbs = /^[a-zA-Z]:\//.test(srcNorm);
   const isPosixAbs = srcNorm.startsWith('/');
 

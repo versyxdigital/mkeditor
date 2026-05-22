@@ -25,5 +25,8 @@
   "update_available": "A atualização {{version}} está disponível, baixando em segundo plano...",
   "update_downloaded": "A atualização {{version}} foi baixada, reinicie para atualizar.",
   "session_file_missing": "Alguns arquivos anteriormente abertos não foram encontrados e foram ignorados: {{files}}",
-  "session_cleared": "Sessão salva limpa."
+  "session_cleared": "Sessão salva limpa.",
+  "pasted_image_saved": "Imagem colada salva",
+  "pasted_image_failed": "Não foi possível salvar a imagem colada",
+  "pasted_image_no_workspace": "Salve o documento antes de colar imagens"
 }
