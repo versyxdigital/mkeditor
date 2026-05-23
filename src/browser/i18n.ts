@@ -42,6 +42,7 @@ const namespaces: { ns: string; path: string }[] = [
   { ns: 'toolbar', path: 'locale/{{lng}}/toolbar.json' },
   { ns: 'menus-explorer', path: 'locale/{{lng}}/menus/explorer.json' },
   { ns: 'menus-titlebar', path: 'locale/{{lng}}/menus/titlebar.json' },
+  { ns: 'menus-tabs', path: 'locale/{{lng}}/menus/tabs.json' },
   { ns: 'notifications', path: 'locale/{{lng}}/notifications.json' },
   { ns: 'modals-unsaved', path: 'locale/{{lng}}/modals/unsaved.json' },
   { ns: 'modals-properties', path: 'locale/{{lng}}/modals/properties.json' },
@@ -52,6 +53,11 @@ const namespaces: { ns: string; path: string }[] = [
   { ns: 'modals-export', path: 'locale/{{lng}}/modals/export.json' },
   { ns: 'modals-about', path: 'locale/{{lng}}/modals/about.json' },
   { ns: 'modals-shortcuts', path: 'locale/{{lng}}/modals/shortcuts.json' },
+  { ns: 'modals-move', path: 'locale/{{lng}}/modals/move.json' },
+  { ns: 'assistant', path: 'locale/{{lng}}/assistant.json' },
+  { ns: 'assistant-chat', path: 'locale/{{lng}}/assistant-chat.json' },
+  { ns: 'assistant-settings', path: 'locale/{{lng}}/assistant-settings.json' },
+  { ns: 'assistant-tools', path: 'locale/{{lng}}/assistant-tools.json' },
 ];
 
 // Cache fetched JSON resources by URL (dedupe concurrent/duplicate requests)
