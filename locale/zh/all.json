@@ -178,6 +178,11 @@
     "columns_label": "列数：",
     "insert_table": "插入表格"
   },
+  "menus-tabs": {
+    "close_tab": "关闭标签页",
+    "close_others": "关闭其他",
+    "close_all": "关闭全部"
+  },
   "menus-titlebar": {
     "file": "文件",
     "edit": "编辑",

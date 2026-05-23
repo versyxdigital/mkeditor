@@ -178,6 +178,11 @@
     "columns_label": "Colonnes :",
     "insert_table": "Insérer un tableau"
   },
+  "menus-tabs": {
+    "close_tab": "Fermer l'onglet",
+    "close_others": "Fermer les autres",
+    "close_all": "Tout fermer"
+  },
   "menus-titlebar": {
     "file": "Fichier",
     "edit": "Édition",

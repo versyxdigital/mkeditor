@@ -590,6 +590,29 @@ export class FileManager {
   }
 
   /**
+   * Close every tab except `keepPath`.
+   */
+  public async closeOtherTabs(keepPath: string): Promise<void> {
+    // Snapshot keys upfront because `closeTab` mutates `this.tabs`.
+    const targets = Array.from(this.tabs.keys()).filter(
+      (path) => path !== keepPath,
+    );
+    for (const path of targets) {
+      await this.closeTab(path);
+    }
+  }
+
+  /**
+   * Close every tab.
+   */
+  public async closeAllTabs(): Promise<void> {
+    const targets = Array.from(this.tabs.keys());
+    for (const path of targets) {
+      await this.closeTab(path);
+    }
+  }
+
+  /**
    * Reorder tabs to match the given path order. Called by <TabBar> after
    * an HTML5 drag-and-drop reorder. Unknown/missing paths are ignored;
    * any tabs not in `newOrder` are preserved at the end.

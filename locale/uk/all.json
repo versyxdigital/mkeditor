@@ -178,6 +178,11 @@
     "columns_label": "Стовпці:",
     "insert_table": "Вставити таблицю"
   },
+  "menus-tabs": {
+    "close_tab": "Закрити вкладку",
+    "close_others": "Закрити інші",
+    "close_all": "Закрити всі"
+  },
   "menus-titlebar": {
     "file": "Файл",
     "edit": "Редагування",

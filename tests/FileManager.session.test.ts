@@ -1021,4 +1021,56 @@ describe('FileManager per-tab dirty tracking', () => {
       fm.getSnapshot().tabs.find((t) => t.path === 'untitled-2')?.dirty,
     ).toBe(false);
   });
+
+  it('closeOtherTabs closes every tab except the kept path', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    // Seed three untitled tabs so closeTab doesn't trip the unsaved-
+    // changes prompt (originals === current).
+    fm.seedUntitled('a');
+    fm.seedUntitled('b');
+    fm.seedUntitled('c');
+    expect(fm.getSnapshot().tabs.map((t) => t.path)).toEqual([
+      'untitled-1',
+      'untitled-2',
+      'untitled-3',
+    ]);
+
+    await fm.closeOtherTabs('untitled-2');
+
+    const remaining = fm.getSnapshot().tabs.map((t) => t.path);
+    expect(remaining).toEqual(['untitled-2']);
+  });
+
+  it('closeAllTabs closes everything; the strip resets to a fresh untitled', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.seedUntitled('a');
+    fm.seedUntitled('b');
+    fm.seedUntitled('c');
+
+    await fm.closeAllTabs();
+
+    // closeTab's last-tab branch creates a fresh untitled (we never
+    // leave the user with zero tabs). The three seeded ones are gone;
+    // a single new untitled remains.
+    const remaining = fm.getSnapshot().tabs.map((t) => t.path);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]).toMatch(/^untitled-/);
+    expect(['untitled-1', 'untitled-2', 'untitled-3']).not.toContain(
+      remaining[0],
+    );
+  });
 });

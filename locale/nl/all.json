@@ -178,6 +178,11 @@
     "columns_label": "Kolommen:",
     "insert_table": "Tabel invoegen"
   },
+  "menus-tabs": {
+    "close_tab": "Tabblad sluiten",
+    "close_others": "Andere sluiten",
+    "close_all": "Alles sluiten"
+  },
   "menus-titlebar": {
     "file": "Bestand",
     "edit": "Bewerken",

@@ -178,6 +178,11 @@
     "columns_label": "Spalten:",
     "insert_table": "Tabelle einfügen"
   },
+  "menus-tabs": {
+    "close_tab": "Tab schließen",
+    "close_others": "Andere schließen",
+    "close_all": "Alle schließen"
+  },
   "menus-titlebar": {
     "file": "Datei",
     "edit": "Bearbeiten",
