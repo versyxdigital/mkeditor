@@ -5,5 +5,9 @@
   "settings_tooltip": "Editor-Einstellungen konfigurieren",
   "shortcuts_tooltip": "Editor-Kurzbefehle anzeigen",
   "theme_switch_notice": "Dieser Schalter ist auf dem Desktop deaktiviert, wenn das Systemdesign verwendet wird.",
-  "active_file_default": "MKEditor"
+  "active_file_default": "MKEditor",
+  "code_copied": "Code in Zwischenablage kopiert",
+  "copy_path_tooltip": "Pfad in Zwischenablage kopieren",
+  "path_copied": "Pfad in Zwischenablage kopiert",
+  "toggle_assistant_tooltip": "KI-Assistent umschalten"
 }

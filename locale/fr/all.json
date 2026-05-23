@@ -169,7 +169,9 @@
     "confirm_delete_file_title": "Supprimer le fichier ?",
     "confirm_delete_folder_title": "Supprimer le dossier ?",
     "confirm_delete_button": "Supprimer",
-    "move_to": "Déplacer vers…"
+    "move_to": "Déplacer vers…",
+    "prompt_cancel": "Annuler",
+    "prompt_save": "Enregistrer"
   },
   "menus-tables": {
     "rows_label": "Lignes :",
@@ -353,7 +355,11 @@
     "settings_tooltip": "Configurer les paramètres de l’éditeur",
     "shortcuts_tooltip": "Afficher les raccourcis de l’éditeur",
     "theme_switch_notice": "Ce commutateur est désactivé sur ordinateur si vous utilisez le thème du système.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Code copié dans le presse-papiers",
+    "copy_path_tooltip": "Copier le chemin dans le presse-papiers",
+    "path_copied": "Chemin copié dans le presse-papiers",
+    "toggle_assistant_tooltip": "Basculer l'assistant IA"
   },
   "notifications": {
     "unable_export_preview": "Impossible d’exporter l’aperçu",

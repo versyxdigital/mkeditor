@@ -19,5 +19,7 @@
   "confirm_delete_file_title": "Supprimer le fichier ?",
   "confirm_delete_folder_title": "Supprimer le dossier ?",
   "confirm_delete_button": "Supprimer",
-  "move_to": "Déplacer vers…"
+  "move_to": "Déplacer vers…",
+  "prompt_cancel": "Annuler",
+  "prompt_save": "Enregistrer"
 }

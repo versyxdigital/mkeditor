@@ -169,7 +169,9 @@
     "confirm_delete_file_title": "¿Eliminar archivo?",
     "confirm_delete_folder_title": "¿Eliminar carpeta?",
     "confirm_delete_button": "Eliminar",
-    "move_to": "Mover a…"
+    "move_to": "Mover a…",
+    "prompt_cancel": "Cancelar",
+    "prompt_save": "Guardar"
   },
   "menus-tables": {
     "rows_label": "Filas:",
@@ -353,7 +355,11 @@
     "settings_tooltip": "Configurar el editor",
     "shortcuts_tooltip": "Ver atajos del editor",
     "theme_switch_notice": "Este interruptor está deshabilitado en el escritorio si usas el tema del sistema.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Código copiado al portapapeles",
+    "copy_path_tooltip": "Copiar ruta al portapapeles",
+    "path_copied": "Ruta copiada al portapapeles",
+    "toggle_assistant_tooltip": "Alternar asistente de IA"
   },
   "notifications": {
     "unable_export_preview": "No se puede exportar la vista previa",

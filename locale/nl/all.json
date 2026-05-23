@@ -169,7 +169,9 @@
     "confirm_delete_file_title": "Bestand verwijderen?",
     "confirm_delete_folder_title": "Map verwijderen?",
     "confirm_delete_button": "Verwijderen",
-    "move_to": "Verplaatsen naar…"
+    "move_to": "Verplaatsen naar…",
+    "prompt_cancel": "Annuleren",
+    "prompt_save": "Opslaan"
   },
   "menus-tables": {
     "rows_label": "Rijen:",
@@ -353,7 +355,11 @@
     "settings_tooltip": "Editorinstellingen configureren",
     "shortcuts_tooltip": "Sneltoetsen van de editor bekijken",
     "theme_switch_notice": "Deze schakelaar is op desktop uitgeschakeld als je het systeemthema gebruikt.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Code gekopieerd naar klembord",
+    "copy_path_tooltip": "Pad kopiëren naar klembord",
+    "path_copied": "Pad gekopieerd naar klembord",
+    "toggle_assistant_tooltip": "AI-assistent omschakelen"
   },
   "notifications": {
     "unable_export_preview": "Voorbeeld kan niet worden geëxporteerd",

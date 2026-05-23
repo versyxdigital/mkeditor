@@ -169,7 +169,9 @@
     "confirm_delete_file_title": "Dosya silinsin mi?",
     "confirm_delete_folder_title": "Klasör silinsin mi?",
     "confirm_delete_button": "Sil",
-    "move_to": "Taşı…"
+    "move_to": "Taşı…",
+    "prompt_cancel": "İptal",
+    "prompt_save": "Kaydet"
   },
   "menus-tables": {
     "rows_label": "Satırlar:",
@@ -353,7 +355,11 @@
     "settings_tooltip": "Editör ayarlarını yapılandır",
     "shortcuts_tooltip": "Editör kısayollarını görüntüle",
     "theme_switch_notice": "Sistem temasını kullanıyorsanız bu anahtar masaüstünde devre dışıdır.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Kod panoya kopyalandı",
+    "copy_path_tooltip": "Yolu panoya kopyala",
+    "path_copied": "Yol panoya kopyalandı",
+    "toggle_assistant_tooltip": "AI asistanını aç/kapat"
   },
   "notifications": {
     "unable_export_preview": "Önizleme dışa aktarılamıyor",

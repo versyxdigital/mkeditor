@@ -169,7 +169,9 @@
     "confirm_delete_file_title": "Datei löschen?",
     "confirm_delete_folder_title": "Ordner löschen?",
     "confirm_delete_button": "Löschen",
-    "move_to": "Verschieben nach…"
+    "move_to": "Verschieben nach…",
+    "prompt_cancel": "Abbrechen",
+    "prompt_save": "Speichern"
   },
   "menus-tables": {
     "rows_label": "Zeilen:",
@@ -353,7 +355,11 @@
     "settings_tooltip": "Editor-Einstellungen konfigurieren",
     "shortcuts_tooltip": "Editor-Kurzbefehle anzeigen",
     "theme_switch_notice": "Dieser Schalter ist auf dem Desktop deaktiviert, wenn das Systemdesign verwendet wird.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Code in Zwischenablage kopiert",
+    "copy_path_tooltip": "Pfad in Zwischenablage kopieren",
+    "path_copied": "Pfad in Zwischenablage kopiert",
+    "toggle_assistant_tooltip": "KI-Assistent umschalten"
   },
   "notifications": {
     "unable_export_preview": "Vorschau kann nicht exportiert werden",

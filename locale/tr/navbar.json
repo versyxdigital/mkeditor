@@ -5,5 +5,9 @@
   "settings_tooltip": "Editör ayarlarını yapılandır",
   "shortcuts_tooltip": "Editör kısayollarını görüntüle",
   "theme_switch_notice": "Sistem temasını kullanıyorsanız bu anahtar masaüstünde devre dışıdır.",
-  "active_file_default": "MKEditor"
+  "active_file_default": "MKEditor",
+  "code_copied": "Kod panoya kopyalandı",
+  "copy_path_tooltip": "Yolu panoya kopyala",
+  "path_copied": "Yol panoya kopyalandı",
+  "toggle_assistant_tooltip": "AI asistanını aç/kapat"
 }

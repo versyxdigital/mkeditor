@@ -169,7 +169,9 @@
     "confirm_delete_file_title": "Удалить файл?",
     "confirm_delete_folder_title": "Удалить папку?",
     "confirm_delete_button": "Удалить",
-    "move_to": "Переместить в…"
+    "move_to": "Переместить в…",
+    "prompt_cancel": "Отмена",
+    "prompt_save": "Сохранить"
   },
   "menus-tables": {
     "rows_label": "Строки:",
@@ -353,7 +355,11 @@
     "settings_tooltip": "Настроить редактор",
     "shortcuts_tooltip": "Показать горячие клавиши редактора",
     "theme_switch_notice": "Этот переключатель недоступен на рабочем столе, если используется системная тема.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Код скопирован в буфер обмена",
+    "copy_path_tooltip": "Копировать путь в буфер обмена",
+    "path_copied": "Путь скопирован в буфер обмена",
+    "toggle_assistant_tooltip": "Переключить ИИ-ассистента"
   },
   "notifications": {
     "unable_export_preview": "Не удалось экспортировать предварительный просмотр",

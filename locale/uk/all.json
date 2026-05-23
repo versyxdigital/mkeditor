@@ -169,7 +169,9 @@
     "confirm_delete_file_title": "Видалити файл?",
     "confirm_delete_folder_title": "Видалити папку?",
     "confirm_delete_button": "Видалити",
-    "move_to": "Перемістити до…"
+    "move_to": "Перемістити до…",
+    "prompt_cancel": "Скасувати",
+    "prompt_save": "Зберегти"
   },
   "menus-tables": {
     "rows_label": "Рядки:",
@@ -353,7 +355,11 @@
     "settings_tooltip": "Налаштувати параметри редактора",
     "shortcuts_tooltip": "Переглянути комбінації клавіш редактора",
     "theme_switch_notice": "Цей перемикач вимкнено на настільній версії, якщо ви використовуєте системну тему.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Код скопійовано до буфера обміну",
+    "copy_path_tooltip": "Скопіювати шлях до буфера обміну",
+    "path_copied": "Шлях скопійовано до буфера обміну",
+    "toggle_assistant_tooltip": "Перемкнути ШІ-асистента"
   },
   "notifications": {
     "unable_export_preview": "Не вдалося експортувати попередній перегляд",

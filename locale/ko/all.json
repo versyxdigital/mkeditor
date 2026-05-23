@@ -169,7 +169,9 @@
     "confirm_delete_file_title": "파일을 삭제하시겠습니까?",
     "confirm_delete_folder_title": "폴더를 삭제하시겠습니까?",
     "confirm_delete_button": "삭제",
-    "move_to": "이동…"
+    "move_to": "이동…",
+    "prompt_cancel": "취소",
+    "prompt_save": "저장"
   },
   "menus-tables": {
     "rows_label": "행:",
@@ -353,7 +355,11 @@
     "settings_tooltip": "에디터 설정 구성",
     "shortcuts_tooltip": "에디터 단축키 보기",
     "theme_switch_notice": "시스템 테마를 사용하는 경우 데스크톱에서는 이 스위치가 비활성화됩니다.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "코드를 클립보드에 복사했습니다",
+    "copy_path_tooltip": "경로를 클립보드에 복사",
+    "path_copied": "경로를 클립보드에 복사했습니다",
+    "toggle_assistant_tooltip": "AI 어시스턴트 전환"
   },
   "notifications": {
     "unable_export_preview": "미리보기를 내보낼 수 없습니다",
