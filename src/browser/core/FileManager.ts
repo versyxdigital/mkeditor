@@ -485,14 +485,16 @@ export class FileManager {
    * Diff tabs (`kind: 'diff'`) skip the prompt entirely — there's no
    * editable model to save — and just drop the tab metadata + payload.
    */
-  public async closeTab(path: string) {
+  public async closeTab(
+    path: string,
+  ): Promise<'closed' | 'aborted' | 'not_found'> {
     const tabInfo = this.tabs.get(path);
     if (tabInfo && (tabInfo.kind ?? 'file') === 'diff') {
       this.closeDiffTab(path);
-      return;
+      return 'closed';
     }
     const mdl = this.models.get(path);
-    if (!mdl) return;
+    if (!mdl) return 'not_found';
 
     const original = this.originals.get(path) ?? '';
     const current = mdl.getValue();
@@ -532,7 +534,7 @@ export class FileManager {
         }
       } else if (result.button !== 'deny') {
         // null (Esc/overlay) or 'cancel' — abort the close.
-        return;
+        return 'aborted';
       }
     }
 
@@ -566,7 +568,7 @@ export class FileManager {
         this.activateFile(nextPath, nextInfo?.name);
         mdl.dispose();
         this.scheduleSessionSave();
-        return;
+        return 'closed';
       }
       // No tabs left — open a fresh untitled.
       const newPath = `untitled-${this.untitledCounter++}`;
@@ -579,7 +581,7 @@ export class FileManager {
       this.activateFile(newPath, newName);
       mdl.dispose();
       this.scheduleSessionSave();
-      return;
+      return 'closed';
     }
 
     // Inactive tab — Monaco doesn't reference this model, so disposing
@@ -587,6 +589,7 @@ export class FileManager {
     mdl.dispose();
     this.emitChange();
     this.scheduleSessionSave();
+    return 'closed';
   }
 
   /**
@@ -598,7 +601,10 @@ export class FileManager {
       (path) => path !== keepPath,
     );
     for (const path of targets) {
-      await this.closeTab(path);
+      // Stop the moment the user cancels one of the in-flight
+      // unsaved-changes prompts.
+      const result = await this.closeTab(path);
+      if (result === 'aborted') return;
     }
   }
 
@@ -608,7 +614,9 @@ export class FileManager {
   public async closeAllTabs(): Promise<void> {
     const targets = Array.from(this.tabs.keys());
     for (const path of targets) {
-      await this.closeTab(path);
+      // Same cancel-propagation as `closeOtherTabs`.
+      const result = await this.closeTab(path);
+      if (result === 'aborted') return;
     }
   }
 
