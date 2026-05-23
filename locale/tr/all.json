@@ -178,6 +178,11 @@
     "columns_label": "Sütunlar:",
     "insert_table": "Tablo ekle"
   },
+  "menus-tabs": {
+    "close_tab": "Sekmeyi kapat",
+    "close_others": "Diğerlerini kapat",
+    "close_all": "Tümünü kapat"
+  },
   "menus-titlebar": {
     "file": "Dosya",
     "edit": "Düzenle",

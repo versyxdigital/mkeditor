@@ -1021,4 +1021,148 @@ describe('FileManager per-tab dirty tracking', () => {
       fm.getSnapshot().tabs.find((t) => t.path === 'untitled-2')?.dirty,
     ).toBe(false);
   });
+
+  it('closeOtherTabs closes every tab except the kept path', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    // Seed three untitled tabs so closeTab doesn't trip the unsaved-
+    // changes prompt (originals === current).
+    fm.seedUntitled('a');
+    fm.seedUntitled('b');
+    fm.seedUntitled('c');
+    expect(fm.getSnapshot().tabs.map((t) => t.path)).toEqual([
+      'untitled-1',
+      'untitled-2',
+      'untitled-3',
+    ]);
+
+    await fm.closeOtherTabs('untitled-2');
+
+    const remaining = fm.getSnapshot().tabs.map((t) => t.path);
+    expect(remaining).toEqual(['untitled-2']);
+  });
+
+  it('closeAllTabs closes everything; the strip resets to a fresh untitled', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.seedUntitled('a');
+    fm.seedUntitled('b');
+    fm.seedUntitled('c');
+
+    await fm.closeAllTabs();
+
+    // closeTab's last-tab branch creates a fresh untitled (we never
+    // leave the user with zero tabs). The three seeded ones are gone;
+    // a single new untitled remains.
+    const remaining = fm.getSnapshot().tabs.map((t) => t.path);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]).toMatch(/^untitled-/);
+    expect(['untitled-1', 'untitled-2', 'untitled-3']).not.toContain(
+      remaining[0],
+    );
+  });
+
+  it('closeAllTabs stops the moment the user cancels a dirty-tab prompt (no silent run-through)', async () => {
+    // Regression: an earlier draft awaited each `closeTab(path)`
+    // without inspecting the return value. A user hitting Cancel on
+    // the first dirty tab's unsaved-changes prompt would still see
+    // every subsequent tab closed — silently destroying work they
+    // just signalled they wanted to keep. The fix routes
+    // `closeTab`'s `'aborted'` return through the bulk helpers'
+    // loop guard; this test pins that behaviour.
+    const promptsMock = jest.requireMock(
+      '../src/browser/react/contexts/PromptsContext',
+    ) as { openPromptExternal: jest.Mock };
+
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.seedUntitled('a');
+    fm.seedUntitled('b');
+    fm.seedUntitled('c');
+    // Dirty the SECOND tab so `closeAllTabs` reaches it, opens the
+    // prompt, and (per the mock) the user cancels.
+    const model2 = fm.models.get('untitled-2') as {
+      setValue: (s: string) => void;
+    };
+    model2.setValue('dirty body');
+    // Single-shot override: prompt for untitled-2 returns 'cancel';
+    // any subsequent call (we don't expect one) falls back to the
+    // module's default 'deny' implementation.
+    promptsMock.openPromptExternal.mockImplementationOnce(async () => ({
+      button: 'cancel',
+    }));
+
+    await fm.closeAllTabs();
+
+    // The prompt fired exactly once (only the dirty tab opens it).
+    expect(promptsMock.openPromptExternal).toHaveBeenCalledTimes(1);
+
+    // Tab 1 closed before the cancel; tabs 2 + 3 are still open
+    // because the bulk operation aborted on the cancel.
+    const remaining = fm.getSnapshot().tabs.map((t) => t.path);
+    expect(remaining).toEqual(['untitled-2', 'untitled-3']);
+
+    promptsMock.openPromptExternal.mockReset();
+    promptsMock.openPromptExternal.mockImplementation(async () => ({
+      button: 'deny',
+    }));
+  });
+
+  it('closeOtherTabs also stops on cancel', async () => {
+    const promptsMock = jest.requireMock(
+      '../src/browser/react/contexts/PromptsContext',
+    ) as { openPromptExternal: jest.Mock };
+
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+
+    fm.seedUntitled('a');
+    fm.seedUntitled('b');
+    fm.seedUntitled('c');
+    // Dirty the third tab and cancel its prompt. With `keepPath`
+    // set to 'untitled-2', the iteration order is [1, 3]; the
+    // cancel on tab 3 aborts the operation.
+    const model3 = fm.models.get('untitled-3') as {
+      setValue: (s: string) => void;
+    };
+    model3.setValue('dirty body');
+    promptsMock.openPromptExternal.mockImplementationOnce(async () => ({
+      button: 'cancel',
+    }));
+
+    await fm.closeOtherTabs('untitled-2');
+
+    const remaining = fm.getSnapshot().tabs.map((t) => t.path);
+    // untitled-1 closed before the cancel; untitled-3 stayed open
+    // because of the cancel; untitled-2 was the kept tab.
+    expect(remaining.sort()).toEqual(['untitled-2', 'untitled-3']);
+
+    promptsMock.openPromptExternal.mockReset();
+    promptsMock.openPromptExternal.mockImplementation(async () => ({
+      button: 'deny',
+    }));
+  });
 });

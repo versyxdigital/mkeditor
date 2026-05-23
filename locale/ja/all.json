@@ -178,6 +178,11 @@
     "columns_label": "列数：",
     "insert_table": "表を挿入"
   },
+  "menus-tabs": {
+    "close_tab": "タブを閉じる",
+    "close_others": "他を閉じる",
+    "close_all": "すべて閉じる"
+  },
   "menus-titlebar": {
     "file": "ファイル",
     "edit": "編集",

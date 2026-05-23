@@ -178,6 +178,11 @@
     "columns_label": "Столбцы:",
     "insert_table": "Вставить таблицу"
   },
+  "menus-tabs": {
+    "close_tab": "Закрыть вкладку",
+    "close_others": "Закрыть другие",
+    "close_all": "Закрыть все"
+  },
   "menus-titlebar": {
     "file": "Файл",
     "edit": "Правка",

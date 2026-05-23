@@ -46,6 +46,8 @@ export function fakeFileManager(
       emit();
     }),
     closeTab: jest.fn(async (_path: string) => {}),
+    closeOtherTabs: jest.fn(async (_keepPath: string) => {}),
+    closeAllTabs: jest.fn(async () => {}),
     reorderTabs: jest.fn(),
     openFileFromPath: jest.fn(),
     createUntitledTab: jest.fn(),

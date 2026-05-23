@@ -178,6 +178,11 @@
     "columns_label": "열:",
     "insert_table": "표 삽입"
   },
+  "menus-tabs": {
+    "close_tab": "탭 닫기",
+    "close_others": "다른 탭 닫기",
+    "close_all": "모두 닫기"
+  },
   "menus-titlebar": {
     "file": "파일",
     "edit": "편집",
