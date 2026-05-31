@@ -11,7 +11,6 @@
   "expand_folder": "폴더 확장",
   "rename_folder": "폴더 이름 바꾸기...",
   "delete_folder": "폴더 삭제...",
-
   "prompt_new_file_title": "새 파일 이름",
   "prompt_new_file_placeholder": "제목 없음.md",
   "prompt_new_folder_title": "새 폴더 이름",
@@ -19,5 +18,8 @@
   "prompt_rename_folder_title": "폴더 이름 바꾸기",
   "confirm_delete_file_title": "파일을 삭제하시겠습니까?",
   "confirm_delete_folder_title": "폴더를 삭제하시겠습니까?",
-  "confirm_delete_button": "삭제"
+  "confirm_delete_button": "삭제",
+  "move_to": "이동…",
+  "prompt_cancel": "취소",
+  "prompt_save": "저장"
 }

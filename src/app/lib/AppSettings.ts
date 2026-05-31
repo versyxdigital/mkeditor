@@ -39,6 +39,7 @@ export class AppSettings {
     sessionRestore: true,
     locale: normalizeLanguage(app.getLocale()),
     fileExplorer: { extensions: ['md'] },
+    pasteImages: { directory: './assets' },
     exportSettings: {
       withStyles: true,
       container: 'container-fluid',

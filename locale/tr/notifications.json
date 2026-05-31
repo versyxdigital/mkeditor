@@ -25,5 +25,13 @@
   "update_available": "Güncelleme {{version}} mevcut, arka planda indiriliyor...",
   "update_downloaded": "Güncelleme {{version}} indirildi, güncellemek için yeniden başlatın.",
   "session_file_missing": "Önceden açık olan bazı dosyalar bulunamadı ve atlandı: {{files}}",
-  "session_cleared": "Kaydedilen oturum temizlendi."
+  "session_cleared": "Kaydedilen oturum temizlendi.",
+  "pasted_image_saved": "Yapıştırılan görsel kaydedildi",
+  "pasted_image_failed": "Yapıştırılan görsel kaydedilemedi",
+  "pasted_image_no_workspace": "Görsel yapıştırmadan önce belgeyi kaydedin",
+  "move_failed": "Taşıma başarısız",
+  "move_into_self_refused": "Bir klasör kendi içine taşınamaz",
+  "move_same_source": "Zaten o konumda",
+  "move_collision": "Bu adda bir dosya veya klasör zaten var",
+  "move_parent_missing": "Hedef klasör mevcut değil"
 }

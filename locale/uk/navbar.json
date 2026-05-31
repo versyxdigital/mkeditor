@@ -5,5 +5,9 @@
   "settings_tooltip": "Налаштувати параметри редактора",
   "shortcuts_tooltip": "Переглянути комбінації клавіш редактора",
   "theme_switch_notice": "Цей перемикач вимкнено на настільній версії, якщо ви використовуєте системну тему.",
-  "active_file_default": "MKEditor"
+  "active_file_default": "MKEditor",
+  "code_copied": "Код скопійовано до буфера обміну",
+  "copy_path_tooltip": "Скопіювати шлях до буфера обміну",
+  "path_copied": "Шлях скопійовано до буфера обміну",
+  "toggle_assistant_tooltip": "Перемкнути ШІ-асистента"
 }

@@ -168,12 +168,20 @@
     "prompt_rename_folder_title": "Переименовать папку",
     "confirm_delete_file_title": "Удалить файл?",
     "confirm_delete_folder_title": "Удалить папку?",
-    "confirm_delete_button": "Удалить"
+    "confirm_delete_button": "Удалить",
+    "move_to": "Переместить в…",
+    "prompt_cancel": "Отмена",
+    "prompt_save": "Сохранить"
   },
   "menus-tables": {
     "rows_label": "Строки:",
     "columns_label": "Столбцы:",
     "insert_table": "Вставить таблицу"
+  },
+  "menus-tabs": {
+    "close_tab": "Закрыть вкладку",
+    "close_others": "Закрыть другие",
+    "close_all": "Закрыть все"
   },
   "menus-titlebar": {
     "file": "Файл",
@@ -228,6 +236,12 @@
     "save_settings": "Сохранить настройки",
     "reset_to_default": "Сбросить по умолчанию"
   },
+  "modals-move": {
+    "title": "Переместить в…",
+    "moving_label": "Перемещение:",
+    "confirm": "Переместить",
+    "cancel": "Отмена"
+  },
   "modals-properties": {
     "title": "Свойства",
     "label_path": "Путь:",
@@ -275,7 +289,10 @@
     "language_help": "Выберите язык интерфейса.",
     "save_settings": "Сохранить настройки",
     "tab_general": "Общие настройки",
-    "tab_assistant": "Провайдеры ИИ"
+    "tab_assistant": "Провайдеры ИИ",
+    "paste_images": "Вставленные изображения",
+    "paste_images_directory_label": "Папка для вставленных изображений",
+    "paste_images_directory_help": "Относительные пути (например, './assets') разрешаются относительно папки активного Markdown-файла. Абсолютные пути должны находиться внутри открытого рабочего пространства."
   },
   "modals-shortcuts": {
     "title": "Горячие клавиши MKEditor",
@@ -343,7 +360,11 @@
     "settings_tooltip": "Настроить редактор",
     "shortcuts_tooltip": "Показать горячие клавиши редактора",
     "theme_switch_notice": "Этот переключатель недоступен на рабочем столе, если используется системная тема.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Код скопирован в буфер обмена",
+    "copy_path_tooltip": "Копировать путь в буфер обмена",
+    "path_copied": "Путь скопирован в буфер обмена",
+    "toggle_assistant_tooltip": "Переключить ИИ-ассистента"
   },
   "notifications": {
     "unable_export_preview": "Не удалось экспортировать предварительный просмотр",
@@ -372,7 +393,15 @@
     "update_available": "Доступно обновление {{version}}, скачивание в фоновом режиме…",
     "update_downloaded": "Обновление {{version}} загружено, перезапустите для установки.",
     "session_file_missing": "Некоторые ранее открытые файлы не найдены и пропущены: {{files}}",
-    "session_cleared": "Сохранённый сеанс очищен."
+    "session_cleared": "Сохранённый сеанс очищен.",
+    "pasted_image_saved": "Вставленное изображение сохранено",
+    "pasted_image_failed": "Не удалось сохранить вставленное изображение",
+    "pasted_image_no_workspace": "Сохраните документ перед вставкой изображений",
+    "move_failed": "Не удалось переместить",
+    "move_into_self_refused": "Нельзя переместить папку внутрь самой себя",
+    "move_same_source": "Уже в этом расположении",
+    "move_collision": "Файл или папка с таким именем уже существуют",
+    "move_parent_missing": "Целевая папка не существует"
   },
   "sidebar": {
     "explorer": "Проводник",

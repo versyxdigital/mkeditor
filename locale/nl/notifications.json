@@ -25,5 +25,13 @@
   "update_available": "Update {{version}} is beschikbaar, wordt op de achtergrond gedownload...",
   "update_downloaded": "Update {{version}} is gedownload, herstart om bij te werken.",
   "session_file_missing": "Sommige eerder geopende bestanden zijn niet gevonden en overgeslagen: {{files}}",
-  "session_cleared": "Opgeslagen sessie gewist."
+  "session_cleared": "Opgeslagen sessie gewist.",
+  "pasted_image_saved": "Geplakte afbeelding opgeslagen",
+  "pasted_image_failed": "Geplakte afbeelding kon niet worden opgeslagen",
+  "pasted_image_no_workspace": "Sla het document op voordat u afbeeldingen plakt",
+  "move_failed": "Verplaatsen mislukt",
+  "move_into_self_refused": "Een map kan niet in zichzelf worden verplaatst",
+  "move_same_source": "Al op die locatie",
+  "move_collision": "Een bestand of map met die naam bestaat al",
+  "move_parent_missing": "Doelmap bestaat niet"
 }

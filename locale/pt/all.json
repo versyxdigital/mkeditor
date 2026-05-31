@@ -168,12 +168,20 @@
     "prompt_rename_folder_title": "Renomear pasta",
     "confirm_delete_file_title": "Excluir arquivo?",
     "confirm_delete_folder_title": "Excluir pasta?",
-    "confirm_delete_button": "Excluir"
+    "confirm_delete_button": "Excluir",
+    "move_to": "Mover para…",
+    "prompt_cancel": "Cancelar",
+    "prompt_save": "Salvar"
   },
   "menus-tables": {
     "rows_label": "Linhas:",
     "columns_label": "Colunas:",
     "insert_table": "Inserir tabela"
+  },
+  "menus-tabs": {
+    "close_tab": "Fechar aba",
+    "close_others": "Fechar outras",
+    "close_all": "Fechar todas"
   },
   "menus-titlebar": {
     "file": "Arquivo",
@@ -228,6 +236,12 @@
     "save_settings": "Salvar configurações",
     "reset_to_default": "Restaurar padrão"
   },
+  "modals-move": {
+    "title": "Mover para…",
+    "moving_label": "Movendo:",
+    "confirm": "Mover",
+    "cancel": "Cancelar"
+  },
   "modals-properties": {
     "title": "Propriedades",
     "label_path": "Caminho:",
@@ -275,7 +289,10 @@
     "language_help": "Selecione o idioma da interface.",
     "save_settings": "Salvar configurações",
     "tab_general": "Configurações gerais",
-    "tab_assistant": "Provedores de IA"
+    "tab_assistant": "Provedores de IA",
+    "paste_images": "Imagens coladas",
+    "paste_images_directory_label": "Diretório para imagens coladas",
+    "paste_images_directory_help": "Caminhos relativos (ex.: './assets') são resolvidos em relação à pasta do arquivo Markdown ativo. Caminhos absolutos devem estar dentro do workspace aberto."
   },
   "modals-shortcuts": {
     "title": "Atalhos do MKEditor",
@@ -343,7 +360,11 @@
     "settings_tooltip": "Configurar o editor",
     "shortcuts_tooltip": "Ver atalhos do editor",
     "theme_switch_notice": "Este interruptor fica desativado no desktop se você estiver usando o tema do sistema.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Código copiado para a área de transferência",
+    "copy_path_tooltip": "Copiar caminho para a área de transferência",
+    "path_copied": "Caminho copiado para a área de transferência",
+    "toggle_assistant_tooltip": "Alternar assistente de IA"
   },
   "notifications": {
     "unable_export_preview": "Não foi possível exportar a prévia",
@@ -372,7 +393,15 @@
     "update_available": "A atualização {{version}} está disponível, baixando em segundo plano...",
     "update_downloaded": "A atualização {{version}} foi baixada, reinicie para atualizar.",
     "session_file_missing": "Alguns arquivos anteriormente abertos não foram encontrados e foram ignorados: {{files}}",
-    "session_cleared": "Sessão salva limpa."
+    "session_cleared": "Sessão salva limpa.",
+    "pasted_image_saved": "Imagem colada salva",
+    "pasted_image_failed": "Não foi possível salvar a imagem colada",
+    "pasted_image_no_workspace": "Salve o documento antes de colar imagens",
+    "move_failed": "Falha ao mover",
+    "move_into_self_refused": "Não é possível mover uma pasta para dentro de si mesma",
+    "move_same_source": "Já está nesse local",
+    "move_collision": "Já existe um arquivo ou pasta com esse nome",
+    "move_parent_missing": "A pasta de destino não existe"
   },
   "sidebar": {
     "explorer": "Explorador",

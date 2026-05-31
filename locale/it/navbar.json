@@ -5,5 +5,9 @@
   "settings_tooltip": "Configura le impostazioni dell'editor",
   "shortcuts_tooltip": "Visualizza le scorciatoie dell'editor",
   "theme_switch_notice": "Questo interruttore è disabilitato su desktop se usi il tema di sistema.",
-  "active_file_default": "MKEditor"
+  "active_file_default": "MKEditor",
+  "code_copied": "Codice copiato negli appunti",
+  "copy_path_tooltip": "Copia percorso negli appunti",
+  "path_copied": "Percorso copiato negli appunti",
+  "toggle_assistant_tooltip": "Mostra/nascondi assistente IA"
 }

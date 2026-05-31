@@ -2,6 +2,10 @@ export interface FileExplorerSettings {
   extensions: string[];
 }
 
+export interface PasteImagesSettings {
+  directory: string;
+}
+
 export interface EditorSettings {
   autoindent: boolean;
   darkmode: boolean;
@@ -13,6 +17,7 @@ export interface EditorSettings {
   sessionRestore: boolean;
   locale: string;
   fileExplorer: FileExplorerSettings;
+  pasteImages: PasteImagesSettings;
 }
 
 export interface ExportSettings {

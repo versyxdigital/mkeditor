@@ -168,12 +168,20 @@
     "prompt_rename_folder_title": "Ordner umbenennen",
     "confirm_delete_file_title": "Datei löschen?",
     "confirm_delete_folder_title": "Ordner löschen?",
-    "confirm_delete_button": "Löschen"
+    "confirm_delete_button": "Löschen",
+    "move_to": "Verschieben nach…",
+    "prompt_cancel": "Abbrechen",
+    "prompt_save": "Speichern"
   },
   "menus-tables": {
     "rows_label": "Zeilen:",
     "columns_label": "Spalten:",
     "insert_table": "Tabelle einfügen"
+  },
+  "menus-tabs": {
+    "close_tab": "Tab schließen",
+    "close_others": "Andere schließen",
+    "close_all": "Alle schließen"
   },
   "menus-titlebar": {
     "file": "Datei",
@@ -228,6 +236,12 @@
     "save_settings": "Einstellungen speichern",
     "reset_to_default": "Auf Standard zurücksetzen"
   },
+  "modals-move": {
+    "title": "Verschieben nach…",
+    "moving_label": "Verschiebe:",
+    "confirm": "Verschieben",
+    "cancel": "Abbrechen"
+  },
   "modals-properties": {
     "title": "Eigenschaften",
     "label_path": "Pfad:",
@@ -275,7 +289,10 @@
     "language_help": "Wähle die Anzeigesprache.",
     "save_settings": "Einstellungen speichern",
     "tab_general": "Allgemeine Einstellungen",
-    "tab_assistant": "KI-Anbieter"
+    "tab_assistant": "KI-Anbieter",
+    "paste_images": "Eingefügte Bilder",
+    "paste_images_directory_label": "Verzeichnis für eingefügte Bilder",
+    "paste_images_directory_help": "Relative Pfade (z. B. './assets') werden gegen den Ordner der aktiven Markdown-Datei aufgelöst. Absolute Pfade müssen innerhalb des geöffneten Arbeitsbereichs liegen."
   },
   "modals-shortcuts": {
     "title": "MKEditor Tastenkürzel",
@@ -343,7 +360,11 @@
     "settings_tooltip": "Editor-Einstellungen konfigurieren",
     "shortcuts_tooltip": "Editor-Kurzbefehle anzeigen",
     "theme_switch_notice": "Dieser Schalter ist auf dem Desktop deaktiviert, wenn das Systemdesign verwendet wird.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Code in Zwischenablage kopiert",
+    "copy_path_tooltip": "Pfad in Zwischenablage kopieren",
+    "path_copied": "Pfad in Zwischenablage kopiert",
+    "toggle_assistant_tooltip": "KI-Assistent umschalten"
   },
   "notifications": {
     "unable_export_preview": "Vorschau kann nicht exportiert werden",
@@ -372,7 +393,15 @@
     "update_available": "Update {{version}} ist verfügbar, wird im Hintergrund heruntergeladen...",
     "update_downloaded": "Update {{version}} wurde heruntergeladen, zum Aktualisieren neu starten.",
     "session_file_missing": "Einige zuvor geöffnete Dateien wurden nicht gefunden und übersprungen: {{files}}",
-    "session_cleared": "Gespeicherte Sitzung gelöscht."
+    "session_cleared": "Gespeicherte Sitzung gelöscht.",
+    "pasted_image_saved": "Eingefügtes Bild gespeichert",
+    "pasted_image_failed": "Eingefügtes Bild konnte nicht gespeichert werden",
+    "pasted_image_no_workspace": "Speichern Sie das Dokument, bevor Sie Bilder einfügen",
+    "move_failed": "Verschieben fehlgeschlagen",
+    "move_into_self_refused": "Ein Ordner kann nicht in sich selbst verschoben werden",
+    "move_same_source": "Bereits an diesem Ort",
+    "move_collision": "Eine Datei oder ein Ordner mit diesem Namen existiert bereits",
+    "move_parent_missing": "Zielordner existiert nicht"
   },
   "sidebar": {
     "explorer": "Explorer",

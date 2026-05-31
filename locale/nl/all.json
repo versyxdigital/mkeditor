@@ -168,12 +168,20 @@
     "prompt_rename_folder_title": "Map hernoemen",
     "confirm_delete_file_title": "Bestand verwijderen?",
     "confirm_delete_folder_title": "Map verwijderen?",
-    "confirm_delete_button": "Verwijderen"
+    "confirm_delete_button": "Verwijderen",
+    "move_to": "Verplaatsen naar…",
+    "prompt_cancel": "Annuleren",
+    "prompt_save": "Opslaan"
   },
   "menus-tables": {
     "rows_label": "Rijen:",
     "columns_label": "Kolommen:",
     "insert_table": "Tabel invoegen"
+  },
+  "menus-tabs": {
+    "close_tab": "Tabblad sluiten",
+    "close_others": "Andere sluiten",
+    "close_all": "Alles sluiten"
   },
   "menus-titlebar": {
     "file": "Bestand",
@@ -228,6 +236,12 @@
     "save_settings": "Instellingen opslaan",
     "reset_to_default": "Standaardwaarden herstellen"
   },
+  "modals-move": {
+    "title": "Verplaatsen naar…",
+    "moving_label": "Verplaatsen:",
+    "confirm": "Verplaatsen",
+    "cancel": "Annuleren"
+  },
   "modals-properties": {
     "title": "Eigenschappen",
     "label_path": "Pad:",
@@ -275,7 +289,10 @@
     "language_help": "Selecteer de taal van de interface.",
     "save_settings": "Instellingen opslaan",
     "tab_general": "Algemene instellingen",
-    "tab_assistant": "AI-providers"
+    "tab_assistant": "AI-providers",
+    "paste_images": "Geplakte afbeeldingen",
+    "paste_images_directory_label": "Map voor geplakte afbeeldingen",
+    "paste_images_directory_help": "Relatieve paden (bijv. './assets') worden opgelost ten opzichte van de map van het actieve Markdown-bestand. Absolute paden moeten binnen de geopende workspace blijven."
   },
   "modals-shortcuts": {
     "title": "MKEditor-sneltoetsen",
@@ -343,7 +360,11 @@
     "settings_tooltip": "Editorinstellingen configureren",
     "shortcuts_tooltip": "Sneltoetsen van de editor bekijken",
     "theme_switch_notice": "Deze schakelaar is op desktop uitgeschakeld als je het systeemthema gebruikt.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Code gekopieerd naar klembord",
+    "copy_path_tooltip": "Pad kopiëren naar klembord",
+    "path_copied": "Pad gekopieerd naar klembord",
+    "toggle_assistant_tooltip": "AI-assistent omschakelen"
   },
   "notifications": {
     "unable_export_preview": "Voorbeeld kan niet worden geëxporteerd",
@@ -372,7 +393,15 @@
     "update_available": "Update {{version}} is beschikbaar, wordt op de achtergrond gedownload...",
     "update_downloaded": "Update {{version}} is gedownload, herstart om bij te werken.",
     "session_file_missing": "Sommige eerder geopende bestanden zijn niet gevonden en overgeslagen: {{files}}",
-    "session_cleared": "Opgeslagen sessie gewist."
+    "session_cleared": "Opgeslagen sessie gewist.",
+    "pasted_image_saved": "Geplakte afbeelding opgeslagen",
+    "pasted_image_failed": "Geplakte afbeelding kon niet worden opgeslagen",
+    "pasted_image_no_workspace": "Sla het document op voordat u afbeeldingen plakt",
+    "move_failed": "Verplaatsen mislukt",
+    "move_into_self_refused": "Een map kan niet in zichzelf worden verplaatst",
+    "move_same_source": "Al op die locatie",
+    "move_collision": "Een bestand of map met die naam bestaat al",
+    "move_parent_missing": "Doelmap bestaat niet"
   },
   "sidebar": {
     "explorer": "Verkenner",

@@ -5,5 +5,9 @@
   "settings_tooltip": "Editorinstellingen configureren",
   "shortcuts_tooltip": "Sneltoetsen van de editor bekijken",
   "theme_switch_notice": "Deze schakelaar is op desktop uitgeschakeld als je het systeemthema gebruikt.",
-  "active_file_default": "MKEditor"
+  "active_file_default": "MKEditor",
+  "code_copied": "Code gekopieerd naar klembord",
+  "copy_path_tooltip": "Pad kopiëren naar klembord",
+  "path_copied": "Pad gekopieerd naar klembord",
+  "toggle_assistant_tooltip": "AI-assistent omschakelen"
 }

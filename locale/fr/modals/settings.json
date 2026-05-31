@@ -34,5 +34,8 @@
   "language_help": "Sélectionnez la langue de l’interface.",
   "save_settings": "Enregistrer les paramètres",
   "tab_general": "Paramètres généraux",
-  "tab_assistant": "Fournisseurs d’IA"
+  "tab_assistant": "Fournisseurs d’IA",
+  "paste_images": "Images collées",
+  "paste_images_directory_label": "Dossier des images collées",
+  "paste_images_directory_help": "Les chemins relatifs (par ex. './assets') sont résolus par rapport au dossier du fichier Markdown actif. Les chemins absolus doivent rester dans le dossier ouvert."
 }

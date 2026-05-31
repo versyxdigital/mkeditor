@@ -8,6 +8,48 @@ import type {
 } from '../interfaces/Session';
 import { logger } from '../util';
 
+/**
+ * Clamp a paste-image extension to a known image format.
+ */
+function normalizeImageExtension(extension: string): string {
+  const lowered = extension.replace(/^\.+/, '').toLowerCase();
+  const allowed = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp']);
+  return allowed.has(lowered) ? lowered : 'png';
+}
+
+/**
+ * Resolve `.`/`..` segments in a virtual workspace path.
+ */
+export function normalizeVirtualPath(input: string, rootName: string): string {
+  const segments = input.split('/').filter((s) => s.length > 0);
+  const out: string[] = [];
+  for (const seg of segments) {
+    if (seg === '.') continue;
+    if (seg === '..') {
+      // Clamp at the root.
+      if (out.length > 1) out.pop();
+      continue;
+    }
+    out.push(seg);
+  }
+  if (out.length === 0 || out[0] !== rootName) {
+    return rootName;
+  }
+  return out.join('/');
+}
+
+/**
+ * Must stay in sync with `AppStorage.buildPastedImageBasename`.
+ */
+function buildPastedImageBasename(now: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    `img_${now.getFullYear()}${pad(now.getMonth() + 1)}` +
+    `${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}` +
+    `${pad(now.getSeconds())}`
+  );
+}
+
 const IDB_NAME = 'mkeditor';
 const IDB_STORE = 'handles';
 const IDB_VERSION = 1;
@@ -86,6 +128,9 @@ export class WebFileBridge implements ContextBridgeAPI {
         break;
       case 'to:file:properties':
         void this.showProperties(data.path);
+        break;
+      case 'to:shell:openpath':
+        void this.openPathExternal(data.path);
         break;
       case 'to:html:export':
         HTMLExporter.webExport(data.content, 'text/html', '.html');
@@ -452,6 +497,31 @@ export class WebFileBridge implements ContextBridgeAPI {
     }
   }
 
+  /**
+   * Web counterpart of the desktop `to:shell:openpath` IPC.
+   */
+  private async openPathExternal(path: string): Promise<void> {
+    const handle = this.handles.get(path);
+    if (!handle || handle.kind !== 'file') {
+      this.emit('from:notification:display', {
+        status: 'error',
+        key: 'notifications:unable_open_path',
+      });
+      return;
+    }
+    try {
+      const file = await handle.getFile();
+      const url = URL.createObjectURL(file);
+      window.open(url, '_blank');
+    } catch (err) {
+      logger?.error('WebFileBridge.openPathExternal', JSON.stringify(err));
+      this.emit('from:notification:display', {
+        status: 'error',
+        key: 'notifications:unable_open_path',
+      });
+    }
+  }
+
   private async listChildren(
     handle: FileSystemDirectoryHandle,
     basePath: string,
@@ -581,6 +651,134 @@ export class WebFileBridge implements ContextBridgeAPI {
     return null;
   }
 
+  // Paste-image -------------------------------------------------------
+
+  /**
+   * Save pasted-image bytes into the virtual workspace and return the
+   * virtual path.
+   */
+  public async pasteImage(opts: {
+    sourceFile: string;
+    directory: string;
+    bytes: Uint8Array;
+    extension: string;
+  }): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
+    if (!this.rootHandle) {
+      return { ok: false, error: 'No folder is open in the editor.' };
+    }
+    try {
+      const targetDir = this.resolvePasteTargetDir(
+        opts.sourceFile,
+        opts.directory,
+      );
+      const dirHandle = await this.ensureVirtualDirectory(targetDir);
+      const safeExt = normalizeImageExtension(opts.extension);
+      const baseName = buildPastedImageBasename(new Date());
+      const finalName = await this.allocatePastedImageNameWeb(
+        dirHandle,
+        baseName,
+        safeExt,
+      );
+      const fileHandle = await dirHandle.getFileHandle(finalName, {
+        create: true,
+      });
+      const writable = await fileHandle.createWritable();
+      // Copy into a fresh ArrayBuffer.
+      const buffer = new ArrayBuffer(opts.bytes.byteLength);
+      new Uint8Array(buffer).set(opts.bytes);
+      await writable.write(buffer);
+      await writable.close();
+      const fullPath = `${targetDir}/${finalName}`;
+      this.handles.set(fullPath, fileHandle);
+      // Refresh the file-tree row for the target directory.
+      const tree = await this.listChildren(dirHandle, targetDir);
+      this.emit('from:folder:opened', { path: targetDir, tree });
+      return { ok: true, path: fullPath };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
+    }
+  }
+
+  /**
+   * Resolve the user's `directory` setting against `sourceFile`'s
+   * virtual directory.
+   */
+  private resolvePasteTargetDir(sourceFile: string, directory: string): string {
+    const sourceDir = sourceFile
+      .replace(/\\/g, '/')
+      .split('/')
+      .slice(0, -1)
+      .join('/');
+
+    let trimmed = directory.replace(/\\/g, '/').trim();
+    while (trimmed.startsWith('./')) trimmed = trimmed.slice(2);
+
+    let anchorRoot = false;
+    if (trimmed.startsWith('/')) {
+      anchorRoot = true;
+      trimmed = trimmed.slice(1);
+    }
+
+    while (trimmed.endsWith('/')) trimmed = trimmed.slice(0, -1);
+
+    let combined: string;
+    if (anchorRoot) {
+      combined = trimmed ? `${this.rootName}/${trimmed}` : this.rootName;
+    } else if (sourceDir) {
+      combined = trimmed ? `${sourceDir}/${trimmed}` : sourceDir;
+    } else {
+      combined = trimmed ? `${this.rootName}/${trimmed}` : this.rootName;
+    }
+
+    return normalizeVirtualPath(combined, this.rootName);
+  }
+
+  /**
+   * Walk into `virtualPath` from the workspace root, creating any
+   * intermediate directories that don't yet exist.
+   */
+  private async ensureVirtualDirectory(
+    virtualPath: string,
+  ): Promise<FileSystemDirectoryHandle> {
+    if (!this.rootHandle) throw new Error('No workspace is open.');
+    const segments = virtualPath.split('/').filter((s) => s.length > 0);
+    if (segments.length === 0 || segments[0] !== this.rootName) {
+      throw new Error(`Path is outside the workspace: ${virtualPath}`);
+    }
+    let current: FileSystemDirectoryHandle = this.rootHandle;
+    let cursor = this.rootName;
+    for (let i = 1; i < segments.length; i++) {
+      cursor = `${cursor}/${segments[i]}`;
+      current = await current.getDirectoryHandle(segments[i], { create: true });
+      this.handles.set(cursor, current);
+    }
+    return current;
+  }
+
+  /**
+   * Sibling to `AppStorage.allocatePastedImageName`.
+   */
+  private async allocatePastedImageNameWeb(
+    dir: FileSystemDirectoryHandle,
+    baseName: string,
+    extension: string,
+  ): Promise<string> {
+    const candidate = (n: number) =>
+      n === 1 ? `${baseName}.${extension}` : `${baseName}_${n}.${extension}`;
+    for (let n = 1; n <= 1000; n++) {
+      const name = candidate(n);
+      try {
+        await dir.getFileHandle(name, { create: false });
+        // exists — try next
+      } catch {
+        return name;
+      }
+    }
+    const rand = Math.floor(Math.random() * 0xffff).toString(16);
+    return `${baseName}_${Date.now()}-${rand}.${extension}`;
+  }
+
   // Create / rename / delete -------------------------------------------
 
   private async createFile(parentPath: string, name: string): Promise<void> {
@@ -676,6 +874,189 @@ export class WebFileBridge implements ContextBridgeAPI {
         status: 'error',
         key: 'notifications:unable_rename',
       });
+    }
+  }
+
+  /**
+   * Move a file or folder inside the virtual workspace. Mirrors
+   * `AppStorage.moveItem` on desktop so `BridgeManager.moveItem`
+   * can route through one interface from React.
+   *
+   * Strategy:
+   *   - Validate that both src and dst remain inside the open
+   *     workspace (the rest of the API only exposes the granted
+   *     root anyway, but we check explicitly so a typo in
+   *     `dstPath` returns a structured error instead of throwing
+   *     into the user's face).
+   *   - Refuse collisions, self-into-self, and self-into-descendant
+   *     so behaviour matches the desktop side.
+   *   - Use copy + delete via the same `copyDirectory` helper
+   *     `rename` uses. The native
+   *     `FileSystemDirectoryHandle.move()` is still origin-locked
+   *     in some Chromium builds, and the copy path works the same
+   *     for files and directories.
+   *   - Emit `from:folder:opened` for both ends and
+   *     `from:path:renamed` so open-tab paths update.
+   */
+  public async moveItem(opts: {
+    srcPath: string;
+    dstPath: string;
+  }): Promise<
+    | { ok: true; oldPath: string; newPath: string }
+    | { ok: false; error: string }
+  > {
+    const { srcPath, dstPath } = opts;
+    try {
+      if (!this.rootHandle) {
+        return { ok: false, error: 'No folder is open in the editor.' };
+      }
+      // Both ends must stay rooted under the workspace name. We
+      // check this explicitly because the cached `handles` map
+      // returns nothing for out-of-workspace paths, and we want a
+      // structured `outside the workspace` error rather than a
+      // generic "no handle".
+      const requireInside = (p: string) => {
+        const segments = p.split('/').filter(Boolean);
+        if (segments[0] !== this.rootName) {
+          throw new Error(`Path is outside the workspace: ${p}`);
+        }
+      };
+      requireInside(srcPath);
+      requireInside(dstPath);
+
+      if (srcPath === dstPath) {
+        return { ok: false, error: 'destination_same_as_source' };
+      }
+      if (dstPath === srcPath || dstPath.startsWith(`${srcPath}/`)) {
+        return { ok: false, error: 'destination_inside_source' };
+      }
+
+      const srcHandle = this.handles.get(srcPath);
+      if (!srcHandle) {
+        return { ok: false, error: 'File not found' };
+      }
+
+      const lastSlash = dstPath.lastIndexOf('/');
+      if (lastSlash === -1) {
+        return { ok: false, error: 'destination_parent_missing' };
+      }
+      const dstParentPath = dstPath.slice(0, lastSlash);
+      const dstName = dstPath.slice(lastSlash + 1);
+      if (!dstName) {
+        return { ok: false, error: 'destination_parent_missing' };
+      }
+
+      // Resolve / create the destination parent. `ensureVirtualDirectory`
+      // walks the cached handle tree, creating intermediate
+      // directories on demand — for `moveItem` we want a missing
+      // parent to refuse rather than silently spawn a path. Check
+      // existence in the cache; if the cache doesn't have it, fall
+      // back to a stricter walk that only succeeds when each
+      // intermediate already exists.
+      let dstParent: FileSystemDirectoryHandle | null = null;
+      const cachedParent = this.handles.get(dstParentPath);
+      if (cachedParent && cachedParent.kind === 'directory') {
+        dstParent = cachedParent;
+      } else {
+        const segments = dstParentPath.split('/').filter(Boolean);
+        if (segments[0] !== this.rootName) {
+          return { ok: false, error: 'destination_parent_missing' };
+        }
+        let walker: FileSystemDirectoryHandle = this.rootHandle;
+        try {
+          for (let i = 1; i < segments.length; i++) {
+            walker = await walker.getDirectoryHandle(segments[i], {
+              create: false,
+            });
+          }
+          dstParent = walker;
+        } catch {
+          return { ok: false, error: 'destination_parent_missing' };
+        }
+      }
+
+      // Collision check: if a handle already exists at the
+      // destination name, refuse rather than overwrite.
+      try {
+        await dstParent.getFileHandle(dstName, { create: false });
+        return { ok: false, error: 'destination_exists' };
+      } catch {
+        // not a file — check for a directory of the same name
+        try {
+          await dstParent.getDirectoryHandle(dstName, { create: false });
+          return { ok: false, error: 'destination_exists' };
+        } catch {
+          // ENOENT — slot is free
+        }
+      }
+
+      // Copy + remove. Same primitives `renamePath` uses.
+      const srcParentPath = srcPath.slice(0, srcPath.lastIndexOf('/'));
+      const srcParent =
+        srcParentPath === this.rootName
+          ? this.rootHandle
+          : this.handles.get(srcParentPath);
+      if (!srcParent || srcParent.kind !== 'directory') {
+        return { ok: false, error: 'File not found' };
+      }
+
+      if (srcHandle.kind === 'file') {
+        const newHandle = await dstParent.getFileHandle(dstName, {
+          create: true,
+        });
+        const writable = await newHandle.createWritable();
+        const original = await srcHandle.getFile();
+        await writable.write(await original.arrayBuffer());
+        await writable.close();
+        await srcParent.removeEntry(srcHandle.name);
+        this.handles.delete(srcPath);
+        this.handles.set(dstPath, newHandle);
+      } else {
+        const newDir = await dstParent.getDirectoryHandle(dstName, {
+          create: true,
+        });
+        await copyDirectory(srcHandle, newDir);
+        await srcParent.removeEntry(srcHandle.name, { recursive: true });
+        // Forget every cached descendant of the old path.
+        for (const key of [...this.handles.keys()]) {
+          if (key === srcPath || key.startsWith(`${srcPath}/`)) {
+            this.handles.delete(key);
+          }
+        }
+        this.handles.set(dstPath, newDir);
+      }
+
+      // Refresh both ends. Source parent loses an entry; dest
+      // parent gains one.
+      try {
+        const srcTree = await this.listChildren(srcParent, srcParentPath);
+        this.emit('from:folder:opened', {
+          path: srcParentPath,
+          tree: srcTree,
+        });
+      } catch {
+        // non-fatal
+      }
+      try {
+        const dstTree = await this.listChildren(dstParent, dstParentPath);
+        this.emit('from:folder:opened', {
+          path: dstParentPath,
+          tree: dstTree,
+        });
+      } catch {
+        // non-fatal
+      }
+
+      this.emit('from:path:renamed', {
+        oldPath: srcPath,
+        newPath: dstPath,
+        name: dstName,
+      });
+
+      return { ok: true, oldPath: srcPath, newPath: dstPath };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
     }
   }
 

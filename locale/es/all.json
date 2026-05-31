@@ -168,12 +168,20 @@
     "prompt_rename_folder_title": "Renombrar carpeta",
     "confirm_delete_file_title": "¿Eliminar archivo?",
     "confirm_delete_folder_title": "¿Eliminar carpeta?",
-    "confirm_delete_button": "Eliminar"
+    "confirm_delete_button": "Eliminar",
+    "move_to": "Mover a…",
+    "prompt_cancel": "Cancelar",
+    "prompt_save": "Guardar"
   },
   "menus-tables": {
     "rows_label": "Filas:",
     "columns_label": "Columnas:",
     "insert_table": "Insertar tabla"
+  },
+  "menus-tabs": {
+    "close_tab": "Cerrar pestaña",
+    "close_others": "Cerrar otras",
+    "close_all": "Cerrar todas"
   },
   "menus-titlebar": {
     "file": "Archivo",
@@ -228,6 +236,12 @@
     "save_settings": "Guardar ajustes",
     "reset_to_default": "Restablecer valores predeterminados"
   },
+  "modals-move": {
+    "title": "Mover a…",
+    "moving_label": "Moviendo:",
+    "confirm": "Mover",
+    "cancel": "Cancelar"
+  },
   "modals-properties": {
     "title": "Propiedades",
     "label_path": "Ruta:",
@@ -275,7 +289,10 @@
     "language_help": "Selecciona el idioma de la interfaz.",
     "save_settings": "Guardar ajustes",
     "tab_general": "Configuración general",
-    "tab_assistant": "Proveedores de IA"
+    "tab_assistant": "Proveedores de IA",
+    "paste_images": "Imágenes pegadas",
+    "paste_images_directory_label": "Directorio para imágenes pegadas",
+    "paste_images_directory_help": "Las rutas relativas (p. ej. './assets') se resuelven respecto a la carpeta del archivo Markdown activo. Las rutas absolutas deben estar dentro del workspace abierto."
   },
   "modals-shortcuts": {
     "title": "Atajos de MKEditor",
@@ -343,7 +360,11 @@
     "settings_tooltip": "Configurar el editor",
     "shortcuts_tooltip": "Ver atajos del editor",
     "theme_switch_notice": "Este interruptor está deshabilitado en el escritorio si usas el tema del sistema.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Código copiado al portapapeles",
+    "copy_path_tooltip": "Copiar ruta al portapapeles",
+    "path_copied": "Ruta copiada al portapapeles",
+    "toggle_assistant_tooltip": "Alternar asistente de IA"
   },
   "notifications": {
     "unable_export_preview": "No se puede exportar la vista previa",
@@ -372,7 +393,15 @@
     "update_available": "La actualización {{version}} está disponible, descargando en segundo plano...",
     "update_downloaded": "La actualización {{version}} se ha descargado, reinicia para actualizar.",
     "session_file_missing": "Algunos archivos previamente abiertos no se encontraron y se omitieron: {{files}}",
-    "session_cleared": "Sesión guardada borrada."
+    "session_cleared": "Sesión guardada borrada.",
+    "pasted_image_saved": "Imagen pegada guardada",
+    "pasted_image_failed": "No se pudo guardar la imagen pegada",
+    "pasted_image_no_workspace": "Guarde el documento antes de pegar imágenes",
+    "move_failed": "No se pudo mover",
+    "move_into_self_refused": "No se puede mover una carpeta dentro de sí misma",
+    "move_same_source": "Ya está en esa ubicación",
+    "move_collision": "Ya existe un archivo o carpeta con ese nombre",
+    "move_parent_missing": "La carpeta de destino no existe"
   },
   "sidebar": {
     "explorer": "Explorador",

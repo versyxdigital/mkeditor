@@ -40,6 +40,19 @@ declare global {
         parent: string,
         name: string,
       ) => Promise<{ ok: true; path: string } | { ok: false; error: string }>;
+      pasteImage: (opts: {
+        sourceFile: string;
+        directory: string;
+        bytes: Uint8Array;
+        extension: string;
+      }) => Promise<{ ok: true; path: string } | { ok: false; error: string }>;
+      moveItem: (opts: {
+        srcPath: string;
+        dstPath: string;
+      }) => Promise<
+        | { ok: true; oldPath: string; newPath: string }
+        | { ok: false; error: string }
+      >;
     };
     setLanguage: (lng: string) => void;
   }

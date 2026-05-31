@@ -25,5 +25,13 @@
   "update_available": "업데이트 {{version}} 사용 가능, 백그라운드에서 다운로드 중…",
   "update_downloaded": "업데이트 {{version}} 다운로드 완료, 업데이트하려면 재시작하세요.",
   "session_file_missing": "이전에 열렸던 일부 파일을 찾을 수 없어 건너뛰었습니다: {{files}}",
-  "session_cleared": "저장된 세션을 지웠습니다."
+  "session_cleared": "저장된 세션을 지웠습니다.",
+  "pasted_image_saved": "붙여넣은 이미지를 저장했습니다",
+  "pasted_image_failed": "붙여넣은 이미지를 저장할 수 없습니다",
+  "pasted_image_no_workspace": "이미지를 붙여넣기 전에 문서를 저장하세요",
+  "move_failed": "이동 실패",
+  "move_into_self_refused": "폴더를 자신 안으로 이동할 수 없습니다",
+  "move_same_source": "이미 해당 위치에 있습니다",
+  "move_collision": "같은 이름의 파일 또는 폴더가 이미 있습니다",
+  "move_parent_missing": "대상 폴더가 존재하지 않습니다"
 }

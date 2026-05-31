@@ -34,5 +34,8 @@
   "language_help": "Wähle die Anzeigesprache.",
   "save_settings": "Einstellungen speichern",
   "tab_general": "Allgemeine Einstellungen",
-  "tab_assistant": "KI-Anbieter"
+  "tab_assistant": "KI-Anbieter",
+  "paste_images": "Eingefügte Bilder",
+  "paste_images_directory_label": "Verzeichnis für eingefügte Bilder",
+  "paste_images_directory_help": "Relative Pfade (z. B. './assets') werden gegen den Ordner der aktiven Markdown-Datei aufgelöst. Absolute Pfade müssen innerhalb des geöffneten Arbeitsbereichs liegen."
 }

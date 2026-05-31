@@ -168,12 +168,20 @@
     "prompt_rename_folder_title": "Перейменувати папку",
     "confirm_delete_file_title": "Видалити файл?",
     "confirm_delete_folder_title": "Видалити папку?",
-    "confirm_delete_button": "Видалити"
+    "confirm_delete_button": "Видалити",
+    "move_to": "Перемістити до…",
+    "prompt_cancel": "Скасувати",
+    "prompt_save": "Зберегти"
   },
   "menus-tables": {
     "rows_label": "Рядки:",
     "columns_label": "Стовпці:",
     "insert_table": "Вставити таблицю"
+  },
+  "menus-tabs": {
+    "close_tab": "Закрити вкладку",
+    "close_others": "Закрити інші",
+    "close_all": "Закрити всі"
   },
   "menus-titlebar": {
     "file": "Файл",
@@ -228,6 +236,12 @@
     "save_settings": "Зберегти налаштування",
     "reset_to_default": "Скинути до типових"
   },
+  "modals-move": {
+    "title": "Перемістити до…",
+    "moving_label": "Переміщення:",
+    "confirm": "Перемістити",
+    "cancel": "Скасувати"
+  },
   "modals-properties": {
     "title": "Властивості",
     "label_path": "Шлях:",
@@ -275,7 +289,10 @@
     "language_help": "Виберіть мову інтерфейсу.",
     "save_settings": "Зберегти налаштування",
     "tab_general": "Загальні налаштування",
-    "tab_assistant": "Постачальники ШІ"
+    "tab_assistant": "Постачальники ШІ",
+    "paste_images": "Вставлені зображення",
+    "paste_images_directory_label": "Каталог для вставлених зображень",
+    "paste_images_directory_help": "Відносні шляхи (наприклад, './assets') розв'язуються відносно теки активного Markdown-файлу. Абсолютні шляхи мають бути в межах відкритого робочого простору."
   },
   "modals-shortcuts": {
     "title": "Клавіатурні скорочення MKEditor",
@@ -343,7 +360,11 @@
     "settings_tooltip": "Налаштувати параметри редактора",
     "shortcuts_tooltip": "Переглянути комбінації клавіш редактора",
     "theme_switch_notice": "Цей перемикач вимкнено на настільній версії, якщо ви використовуєте системну тему.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Код скопійовано до буфера обміну",
+    "copy_path_tooltip": "Скопіювати шлях до буфера обміну",
+    "path_copied": "Шлях скопійовано до буфера обміну",
+    "toggle_assistant_tooltip": "Перемкнути ШІ-асистента"
   },
   "notifications": {
     "unable_export_preview": "Не вдалося експортувати попередній перегляд",
@@ -372,7 +393,15 @@
     "update_available": "Оновлення {{version}} доступне, завантаження у фоновому режимі…",
     "update_downloaded": "Оновлення {{version}} завантажено, перезапустіть для оновлення.",
     "session_file_missing": "Деякі раніше відкриті файли не знайдено та пропущено: {{files}}",
-    "session_cleared": "Збережений сеанс очищено."
+    "session_cleared": "Збережений сеанс очищено.",
+    "pasted_image_saved": "Вставлене зображення збережено",
+    "pasted_image_failed": "Не вдалося зберегти вставлене зображення",
+    "pasted_image_no_workspace": "Збережіть документ перед вставленням зображень",
+    "move_failed": "Не вдалося перемістити",
+    "move_into_self_refused": "Не можна перемістити теку всередину неї самої",
+    "move_same_source": "Вже в цьому розташуванні",
+    "move_collision": "Файл або тека з таким іменем вже існує",
+    "move_parent_missing": "Цільова тека не існує"
   },
   "sidebar": {
     "explorer": "Провідник",

@@ -550,6 +550,140 @@ export class AppStorage {
   }
 
   /**
+   * Write a pasted-image's bytes to disk inside the workspace and
+   * return the absolute path. The renderer's paste handler then
+   * inserts a `![](relative-path)` markdown link at the cursor.
+   *
+   * `directory` may be:
+   *   - relative (e.g. `./assets`) — resolved against `dirname(sourceFile)`
+   *   - absolute — used as-is, but the workspace-containment check
+   *     below still applies, so paths outside the workspace are
+   *     rejected
+   *
+   * Filename: `Pasted image YYYYMMDDHHMMSS.<ext>`, with `(2)`/`(3)`/…
+   * counter suffixes when same-second pastes collide.
+   *
+   * Atomic write via tmp + rename so a crash mid-write doesn't
+   * leave a half-written image referenced by the freshly-inserted
+   * markdown link.
+   */
+  static async writePastedImage(
+    context: BrowserWindow,
+    sourceFile: string,
+    directory: string,
+    bytes: Uint8Array,
+    extension: string,
+  ): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
+    try {
+      // Resolve `directory` against the source file's folder when it
+      // looks relative; treat absolute paths as-is.
+      const sourceDir = dirname(sourceFile);
+      const targetDir = isAbsolute(directory)
+        ? resolve(directory)
+        : resolve(sourceDir, directory);
+
+      // Workspace scope check — mkdir / write must stay inside the
+      // open workspace. `mustExist: false` because the target dir
+      // may not exist yet (we'll create it next).
+      const safeTargetDir = await AppStorage.assertInWorkspace(targetDir, {
+        mustExist: false,
+      });
+
+      await fs.mkdir(safeTargetDir, { recursive: true });
+
+      const safeExt = AppStorage.normalizeImageExtension(extension);
+      const baseName = AppStorage.buildPastedImageBasename(new Date());
+      const finalName = await AppStorage.allocatePastedImageName(
+        safeTargetDir,
+        baseName,
+        safeExt,
+      );
+      const finalPath = join(safeTargetDir, finalName);
+
+      // tmp + rename so an interrupted write doesn't leave a
+      // half-written file under the markdown link.
+      const tmpPath = `${finalPath}.tmp-${process.pid}-${Date.now()}`;
+      // Pass through as Buffer.from(...) — the typed-array view that
+      // crossed IPC may be a fresh `Uint8Array` rather than the Node
+      // `Buffer` subclass that `fs.writeFile` prefers.
+      await fs.writeFile(tmpPath, Buffer.from(bytes));
+      await fs.rename(tmpPath, finalPath);
+
+      // Refresh the file-tree row for the target directory so the
+      // newly-written image surfaces in the sidebar.
+      try {
+        const tree = await AppStorage.readDirectory(safeTargetDir);
+        context.webContents.send('from:folder:opened', {
+          path: safeTargetDir,
+          tree,
+        });
+      } catch {
+        // Non-fatal: the file is on disk; the user can refresh the
+        // tree manually if this listing read fails.
+      }
+
+      return { ok: true, path: finalPath };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
+    }
+  }
+
+  /**
+   * Clamp `extension` to a known image format. Anything else is
+   * coerced to `png` — the most common clipboard format and the
+   * format Chromium screenshots default to.
+   */
+  private static normalizeImageExtension(extension: string): string {
+    const lowered = extension.replace(/^\.+/, '').toLowerCase();
+    const allowed = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp']);
+    return allowed.has(lowered) ? lowered : 'png';
+  }
+
+  /**
+   * `img_20260521143015` — second-resolution timestamp, sortable,
+   * no spaces.
+   */
+  private static buildPastedImageBasename(now: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return (
+      `img_${now.getFullYear()}${pad(now.getMonth() + 1)}` +
+      `${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}` +
+      `${pad(now.getSeconds())}`
+    );
+  }
+
+  /**
+   * Return the first non-colliding filename for `baseName.<ext>` in
+   * `directory`. If `baseName.<ext>` exists, tries `baseName_2.<ext>`,
+   * then `_3`, … up to a sane cap. The cap exists so a broken
+   * filesystem can't spin this forever.
+   */
+  private static async allocatePastedImageName(
+    directory: string,
+    baseName: string,
+    extension: string,
+  ): Promise<string> {
+    const candidate = (n: number) =>
+      n === 1 ? `${baseName}.${extension}` : `${baseName}_${n}.${extension}`;
+    for (let n = 1; n <= 1000; n++) {
+      const name = candidate(n);
+      try {
+        await fs.access(join(directory, name));
+        // exists — try the next index
+      } catch {
+        // ENOENT — the slot is free, use this name
+        return name;
+      }
+    }
+    // Pathological: 1000 same-second collisions in one directory.
+    // Fall through with a timestamp+random suffix so we still
+    // succeed instead of throwing into the user's face.
+    const rand = Math.floor(Math.random() * 0xffff).toString(16);
+    return `${baseName}_${Date.now()}-${rand}.${extension}`;
+  }
+
+  /**
    * Create a new folder in the given directory.
    */
   /**
@@ -601,6 +735,146 @@ export class AppStorage {
         status: 'error',
         key: 'notifications:unable_rename',
       });
+    }
+  }
+
+  /**
+   * Move a file or folder to a new location inside the workspace.
+   * Returns a structured result so the renderer can branch on
+   * success / failure for toasts and UI state (drag-and-drop drop
+   * handler, "Move to…" modal). The fire-and-forget shape `rename`
+   * uses doesn't fit drag-drop — the source row needs to know
+   * whether to clear its "dragging" styling on failure.
+   *
+   * Guards:
+   *   - Both `srcPath` and the eventual `dstPath` must sit inside
+   *     the open workspace (same containment check the other write
+   *     tools use).
+   *   - `srcPath` must exist.
+   *   - `dstPath` must NOT exist (collisions refuse — surface the
+   *     conflict instead of overwriting silently).
+   *   - The destination's parent directory must exist. We don't
+   *     auto-create directories for moves; a typo'd target path
+   *     would otherwise silently spawn an unwanted folder tree.
+   *   - For directory moves, `dstPath` must not be inside `srcPath`
+   *     (refuses `mv /a/b /a/b/sub` and self-into-self).
+   *
+   * Writes:
+   *   - Uses `fs.rename` (atomic on-volume). Falls back to
+   *     `fs.cp({recursive:true}) + fs.rm({recursive:true})` when
+   *     `rename` throws `EXDEV` (cross-volume move).
+   *
+   * Effects:
+   *   - Emits `from:folder:opened` for BOTH the source-parent and
+   *     dest-parent directories so the file tree updates both
+   *     ends.
+   *   - Emits `from:path:renamed` so `FileManager` updates the
+   *     path keys of any open tabs backed by the moved file (or
+   *     by descendants of a moved folder).
+   */
+  static async moveItem(
+    context: BrowserWindow,
+    srcPath: string,
+    dstPath: string,
+  ): Promise<
+    | { ok: true; oldPath: string; newPath: string }
+    | { ok: false; error: string }
+  > {
+    try {
+      const safeSrc = await AppStorage.assertInWorkspace(srcPath, {
+        mustExist: true,
+      });
+      const safeDst = await AppStorage.assertInWorkspace(dstPath, {
+        mustExist: false,
+      });
+
+      // Refuse no-op moves so we don't emit churn for nothing.
+      if (safeSrc === safeDst) {
+        return { ok: false, error: 'destination_same_as_source' };
+      }
+
+      // Refuse moving a directory into itself or any of its
+      // descendants. Comparison is on canonical paths with a
+      // trailing separator so `/a/b` doesn't falsely flag `/a/bc`
+      // as a descendant.
+      const srcWithSep = safeSrc.endsWith(sep) ? safeSrc : safeSrc + sep;
+      if (safeDst === safeSrc || safeDst.startsWith(srcWithSep)) {
+        return { ok: false, error: 'destination_inside_source' };
+      }
+
+      // The destination's parent must exist. assertInWorkspace's
+      // `mustExist: false` mode already canonicalises the parent,
+      // but doesn't fail if it doesn't exist — verify explicitly
+      // here so we don't accidentally spawn a deep tree on a typo.
+      const dstParent = dirname(safeDst);
+      try {
+        const parentStat = await fs.stat(dstParent);
+        if (!parentStat.isDirectory()) {
+          return { ok: false, error: 'destination_parent_not_directory' };
+        }
+      } catch {
+        return { ok: false, error: 'destination_parent_missing' };
+      }
+
+      // Refuse collisions — surface the conflict rather than
+      // overwriting silently. `fs.access` resolves when the path
+      // exists, throws ENOENT when it doesn't.
+      try {
+        await fs.access(safeDst);
+        return { ok: false, error: 'destination_exists' };
+      } catch {
+        // ENOENT — slot is free, continue.
+      }
+
+      // Try the atomic rename first. Cross-volume moves throw
+      // EXDEV; fall back to a recursive copy + delete so the user
+      // can still drag a file across drives within a workspace.
+      try {
+        await fs.rename(safeSrc, safeDst);
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code !== 'EXDEV') throw err;
+        await fs.cp(safeSrc, safeDst, { recursive: true });
+        await fs.rm(safeSrc, { recursive: true, force: true });
+      }
+
+      // Refresh both ends of the move. Source-parent loses the
+      // entry; dest-parent gains it.
+      const srcParent = dirname(safeSrc);
+      try {
+        const srcTree = await AppStorage.readDirectory(srcParent);
+        context.webContents.send('from:folder:opened', {
+          path: srcParent,
+          tree: srcTree,
+        });
+      } catch {
+        // Source parent might no longer be readable (deleted out
+        // from under us) — non-fatal; the move itself succeeded.
+      }
+      try {
+        const dstTree = await AppStorage.readDirectory(dstParent);
+        context.webContents.send('from:folder:opened', {
+          path: dstParent,
+          tree: dstTree,
+        });
+      } catch {
+        // ditto
+      }
+
+      // Update any open tabs backed by the moved file (or by
+      // descendants of a moved folder). FileManager already
+      // handles this channel — see the rename path. We pass the
+      // basename so the tab label is updated to match.
+      context.webContents.send('from:path:renamed', {
+        oldPath: safeSrc,
+        newPath: safeDst,
+        name: basename(safeDst),
+      });
+
+      return { ok: true, oldPath: safeSrc, newPath: safeDst };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: message };
     }
   }
 

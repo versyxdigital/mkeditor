@@ -3,6 +3,7 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
+  shell,
   type IpcMainEvent,
   type IpcMainInvokeEvent,
 } from 'electron';
@@ -195,6 +196,28 @@ export class AppBridge {
 
     this.on('to:file:openpath', (event, { path }: { path: string }) => {
       AppStorage.openPath(this.context, path);
+    });
+
+    // Open a workspace-resident file in the OS default application
+    // (Windows Photos for images, Acrobat for PDFs, …).
+    this.on('to:shell:openpath', async (_e, { path }: { path: string }) => {
+      try {
+        const safePath = await AppStorage.assertInWorkspace(path);
+        const errorMsg = await shell.openPath(safePath);
+        // `shell.openPath` resolves with an empty string on success
+        // and an error description otherwise (no association, etc.).
+        if (errorMsg) {
+          this.context.webContents.send('from:notification:display', {
+            status: 'error',
+            key: 'notifications:unable_open_path',
+          });
+        }
+      } catch {
+        this.context.webContents.send('from:notification:display', {
+          status: 'error',
+          key: 'notifications:unable_open_path',
+        });
+      }
     });
 
     // Save an existing file, this is also used by the renderer bridge "from:file:open" listener, if
@@ -450,6 +473,57 @@ export class AppBridge {
             this.context,
             dirname(safeTarget),
             basename(safeTarget),
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { ok: false as const, error: message };
+        }
+      },
+    );
+
+    // Write a pasted-image's bytes into the workspace. Renderer
+    // gathers the bytes from `event.clipboardData`, the settings
+    // directory and the active editable file path, hands them over,
+    // and inserts a `![](relative-path)` markdown link once the path
+    // returned here is in hand. `AppStorage.writePastedImage` runs
+    // the same workspace-containment check as the other write tools
+    // (`assertInWorkspace`) — paste targets outside the workspace
+    // are rejected with a structured error.
+    this.handle(
+      'mked:fs:pasteimage',
+      async (
+        _e,
+        opts: {
+          sourceFile: string;
+          directory: string;
+          bytes: Uint8Array;
+          extension: string;
+        },
+      ) => {
+        try {
+          return await AppStorage.writePastedImage(
+            this.context,
+            opts.sourceFile,
+            opts.directory,
+            opts.bytes,
+            opts.extension,
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { ok: false as const, error: message };
+        }
+      },
+    );
+
+    // Move a file or folder inside the workspace.
+    this.handle(
+      'mked:fs:moveitem',
+      async (_e, opts: { srcPath: string; dstPath: string }) => {
+        try {
+          return await AppStorage.moveItem(
+            this.context,
+            opts.srcPath,
+            opts.dstPath,
           );
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);

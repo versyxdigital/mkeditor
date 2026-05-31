@@ -11,7 +11,6 @@
   "expand_folder": "Expand Folder",
   "rename_folder": "Rename Folder...",
   "delete_folder": "Delete Folder...",
-
   "prompt_new_file_title": "New file name",
   "prompt_new_file_placeholder": "Untitled.md",
   "prompt_new_folder_title": "New folder name",
@@ -21,5 +20,6 @@
   "confirm_delete_folder_title": "Delete folder?",
   "confirm_delete_button": "Delete",
   "prompt_save": "Save",
-  "prompt_cancel": "Cancel"
+  "prompt_cancel": "Cancel",
+  "move_to": "Move to…"
 }

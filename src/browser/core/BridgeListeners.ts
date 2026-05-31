@@ -168,6 +168,7 @@ export function registerBridgeListeners(
   // from:file:opened so the tab label stays consistent across OSes.
   bridge.receive('from:path:renamed', ({ oldPath, newPath }: RenamedPath) => {
     files.renameTab(oldPath, newPath, basename(newPath));
+    files.renameDescendantTabs(oldPath, newPath);
   });
 
   // Enable access to the monaco editor command palette.

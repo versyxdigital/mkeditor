@@ -168,12 +168,20 @@
     "prompt_rename_folder_title": "폴더 이름 바꾸기",
     "confirm_delete_file_title": "파일을 삭제하시겠습니까?",
     "confirm_delete_folder_title": "폴더를 삭제하시겠습니까?",
-    "confirm_delete_button": "삭제"
+    "confirm_delete_button": "삭제",
+    "move_to": "이동…",
+    "prompt_cancel": "취소",
+    "prompt_save": "저장"
   },
   "menus-tables": {
     "rows_label": "행:",
     "columns_label": "열:",
     "insert_table": "표 삽입"
+  },
+  "menus-tabs": {
+    "close_tab": "탭 닫기",
+    "close_others": "다른 탭 닫기",
+    "close_all": "모두 닫기"
   },
   "menus-titlebar": {
     "file": "파일",
@@ -228,6 +236,12 @@
     "save_settings": "설정 저장",
     "reset_to_default": "기본값으로 재설정"
   },
+  "modals-move": {
+    "title": "이동…",
+    "moving_label": "이동 중:",
+    "confirm": "이동",
+    "cancel": "취소"
+  },
   "modals-properties": {
     "title": "속성",
     "label_path": "경로:",
@@ -275,7 +289,10 @@
     "language_help": "인터페이스 언어를 선택하세요.",
     "save_settings": "설정 저장",
     "tab_general": "일반 설정",
-    "tab_assistant": "AI 공급자"
+    "tab_assistant": "AI 공급자",
+    "paste_images": "붙여넣은 이미지",
+    "paste_images_directory_label": "붙여넣은 이미지 디렉터리",
+    "paste_images_directory_help": "상대 경로(예: './assets')는 활성 마크다운 파일의 폴더를 기준으로 해석됩니다. 절대 경로는 열려 있는 워크스페이스 안에 있어야 합니다."
   },
   "modals-shortcuts": {
     "title": "MKEditor 단축키",
@@ -343,7 +360,11 @@
     "settings_tooltip": "에디터 설정 구성",
     "shortcuts_tooltip": "에디터 단축키 보기",
     "theme_switch_notice": "시스템 테마를 사용하는 경우 데스크톱에서는 이 스위치가 비활성화됩니다.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "코드를 클립보드에 복사했습니다",
+    "copy_path_tooltip": "경로를 클립보드에 복사",
+    "path_copied": "경로를 클립보드에 복사했습니다",
+    "toggle_assistant_tooltip": "AI 어시스턴트 전환"
   },
   "notifications": {
     "unable_export_preview": "미리보기를 내보낼 수 없습니다",
@@ -372,7 +393,15 @@
     "update_available": "업데이트 {{version}} 사용 가능, 백그라운드에서 다운로드 중…",
     "update_downloaded": "업데이트 {{version}} 다운로드 완료, 업데이트하려면 재시작하세요.",
     "session_file_missing": "이전에 열렸던 일부 파일을 찾을 수 없어 건너뛰었습니다: {{files}}",
-    "session_cleared": "저장된 세션을 지웠습니다."
+    "session_cleared": "저장된 세션을 지웠습니다.",
+    "pasted_image_saved": "붙여넣은 이미지를 저장했습니다",
+    "pasted_image_failed": "붙여넣은 이미지를 저장할 수 없습니다",
+    "pasted_image_no_workspace": "이미지를 붙여넣기 전에 문서를 저장하세요",
+    "move_failed": "이동 실패",
+    "move_into_self_refused": "폴더를 자신 안으로 이동할 수 없습니다",
+    "move_same_source": "이미 해당 위치에 있습니다",
+    "move_collision": "같은 이름의 파일 또는 폴더가 이미 있습니다",
+    "move_parent_missing": "대상 폴더가 존재하지 않습니다"
   },
   "sidebar": {
     "explorer": "탐색기",

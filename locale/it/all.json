@@ -168,12 +168,20 @@
     "prompt_rename_folder_title": "Rinomina cartella",
     "confirm_delete_file_title": "Eliminare il file?",
     "confirm_delete_folder_title": "Eliminare la cartella?",
-    "confirm_delete_button": "Elimina"
+    "confirm_delete_button": "Elimina",
+    "move_to": "Sposta in…",
+    "prompt_cancel": "Annulla",
+    "prompt_save": "Salva"
   },
   "menus-tables": {
     "rows_label": "Righe:",
     "columns_label": "Colonne:",
     "insert_table": "Inserisci tabella"
+  },
+  "menus-tabs": {
+    "close_tab": "Chiudi scheda",
+    "close_others": "Chiudi le altre",
+    "close_all": "Chiudi tutte"
   },
   "menus-titlebar": {
     "file": "File",
@@ -228,6 +236,12 @@
     "save_settings": "Salva impostazioni",
     "reset_to_default": "Ripristina valori predefiniti"
   },
+  "modals-move": {
+    "title": "Sposta in…",
+    "moving_label": "Spostamento:",
+    "confirm": "Sposta",
+    "cancel": "Annulla"
+  },
   "modals-properties": {
     "title": "Proprietà",
     "label_path": "Percorso:",
@@ -275,7 +289,10 @@
     "language_help": "Seleziona la lingua dell’interfaccia.",
     "save_settings": "Salva impostazioni",
     "tab_general": "Impostazioni generali",
-    "tab_assistant": "Provider IA"
+    "tab_assistant": "Provider IA",
+    "paste_images": "Immagini incollate",
+    "paste_images_directory_label": "Cartella per immagini incollate",
+    "paste_images_directory_help": "I percorsi relativi (es. './assets') vengono risolti rispetto alla cartella del file Markdown attivo. I percorsi assoluti devono rimanere nel workspace aperto."
   },
   "modals-shortcuts": {
     "title": "Scorciatoie di MKEditor",
@@ -343,7 +360,11 @@
     "settings_tooltip": "Configura le impostazioni dell'editor",
     "shortcuts_tooltip": "Visualizza le scorciatoie dell'editor",
     "theme_switch_notice": "Questo interruttore è disabilitato su desktop se usi il tema di sistema.",
-    "active_file_default": "MKEditor"
+    "active_file_default": "MKEditor",
+    "code_copied": "Codice copiato negli appunti",
+    "copy_path_tooltip": "Copia percorso negli appunti",
+    "path_copied": "Percorso copiato negli appunti",
+    "toggle_assistant_tooltip": "Mostra/nascondi assistente IA"
   },
   "notifications": {
     "unable_export_preview": "Impossibile esportare l’anteprima",
@@ -372,7 +393,15 @@
     "update_available": "Aggiornamento {{version}} disponibile, download in background in corso...",
     "update_downloaded": "Aggiornamento {{version}} scaricato, riavvia per aggiornare.",
     "session_file_missing": "Alcuni file precedentemente aperti non sono stati trovati e sono stati saltati: {{files}}",
-    "session_cleared": "Sessione salvata cancellata."
+    "session_cleared": "Sessione salvata cancellata.",
+    "pasted_image_saved": "Immagine incollata salvata",
+    "pasted_image_failed": "Impossibile salvare l'immagine incollata",
+    "pasted_image_no_workspace": "Salva il documento prima di incollare immagini",
+    "move_failed": "Spostamento non riuscito",
+    "move_into_self_refused": "Impossibile spostare una cartella in se stessa",
+    "move_same_source": "Già in quella posizione",
+    "move_collision": "Esiste già un file o una cartella con quel nome",
+    "move_parent_missing": "La cartella di destinazione non esiste"
   },
   "sidebar": {
     "explorer": "Esplora",

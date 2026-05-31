@@ -25,5 +25,13 @@
   "update_available": "Mise à jour {{version}} disponible, téléchargement en arrière-plan…",
   "update_downloaded": "Mise à jour {{version}} téléchargée, redémarrez pour mettre à jour.",
   "session_file_missing": "Certains fichiers précédemment ouverts n'ont pas été trouvés et ont été ignorés : {{files}}",
-  "session_cleared": "Session sauvegardée effacée."
+  "session_cleared": "Session sauvegardée effacée.",
+  "pasted_image_saved": "Image collée enregistrée",
+  "pasted_image_failed": "Impossible d'enregistrer l'image collée",
+  "pasted_image_no_workspace": "Enregistrez le document avant de coller des images",
+  "move_failed": "Échec du déplacement",
+  "move_into_self_refused": "Impossible de déplacer un dossier dans lui-même",
+  "move_same_source": "Déjà à cet emplacement",
+  "move_collision": "Un fichier ou dossier portant ce nom existe déjà",
+  "move_parent_missing": "Le dossier de destination n'existe pas"
 }

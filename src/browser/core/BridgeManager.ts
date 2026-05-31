@@ -245,6 +245,57 @@ export class BridgeManager {
     this.bridge.send('to:edit:paste', null);
   }
 
+  /**
+   * Hand off a workspace file to the OS default application
+   * (Windows Photos / macOS Preview / Acrobat / …).
+   */
+  public openInDefaultViewer(path: string): void {
+    this.bridge.send('to:shell:openpath', { path });
+  }
+
+  /**
+   * Move a file or folder inside the workspace. Routes through the
+   * desktop `window.mked.moveItem` invoke when available; falls back
+   * to the web bridge's `moveItem` (added by `WebFileBridge`) so
+   * drag-and-drop and the "Move to…" modal use one call site.
+   *
+   * Returns the structured result from main so the caller can show
+   * a translated toast on refusal (collision, descendant-of-self,
+   * outside-workspace, …). The renderer never needs to refresh the
+   * file tree or remap open-tab paths itself — main emits both
+   * `from:folder:opened` events and `from:path:renamed` and the
+   * existing BridgeListeners handlers thread those through
+   * FileTreeManager and FileManager.
+   */
+  public async moveItem(
+    srcPath: string,
+    dstPath: string,
+  ): Promise<
+    | { ok: true; oldPath: string; newPath: string }
+    | { ok: false; error: string }
+  > {
+    if (window.mked?.moveItem) {
+      return window.mked.moveItem({ srcPath, dstPath });
+    }
+    // Web bridge: WebFileBridge.moveItem (Phase 5) exposes the same
+    // shape. Cast through `unknown` because ContextBridgeAPI is the
+    // narrow desktop-shaped surface; the web bridge has the
+    // additional method.
+    const webBridge = this.bridge as unknown as {
+      moveItem?: (opts: {
+        srcPath: string;
+        dstPath: string;
+      }) => Promise<
+        | { ok: true; oldPath: string; newPath: string }
+        | { ok: false; error: string }
+      >;
+    };
+    if (typeof webBridge.moveItem === 'function') {
+      return webBridge.moveItem({ srcPath, dstPath });
+    }
+    return { ok: false, error: 'move_unsupported_in_this_mode' };
+  }
+
   // Menu dispatch helpers (consumed by both BridgeListeners' anonymous
   // `from:*` handlers and the in-window menu's `dispatchMenuAction`) ------
   //
