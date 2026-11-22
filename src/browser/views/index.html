@@ -59,17 +59,19 @@
     <!-- Bottom editor toolbar shell.
          `#editor-functions` is the createPortal host for React's
          <EditorToolbar>; `#bottom-toolbar-right` is the createPortal
-         host for <BottomToolbarRight> (darkmode toggle + build chip).
+         host for <BottomToolbarRight> (theme toggle + version button).
+         Formatting tools and document status share one compact row.
          The shell is fixed-bottom-positioned so it stays visible while
          the editor pane scrolls. -->
     <nav
-      class="fixed bottom-0 left-0 right-0 z-10 flex items-center justify-between border-t border-border bg-background px-2 py-1"
+      id="application-footer"
+      class="fixed bottom-0 left-0 right-0 z-10 flex items-center gap-3 border-t border-subtle px-3"
     >
-      <div class="flex items-center justify-start" id="editor-functions"></div>
-      <div
-        class="hidden flex-row items-center md:flex"
-        id="bottom-toolbar-right"
-      ></div>
+      <div id="editor-functions" class="min-w-0 flex-1"></div>
+      <div id="document-status-row" class="flex shrink-0 items-center gap-3">
+        <div id="document-status" class="hidden min-w-0 lg:block"></div>
+        <div id="bottom-toolbar-right" class="flex shrink-0 items-center"></div>
+      </div>
     </nav>
 
     <script type="text/javascript" src="./mkeditor.bundle.js"></script>

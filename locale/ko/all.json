@@ -91,7 +91,14 @@
     "thinking_xhigh": "매우 높음",
     "thinking_max": "최대",
     "thinking_help": "이후 메시지에 적용됩니다. 수준이 높을수록 더 오래 걸리고 더 많은 토큰을 사용할 수 있습니다.",
-    "thinking_unavailable": "이 모델은 기본 설정을 사용합니다. 이 모델에 대해 설정 가능한 사고 수준이 등록되지 않았습니다."
+    "thinking_unavailable": "이 모델은 기본 설정을 사용합니다. 이 모델에 대해 설정 가능한 사고 수준이 등록되지 않았습니다.",
+    "key_configured": "키가 설정됨",
+    "key_not_configured": "키가 설정되지 않음",
+    "replace_key": "교체",
+    "connection_not_tested": "연결을 테스트하지 않음",
+    "last_tested": "마지막 테스트: {{time}}",
+    "provider_enabled": "사용",
+    "provider_disabled": "사용 안 함"
   },
   "assistant-tools": {
     "confirm_title": "{{toolName}} 허용?",
@@ -306,7 +313,12 @@
     "tab_assistant": "AI 공급자",
     "paste_images": "붙여넣은 이미지",
     "paste_images_directory_label": "붙여넣은 이미지 디렉터리",
-    "paste_images_directory_help": "상대 경로(예: './assets')는 활성 마크다운 파일의 폴더를 기준으로 해석됩니다. 절대 경로는 열려 있는 워크스페이스 안에 있어야 합니다."
+    "paste_images_directory_help": "상대 경로(예: './assets')는 활성 마크다운 파일의 폴더를 기준으로 해석됩니다. 절대 경로는 열려 있는 워크스페이스 안에 있어야 합니다.",
+    "nav_editor": "편집기",
+    "nav_preview": "미리 보기",
+    "nav_workspace": "파일 및 작업 공간",
+    "darkmode_label": "어두운 테마",
+    "changes_apply_immediately": "변경 사항이 즉시 적용됩니다."
   },
   "modals-shortcuts": {
     "title": "MKEditor 단축키",

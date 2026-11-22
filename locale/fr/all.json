@@ -91,7 +91,14 @@
     "thinking_xhigh": "Très élevé",
     "thinking_max": "Maximum",
     "thinking_help": "S’applique aux prochains messages. Les niveaux supérieurs peuvent prendre plus de temps et utiliser plus de jetons.",
-    "thinking_unavailable": "Ce modèle utilise son réglage par défaut. Aucun niveau de raisonnement configurable n’est répertorié pour ce modèle."
+    "thinking_unavailable": "Ce modèle utilise son réglage par défaut. Aucun niveau de raisonnement configurable n’est répertorié pour ce modèle.",
+    "key_configured": "Clé configurée",
+    "key_not_configured": "Aucune clé configurée",
+    "replace_key": "Remplacer",
+    "connection_not_tested": "Connexion non testée",
+    "last_tested": "Dernier test : {{time}}",
+    "provider_enabled": "Activé",
+    "provider_disabled": "Désactivé"
   },
   "assistant-tools": {
     "confirm_title": "Autoriser {{toolName}} ?",
@@ -306,7 +313,12 @@
     "tab_assistant": "Fournisseurs d’IA",
     "paste_images": "Images collées",
     "paste_images_directory_label": "Dossier des images collées",
-    "paste_images_directory_help": "Les chemins relatifs (par ex. './assets') sont résolus par rapport au dossier du fichier Markdown actif. Les chemins absolus doivent rester dans le dossier ouvert."
+    "paste_images_directory_help": "Les chemins relatifs (par ex. './assets') sont résolus par rapport au dossier du fichier Markdown actif. Les chemins absolus doivent rester dans le dossier ouvert.",
+    "nav_editor": "Éditeur",
+    "nav_preview": "Aperçu",
+    "nav_workspace": "Fichiers et espace de travail",
+    "darkmode_label": "Thème sombre",
+    "changes_apply_immediately": "Les modifications s’appliquent immédiatement."
   },
   "modals-shortcuts": {
     "title": "Raccourcis MKEditor",

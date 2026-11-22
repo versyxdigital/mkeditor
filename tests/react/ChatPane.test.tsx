@@ -9,7 +9,13 @@
  */
 
 import * as React from 'react';
-import { act, screen, fireEvent, waitFor } from '@testing-library/react';
+import {
+  act,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AssistantManager } from '../../src/browser/core/AssistantManager';
 import { useAssistantChat } from '../../src/browser/react/contexts/AssistantContext';
@@ -304,6 +310,27 @@ beforeAll(() => {
 });
 
 describe('<ChatPane> — model and thinking dropdowns', () => {
+  it('keeps both accessible dropdowns after the message input in the composer', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    const controls = screen.getByTestId('chat-composer-controls');
+    expect(
+      within(controls).getByRole('combobox', {
+        name: 'assistant-chat:model_aria',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(controls).getByLabelText('assistant-settings:thinking_label'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('chat-input').compareDocumentPosition(controls) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('selects a readable model and commits its API ID immediately', async () => {
     const user = userEvent.setup();
     const { conv, snapshot } = snapshotWith({ messages: [] });

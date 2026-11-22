@@ -3,7 +3,6 @@
 @use '_base';
 @use '_editor';
 @use '_preview';
-@use '_darkmode';
 @use '_sidebar';
 
 @include meta.load-css('katex/dist/katex.min.css');
@@ -24,13 +23,13 @@ body[data-theme='dark'] {
   width: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #eeeeee;
+  background: var(--bg-app);
 }
 ::-webkit-scrollbar-thumb {
-  background: #bbbbbb;
+  background: var(--text-muted);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #aaaaaa;
+  background: var(--text-secondary);
 }
 
 // Hidden at boot; showSplashScreen() fades these in together once Monaco
@@ -40,126 +39,71 @@ body > nav {
   opacity: 0;
 }
 
-// Splash overlay.
-//
-// Three stacked layers:
-//   1. A deep near-black base gradient (cooler than `#222` so the
-//      teal glow has somewhere to bloom).
-//   2. Two off-axis radial blobs in the brand primary, tinted with
-//      `color-mix` so they stay locked to the theme token rather
-//      than a hardcoded teal.
-//   3. A slowly pulsing center halo via `::before` so the splash
-//      feels alive while Monaco boots in the background.
-//
-// The pulsing logo/halo animations honour `prefers-reduced-motion`.
+// Quiet startup surface; no decorative glow or motion.
 #splashscreen {
-  z-index: 9999;
   position: absolute;
   inset: 0;
-  overflow: hidden;
-  color: #ffffff;
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(
-      ellipse at 22% 28%,
-      color-mix(in oklch, var(--primary) 38%, transparent) 0%,
-      transparent 55%
-    ),
-    radial-gradient(
-      ellipse at 80% 75%,
-      color-mix(in oklch, var(--primary) 28%, transparent) 0%,
-      transparent 60%
-    ),
-    radial-gradient(ellipse at center, #1a2528 0%, #0c1416 75%);
-
-  // Soft breathing halo behind the centered logo/title block.
-  &::before {
-    content: '';
-    position: absolute;
-    inset: -10%;
-    background: radial-gradient(
-      circle at center,
-      color-mix(in oklch, var(--primary) 18%, transparent) 0%,
-      transparent 55%
-    );
-    animation: splash-pulse 4s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  // Logo + title sit above the halo pseudo-element.
-  > div {
-    position: relative;
-    z-index: 1;
-  }
-
+  background: var(--bg-app, #f5f6f8);
+  color: var(--text-primary, #252a32);
   img {
-    filter: drop-shadow(
-        0 0 28px color-mix(in oklch, var(--primary) 55%, transparent)
-      )
-      drop-shadow(0 0 6px color-mix(in oklch, var(--primary) 50%, transparent));
-    animation: splash-logo-glow 3.5s ease-in-out infinite;
-  }
-
-  h1 {
-    font-size: 3.5em;
-    letter-spacing: 10px;
-    text-transform: uppercase;
-    text-shadow:
-      0 0 18px color-mix(in oklch, var(--primary) 60%, transparent),
-      0 0 4px color-mix(in oklch, var(--primary) 45%, transparent);
-  }
-}
-
-@keyframes splash-pulse {
-  0%,
-  100% {
-    opacity: 0.7;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.08);
-  }
-}
-
-@keyframes splash-logo-glow {
-  0%,
-  100% {
-    filter: drop-shadow(
-        0 0 20px color-mix(in oklch, var(--primary) 50%, transparent)
-      )
-      drop-shadow(0 0 4px color-mix(in oklch, var(--primary) 45%, transparent));
-  }
-  50% {
-    filter: drop-shadow(
-        0 0 36px color-mix(in oklch, var(--primary) 75%, transparent)
-      )
-      drop-shadow(0 0 8px color-mix(in oklch, var(--primary) 60%, transparent));
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #splashscreen::before,
-  #splashscreen img {
-    animation: none;
+    width: 72px;
+    opacity: 0.85;
   }
 }
 
 .gutter {
-  background-color: #eeeeee;
+  background-color: var(--border-subtle);
   background-repeat: no-repeat;
   background-position: 50%;
 }
 
 .gutter.gutter-horizontal {
-  width: 10px;
-  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+  width: 6px;
   cursor: col-resize;
 }
 
 .gutter.sidebar-gutter-horizontal {
   width: 2px;
   cursor: col-resize;
+}
+
+.gutter:hover,
+.gutter:focus-visible {
+  background-color: var(--accent-subtle);
+}
+
+#application-footer {
+  height: var(--footer-height);
+  background: var(--bg-app);
+  color: var(--text-secondary);
+}
+
+#editor-functions {
+  flex-shrink: 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  &::-webkit-scrollbar {
+    height: 3px;
+  }
+}
+
+#document-status-row {
+  flex-shrink: 0;
+  height: 100%;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.explorer-title {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }

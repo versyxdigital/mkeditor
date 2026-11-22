@@ -53,8 +53,7 @@ export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
           isUser
             ? 'bg-primary text-primary-foreground'
             : 'bg-muted text-foreground',
-          message.status === 'failed' &&
-            'bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-200',
+          message.status === 'failed' && 'bg-destructive/10 text-destructive',
           message.status === 'cancelled' && 'opacity-70',
         )}
       >

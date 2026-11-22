@@ -18,6 +18,33 @@ afterEach(() => {
 });
 
 describe('standalone document export', () => {
+  it('preserves custom document typography and colours while retaining styled code and plain export behaviour', () => {
+    const content =
+      '<div id="preview-content" class="container-fluid"><h1>Draft</h1><pre><code class="language-typescript">const n = 1;</code></pre></div>';
+    const custom = {
+      ...exportSettings,
+      fontSize: 22,
+      lineSpacing: 1.25,
+      fontColor: '#334455',
+      background: '#ffeedd',
+    };
+    const styled = new DOMParser().parseFromString(
+      HTMLExporter.generateHTML(content, custom),
+      'text/html',
+    );
+    expect(styled.body.style.fontSize).toBe('22px');
+    expect(styled.body.style.lineHeight).toBe('1.25');
+    expect(styled.body.style.color).toBe('rgb(51, 68, 85)');
+    expect(styled.body.style.backgroundColor).toBe('rgb(255, 238, 221)');
+    expect(styled.querySelector('code')?.className).toBe('language-typescript');
+    const plain = new DOMParser().parseFromString(
+      HTMLExporter.generateHTML(content, { ...custom, withStyles: false }),
+      'text/html',
+    );
+    expect(plain.querySelector('style')).toBeNull();
+    expect(plain.querySelector('[class]')).toBeNull();
+    expect(plain.querySelector('code')?.textContent).toBe('const n = 1;');
+  });
   it('preserves the HTML element and language and declares Unicode encoding', () => {
     const out = HTMLExporter.generateHTML(
       '<html lang="ja"><head></head><body><p>こんにちは</p></body></html>',

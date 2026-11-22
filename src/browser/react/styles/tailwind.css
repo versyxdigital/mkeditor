@@ -2,58 +2,49 @@
 
 @custom-variant dark (&:is([data-theme='dark'] *, [data-theme='dark']));
 
-:root {
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.28 0 0);
-  --card: oklch(0.985 0 0);
-  --card-foreground: oklch(0.28 0 0);
-  --popover: oklch(0.985 0 0);
-  --popover-foreground: oklch(0.28 0 0);
-  --primary: oklch(0.578 0.0532 178.5);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --radius: 0.625rem;
+:root,
+[data-theme='dark'] {
+  --background: var(--bg-app);
+  --foreground: var(--text-primary);
+  --card: var(--bg-elevated);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent-primary);
+  --primary-foreground: var(--text-on-accent);
+  --secondary: var(--bg-hover);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--bg-sidebar);
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--bg-hover);
+  --accent-foreground: var(--text-primary);
+  --destructive: var(--status-error);
+  --destructive-foreground: var(--bg-elevated);
+  --border: var(--border-default);
+  --input: var(--border-control);
+  --ring: var(--accent-primary);
+  --radius: 8px;
 }
 
 [data-theme='dark'] {
-  /* Slightly lighter than Monaco's `vs-dark` (#1e1e1e) so the navbar
-     and bottom toolbar read as distinct chrome layers on top of the
-     editor pane. `--card` / `--popover` stay at 0.205 so modals
-     match the editor surface. */
-  --background: oklch(0.24 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  /* Brand teal stays the same in dark mode — keeps the MKEditor accent
-     consistent. Foreground stays light for contrast on the teal fill. */
-  --primary: oklch(0.578 0.0532 178.5);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  color-scheme: dark;
+  --destructive-foreground: var(--bg-app);
 }
 
 @theme inline {
+  --font-sans: var(--font-interface);
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.5385;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.5;
+  --color-editor: var(--bg-editor);
+  --color-sidebar: var(--bg-sidebar);
+  --color-hover: var(--bg-hover);
+  --color-active: var(--bg-active);
+  --color-subtle: var(--border-subtle);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-success: var(--status-success);
+  --color-warning: var(--status-warning);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -85,5 +76,28 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-interface);
+    font-size: 13px;
+    line-height: 20px;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    transition-duration: var(--motion-hover);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

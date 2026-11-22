@@ -6,6 +6,7 @@ import type { PastedImageWriter } from './core/PasteImageHandler';
 import { EditorDispatcher } from './events/EditorDispatcher';
 import { initI18n, changeLanguage } from './i18n';
 import { markdownStylesheet } from './markdownStyles';
+import { designSystemStylesheet } from './designSystem';
 import { getExecutionBridge, logger } from './util';
 import { showSplashScreen } from './splash';
 
@@ -40,7 +41,7 @@ const platform: 'web' | 'darwin' | 'win32' | 'linux' =
 // exported HTML by HTMLExporter — single source of truth.
 const markdownStyleEl = document.createElement('style');
 markdownStyleEl.id = 'md-styles';
-markdownStyleEl.textContent = markdownStylesheet;
+markdownStyleEl.textContent = designSystemStylesheet + markdownStylesheet;
 document.head.appendChild(markdownStyleEl);
 
 // Precompute bindings, warm language bundle fetch and initialize i18n.

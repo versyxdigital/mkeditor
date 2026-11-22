@@ -91,7 +91,14 @@
     "thinking_xhigh": "Molto alto",
     "thinking_max": "Massimo",
     "thinking_help": "Si applica ai messaggi futuri. I livelli più alti possono richiedere più tempo e usare più token.",
-    "thinking_unavailable": "Questo modello usa il valore predefinito. Non sono elencati livelli di ragionamento configurabili per questo modello."
+    "thinking_unavailable": "Questo modello usa il valore predefinito. Non sono elencati livelli di ragionamento configurabili per questo modello.",
+    "key_configured": "Chiave configurata",
+    "key_not_configured": "Nessuna chiave configurata",
+    "replace_key": "Sostituisci",
+    "connection_not_tested": "Connessione non verificata",
+    "last_tested": "Ultimo test: {{time}}",
+    "provider_enabled": "Attivato",
+    "provider_disabled": "Disattivato"
   },
   "assistant-tools": {
     "confirm_title": "Consentire {{toolName}}?",
@@ -306,7 +313,12 @@
     "tab_assistant": "Provider IA",
     "paste_images": "Immagini incollate",
     "paste_images_directory_label": "Cartella per immagini incollate",
-    "paste_images_directory_help": "I percorsi relativi (es. './assets') vengono risolti rispetto alla cartella del file Markdown attivo. I percorsi assoluti devono rimanere nel workspace aperto."
+    "paste_images_directory_help": "I percorsi relativi (es. './assets') vengono risolti rispetto alla cartella del file Markdown attivo. I percorsi assoluti devono rimanere nel workspace aperto.",
+    "nav_editor": "Editor",
+    "nav_preview": "Anteprima",
+    "nav_workspace": "File e area di lavoro",
+    "darkmode_label": "Tema scuro",
+    "changes_apply_immediately": "Le modifiche vengono applicate subito."
   },
   "modals-shortcuts": {
     "title": "Scorciatoie di MKEditor",

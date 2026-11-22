@@ -91,7 +91,14 @@
     "thinking_xhigh": "Sehr hoch",
     "thinking_max": "Maximum",
     "thinking_help": "Gilt für zukünftige Nachrichten. Höhere Stufen können länger dauern und mehr Tokens verbrauchen.",
-    "thinking_unavailable": "Dieses Modell verwendet seinen Standard. Für dieses Modell sind keine einstellbaren Denkstufen aufgeführt."
+    "thinking_unavailable": "Dieses Modell verwendet seinen Standard. Für dieses Modell sind keine einstellbaren Denkstufen aufgeführt.",
+    "key_configured": "Schlüssel eingerichtet",
+    "key_not_configured": "Kein Schlüssel eingerichtet",
+    "replace_key": "Ersetzen",
+    "connection_not_tested": "Verbindung nicht getestet",
+    "last_tested": "Zuletzt getestet: {{time}}",
+    "provider_enabled": "Aktiviert",
+    "provider_disabled": "Deaktiviert"
   },
   "assistant-tools": {
     "confirm_title": "{{toolName}} erlauben?",
@@ -306,7 +313,12 @@
     "tab_assistant": "KI-Anbieter",
     "paste_images": "Eingefügte Bilder",
     "paste_images_directory_label": "Verzeichnis für eingefügte Bilder",
-    "paste_images_directory_help": "Relative Pfade (z. B. './assets') werden gegen den Ordner der aktiven Markdown-Datei aufgelöst. Absolute Pfade müssen innerhalb des geöffneten Arbeitsbereichs liegen."
+    "paste_images_directory_help": "Relative Pfade (z. B. './assets') werden gegen den Ordner der aktiven Markdown-Datei aufgelöst. Absolute Pfade müssen innerhalb des geöffneten Arbeitsbereichs liegen.",
+    "nav_editor": "Editor",
+    "nav_preview": "Vorschau",
+    "nav_workspace": "Dateien & Arbeitsbereich",
+    "darkmode_label": "Dunkles Design",
+    "changes_apply_immediately": "Änderungen werden sofort angewendet."
   },
   "modals-shortcuts": {
     "title": "MKEditor Tastenkürzel",

@@ -1,21 +1,22 @@
 #sidebar {
   flex: 0 0 auto;
-  background-color: #f3f3f3;
+  background-color: var(--bg-sidebar);
   overflow-y: auto;
   height: 100%;
 
   .explorer-title {
-    font-size: 0.65rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    margin-bottom: 0.5em;
-    color: #838383;
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 600;
+    margin-bottom: var(--space-4);
+    color: var(--text-secondary);
   }
 }
 
 #file-tree {
-  font-size: 0.85rem;
-  color: #454545;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-secondary);
 
   li {
     white-space: nowrap;
@@ -23,20 +24,21 @@
     .file-name {
       display: flex;
       align-items: center;
-      padding: 2px 4px;
+      min-height: var(--sidebar-row-height);
+      padding: 4px 8px;
       cursor: pointer;
-      border-radius: 3px;
+      border-radius: 4px;
       overflow: hidden;
       text-overflow: ellipsis;
 
       &:hover {
-        background-color: #e1e4e8;
+        background-color: var(--bg-hover);
       }
 
       &.active {
-        background-color: #d7d7d7;
-        color: #222222;
-        font-weight: bold;
+        background-color: var(--bg-active);
+        color: var(--text-primary);
+        font-weight: 500;
       }
 
       i {
@@ -45,7 +47,7 @@
     }
 
     ul {
-      padding-left: 1rem;
+      padding-left: 16px;
     }
   }
 }

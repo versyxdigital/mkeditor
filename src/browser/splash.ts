@@ -23,6 +23,12 @@ export function fade(
   duration: number,
   callback?: () => void,
 ) {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    element.style.display = direction === 'out' ? 'none' : '';
+    element.style.opacity = direction === 'out' ? '0' : '1';
+    callback?.();
+    return;
+  }
   if (direction === 'in') {
     fadeIn(element, duration, callback);
   } else {

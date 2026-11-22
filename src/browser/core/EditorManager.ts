@@ -166,12 +166,19 @@ export class EditorManager {
       this.mkeditor = editor.create(target, {
         value: editorContent,
         language: 'markdown',
+        fontSize: 14,
+        lineHeight: 1.65,
+        fontWeight: '400',
+        padding: { top: 24, bottom: 24 },
+        lineDecorationsWidth: 16,
         wordBasedSuggestions: 'off',
         autoIndent: 'advanced',
         wordWrap: 'on',
         renderWhitespace: 'all',
         renderLineHighlight: 'gutter',
-        smoothScrolling: true,
+        smoothScrolling: !window.matchMedia?.(
+          '(prefers-reduced-motion: reduce)',
+        ).matches,
         roundedSelection: false,
         accessibilityPageSize: 1000,
       });

@@ -42,4 +42,9 @@ const KeyCode = new Proxy(
   },
 );
 
-module.exports = { editor: { create, setTheme }, languages, KeyMod, KeyCode };
+module.exports = {
+  editor: { create, setTheme, defineTheme: jest.fn() },
+  languages,
+  KeyMod,
+  KeyCode,
+};

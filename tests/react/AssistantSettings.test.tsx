@@ -221,6 +221,32 @@ describe('<AssistantSettings> — Anthropic row (API-key provider)', () => {
     expect(am.clearKey).toHaveBeenCalledWith('anthropic');
   });
 
+  it('shows saved-key feedback and focuses the empty replacement field', () => {
+    const snap = baseSnapshot();
+    snap.config.anthropic.hasKey = true;
+    const am = fakeAssistantManager({ initialSnapshot: snap });
+    renderWithProviders(<AssistantSettings />, {
+      managers: { assistantManager: am as never, mode: 'desktop' },
+    });
+    const region = screen.getByRole('region', {
+      name: 'assistant-settings:provider_anthropic',
+    });
+    expect(
+      within(region).getByText('assistant-settings:key_configured'),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(region).getByRole('button', {
+        name: 'assistant-settings:replace_key',
+      }),
+    );
+    const input = within(region).getByLabelText(
+      'assistant-settings:api_key_label',
+    );
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue('');
+    expect(am.setKey).not.toHaveBeenCalled();
+  });
+
   it('shows readable names and saves the API model ID when selected', async () => {
     const user = userEvent.setup();
     const am = fakeAssistantManager({ initialSnapshot: baseSnapshot() });
@@ -357,6 +383,53 @@ describe('<AssistantSettings> — Anthropic row (API-key provider)', () => {
 });
 
 describe('<AssistantSettings> — Test connection toasts', () => {
+  it('discards a late connection result when the tested model has changed', async () => {
+    const snap = baseSnapshot();
+    snap.config.anthropic.hasKey = true;
+    const am = fakeAssistantManager({ initialSnapshot: snap });
+    let finish!: (result: { ok: boolean }) => void;
+    am.testConnection.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderWithProviders(<AssistantSettings />, {
+      managers: { assistantManager: am as never, mode: 'desktop' },
+    });
+    const region = screen.getByRole('region', {
+      name: 'assistant-settings:provider_anthropic',
+    });
+    fireEvent.click(
+      within(region).getByRole('button', {
+        name: 'assistant-settings:test_connection',
+      }),
+    );
+    expect(within(region).getByRole('status')).toHaveTextContent(
+      'assistant-settings:status_testing',
+    );
+    act(() =>
+      am._setSnapshot({
+        ...snap,
+        config: {
+          ...snap.config,
+          anthropic: {
+            ...snap.config.anthropic,
+            defaultModel: 'claude-sonnet-5-5',
+          },
+        },
+      }),
+    );
+    await act(async () => finish({ ok: true }));
+    expect(within(region).getByRole('status')).toHaveTextContent(
+      'assistant-settings:connection_not_tested',
+    );
+    expect(
+      within(region).queryByText('assistant-settings:last_tested'),
+    ).not.toBeInTheDocument();
+    expect(toastSpy).not.toHaveBeenCalled();
+  });
+
   it('fires a success toast when testConnection resolves with ok:true', async () => {
     const snap = baseSnapshot();
     snap.config.anthropic.hasKey = true;

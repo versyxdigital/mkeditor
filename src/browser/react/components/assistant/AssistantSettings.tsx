@@ -57,7 +57,7 @@ export const AssistantSettings: React.FC = () => {
       {mode === 'web' && (
         <div
           role="note"
-          className="rounded-md border border-amber-400/40 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/40 dark:text-amber-200"
+          className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning"
         >
           <Icon name="exclamation-circle" className="mr-1" />
           {t('assistant-settings:web_warning')}
@@ -67,14 +67,14 @@ export const AssistantSettings: React.FC = () => {
       {!snapshot.encryptionAvailable && (
         <div
           role="note"
-          className="rounded-md border border-red-400/40 bg-red-50 px-3 py-2 text-xs text-red-900 dark:border-red-400/30 dark:bg-red-950/40 dark:text-red-200"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
         >
           <Icon name="exclamation-circle" className="mr-1" />
           {t('assistant-settings:encryption_unavailable')}
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <ApiProviderRow
           provider="anthropic"
           label={t('assistant-settings:provider_anthropic')}
@@ -83,7 +83,7 @@ export const AssistantSettings: React.FC = () => {
           provider="openai"
           label={t('assistant-settings:provider_openai')}
         />
-        <div className="col-span-2">
+        <div className="lg:col-span-2">
           <OllamaProviderRow label={t('assistant-settings:provider_ollama')} />
         </div>
       </div>
@@ -105,7 +105,10 @@ const ApiProviderRow: React.FC<{
 
   const [keyInput, setKeyInput] = React.useState('');
   const [showKey, setShowKey] = React.useState(false);
-  const [status, setStatus] = React.useState<TestStatus>('unknown');
+  const connection = useConnectionStatus(
+    JSON.stringify([cfg?.defaultModel, cfg?.hasKey]),
+  );
+  const keyInputRef = React.useRef<HTMLInputElement>(null);
 
   if (!cfg || !manager) return null;
   const disabledByEncryption = !snapshot.encryptionAvailable;
@@ -120,12 +123,12 @@ const ApiProviderRow: React.FC<{
     void manager.setKey(provider, keyInput);
     setKeyInput('');
     setShowKey(false);
-    setStatus('unknown');
+    connection.reset();
   };
 
   const handleClear = () => {
     manager.clearKey(provider);
-    setStatus('unknown');
+    connection.reset();
   };
 
   const handleEnable = (next: boolean) => {
@@ -148,20 +151,19 @@ const ApiProviderRow: React.FC<{
           : {}),
       },
     });
-    setStatus('unknown');
+    connection.reset();
   };
 
   const runTest = async () => {
-    setStatus('testing');
+    const ticket = connection.start();
     const result = await manager.testConnection(provider, cfg.defaultModel);
+    if (!connection.complete(ticket, result.ok)) return;
     if (result.ok) {
-      setStatus('connected');
       sonnerToast(
         'success',
         t('assistant-settings:test_connection_success', { provider: label }),
       );
     } else {
-      setStatus('failed');
       sonnerToast(
         'error',
         t('assistant-settings:test_connection_failure', {
@@ -178,17 +180,10 @@ const ApiProviderRow: React.FC<{
     <ProviderCard
       provider={provider}
       label={label}
-      status={status}
-      statusKey="assistant-settings"
+      enabled={cfg.enabled}
+      onEnabledChange={handleEnable}
+      disabled={disabledByEncryption}
     >
-      <ToggleRow
-        id={`${provider}-enabled`}
-        label={t('assistant-settings:enable_label')}
-        checked={cfg.enabled}
-        onChange={handleEnable}
-        disabled={disabledByEncryption}
-      />
-
       <div className="flex flex-col gap-1">
         <Label htmlFor={`${provider}-key`}>
           {t('assistant-settings:api_key_label')}
@@ -198,6 +193,7 @@ const ApiProviderRow: React.FC<{
             squeezing the key input below 200 px. */}
         <div className="flex items-center gap-2">
           <Input
+            ref={keyInputRef}
             id={`${provider}-key`}
             type={showKey ? 'text' : 'password'}
             placeholder={
@@ -213,7 +209,7 @@ const ApiProviderRow: React.FC<{
             disabled={disabledByEncryption}
             autoComplete="off"
             spellCheck={false}
-            className="flex-1"
+            className="min-w-0 flex-1"
           />
           <Button
             type="button"
@@ -235,52 +231,78 @@ const ApiProviderRow: React.FC<{
             <Icon name={showKey ? 'eye-slash' : 'eye'} />
           </Button>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={commitKey}
-            disabled={!keyInput || disabledByEncryption}
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+          <span
+            className={cn(
+              'flex items-center gap-1.5 text-xs',
+              cfg.hasKey ? 'text-success' : 'text-muted-foreground',
+            )}
           >
-            {t('assistant-settings:save_key')}
-          </Button>
-          {cfg.hasKey && (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={handleClear}
-            >
-              {t('assistant-settings:clear_key')}
-            </Button>
-          )}
+            <Icon
+              name={cfg.hasKey ? 'check' : 'question-circle'}
+              className="h-3.5 w-3.5"
+            />
+            {t(
+              cfg.hasKey
+                ? 'assistant-settings:key_configured'
+                : 'assistant-settings:key_not_configured',
+            )}
+          </span>
+          <div className="flex items-center gap-1">
+            {(!cfg.hasKey || keyInput) && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={commitKey}
+                disabled={!keyInput || disabledByEncryption}
+              >
+                {t('assistant-settings:save_key')}
+              </Button>
+            )}
+            {cfg.hasKey && !keyInput && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => keyInputRef.current?.focus()}
+                disabled={disabledByEncryption}
+              >
+                {t('assistant-settings:replace_key')}
+              </Button>
+            )}
+            {cfg.hasKey && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={handleClear}
+              >
+                {t('assistant-settings:clear_key')}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      <ProviderModelSettings
-        provider={provider}
-        model={cfg.defaultModel}
-        thinkingLevel={cfg.thinkingLevel}
-        onModelChange={handleModelChange}
-        onThinkingChange={(thinkingLevel) =>
-          manager.setProviderConfig({ provider, config: { thinkingLevel } })
-        }
-      />
-
-      <div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={runTest}
-          disabled={!canTest || status === 'testing'}
-        >
-          {status === 'testing'
-            ? t('assistant-settings:testing')
-            : t('assistant-settings:test_connection')}
-        </Button>
+      <div className="grid grid-cols-2 gap-3">
+        <ProviderModelSettings
+          provider={provider}
+          model={cfg.defaultModel}
+          thinkingLevel={cfg.thinkingLevel}
+          onModelChange={handleModelChange}
+          onThinkingChange={(thinkingLevel) =>
+            manager.setProviderConfig({ provider, config: { thinkingLevel } })
+          }
+        />
       </div>
+
+      <ConnectionFooter
+        provider={provider}
+        connection={connection}
+        onTest={runTest}
+        disabled={!canTest}
+      />
     </ProviderCard>
   );
 };
@@ -298,7 +320,9 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
   const [model, setModel] = React.useState(cfg?.defaultModel ?? '');
   const [models, setModels] = React.useState<string[]>([]);
   const [refreshing, setRefreshing] = React.useState(false);
-  const [status, setStatus] = React.useState<TestStatus>('unknown');
+  const connection = useConnectionStatus(
+    JSON.stringify([cfg?.baseUrl, cfg?.defaultModel]),
+  );
 
   React.useEffect(() => {
     if (cfg?.baseUrl) setBaseUrl(cfg.baseUrl);
@@ -323,6 +347,7 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
       provider: 'ollama',
       config: { baseUrl: trimmed },
     });
+    connection.reset();
   };
 
   const handleModelChange = (next: string) => {
@@ -332,6 +357,7 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
         provider: 'ollama',
         config: { defaultModel: next },
       });
+      connection.reset();
     }
   };
 
@@ -358,16 +384,15 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
   };
 
   const runTest = async () => {
-    setStatus('testing');
+    const ticket = connection.start();
     const result = await manager.testConnection('ollama', cfg.defaultModel);
+    if (!connection.complete(ticket, result.ok)) return;
     if (result.ok) {
-      setStatus('connected');
       sonnerToast(
         'success',
         t('assistant-settings:test_connection_success', { provider: label }),
       );
     } else {
-      setStatus('failed');
       sonnerToast(
         'error',
         t('assistant-settings:test_connection_failure', {
@@ -378,8 +403,7 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
     }
   };
 
-  const visibleModels =
-    models.length > 0 ? models : cfg.defaultModel ? [cfg.defaultModel] : [];
+  const visibleModels = Array.from(new Set([model, ...models].filter(Boolean)));
 
   // Ollama lives on its own full-width row (no key field, more
   // dynamic content). The internal layout uses a two-column grid so
@@ -389,17 +413,10 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
     <ProviderCard
       provider="ollama"
       label={label}
-      status={status}
-      statusKey="assistant-settings"
+      enabled={cfg.enabled}
+      onEnabledChange={handleEnable}
     >
-      <ToggleRow
-        id="ollama-enabled"
-        label={t('assistant-settings:enable_label')}
-        checked={cfg.enabled}
-        onChange={handleEnable}
-      />
-
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
           <Label htmlFor="ollama-baseurl">
             {t('assistant-settings:ollama_baseurl_label')}
@@ -454,19 +471,12 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
         {t('assistant-settings:ollama_tool_support_hint')}
       </p>
 
-      <div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={runTest}
-          disabled={!model || status === 'testing'}
-        >
-          {status === 'testing'
-            ? t('assistant-settings:testing')
-            : t('assistant-settings:test_connection')}
-        </Button>
-      </div>
+      <ConnectionFooter
+        provider="ollama"
+        connection={connection}
+        onTest={runTest}
+        disabled={!model}
+      />
     </ProviderCard>
   );
 };
@@ -477,72 +487,157 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
 
 type TestStatus = 'unknown' | 'testing' | 'connected' | 'failed';
 
-const STATUS_CLASS: Record<Exclude<TestStatus, 'unknown'>, string> = {
-  testing: 'bg-muted text-muted-foreground',
-  connected:
-    'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200',
-  failed: 'bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-200',
+/** A connection result belongs to the configuration that was actually tested. */
+function useConnectionStatus(identity: string) {
+  const [status, setStatus] = React.useState<TestStatus>('unknown');
+  const [lastTested, setLastTested] = React.useState<number | null>(null);
+  const version = React.useRef(0);
+  const reset = React.useCallback(() => {
+    version.current++;
+    setStatus('unknown');
+    setLastTested(null);
+  }, []);
+  React.useEffect(() => {
+    reset();
+    return () => {
+      version.current++;
+    };
+  }, [identity, reset]);
+  return {
+    status,
+    lastTested,
+    reset,
+    start: () => {
+      const ticket = ++version.current;
+      setStatus('testing');
+      return ticket;
+    },
+    complete: (ticket: number, ok: boolean) => {
+      if (ticket !== version.current) return false;
+      setStatus(ok ? 'connected' : 'failed');
+      setLastTested(Date.now());
+      return true;
+    },
+  };
+}
+
+const ConnectionFooter: React.FC<{
+  provider: ProviderId;
+  connection: ReturnType<typeof useConnectionStatus>;
+  onTest: () => void;
+  disabled: boolean;
+}> = ({ provider, connection, onTest, disabled }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-subtle pt-4">
+      <div role="status" className="min-w-0 text-xs">
+        <div
+          className={cn(
+            'flex items-center gap-2',
+            connection.status === 'connected'
+              ? 'text-success'
+              : connection.status === 'failed'
+                ? 'text-destructive'
+                : 'text-muted-foreground',
+          )}
+          data-testid={'status-pill-' + provider}
+        >
+          <Icon
+            name={
+              connection.status === 'connected'
+                ? 'check'
+                : connection.status === 'failed'
+                  ? 'exclamation-circle'
+                  : 'question-circle'
+            }
+            className="h-3.5 w-3.5"
+          />
+          <span>
+            {t(
+              connection.status === 'unknown'
+                ? 'assistant-settings:connection_not_tested'
+                : 'assistant-settings:status_' + connection.status,
+            )}
+          </span>
+        </div>
+        {connection.lastTested !== null && (
+          <p className="mt-1 pl-5 text-muted-foreground">
+            {t('assistant-settings:last_tested', {
+              time: new Date(connection.lastTested).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              }),
+            })}
+          </p>
+        )}
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={onTest}
+        disabled={disabled || connection.status === 'testing'}
+      >
+        <Icon name="refresh" className="h-3.5 w-3.5" />
+        {t(
+          connection.status === 'testing'
+            ? 'assistant-settings:testing'
+            : 'assistant-settings:test_connection',
+        )}
+      </Button>
+    </div>
+  );
 };
 
 const ProviderCard: React.FC<{
   provider: ProviderId;
   label: string;
-  status: TestStatus;
-  statusKey: string;
-  children: React.ReactNode;
-}> = ({ provider, label, status, statusKey, children }) => (
-  <section
-    aria-label={label}
-    className="flex flex-col gap-3 rounded-md border border-border bg-background p-3"
-  >
-    <div className="flex items-center justify-between">
-      <h4 className="flex items-center gap-2 text-sm font-semibold">
-        <ProviderLogo provider={provider} className="h-4 w-4" />
-        <span>{label}</span>
-      </h4>
-      {status !== 'unknown' && (
-        <span
-          className={cn(
-            'rounded-full px-2 py-0.5 text-xs',
-            STATUS_CLASS[status],
-          )}
-          data-testid={`status-pill-${label.toLowerCase()}`}
-        >
-          <StatusLabel status={status} statusKey={statusKey} />
-        </span>
-      )}
-    </div>
-    {children}
-  </section>
-);
-
-const StatusLabel: React.FC<{ status: TestStatus; statusKey: string }> = ({
-  status,
-  statusKey,
-}) => {
-  const { t } = useTranslation();
-  return <>{t(`${statusKey}:status_${status}`)}</>;
-};
-
-const ToggleRow: React.FC<{
-  id: string;
-  label: string;
-  checked: boolean;
-  onChange: (next: boolean) => void;
+  enabled: boolean;
+  onEnabledChange: (value: boolean) => void;
   disabled?: boolean;
-}> = ({ id, label, checked, onChange, disabled }) => (
-  <div className="flex items-center justify-between">
-    <Label htmlFor={id} className="text-sm">
-      {label}
-    </Label>
-    <Switch
-      id={id}
-      checked={checked}
-      onCheckedChange={onChange}
-      disabled={disabled}
-    />
-  </div>
-);
+  children: React.ReactNode;
+}> = ({ provider, label, enabled, onEnabledChange, disabled, children }) => {
+  const { t } = useTranslation();
+  return (
+    <section
+      aria-label={label}
+      className="flex min-w-0 flex-col gap-5 rounded-lg border border-border bg-card p-4"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-subtle pb-4">
+        <h4 className="flex items-center gap-2 text-base font-semibold">
+          <ProviderLogo provider={provider} className="h-5 w-5" />
+          <span>{label}</span>
+        </h4>
+        <div className="flex items-center gap-2">
+          <Label htmlFor={provider + '-enabled'} className="sr-only">
+            {t('assistant-settings:enable_label')}
+          </Label>
+          <Switch
+            id={provider + '-enabled'}
+            checked={enabled}
+            onCheckedChange={onEnabledChange}
+            disabled={disabled}
+          />
+          <span
+            className={cn(
+              'rounded-full px-2 py-0.5 text-xs',
+              enabled
+                ? 'bg-success/10 text-success'
+                : 'bg-muted text-muted-foreground',
+            )}
+          >
+            {t(
+              enabled
+                ? 'assistant-settings:provider_enabled'
+                : 'assistant-settings:provider_disabled',
+            )}
+          </span>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+};
 
 function formatTestError(
   code: ChatErrorEvent['code'] | undefined,

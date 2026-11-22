@@ -5,6 +5,7 @@ import { app, type BrowserWindow } from 'electron';
 import type { SettingsFile } from '../interfaces/Settings';
 import type { Providers } from '../interfaces/Providers';
 import { deepMerge, hasAllKeys, normalizeLanguage } from '../util';
+import { documentDefaults } from '../shared/designTokens';
 
 /**
  * AppSettings
@@ -42,11 +43,8 @@ export class AppSettings {
     pasteImages: { directory: './assets' },
     exportSettings: {
       withStyles: true,
-      container: 'container-fluid',
-      fontSize: 16,
-      lineSpacing: 1.5,
-      background: '#ffffff',
-      fontColor: '#212529',
+      container: 'container',
+      ...documentDefaults,
     },
   };
 

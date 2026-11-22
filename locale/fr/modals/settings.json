@@ -37,5 +37,10 @@
   "tab_assistant": "Fournisseurs d’IA",
   "paste_images": "Images collées",
   "paste_images_directory_label": "Dossier des images collées",
-  "paste_images_directory_help": "Les chemins relatifs (par ex. './assets') sont résolus par rapport au dossier du fichier Markdown actif. Les chemins absolus doivent rester dans le dossier ouvert."
+  "paste_images_directory_help": "Les chemins relatifs (par ex. './assets') sont résolus par rapport au dossier du fichier Markdown actif. Les chemins absolus doivent rester dans le dossier ouvert.",
+  "nav_editor": "Éditeur",
+  "nav_preview": "Aperçu",
+  "nav_workspace": "Fichiers et espace de travail",
+  "darkmode_label": "Thème sombre",
+  "changes_apply_immediately": "Les modifications s’appliquent immédiatement."
 }

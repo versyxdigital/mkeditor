@@ -164,7 +164,7 @@ export const MentionPicker: React.FC<MentionPickerProps> = ({
 
   return (
     <div
-      className="absolute bottom-full left-0 right-0 z-50 mb-1 max-h-60 overflow-y-auto rounded-md border border-border bg-popover p-1 text-sm shadow-md"
+      className="absolute bottom-full left-0 right-0 z-50 mb-1 max-h-60 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-sm shadow-[var(--shadow-floating)]"
       role="listbox"
       aria-label={t('assistant-chat:mention_picker_aria')}
       data-testid="mention-picker"

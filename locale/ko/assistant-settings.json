@@ -49,5 +49,12 @@
   "thinking_xhigh": "매우 높음",
   "thinking_max": "최대",
   "thinking_help": "이후 메시지에 적용됩니다. 수준이 높을수록 더 오래 걸리고 더 많은 토큰을 사용할 수 있습니다.",
-  "thinking_unavailable": "이 모델은 기본 설정을 사용합니다. 이 모델에 대해 설정 가능한 사고 수준이 등록되지 않았습니다."
+  "thinking_unavailable": "이 모델은 기본 설정을 사용합니다. 이 모델에 대해 설정 가능한 사고 수준이 등록되지 않았습니다.",
+  "key_configured": "키가 설정됨",
+  "key_not_configured": "키가 설정되지 않음",
+  "replace_key": "교체",
+  "connection_not_tested": "연결을 테스트하지 않음",
+  "last_tested": "마지막 테스트: {{time}}",
+  "provider_enabled": "사용",
+  "provider_disabled": "사용 안 함"
 }

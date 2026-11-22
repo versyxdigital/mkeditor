@@ -188,9 +188,10 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="ghost"
             title={t('toolbar:table_menu_tooltip')}
-            className="h-7 w-7 p-0"
+            aria-label={t('toolbar:table_menu_tooltip')}
+            className="h-[30px] w-[30px] p-0"
           >
             <Icon name="table" />
           </Button>
@@ -224,12 +225,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
               }
             />
           </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={insertTable}
-          >
+          <Button type="button" size="sm" variant="ghost" onClick={insertTable}>
             {t('menus-tables:insert_table')}
           </Button>
         </PopoverContent>
@@ -250,9 +246,10 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="ghost"
             title={t('toolbar:codeblock_menu_tooltip')}
-            className="h-7 w-7 p-0"
+            aria-label={t('toolbar:codeblock_menu_tooltip')}
+            className="h-[30px] w-[30px] p-0"
           >
             <Icon name="code" />
           </Button>
@@ -288,9 +285,10 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="ghost"
             title={t('toolbar:alert_menu_tooltip')}
-            className="h-7 w-7 p-0"
+            aria-label={t('toolbar:alert_menu_tooltip')}
+            className="h-[30px] w-[30px] p-0"
           >
             <Icon name="exclamation-circle" />
           </Button>
@@ -340,16 +338,15 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="ghost"
         title={t('toolbar:export_html_tooltip')}
+        aria-label={t('toolbar:export_html_tooltip')}
         onClick={handleExport('html')}
-        className="h-7 gap-1"
+        className="h-[30px] gap-1"
       >
         <Icon name="file-export" />
-        <span className="text-xs">
-          <span className="hidden md:inline">
-            {t('toolbar:export_to_prefix')}
-          </span>
+        <span className="hidden xl:inline text-xs">
+          <span>{t('toolbar:export_to_prefix')}</span>
           {t('toolbar:export_html_label')}
         </span>
       </Button>
@@ -357,16 +354,15 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="ghost"
         title={t('toolbar:export_pdf_tooltip')}
+        aria-label={t('toolbar:export_pdf_tooltip')}
         onClick={handleExport('pdf')}
-        className="h-7 gap-1"
+        className="h-[30px] gap-1"
       >
         <Icon name="file-pdf" />
-        <span className="text-xs">
-          <span className="hidden md:inline">
-            {t('toolbar:export_to_prefix')}
-          </span>
+        <span className="hidden xl:inline text-xs">
+          <span>{t('toolbar:export_to_prefix')}</span>
           {t('toolbar:export_pdf_label')}
         </span>
       </Button>
@@ -388,10 +384,11 @@ const ToolbarButton: React.FC<{
   <Button
     type="button"
     size="sm"
-    variant="outline"
+    variant="ghost"
     title={title}
+    aria-label={title}
     onClick={onClick}
-    className="h-7 w-7 p-0"
+    className="h-[30px] w-[30px] p-0"
   >
     {children}
   </Button>
@@ -407,7 +404,7 @@ const MenuItem: React.FC<{
 }> = ({ onClick, children }) => (
   <button
     type="button"
-    className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+    className="flex w-full cursor-pointer items-center gap-2 min-h-8 rounded-sm px-3 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground"
     onClick={onClick}
   >
     {children}

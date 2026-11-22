@@ -91,7 +91,14 @@
     "thinking_xhigh": "Extra hoog",
     "thinking_max": "Maximaal",
     "thinking_help": "Geldt voor toekomstige berichten. Hogere niveaus kunnen langer duren en meer tokens gebruiken.",
-    "thinking_unavailable": "Dit model gebruikt zijn standaardinstelling. Voor dit model zijn geen instelbare denkniveaus vermeld."
+    "thinking_unavailable": "Dit model gebruikt zijn standaardinstelling. Voor dit model zijn geen instelbare denkniveaus vermeld.",
+    "key_configured": "Sleutel ingesteld",
+    "key_not_configured": "Geen sleutel ingesteld",
+    "replace_key": "Vervangen",
+    "connection_not_tested": "Verbinding niet getest",
+    "last_tested": "Laatst getest: {{time}}",
+    "provider_enabled": "Ingeschakeld",
+    "provider_disabled": "Uitgeschakeld"
   },
   "assistant-tools": {
     "confirm_title": "{{toolName}} toestaan?",
@@ -306,7 +313,12 @@
     "tab_assistant": "AI-providers",
     "paste_images": "Geplakte afbeeldingen",
     "paste_images_directory_label": "Map voor geplakte afbeeldingen",
-    "paste_images_directory_help": "Relatieve paden (bijv. './assets') worden opgelost ten opzichte van de map van het actieve Markdown-bestand. Absolute paden moeten binnen de geopende workspace blijven."
+    "paste_images_directory_help": "Relatieve paden (bijv. './assets') worden opgelost ten opzichte van de map van het actieve Markdown-bestand. Absolute paden moeten binnen de geopende workspace blijven.",
+    "nav_editor": "Editor",
+    "nav_preview": "Voorbeeld",
+    "nav_workspace": "Bestanden en werkruimte",
+    "darkmode_label": "Donker thema",
+    "changes_apply_immediately": "Wijzigingen worden direct toegepast."
   },
   "modals-shortcuts": {
     "title": "MKEditor-sneltoetsen",

@@ -24,7 +24,7 @@ export const PropertiesModal: React.FC = () => {
         <DialogHeader>
           <DialogTitle>{t('modals-properties:title')}</DialogTitle>
         </DialogHeader>
-        <div className="px-4 pb-4 text-sm">
+        <div className="px-6 pb-6 text-sm">
           {info && <PropertiesBody info={info} t={t} />}
           <div className="mt-4 flex justify-end">
             <Button type="button" size="sm" onClick={close}>

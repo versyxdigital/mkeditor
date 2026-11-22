@@ -14,7 +14,7 @@ const EMPTY_COUNTS: Counts = { words: 0, characters: 0 };
  * Subscribes to `editor:render` and recomputes word + character counts
  * from the live editor value. The counts state moves with each dispatch
  * — the same trigger that <PreviewPane> uses for its innerHTML write —
- * so the navbar counts stay in lockstep with the preview.
+ * so the document status counts stay in lockstep with the preview.
  */
 export function useCounts(): Counts {
   const { editorManager, dispatcher } = useManagers();

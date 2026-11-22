@@ -49,5 +49,12 @@
   "thinking_xhigh": "Extra hoog",
   "thinking_max": "Maximaal",
   "thinking_help": "Geldt voor toekomstige berichten. Hogere niveaus kunnen langer duren en meer tokens gebruiken.",
-  "thinking_unavailable": "Dit model gebruikt zijn standaardinstelling. Voor dit model zijn geen instelbare denkniveaus vermeld."
+  "thinking_unavailable": "Dit model gebruikt zijn standaardinstelling. Voor dit model zijn geen instelbare denkniveaus vermeld.",
+  "key_configured": "Sleutel ingesteld",
+  "key_not_configured": "Geen sleutel ingesteld",
+  "replace_key": "Vervangen",
+  "connection_not_tested": "Verbinding niet getest",
+  "last_tested": "Laatst getest: {{time}}",
+  "provider_enabled": "Ingeschakeld",
+  "provider_disabled": "Uitgeschakeld"
 }

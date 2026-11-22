@@ -49,5 +49,12 @@
   "thinking_xhigh": "Extra high",
   "thinking_max": "Maximum",
   "thinking_help": "Applies to future messages. Higher levels can take longer and use more tokens.",
-  "thinking_unavailable": "This model uses its own default. Configurable thinking levels are not listed for this model."
+  "thinking_unavailable": "This model uses its own default. Configurable thinking levels are not listed for this model.",
+  "key_configured": "Key configured",
+  "key_not_configured": "No key configured",
+  "replace_key": "Replace",
+  "connection_not_tested": "Connection not tested",
+  "last_tested": "Last tested: {{time}}",
+  "provider_enabled": "Enabled",
+  "provider_disabled": "Disabled"
 }

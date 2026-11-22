@@ -12,7 +12,7 @@ export const Sidebar: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div id="sidebar" className="flex h-full flex-col p-3">
+    <div id="sidebar" className="flex h-full flex-col px-3 py-4">
       <div className="explorer-title">{t('sidebar:explorer')}</div>
       <FileTreePanel />
     </div>

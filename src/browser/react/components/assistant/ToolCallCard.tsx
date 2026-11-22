@@ -370,13 +370,10 @@ const StatusBadge: React.FC<{ status: ToolInvocation['status'] }> = ({
 };
 
 const STATUS_CLASS: Record<ToolInvocation['status'], string> = {
-  'pending-confirm':
-    'border-amber-400/40 bg-amber-50 text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/40 dark:text-amber-200',
+  'pending-confirm': 'border-warning/30 bg-warning/10 text-warning',
   executing: 'border-border bg-muted text-foreground',
-  succeeded:
-    'border-emerald-400/40 bg-emerald-50 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-950/40 dark:text-emerald-200',
-  failed:
-    'border-red-400/40 bg-red-50 text-red-900 dark:border-red-400/30 dark:bg-red-950/40 dark:text-red-200',
+  succeeded: 'border-success/30 bg-success/10 text-success',
+  failed: 'border-destructive/30 bg-destructive/10 text-destructive',
 };
 
 function formatResult(result: unknown): string {

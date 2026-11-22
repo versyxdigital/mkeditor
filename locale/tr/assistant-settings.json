@@ -49,5 +49,12 @@
   "thinking_xhigh": "Çok yüksek",
   "thinking_max": "En yüksek",
   "thinking_help": "Gelecekteki mesajlara uygulanır. Yüksek düzeyler daha uzun sürebilir ve daha fazla token kullanabilir.",
-  "thinking_unavailable": "Bu model kendi varsayılanını kullanır. Bu model için ayarlanabilir düşünme düzeyleri listelenmemiştir."
+  "thinking_unavailable": "Bu model kendi varsayılanını kullanır. Bu model için ayarlanabilir düşünme düzeyleri listelenmemiştir.",
+  "key_configured": "Anahtar yapılandırıldı",
+  "key_not_configured": "Anahtar yapılandırılmadı",
+  "replace_key": "Değiştir",
+  "connection_not_tested": "Bağlantı test edilmedi",
+  "last_tested": "Son test: {{time}}",
+  "provider_enabled": "Etkin",
+  "provider_disabled": "Devre dışı"
 }

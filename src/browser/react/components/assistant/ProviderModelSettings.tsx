@@ -65,10 +65,11 @@ export const ProviderModelSettings: React.FC<{
 
   return (
     <>
-      <div
-        className={`flex min-w-0 flex-col gap-1 ${compact ? 'basis-36 flex-1' : ''}`}
-      >
-        <Label htmlFor={`${idPrefix}-model`}>
+      <div className="flex min-w-0 max-w-full flex-col gap-1">
+        <Label
+          htmlFor={`${idPrefix}-model`}
+          className={compact ? 'sr-only' : undefined}
+        >
           {modelLabel ?? t('assistant-settings:default_model_label')}
         </Label>
         <Select
@@ -78,7 +79,16 @@ export const ProviderModelSettings: React.FC<{
             if (next !== CUSTOM_MODEL) onModelChange(next);
           }}
         >
-          <SelectTrigger id={`${idPrefix}-model`} aria-label={modelAriaLabel}>
+          <SelectTrigger
+            id={`${idPrefix}-model`}
+            aria-label={modelAriaLabel}
+            compact={compact}
+            title={
+              compact
+                ? `${modelLabel ?? t('assistant-settings:default_model_label')}: ${models.find((entry) => entry.id === model)?.label ?? model}`
+                : undefined
+            }
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -110,10 +120,11 @@ export const ProviderModelSettings: React.FC<{
           </div>
         )}
       </div>
-      <div
-        className={`flex min-w-0 flex-col gap-1 ${compact ? 'basis-28 flex-1' : ''}`}
-      >
-        <Label htmlFor={`${idPrefix}-thinking`}>
+      <div className="flex min-w-0 max-w-full flex-col gap-1">
+        <Label
+          htmlFor={`${idPrefix}-thinking`}
+          className={compact ? 'sr-only' : undefined}
+        >
           {t('assistant-settings:thinking_label')}
         </Label>
         <Select
@@ -125,6 +136,12 @@ export const ProviderModelSettings: React.FC<{
         >
           <SelectTrigger
             id={`${idPrefix}-thinking`}
+            compact={compact}
+            title={
+              compact
+                ? `${t('assistant-settings:thinking_label')}: ${t(`assistant-settings:thinking_${selectedLevel ?? 'auto'}`)}`
+                : undefined
+            }
             aria-describedby={compact ? undefined : `${idPrefix}-thinking-help`}
           >
             <SelectValue />

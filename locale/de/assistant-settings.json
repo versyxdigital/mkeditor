@@ -49,5 +49,12 @@
   "thinking_xhigh": "Sehr hoch",
   "thinking_max": "Maximum",
   "thinking_help": "Gilt für zukünftige Nachrichten. Höhere Stufen können länger dauern und mehr Tokens verbrauchen.",
-  "thinking_unavailable": "Dieses Modell verwendet seinen Standard. Für dieses Modell sind keine einstellbaren Denkstufen aufgeführt."
+  "thinking_unavailable": "Dieses Modell verwendet seinen Standard. Für dieses Modell sind keine einstellbaren Denkstufen aufgeführt.",
+  "key_configured": "Schlüssel eingerichtet",
+  "key_not_configured": "Kein Schlüssel eingerichtet",
+  "replace_key": "Ersetzen",
+  "connection_not_tested": "Verbindung nicht getestet",
+  "last_tested": "Zuletzt getestet: {{time}}",
+  "provider_enabled": "Aktiviert",
+  "provider_disabled": "Deaktiviert"
 }

@@ -11,7 +11,7 @@ import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 
 /**
- * Right-side of the bottom toolbar.
+ * Theme and version controls in the document status row.
  */
 export const BottomToolbarRight: React.FC = () => {
   const { mode } = useManagers();
@@ -44,20 +44,19 @@ export const BottomToolbarRight: React.FC = () => {
         <Label
           htmlFor="darkmode-setting"
           id="darkmode-icon"
-          className={
-            settings.effectiveDarkmode ? 'text-yellow-400' : 'text-foreground'
-          }
+          className="text-muted-foreground"
         >
           <Icon name="moon" />
         </Label>
       </div>
-      <span
+      <button
+        type="button"
         id="app-build-id"
-        className="cursor-pointer text-xs text-muted-foreground hover:text-foreground"
+        className="inline-flex h-6 cursor-pointer items-center rounded-sm px-1 text-[11px] text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         onClick={() => openModal('about')}
       >
         v{APP_VERSION}
-      </span>
+      </button>
     </div>,
     host,
   );

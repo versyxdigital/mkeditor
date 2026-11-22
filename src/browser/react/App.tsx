@@ -7,6 +7,7 @@ import {
   type PanelImperativeHandle,
 } from 'react-resizable-panels';
 import { Toaster } from 'sonner';
+import { DocumentStatus } from './components/DocumentStatus';
 import { useTranslation } from './hooks/useTranslation';
 
 import {
@@ -43,7 +44,10 @@ import {
   registerPropertiesShower,
   useProperties,
 } from './contexts/PropertiesContext';
-import { SettingsContextProvider } from './contexts/SettingsContext';
+import {
+  SettingsContextProvider,
+  useSettings,
+} from './contexts/SettingsContext';
 import { ExportSettingsContextProvider } from './contexts/ExportSettingsContext';
 import { AssistantContextProvider } from './contexts/AssistantContext';
 import { Navbar } from './components/Navbar';
@@ -171,14 +175,10 @@ export const App: React.FC<AppProps> = ({
                               workspaceGroupRef={workspaceGroupRef}
                             />
                             <BottomToolbarRight />
+                            <DocumentStatus />
                             <LazyModals />
                             <ConfirmToolCall />
-                            <Toaster
-                              position="bottom-right"
-                              richColors
-                              closeButton
-                              theme="system"
-                            />
+                            <AppToaster />
                           </FileTreeProvider>
                         </FilesProvider>
                       </UIStateProvider>
@@ -191,6 +191,26 @@ export const App: React.FC<AppProps> = ({
         </ExportSettingsContextProvider>
       </SettingsContextProvider>
     </ManagersProvider>
+  );
+};
+
+/** Notifications follow the selected application theme, including manual overrides. */
+const AppToaster: React.FC = () => {
+  const { settings } = useSettings();
+  return (
+    <Toaster
+      position="bottom-right"
+      richColors
+      closeButton
+      theme={settings.effectiveDarkmode ? 'dark' : 'light'}
+      toastOptions={{
+        style: {
+          fontFamily: 'var(--font-interface)',
+          borderRadius: 'var(--radius-floating)',
+          boxShadow: 'var(--shadow-floating)',
+        },
+      }}
+    />
   );
 };
 
@@ -483,8 +503,9 @@ export const Shell: React.FC<{
         id="sidebar-pane"
         panelRef={sidebarPanelRef}
         collapsible
-        defaultSize="15%"
-        minSize="10%"
+        defaultSize="240px"
+        minSize="180px"
+        maxSize="360px"
       >
         <Sidebar />
       </Panel>

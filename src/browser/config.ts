@@ -1,5 +1,6 @@
 import type { EditorSettings, ExportSettings } from './interfaces/Editor';
 import { normalizeLanguage } from './i18n';
+import { documentDefaults } from '../app/shared/designTokens';
 
 export const config = {};
 
@@ -19,9 +20,6 @@ export const settings: EditorSettings = {
 
 export const exportSettings: ExportSettings = {
   withStyles: true,
-  container: 'container-fluid',
-  fontSize: 16,
-  lineSpacing: 1.5,
-  background: '#ffffff',
-  fontColor: '#212529',
+  container: 'container',
+  ...documentDefaults,
 };

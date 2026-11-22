@@ -1,4 +1,5 @@
-import { editor } from 'monaco-editor';
+import type { editor } from 'monaco-editor';
+import { applyEditorTheme } from '../editorTheme';
 import type {
   EditorSettings,
   EditorSettingsSnapshot,
@@ -283,7 +284,7 @@ export class SettingsProvider {
   public setTheme() {
     const effective = this.effectiveDarkmode();
     document.body.setAttribute('data-theme', effective ? 'dark' : 'light');
-    editor.setTheme(effective ? 'vs-dark' : 'vs');
+    applyEditorTheme(effective);
     return this;
   }
 

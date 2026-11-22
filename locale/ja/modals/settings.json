@@ -37,5 +37,10 @@
   "tab_assistant": "AI プロバイダー",
   "paste_images": "貼り付け画像",
   "paste_images_directory_label": "貼り付け画像のディレクトリ",
-  "paste_images_directory_help": "相対パス（例: './assets'）はアクティブな Markdown ファイルのフォルダを基準に解決されます。絶対パスは開いているワークスペース内に置く必要があります。"
+  "paste_images_directory_help": "相対パス（例: './assets'）はアクティブな Markdown ファイルのフォルダを基準に解決されます。絶対パスは開いているワークスペース内に置く必要があります。",
+  "nav_editor": "エディター",
+  "nav_preview": "プレビュー",
+  "nav_workspace": "ファイルとワークスペース",
+  "darkmode_label": "ダークテーマ",
+  "changes_apply_immediately": "変更はすぐに反映されます。"
 }

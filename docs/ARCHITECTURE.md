@@ -191,7 +191,7 @@ src/browser/
     │   │                          web renders logo + menus only.
     │   ├── TitleBar.menu.tsx      one Radix DropdownMenu per MenuGroup; items dispatch
     │   │                          through `dispatchMenuActionExternal` (menuDispatch.ts).
-    │   ├── Navbar.tsx             second-row chrome (sidebar toggle, file name, counts,
+    │   ├── Navbar.tsx             second-row chrome (sidebar toggle, file name,
     │   │                          cog, help) — shadcn Tooltip for icon hints
     │   ├── TabBar.tsx             native HTML5 DnD reorder; close button → FileManager
     │   ├── Sidebar.tsx, FileTreePanel.tsx     file explorer
@@ -202,6 +202,7 @@ src/browser/
     │   ├── PreviewPane.tsx        subscribes to editor:render; writes Markdown.render
     │   │                          into #preview-content innerHTML
     │   ├── BottomToolbarRight.tsx darkmode shadcn Switch + build chip → AboutModal
+    │   ├── DocumentStatus.tsx      word/character counts in the combined 38px formatting/status footer
     │   ├── Icon.tsx               FontAwesome SVG wrapper (no MutationObserver)
     │   ├── modals/
     │   │   ├── SettingsModal.tsx       shadcn Switch/Select/Checkbox/Input
@@ -380,7 +381,7 @@ Web:
 `<SettingsModal>` consumes `SettingsContext` and drives each control through `updateSetting(key, value)`:
 
 1. `updateSetting` writes `currentSettings[key] = value`.
-2. `applyOne(key)` runs the matching side effect — Monaco option update (`autoindent`, `minimap`, `wordwrap`, `whitespace`), `<body data-theme>` flip + `editor.setTheme('vs'|'vs-dark')` for `darkmode`, or `window.setLanguage(...)` for `locale`.
+2. `applyOne(key)` runs the matching side effect — Monaco option update (`autoindent`, `minimap`, `wordwrap`, `whitespace`), `<body data-theme>` flip + the inherited `mkeditor-light`/`mkeditor-dark` Monaco theme for `darkmode`, or `window.setLanguage(...)` for `locale`.
 3. `emit()` rebuilds the snapshot reference and notifies subscribers — `useSyncExternalStore` triggers a React re-render in any consumer of `SettingsContext` (the modal itself, the bottom-toolbar darkmode switch).
 4. `persist()` writes to localStorage (web) or calls the registered `persistHandler` (desktop) which routes to `bridgeManager.saveSettingsToFile` → `to:settings:save` → [AppSettings.saveSettingsToFile](../src/app/lib/AppSettings.ts:161) merges with the existing file, writes, and sends a success toast.
 
@@ -509,7 +510,7 @@ The right-hand sidebar that hosts per-provider chat surfaces (Anthropic / OpenAI
 
 **Model and thinking settings.** Anthropic and OpenAI settings use readable model names from the shared [assistantModels.ts](../src/app/shared/assistantModels.ts) catalog, with a custom-ID option that preserves models outside the list. The same catalog defines supported thinking levels, checked against the official [Claude model/effort documentation](https://platform.claude.com/docs/en/build-with-claude/effort) and [OpenAI model documentation](https://developers.openai.com/api/docs/models). Keep capabilities alongside IDs when updating the catalog. Ollama continues to discover installed models from its daemon. Default model changes apply to new conversations; existing conversations retain their model override. The optional provider `thinkingLevel` preference applies to future chat messages and is captured in each `ChatRequest`, including subsequent tool turns. Main maps compatible levels to Anthropic adaptive thinking/effort or OpenAI reasoning effort. Unknown models and incompatible conversation overrides use model defaults; connection probes do not inherit the thinking preference. Older stores without the preference also retain model defaults.
 
-The chat header reuses `ProviderModelSettings` for its model and thinking dropdowns, so readable names, custom IDs, and supported effort levels stay consistent with Settings. Chat changes update that conversation immediately. An optional conversation `thinkingLevel` overrides the provider preference and survives history restore; old conversations inherit the provider setting. Switching to a model that cannot use an explicit conversation level resets that override to the model default. Ollama's chat dropdown discovers installed models when opened and retains a custom-ID fallback. Controls wrap vertically in narrow panes.
+The chat composer reuses `ProviderModelSettings` for compact, borderless model and thinking dropdowns below the message input, so readable names, custom IDs, and supported effort levels stay consistent with Settings. Chat changes update that conversation immediately. An optional conversation `thinkingLevel` overrides the provider preference and survives history restore; old conversations inherit the provider setting. Switching to a model that cannot use an explicit conversation level resets that override to the model default. Ollama's chat dropdown discovers installed models when opened and retains a custom-ID fallback. Controls wrap in narrow panes.
 
 The assistant divider has an eight-pixel visible grip and expanded pointer targets (18 pixels for mouse, 28 for touch), plus keyboard resizing. `Shell` persists nonzero widths through the group's settled `onLayoutChanged` callback rather than updating React state on every drag tick. Collapsing retains the last expanded width.
 

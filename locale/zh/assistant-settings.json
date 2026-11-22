@@ -49,5 +49,12 @@
   "thinking_xhigh": "极高",
   "thinking_max": "最高",
   "thinking_help": "应用于后续消息。更高级别可能需要更长时间并消耗更多 token。",
-  "thinking_unavailable": "此模型使用其默认设置。尚未列出此模型可配置的思考级别。"
+  "thinking_unavailable": "此模型使用其默认设置。尚未列出此模型可配置的思考级别。",
+  "key_configured": "已配置密钥",
+  "key_not_configured": "未配置密钥",
+  "replace_key": "替换",
+  "connection_not_tested": "尚未测试连接",
+  "last_tested": "上次测试：{{time}}",
+  "provider_enabled": "已启用",
+  "provider_disabled": "已禁用"
 }

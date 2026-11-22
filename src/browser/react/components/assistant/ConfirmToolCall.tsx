@@ -124,7 +124,7 @@ const PreviewBlock: React.FC<{
           <p className="text-xs text-muted-foreground">
             {t('assistant-tools:preview_before')}
           </p>
-          <pre className="max-h-40 overflow-auto rounded border border-red-400/40 bg-red-50 p-2 text-xs text-red-900 dark:border-red-400/30 dark:bg-red-950/40 dark:text-red-200">
+          <pre className="max-h-40 overflow-auto rounded border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
             {preview.before}
           </pre>
         </div>
@@ -133,7 +133,7 @@ const PreviewBlock: React.FC<{
         <p className="text-xs text-muted-foreground">
           {t('assistant-tools:preview_after')}
         </p>
-        <pre className="max-h-60 overflow-auto rounded border border-emerald-400/40 bg-emerald-50 p-2 text-xs text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-950/40 dark:text-emerald-200">
+        <pre className="max-h-60 overflow-auto rounded border border-success/30 bg-success/10 p-2 text-xs text-success">
           {preview.after}
         </pre>
       </div>

@@ -193,11 +193,12 @@ const ControlButton: React.FC<{
   <button
     type="button"
     aria-label={ariaLabel}
+    title={ariaLabel}
     onClick={onClick}
     className={cn(
       'flex w-11 items-center justify-center text-foreground',
       variant === 'close'
-        ? 'hover:bg-red-600 hover:text-white'
+        ? 'hover:bg-destructive hover:text-destructive-foreground'
         : 'hover:bg-accent hover:text-accent-foreground',
       'focus:outline-none focus-visible:bg-accent',
     )}

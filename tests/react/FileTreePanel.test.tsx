@@ -24,6 +24,28 @@ const tree: TreeNode[] = [
 ];
 
 describe('<FileTreePanel>', () => {
+  it('supports activating files and expanding folders with the keyboard', () => {
+    const fileManager = fakeFileManager();
+    const fileTreeManager = fakeFileTreeManager({
+      nodes: tree,
+      treeRoot: '/root',
+    });
+    const { getByRole, container } = renderWithProviders(<FileTreePanel />, {
+      managers: {
+        fileManager: fileManager as never,
+        fileTreeManager: fileTreeManager as never,
+      },
+    });
+    const file = getByRole('button', { name: 'notes.md' });
+    file.focus();
+    expect(file).toHaveFocus();
+    fireEvent.keyDown(file, { key: 'Enter' });
+    expect(fileManager.openFileFromPath).toHaveBeenCalledWith('/root/notes.md');
+    fireEvent.keyDown(getByRole('button', { name: 'docs' }), { key: ' ' });
+    expect(
+      container.querySelector('li[data-path="/root/docs/readme.md"]'),
+    ).not.toBeNull();
+  });
   it('renders top-level nodes; child rows are collapsed by default', () => {
     const fileManager = fakeFileManager();
     const fileTreeManager = fakeFileTreeManager({

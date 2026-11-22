@@ -112,7 +112,7 @@ export const MoveItemModal: React.FC = () => {
         <DialogHeader>
           <DialogTitle>{t('modals-move:title')}</DialogTitle>
         </DialogHeader>
-        <div className="px-4 pb-4 text-sm">
+        <div className="px-6 pb-6 text-sm">
           {sourcePath && (
             <p className="mb-2 text-xs text-muted-foreground">
               <span>{t('modals-move:moving_label')}</span>{' '}

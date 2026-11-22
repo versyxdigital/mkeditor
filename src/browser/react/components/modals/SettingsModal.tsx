@@ -35,11 +35,12 @@ import { AssistantSettings } from '../assistant/AssistantSettings';
  * pushes the combined settings+exportSettings payload to the main
  * process); under web mode the per-change persist already handled it.
  */
-type SettingsTab = 'general' | 'assistant';
+type SettingsTab =
+  'general' | 'assistant' | 'editor' | 'appearance' | 'preview' | 'workspace';
 
 export const SettingsModal: React.FC = () => {
   const { mode, bridgeManager, providers } = useManagers();
-  const { open, payload, closeModal } = useModals();
+  const { open, payload, closeModal, openModal } = useModals();
   const { settings, updateSetting } = useSettings();
   const { t } = useTranslation();
 
@@ -111,122 +112,195 @@ export const SettingsModal: React.FC = () => {
     closeModal();
   };
 
+  const sections: { id: SettingsTab; icon: string; label: string }[] = [
+    { id: 'general', icon: 'cogs', label: t('modals-settings:tab_general') },
+    ...(showAssistantTab
+      ? [
+          {
+            id: 'assistant' as const,
+            icon: 'comments',
+            label: t('modals-settings:tab_assistant'),
+          },
+        ]
+      : []),
+    { id: 'editor', icon: 'file', label: t('modals-settings:nav_editor') },
+    { id: 'preview', icon: 'eye', label: t('modals-settings:nav_preview') },
+    { id: 'appearance', icon: 'moon', label: t('modals-settings:appearance') },
+    {
+      id: 'workspace',
+      icon: 'folder',
+      label: t('modals-settings:nav_workspace'),
+    },
+  ];
+  const configurationPath =
+    activeTab === 'assistant'
+      ? '~/.mkeditor/assistant.json'
+      : '~/.mkeditor/settings.json';
   return (
-    <Dialog open={open === 'settings'} onOpenChange={(o) => !o && closeModal()}>
-      <DialogContent aria-describedby={undefined} className="max-w-[820px]">
-        <DialogHeader>
-          <DialogTitle>
+    <Dialog
+      open={open === 'settings'}
+      onOpenChange={(value) => !value && closeModal()}
+    >
+      <DialogContent
+        aria-describedby={undefined}
+        className="flex h-[min(860px,calc(100dvh-32px))] max-w-[1200px] flex-col overflow-hidden p-0"
+      >
+        <DialogHeader className="shrink-0 border-b border-subtle px-5 py-4">
+          <DialogTitle className="flex items-center gap-3">
+            <Icon
+              name={activeTab === 'assistant' ? 'comments' : 'cogs'}
+              className="text-primary"
+            />
             {activeTab === 'assistant'
               ? t('modals-settings:title_assistant')
               : t('modals-settings:title')}
           </DialogTitle>
         </DialogHeader>
-        <div className="px-4 pb-4 text-sm">
-          <p className="text-muted-foreground">
-            {activeTab === 'assistant'
-              ? t('modals-settings:intro_assistant')
-              : t('modals-settings:intro')}
-          </p>
-          {mode === 'desktop' && (
-            <p className="mt-1 text-muted-foreground">
-              <span>
-                {activeTab === 'assistant'
-                  ? t('modals-settings:settings_file_info_assistant')
-                  : t('modals-settings:settings_file_info')}
-              </span>{' '}
-              <span className="font-mono text-xs">
-                {activeTab === 'assistant'
-                  ? '~/.mkeditor/assistant.json'
-                  : '~/.mkeditor/settings.json'}
-              </span>
-              .
-            </p>
-          )}
-
-          <Tabs
-            value={activeTab}
-            onValueChange={(v) => setActiveTab(v as SettingsTab)}
-            className="mt-4"
-          >
-            <TabsList className="h-7 gap-0.5 p-0.5 text-xs">
-              <TabsTrigger value="general" className="h-6 px-2 py-0.5 text-xs">
-                {t('modals-settings:tab_general')}
-              </TabsTrigger>
-              {showAssistantTab && (
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as SettingsTab)}
+          orientation="vertical"
+          className="flex min-h-0 flex-1"
+        >
+          <div className="flex w-36 shrink-0 flex-col border-r border-subtle p-3 sm:w-48">
+            <TabsList
+              aria-label={t('modals-settings:title')}
+              className="h-auto flex-col items-stretch justify-start gap-1 rounded-none bg-transparent p-0"
+            >
+              {sections.map((section) => (
                 <TabsTrigger
-                  value="assistant"
-                  className="h-6 px-2 py-0.5 text-xs"
+                  key={section.id}
+                  value={section.id}
+                  className="min-h-9 justify-start gap-2 whitespace-normal px-3 py-2 text-left text-sm data-[state=active]:bg-accent-subtle data-[state=active]:text-primary"
                 >
-                  {t('modals-settings:tab_assistant')}
+                  <Icon name={section.icon} />
+                  <span>{section.label}</span>
                 </TabsTrigger>
-              )}
+              ))}
             </TabsList>
-
-            <TabsContent value="general">
-              {/* Formatting + Miscellaneous share a 2-column row.
-                  Sections drop their own separator (`separator={false}`)
-                  because the parent already owns the top margin via
-                  `mt-4`, and a divider in the middle of two side-by-
-                  side groups would look strange. */}
-              <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4">
-                <Section
-                  label={t('modals-settings:formatting')}
-                  separator={false}
+            <Button
+              variant="ghost"
+              className="mt-2 justify-start gap-2 whitespace-normal px-3 text-left text-sm text-muted-foreground"
+              onClick={() => openModal('shortcuts')}
+            >
+              <Icon name="question-circle" />
+              <span>{t('navbar:shortcuts_tooltip')}</span>
+            </Button>
+          </div>
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-5 sm:p-6">
+            <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+              <p className="max-w-xl text-sm text-muted-foreground">
+                {activeTab === 'assistant'
+                  ? t('modals-settings:intro_assistant')
+                  : t('modals-settings:intro')}
+              </p>
+              {mode === 'desktop' && (
+                <div className="flex min-w-0 items-center gap-2 rounded-lg border border-subtle bg-sidebar px-3 py-2 text-xs text-muted-foreground">
+                  <Icon name="folder" />
+                  <span className="min-w-0 break-all font-mono">
+                    {configurationPath}
+                  </span>
+                </div>
+              )}
+            </div>
+            <TabsContent value="general" className="mt-0">
+              <Section
+                label={t('modals-settings:language_label')}
+                separator={false}
+              >
+                <Label htmlFor="locale-setting">
+                  {t('modals-settings:language_label')}
+                </Label>
+                <Select
+                  value={normalizeLanguage(settings.locale || 'en')}
+                  onValueChange={(value) => updateSetting('locale', value)}
                 >
+                  <SelectTrigger id="locale-setting">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locales.map((locale) => (
+                      <SelectItem key={locale.code} value={locale.code}>
+                        {locale.native} ({locale.name})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {t('modals-settings:language_help')}
+                </p>
+              </Section>
+            </TabsContent>
+            <TabsContent value="editor" className="mt-0">
+              <Section label={t('modals-settings:editing')} separator={false}>
+                {(
+                  ['autoindent', 'wordwrap', 'whitespace', 'minimap'] as const
+                ).map((key) => (
                   <CheckboxRow
-                    id="autoindent-setting"
-                    label={t('modals-settings:autoindent_label')}
-                    help={t('modals-settings:autoindent_help')}
-                    checked={settings.autoindent}
-                    onChange={(v) => updateSetting('autoindent', v)}
+                    key={key}
+                    id={key + '-setting'}
+                    label={t('modals-settings:' + key + '_label')}
+                    help={t('modals-settings:' + key + '_help')}
+                    checked={settings[key]}
+                    onChange={(value) => updateSetting(key, value)}
                   />
-                  <CheckboxRow
-                    id="wordwrap-setting"
-                    label={t('modals-settings:wordwrap_label')}
-                    help={t('modals-settings:wordwrap_help')}
-                    checked={settings.wordwrap}
-                    onChange={(v) => updateSetting('wordwrap', v)}
-                  />
-                </Section>
-
-                <Section
-                  label={t('modals-settings:miscellaneous')}
-                  separator={false}
-                >
-                  <CheckboxRow
-                    id="minimap-setting"
-                    label={t('modals-settings:minimap_label')}
-                    help={t('modals-settings:minimap_help')}
-                    checked={settings.minimap}
-                    onChange={(v) => updateSetting('minimap', v)}
-                  />
-                  <CheckboxRow
-                    id="scrollsync-setting"
-                    label={t('modals-settings:scrollsync_label')}
-                    help={t('modals-settings:scrollsync_help')}
-                    checked={settings.scrollsync}
-                    onChange={(v) => updateSetting('scrollsync', v)}
-                  />
-                </Section>
-              </div>
-
-              <Section label={t('modals-settings:editing')}>
+                ))}
+              </Section>
+            </TabsContent>
+            <TabsContent value="preview" className="mt-0">
+              <Section
+                label={t('modals-settings:nav_preview')}
+                separator={false}
+              >
                 <CheckboxRow
-                  id="whitespace-setting"
-                  label={t('modals-settings:whitespace_label')}
-                  help={t('modals-settings:whitespace_help')}
-                  checked={settings.whitespace}
-                  onChange={(v) => updateSetting('whitespace', v)}
+                  id="scrollsync-setting"
+                  label={t('modals-settings:scrollsync_label')}
+                  help={t('modals-settings:scrollsync_help')}
+                  checked={settings.scrollsync}
+                  onChange={(value) => updateSetting('scrollsync', value)}
+                />
+                <Button
+                  variant="outline"
+                  className="self-start"
+                  onClick={() => openModal('exportSettings')}
+                >
+                  <Icon name="sliders" />
+                  {t('toolbar:configure_export_settings')}
+                </Button>
+              </Section>
+            </TabsContent>
+            <TabsContent value="appearance" className="mt-0">
+              <Section
+                label={t('modals-settings:appearance')}
+                separator={false}
+              >
+                {mode === 'desktop' && (
+                  <SwitchRow
+                    id="systemtheme-setting"
+                    label={t('modals-settings:systemtheme_label')}
+                    help={t('modals-settings:systemtheme_help')}
+                    checked={settings.systemtheme}
+                    onChange={(value) => updateSetting('systemtheme', value)}
+                  />
+                )}
+                <SwitchRow
+                  id="settings-darkmode"
+                  label={t('modals-settings:darkmode_label')}
+                  help={t('navbar:theme_switch_notice')}
+                  checked={settings.effectiveDarkmode}
+                  disabled={mode === 'desktop' && settings.systemtheme}
+                  onChange={(value) => updateSetting('darkmode', value)}
                 />
               </Section>
-
-              <Section label={t('modals-settings:session')}>
+            </TabsContent>
+            <TabsContent value="workspace" className="mt-0">
+              <Section label={t('modals-settings:session')} separator={false}>
                 <SwitchRow
                   id="session-restore-setting"
                   label={t('modals-settings:session_restore_label')}
                   help={t('modals-settings:session_restore_help')}
                   checked={settings.sessionRestore}
-                  onChange={(v) => updateSetting('sessionRestore', v)}
+                  onChange={(value) => updateSetting('sessionRestore', value)}
                 />
                 <Button
                   type="button"
@@ -236,86 +310,48 @@ export const SettingsModal: React.FC = () => {
                   className="self-start"
                 >
                   <Icon name="trash" />
-                  <span>{t('modals-settings:clear_session_button')}</span>
+                  {t('modals-settings:clear_session_button')}
                 </Button>
-                <small className="text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {t('modals-settings:clear_session_help')}
-                </small>
+                </p>
               </Section>
-
               <Section label={t('modals-settings:paste_images')}>
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="paste-images-directory-setting">
-                    {t('modals-settings:paste_images_directory_label')}
-                  </Label>
-                  <Input
-                    id="paste-images-directory-setting"
-                    type="text"
-                    value={settings.pasteImages?.directory ?? './assets'}
-                    onChange={(e) =>
-                      updateSetting('pasteImages', {
-                        directory: e.target.value,
-                      })
-                    }
-                    placeholder="./assets"
-                    className="font-mono text-xs"
-                    data-testid="paste-images-directory-input"
-                  />
-                  <small className="text-muted-foreground">
-                    {t('modals-settings:paste_images_directory_help')}
-                  </small>
-                </div>
-              </Section>
-
-              <Section label={t('modals-settings:appearance')}>
-                {mode === 'desktop' && (
-                  <SwitchRow
-                    id="systemtheme-setting"
-                    label={t('modals-settings:systemtheme_label')}
-                    help={t('modals-settings:systemtheme_help')}
-                    checked={settings.systemtheme}
-                    onChange={(v) => updateSetting('systemtheme', v)}
-                  />
-                )}
-                <div className="mt-3">
-                  <Label htmlFor="locale-setting">
-                    {t('modals-settings:language_label')}
-                  </Label>
-                  <Select
-                    value={normalizeLanguage(settings.locale || 'en')}
-                    onValueChange={(v) => updateSetting('locale', v)}
-                  >
-                    <SelectTrigger id="locale-setting" className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locales.map((l) => (
-                        <SelectItem key={l.code} value={l.code}>
-                          {l.native} ({l.name})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t('modals-settings:language_help')}
-                  </p>
-                </div>
+                <Label htmlFor="paste-images-directory-setting">
+                  {t('modals-settings:paste_images_directory_label')}
+                </Label>
+                <Input
+                  id="paste-images-directory-setting"
+                  value={settings.pasteImages?.directory ?? './assets'}
+                  onChange={(event) =>
+                    updateSetting('pasteImages', {
+                      directory: event.target.value,
+                    })
+                  }
+                  placeholder="./assets"
+                  className="font-mono text-xs"
+                  data-testid="paste-images-directory-input"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('modals-settings:paste_images_directory_help')}
+                </p>
               </Section>
             </TabsContent>
-
             {showAssistantTab && (
-              <TabsContent value="assistant">
+              <TabsContent value="assistant" className="mt-0">
                 <AssistantSettings />
               </TabsContent>
             )}
-          </Tabs>
-
-          <div className="mt-6 flex items-center gap-3">
-            <Button type="button" size="sm" onClick={handleSave}>
-              <Icon name="save" />
-              <span>{t('modals-settings:save_settings')}</span>
-            </Button>
           </div>
+        </Tabs>
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-subtle px-5 py-3">
+          <p className="text-xs text-muted-foreground">
+            {t('modals-settings:changes_apply_immediately')}
+          </p>
+          <Button type="button" size="sm" onClick={handleSave}>
+            <Icon name="save" />
+            {t('modals-settings:save_settings')}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -327,16 +363,8 @@ export const SettingsModal: React.FC = () => {
 /* -------------------------------------------------------------------- */
 
 /**
- * One settings section: heading + child controls. Wraps in a single
- * div (NOT a Fragment) so the whole section behaves as one cell in a
- * `grid grid-cols-2` parent — otherwise the heading + children get
- * split across separate grid cells and you see the next section's
- * heading appearing below the previous section's checkboxes.
- *
- * `separator` (default true) draws the horizontal rule + top margin
- * that visually separates this section from whatever sits above it.
- * Set to false when the section sits inside a grid where the grid
- * itself owns the separator above it.
+ * Groups related controls under a heading, optionally separated from
+ * the previous section by a rule.
  */
 const Section: React.FC<{
   label: string;
@@ -355,6 +383,7 @@ interface RowProps {
   help: string;
   checked: boolean;
   onChange: (next: boolean) => void;
+  disabled?: boolean;
 }
 
 const CheckboxRow: React.FC<RowProps> = ({
@@ -384,12 +413,14 @@ const SwitchRow: React.FC<RowProps> = ({
   help,
   checked,
   onChange,
+  disabled,
 }) => (
   <div className="flex items-start gap-3">
     <Switch
       id={id}
       checked={checked}
       onCheckedChange={onChange}
+      disabled={disabled}
       className="mt-0.5"
     />
     <Label htmlFor={id} className="flex flex-col gap-0.5">

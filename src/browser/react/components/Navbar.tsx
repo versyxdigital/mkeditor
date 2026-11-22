@@ -5,7 +5,6 @@ import { useModals } from '../contexts/ModalsContext';
 import { useUIState } from '../contexts/UIStateContext';
 import { useManagers } from '../contexts/ManagersContext';
 import { sonnerToast } from '../../notify';
-import { useCounts } from '../hooks/useCounts';
 import { useTranslation } from '../hooks/useTranslation';
 import { Icon } from './Icon';
 import { Button } from './ui/button';
@@ -29,7 +28,6 @@ export const Navbar: React.FC = () => {
   // Hide the AI sidebar toggle on web — AI Assistant is desktop-only
   // (see docs/AI_ASSISTANT.md "Decisions" → "API call location").
   const showAssistantToggle = mode !== 'web';
-  const counts = useCounts();
 
   // Navbar shows the full path of the active file (the tab itself
   // shows just the filename via tab.name). For untitled scratch
@@ -56,22 +54,23 @@ export const Navbar: React.FC = () => {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <nav className="flex items-center justify-between border-b border-border bg-background">
-        <div className="flex items-center gap-2">
+      <nav className="flex h-11 shrink-0 min-w-0 items-center justify-between gap-4 border-b border-subtle bg-background px-3">
+        <div className="flex min-w-0 items-center gap-2">
           <Button
             id="sidebar-toggle"
             size="icon"
             variant="ghost"
             type="button"
             title={t('navbar:toggle_sidebar')}
+            aria-label={t('navbar:toggle_sidebar')}
             onClick={toggleSidebar}
-            className="h-7 w-7 text-xs"
+            className="h-[30px] w-[30px] shrink-0"
           >
             <Icon name="bars" />
           </Button>
           <span
             id="active-file"
-            className="truncate text-xs text-muted-foreground"
+            className="truncate text-[14px] font-semibold text-foreground"
             title={activeFileLabel ?? undefined}
           >
             {activeFileLabel ?? t('app:brand_name')}
@@ -94,41 +93,40 @@ export const Navbar: React.FC = () => {
             </Tooltip>
           )}
         </div>
-        <div className="flex items-center gap-3 pr-3">
-          <div className="text-xs text-muted-foreground">
-            <span>{t('navbar:character_count')}</span>{' '}
-            <span id="character-count">{counts.characters}</span>
-            <span className="mx-1 opacity-50">|</span>
-            <span>{t('navbar:word_count')}</span>{' '}
-            <span id="word-count">{counts.words}</span>
-          </div>
+        <div className="flex shrink-0 items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <a
-                className="text-muted-foreground hover:text-foreground"
-                href="#"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-[30px] w-[30px] text-muted-foreground"
+                title={t('navbar:settings_tooltip')}
+                aria-label={t('navbar:settings_tooltip')}
                 onClick={(e) => {
                   e.preventDefault();
                   openModal('settings');
                 }}
               >
                 <Icon name="cogs" />
-              </a>
+              </Button>
             </TooltipTrigger>
             <TooltipContent>{t('navbar:settings_tooltip')}</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <a
-                className="text-muted-foreground hover:text-foreground"
-                href="#"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-[30px] w-[30px] text-muted-foreground"
+                title={t('navbar:shortcuts_tooltip')}
+                aria-label={t('navbar:shortcuts_tooltip')}
                 onClick={(e) => {
                   e.preventDefault();
                   openModal('shortcuts');
                 }}
               >
                 <Icon name="question-circle" />
-              </a>
+              </Button>
             </TooltipTrigger>
             <TooltipContent>{t('navbar:shortcuts_tooltip')}</TooltipContent>
           </Tooltip>
@@ -141,6 +139,8 @@ export const Navbar: React.FC = () => {
                   variant="ghost"
                   type="button"
                   aria-pressed={rightSidebarOpen}
+                  aria-label={t('navbar:toggle_assistant_tooltip')}
+                  title={t('navbar:toggle_assistant_tooltip')}
                   onClick={toggleRightSidebar}
                   className="h-7 w-7 text-xs text-muted-foreground hover:text-foreground"
                 >

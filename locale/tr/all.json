@@ -91,7 +91,14 @@
     "thinking_xhigh": "Çok yüksek",
     "thinking_max": "En yüksek",
     "thinking_help": "Gelecekteki mesajlara uygulanır. Yüksek düzeyler daha uzun sürebilir ve daha fazla token kullanabilir.",
-    "thinking_unavailable": "Bu model kendi varsayılanını kullanır. Bu model için ayarlanabilir düşünme düzeyleri listelenmemiştir."
+    "thinking_unavailable": "Bu model kendi varsayılanını kullanır. Bu model için ayarlanabilir düşünme düzeyleri listelenmemiştir.",
+    "key_configured": "Anahtar yapılandırıldı",
+    "key_not_configured": "Anahtar yapılandırılmadı",
+    "replace_key": "Değiştir",
+    "connection_not_tested": "Bağlantı test edilmedi",
+    "last_tested": "Son test: {{time}}",
+    "provider_enabled": "Etkin",
+    "provider_disabled": "Devre dışı"
   },
   "assistant-tools": {
     "confirm_title": "{{toolName}} izin verilsin mi?",
@@ -306,7 +313,12 @@
     "tab_assistant": "AI Sağlayıcıları",
     "paste_images": "Yapıştırılan görseller",
     "paste_images_directory_label": "Yapıştırılan görsel klasörü",
-    "paste_images_directory_help": "Göreceli yollar (örn. './assets') etkin Markdown dosyasının klasörüne göre çözümlenir. Mutlak yollar açık çalışma alanı içinde olmalıdır."
+    "paste_images_directory_help": "Göreceli yollar (örn. './assets') etkin Markdown dosyasının klasörüne göre çözümlenir. Mutlak yollar açık çalışma alanı içinde olmalıdır.",
+    "nav_editor": "Düzenleyici",
+    "nav_preview": "Önizleme",
+    "nav_workspace": "Dosyalar ve çalışma alanı",
+    "darkmode_label": "Koyu tema",
+    "changes_apply_immediately": "Değişiklikler hemen uygulanır."
   },
   "modals-shortcuts": {
     "title": "MKEditor Kısayolları",

@@ -49,5 +49,12 @@
   "thinking_xhigh": "非常に高い",
   "thinking_max": "最大",
   "thinking_help": "今後のメッセージに適用されます。高いレベルでは時間とトークンの使用量が増える場合があります。",
-  "thinking_unavailable": "このモデルは既定の設定を使用します。このモデルの設定可能な思考レベルは登録されていません。"
+  "thinking_unavailable": "このモデルは既定の設定を使用します。このモデルの設定可能な思考レベルは登録されていません。",
+  "key_configured": "キー設定済み",
+  "key_not_configured": "キー未設定",
+  "replace_key": "置き換え",
+  "connection_not_tested": "接続は未テストです",
+  "last_tested": "最終テスト：{{time}}",
+  "provider_enabled": "有効",
+  "provider_disabled": "無効"
 }

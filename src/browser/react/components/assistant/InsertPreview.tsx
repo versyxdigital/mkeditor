@@ -80,7 +80,7 @@ export const InsertPreview: React.FC<InsertPreviewProps> = ({
         ) : null}
       </div>
       <pre
-        className="overflow-auto bg-emerald-50 px-3 py-2 text-xs text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+        className="overflow-auto bg-success/10 px-3 py-2 text-xs text-success"
         style={{ maxHeight: `${maxHeight}px` }}
       >
         {visible}

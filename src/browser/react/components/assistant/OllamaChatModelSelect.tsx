@@ -16,7 +16,8 @@ export const OllamaChatModelSelect: React.FC<{
   model: string;
   onChange: (model: string) => void;
   loadModels: () => Promise<string[]>;
-}> = ({ model, onChange, loadModels }) => {
+  compact?: boolean;
+}> = ({ model, onChange, loadModels, compact = false }) => {
   const { t } = useTranslation();
   const [models, setModels] = React.useState<string[]>([]);
   const [custom, setCustom] = React.useState(false);
@@ -52,7 +53,9 @@ export const OllamaChatModelSelect: React.FC<{
   };
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <Label htmlFor="chat-model">{t('assistant-chat:model_label')}</Label>
+      <Label htmlFor="chat-model" className={compact ? 'sr-only' : undefined}>
+        {t('assistant-chat:model_label')}
+      </Label>
       <Select
         value={custom ? '__custom__' : model}
         onOpenChange={(open) => {
@@ -66,6 +69,8 @@ export const OllamaChatModelSelect: React.FC<{
         <SelectTrigger
           id="chat-model"
           aria-label={t('assistant-chat:model_aria')}
+          compact={compact}
+          title={`${t('assistant-chat:model_label')}: ${model}`}
         >
           <SelectValue />
         </SelectTrigger>

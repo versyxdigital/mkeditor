@@ -91,7 +91,14 @@
     "thinking_xhigh": "Extra high",
     "thinking_max": "Maximum",
     "thinking_help": "Applies to future messages. Higher levels can take longer and use more tokens.",
-    "thinking_unavailable": "This model uses its own default. Configurable thinking levels are not listed for this model."
+    "thinking_unavailable": "This model uses its own default. Configurable thinking levels are not listed for this model.",
+    "key_configured": "Key configured",
+    "key_not_configured": "No key configured",
+    "replace_key": "Replace",
+    "connection_not_tested": "Connection not tested",
+    "last_tested": "Last tested: {{time}}",
+    "provider_enabled": "Enabled",
+    "provider_disabled": "Disabled"
   },
   "assistant-tools": {
     "confirm_title": "Allow {{toolName}}?",
@@ -306,7 +313,12 @@
     "tab_assistant": "AI Providers",
     "paste_images": "Pasted images",
     "paste_images_directory_label": "Pasted-image directory",
-    "paste_images_directory_help": "Relative paths (e.g. './assets') resolve against the active markdown file's folder. Absolute paths must sit inside the open workspace."
+    "paste_images_directory_help": "Relative paths (e.g. './assets') resolve against the active markdown file's folder. Absolute paths must sit inside the open workspace.",
+    "nav_editor": "Editor",
+    "nav_preview": "Preview",
+    "nav_workspace": "Files & workspace",
+    "darkmode_label": "Dark theme",
+    "changes_apply_immediately": "Changes apply immediately."
   },
   "modals-shortcuts": {
     "title": "MKEditor Shortcuts",

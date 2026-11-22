@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { IconProp } from '@fortawesome/fontawesome-svg-core';
+import { cn } from '../lib/utils';
 
 /**
  * Thin shim over `@fortawesome/react-fontawesome` per the Decisions
@@ -39,7 +40,7 @@ export const Icon: React.FC<IconProps> = ({
 }) => (
   <FontAwesomeIcon
     icon={[style, name] as IconProp}
-    className={className}
+    className={cn('h-4 w-4 shrink-0', className)}
     aria-hidden={ariaHidden}
   />
 );

@@ -377,7 +377,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     // mentions the provider's published context window; we don't
     // ship per-provider limits in v1 — 32k is a safe shared floor
     // that flags clearly-large prompts without spamming for normal use.
-    tokenEstimate > 32000 && 'text-amber-600 dark:text-amber-400 font-medium',
+    tokenEstimate > 32000 && 'text-warning font-medium',
   );
 
   return (
@@ -389,9 +389,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     >
       <ChatHeader
         conversation={conversation}
-        provider={provider}
-        onModelChange={handleModelChange}
-        onThinkingChange={handleThinkingChange}
         onAutoAcceptChange={handleAutoAcceptChange}
         onShareActiveFileChange={handleShareActiveFileChange}
         onShareSelectionChange={handleShareSelectionChange}
@@ -424,7 +421,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             onKeyDown={handleKeyDown}
             placeholder={t('assistant-chat:input_placeholder')}
             rows={2}
-            className="min-w-0 flex-1 resize-none rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="min-w-0 flex-1 resize-none rounded-md border border-border bg-editor px-2 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             data-testid="chat-input"
             aria-label={t('assistant-chat:input_aria')}
           />
@@ -452,19 +449,30 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           )}
         </div>
         <div
-          className={cn('mt-1 flex justify-end', tokenIndicatorClass)}
-          data-testid="context-token-estimate"
-          aria-live="polite"
+          className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1"
+          data-testid="chat-composer-controls"
         >
-          {t('assistant-chat:token_estimate', {
-            // Use a non-`count` key so i18next's plural magic doesn't
-            // mangle the value (the previous `count` route was
-            // rendering as a literal minus sign in some locales /
-            // browsers — likely an unintended interaction between
-            // i18next's count handling and the locale's
-            // number-formatting rules).
-            tokens: tokenEstimate.toLocaleString(),
-          })}
+          <ConversationModelControls
+            provider={provider}
+            conversation={conversation}
+            onModelChange={handleModelChange}
+            onThinkingChange={handleThinkingChange}
+          />
+          <div
+            className={cn('ml-auto shrink-0', tokenIndicatorClass)}
+            data-testid="context-token-estimate"
+            aria-live="polite"
+          >
+            {t('assistant-chat:token_estimate', {
+              // Use a non-`count` key so i18next's plural magic doesn't
+              // mangle the value (the previous `count` route was
+              // rendering as a literal minus sign in some locales /
+              // browsers — likely an unintended interaction between
+              // i18next's count handling and the locale's
+              // number-formatting rules).
+              tokens: tokenEstimate.toLocaleString(),
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -472,14 +480,11 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 };
 
 /* -------------------------------------------------------------------- */
-/*  Header — conversation model and thinking controls                      */
+/*  Header — conversation title and options                                */
 /* -------------------------------------------------------------------- */
 
 const ChatHeader: React.FC<{
   conversation: ChatConversation;
-  provider: ProviderId;
-  onModelChange: (next: string) => void;
-  onThinkingChange: (next: ThinkingLevel) => void;
   onAutoAcceptChange: (value: boolean) => void;
   onShareActiveFileChange: (value: boolean) => void;
   onShareSelectionChange: (value: boolean) => void;
@@ -489,9 +494,6 @@ const ChatHeader: React.FC<{
   onToggleConvList?: () => void;
 }> = ({
   conversation,
-  provider,
-  onModelChange,
-  onThinkingChange,
   onAutoAcceptChange,
   onShareActiveFileChange,
   onShareSelectionChange,
@@ -499,11 +501,6 @@ const ChatHeader: React.FC<{
   onToggleConvList,
 }) => {
   const { t } = useTranslation();
-  const { snapshot, manager } = useAssistantConfig();
-  const preference =
-    provider !== 'ollama'
-      ? snapshot.config?.[provider].thinkingLevel
-      : undefined;
   return (
     <div className="flex flex-col gap-2 border-b border-border px-2 py-1.5">
       <div className="flex min-w-0 items-center gap-2">
@@ -538,6 +535,7 @@ const ChatHeader: React.FC<{
               size="icon"
               variant="ghost"
               aria-label={t('assistant-chat:options_aria')}
+              title={t('assistant-chat:options_aria')}
               className="h-6 w-6 text-muted-foreground hover:text-foreground"
               data-testid="chat-options"
             >
@@ -546,7 +544,7 @@ const ChatHeader: React.FC<{
           </PopoverTrigger>
           <PopoverContent
             align="end"
-            className="w-72 space-y-3 rounded-md border border-border bg-popover p-3 text-sm shadow-md"
+            className="w-72 space-y-3 rounded-lg border border-border bg-popover p-3 text-sm"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
@@ -608,33 +606,51 @@ const ChatHeader: React.FC<{
           </PopoverContent>
         </Popover>
       </div>
-      <div className="flex min-w-0 flex-wrap gap-2">
-        {provider !== 'ollama' ? (
-          <ProviderModelSettings
-            key={`${provider}:${conversation.id}`}
-            idPrefix="chat"
-            provider={provider}
-            model={conversation.model}
-            modelLabel={t('assistant-chat:model_label')}
-            modelAriaLabel={t('assistant-chat:model_aria')}
-            thinkingLevel={conversation.thinkingLevel ?? preference}
-            onModelChange={onModelChange}
-            onThinkingChange={onThinkingChange}
-            compact
-          />
-        ) : (
-          <OllamaChatModelSelect
-            key={conversation.id}
-            model={conversation.model}
-            onChange={onModelChange}
-            loadModels={() =>
-              manager?.refreshOllamaModels(
-                snapshot.config?.ollama.baseUrl ?? 'http://localhost:11434',
-              ) ?? Promise.resolve([])
-            }
-          />
-        )}
-      </div>
+    </div>
+  );
+};
+
+/** Per-conversation controls sit quietly beneath the message input. */
+const ConversationModelControls: React.FC<{
+  provider: ProviderId;
+  conversation: ChatConversation;
+  onModelChange: (model: string) => void;
+  onThinkingChange: (level: ThinkingLevel) => void;
+}> = ({ provider, conversation, onModelChange, onThinkingChange }) => {
+  const { t } = useTranslation();
+  const { snapshot, manager } = useAssistantConfig();
+  const preference =
+    provider !== 'ollama'
+      ? snapshot.config?.[provider].thinkingLevel
+      : undefined;
+  return (
+    <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1">
+      {provider !== 'ollama' ? (
+        <ProviderModelSettings
+          key={`${provider}:${conversation.id}`}
+          idPrefix="chat"
+          provider={provider}
+          model={conversation.model}
+          modelLabel={t('assistant-chat:model_label')}
+          modelAriaLabel={t('assistant-chat:model_aria')}
+          thinkingLevel={conversation.thinkingLevel ?? preference}
+          onModelChange={onModelChange}
+          onThinkingChange={onThinkingChange}
+          compact
+        />
+      ) : (
+        <OllamaChatModelSelect
+          compact
+          key={conversation.id}
+          model={conversation.model}
+          onChange={onModelChange}
+          loadModels={() =>
+            manager?.refreshOllamaModels(
+              snapshot.config?.ollama.baseUrl ?? 'http://localhost:11434',
+            ) ?? Promise.resolve([])
+          }
+        />
+      )}
     </div>
   );
 };

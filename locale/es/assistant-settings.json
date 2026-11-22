@@ -49,5 +49,12 @@
   "thinking_xhigh": "Muy alto",
   "thinking_max": "Máximo",
   "thinking_help": "Se aplica a los próximos mensajes. Los niveles más altos pueden tardar más y usar más tokens.",
-  "thinking_unavailable": "Este modelo usa su valor predeterminado. No hay niveles de razonamiento configurables en la lista para este modelo."
+  "thinking_unavailable": "Este modelo usa su valor predeterminado. No hay niveles de razonamiento configurables en la lista para este modelo.",
+  "key_configured": "Clave configurada",
+  "key_not_configured": "Sin clave configurada",
+  "replace_key": "Reemplazar",
+  "connection_not_tested": "Conexión sin probar",
+  "last_tested": "Última prueba: {{time}}",
+  "provider_enabled": "Activado",
+  "provider_disabled": "Desactivado"
 }

@@ -92,7 +92,7 @@ export const TabBar: React.FC = () => {
   return (
     <div
       data-testid="editor-tabs-strip"
-      className="flex items-stretch min-h-7 border-b border-border bg-muted/40 select-none"
+      className="flex items-stretch h-9 shrink-0 border-b border-subtle bg-sidebar select-none"
     >
       <ContextMenu>
         <ContextMenuTrigger asChild>
@@ -114,12 +114,12 @@ export const TabBar: React.FC = () => {
                   draggable
                   className={cn(
                     'group relative flex items-center cursor-grab',
-                    'border-r border-border',
+                    'border-r border-subtle',
                     // Active tab "lifts" to the editor's bg; inactive sits
                     // on the muted strip and tints toward bg on hover.
                     isActive
-                      ? 'bg-background text-foreground'
-                      : 'bg-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground',
+                      ? 'bg-editor text-foreground'
+                      : 'bg-transparent text-muted-foreground hover:bg-hover hover:text-foreground',
                     // The 2px primary accent stripe along the top of the
                     // active tab is the main "you are here" cue. A 2px
                     // transparent border on inactive tabs keeps heights
@@ -224,7 +224,7 @@ export const TabBar: React.FC = () => {
         className={cn(
           'flex h-full items-center justify-center px-2',
           'border-t-2 border-t-transparent border-r border-border',
-          'text-muted-foreground hover:bg-background/60 hover:text-foreground',
+          'text-muted-foreground hover:bg-hover hover:text-foreground',
           'focus:outline-none focus-visible:bg-accent',
           'cursor-pointer',
         )}

@@ -44,7 +44,7 @@ describe('AppSettings migration', () => {
     expect(settings.getSetting('exportSettings')).toMatchObject({
       fontSize: 22,
       withStyles: true,
-      lineSpacing: 1.5,
+      lineSpacing: 1.7,
     });
     expect(settings.getSetting('fileExplorer')).toEqual({ extensions: ['md'] });
     const persisted = JSON.parse(
