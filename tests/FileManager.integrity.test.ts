@@ -1,12 +1,20 @@
 import { editor } from 'monaco-editor';
-import { FileManager } from '../src/browser/core/FileManager';
+import {
+  FileManager,
+  type FileSaveResult,
+} from '../src/browser/core/FileManager';
+import { FileTreeManager } from '../src/browser/core/FileTreeManager';
+import { registerBridgeListeners } from '../src/browser/core/BridgeListeners';
 import { EditorDispatcher } from '../src/browser/events/EditorDispatcher';
 import { openPromptExternal } from '../src/browser/react/contexts/PromptsContext';
 
 jest.mock('../src/browser/react/contexts/PromptsContext', () => ({
   openPromptExternal: jest.fn(() => Promise.resolve({ button: 'deny' })),
 }));
-jest.mock('../src/browser/i18n', () => ({ t: (key: string) => key }));
+jest.mock('../src/browser/i18n', () => ({
+  t: (key: string) => key,
+  whenLanguageReady: () => Promise.resolve(),
+}));
 jest.mock('monaco-editor', () => ({
   editor: {
     createModel: jest.fn((content: string) => {
@@ -75,6 +83,148 @@ beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
   (openPromptExternal as jest.Mock).mockResolvedValue({ button: 'deny' });
+});
+
+function setupSaveTree(root = '/workspace') {
+  const state = setup();
+  const tree = new FileTreeManager(state.bridge, () => {});
+  tree.buildFileTree([], root);
+  const handlers = new Map<string, (result: FileSaveResult) => void>();
+  state.bridge.receive.mockImplementation((channel, handler) => {
+    handlers.set(channel, handler);
+  });
+  registerBridgeListeners(
+    state.bridge,
+    state.mk as never,
+    new EditorDispatcher(),
+    {} as never,
+    state.fm,
+    tree,
+    {} as never,
+  );
+  return { ...state, tree, saved: handlers.get('from:file:save-result')! };
+}
+
+describe('acknowledged saves update the explorer', () => {
+  it.each([
+    ['/workspace', '/workspace/new.md'],
+    ['C:\\workspace', 'C:\\workspace\\new.md'],
+    ['notes', 'notes/new.md'],
+  ])(
+    'shows an untitled document saved into %s without reopening the folder',
+    async (root, destination) => {
+      const { fm, tree, add, lastSave, saved, bridge } = setupSaveTree(root);
+      const model = add('untitled-1', '# New document');
+      const save = fm.saveContentToFile();
+      expect(tree.getSnapshot().nodes).toEqual([]);
+      saved({ requestId: lastSave().requestId, ok: true, path: destination });
+      await expect(save).resolves.toBe(true);
+      expect(tree.getSnapshot().nodes).toEqual([
+        { type: 'file', name: 'new.md', path: destination },
+      ]);
+      expect(fm.models.get(destination)).toBe(model);
+      expect(fm.getSnapshot().tabs[0].dirty).toBe(false);
+      expect(bridge.send).not.toHaveBeenCalledWith(
+        'to:file:openpath',
+        expect.anything(),
+      );
+    },
+  );
+
+  it('keeps the original entry and inactive source model when Save As completes after switching tabs', async () => {
+    const { fm, tree, add, lastSave, saved } = setupSaveTree();
+    const model = add('/workspace/original.md');
+    tree.addFileToTree('/workspace/original.md');
+    const save = fm.saveContentToFile(true);
+    add('/workspace/other.md');
+    saved({
+      requestId: lastSave().requestId,
+      ok: true,
+      path: '/workspace/copy.md',
+    });
+    await expect(save).resolves.toBe(true);
+    expect(tree.getSnapshot().nodes.map((node) => node.name)).toEqual([
+      'copy.md',
+      'original.md',
+    ]);
+    expect(fm.models.get('/workspace/copy.md')).toBe(model);
+    expect(fm.activeFile).toBe('/workspace/other.md');
+  });
+
+  it.each([false, true])(
+    'does not insert a failed or cancelled save (cancelled=%s)',
+    async (cancelled) => {
+      const { fm, tree, add, lastSave, saved } = setupSaveTree();
+      add('untitled-1').setValue('unsaved');
+      const save = fm.saveContentToFile();
+      saved({
+        requestId: lastSave().requestId,
+        ok: false,
+        cancelled,
+        path: '/workspace/new.md',
+      });
+      await expect(save).resolves.toBe(false);
+      expect(tree.getSnapshot().nodes).toEqual([]);
+      expect(fm.models.has('untitled-1')).toBe(true);
+      expect(fm.getSnapshot().tabs[0].dirty).toBe(true);
+    },
+  );
+
+  it('keeps files saved outside the workspace out of its tree', async () => {
+    const { fm, tree, add, lastSave, saved } = setupSaveTree();
+    add('untitled-1');
+    const save = fm.saveContentToFile();
+    saved({
+      requestId: lastSave().requestId,
+      ok: true,
+      path: '/workspace-other/new.md',
+    });
+    await expect(save).resolves.toBe(true);
+    expect(tree.getSnapshot().nodes).toEqual([]);
+  });
+
+  it('preserves loaded subtrees and does not duplicate entries on repeated saves or acknowledgements', async () => {
+    const { fm, tree, add, lastSave, saved } = setupSaveTree();
+    tree.buildFileTree(
+      [
+        {
+          type: 'directory',
+          name: 'docs',
+          path: '/workspace/docs',
+          loaded: true,
+          hasChildren: true,
+          children: [
+            {
+              type: 'file',
+              name: 'guide.md',
+              path: '/workspace/docs/guide.md',
+            },
+          ],
+        },
+      ],
+      '/workspace',
+    );
+    const subtree = tree.getSnapshot().nodes[0];
+    add('untitled-1');
+    for (let i = 0; i < 2; i++) {
+      const save = fm.saveContentToFile();
+      const result = {
+        requestId: lastSave().requestId,
+        ok: true,
+        path: '/workspace/new.md',
+      };
+      saved(result);
+      saved(result);
+      await expect(save).resolves.toBe(true);
+    }
+    expect(tree.getSnapshot().nodes.map((node) => node.name)).toEqual([
+      'docs',
+      'new.md',
+    ]);
+    expect(tree.getSnapshot().nodes[0]).toBe(subtree);
+    expect(subtree.children?.[0].name).toBe('guide.md');
+    expect(subtree.loaded).toBe(true);
+  });
 });
 
 it('does not undo a rename or mark the new path clean when an old save completes', async () => {

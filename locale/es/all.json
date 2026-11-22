@@ -78,7 +78,20 @@
     "error_ollama_unreachable": "No se pudo contactar con el demonio de Ollama.",
     "error_model_unsupported_tools": "Este modelo no admite llamadas a herramientas. Prueba un modelo que sí lo haga (p. ej. llama3.1 o qwen2.5).",
     "error_cancelled": "Cancelado.",
-    "error_unknown": "La solicitud falló."
+    "error_unknown": "La solicitud falló.",
+    "custom_model": "Modelo personalizado…",
+    "custom_model_id": "ID del modelo personalizado",
+    "thinking_label": "Nivel de razonamiento",
+    "thinking_auto": "Predeterminado del modelo",
+    "thinking_none": "Desactivado",
+    "thinking_minimal": "Mínimo",
+    "thinking_low": "Bajo",
+    "thinking_medium": "Medio",
+    "thinking_high": "Alto",
+    "thinking_xhigh": "Muy alto",
+    "thinking_max": "Máximo",
+    "thinking_help": "Se aplica a los próximos mensajes. Los niveles más altos pueden tardar más y usar más tokens.",
+    "thinking_unavailable": "Este modelo usa su valor predeterminado. No hay niveles de razonamiento configurables en la lista para este modelo."
   },
   "assistant-tools": {
     "confirm_title": "¿Permitir {{toolName}}?",
@@ -123,7 +136,8 @@
     "tabs_label": "Proveedor de IA",
     "no_providers_enabled": "Aún no hay proveedores conectados. Habilite uno en Configuración para empezar a chatear.",
     "provider_ready_placeholder": "{{provider}} está listo — la interfaz de chat llega en la próxima fase.",
-    "open_settings": "Abrir Configuración"
+    "open_settings": "Abrir Configuración",
+    "resize_sidebar": "Cambiar el tamaño del panel del asistente de IA"
   },
   "menus-alerts": {
     "primary": "Primario",

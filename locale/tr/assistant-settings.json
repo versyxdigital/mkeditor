@@ -36,5 +36,18 @@
   "error_ollama_unreachable": "Ollama daemon'una ulaşılamadı.",
   "error_model_unsupported_tools": "Bu model araç çağrılarını desteklemiyor. Destekleyen bir model deneyin (ör. llama3.1 veya qwen2.5).",
   "error_cancelled": "İptal edildi.",
-  "error_unknown": "İstek başarısız oldu."
+  "error_unknown": "İstek başarısız oldu.",
+  "custom_model": "Özel model…",
+  "custom_model_id": "Özel model kimliği",
+  "thinking_label": "Düşünme düzeyi",
+  "thinking_auto": "Model varsayılanı",
+  "thinking_none": "Kapalı",
+  "thinking_minimal": "En az",
+  "thinking_low": "Düşük",
+  "thinking_medium": "Orta",
+  "thinking_high": "Yüksek",
+  "thinking_xhigh": "Çok yüksek",
+  "thinking_max": "En yüksek",
+  "thinking_help": "Gelecekteki mesajlara uygulanır. Yüksek düzeyler daha uzun sürebilir ve daha fazla token kullanabilir.",
+  "thinking_unavailable": "Bu model kendi varsayılanını kullanır. Bu model için ayarlanabilir düşünme düzeyleri listelenmemiştir."
 }

@@ -83,9 +83,12 @@ export function registerBridgeListeners(
   // re-routing through `bridge.receive`.
   bridge.receive('from:file:new', () => manager.menuFileNew());
   bridge.receive('from:file:save', () => manager.menuFileSave());
-  bridge.receive('from:file:save-result', (result: FileSaveResult) =>
-    files.onSaveResult(result),
-  );
+  bridge.receive('from:file:save-result', (result: FileSaveResult) => {
+    files.onSaveResult(result);
+    // Correlated saves do not reopen the file, so update the explorer here
+    // as well as in from:file:opened. Insertion preserves loaded subtrees.
+    if (result.ok && result.path) tree.addFileToTree(result.path);
+  });
   bridge.receive('from:file:saveas', () => manager.menuFileSaveAs());
   bridge.receive('from:folder:open', () => manager.menuFolderOpen());
 

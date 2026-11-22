@@ -177,8 +177,8 @@ export class FileTreeManager {
 
   /**
    * Insert a single file node under its parent directory in the existing
-   * tree. Called when `from:file:opened` carries a real file path inside
-   * the current root.
+   * tree. Called when `from:file:opened` or a successful save result
+   * carries a real file path inside the current root.
    */
   public addFileToTree(path: string) {
     if (

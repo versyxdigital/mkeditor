@@ -7,6 +7,7 @@ import type {
   ProviderId,
 } from '../interfaces/Assistant';
 import { DEFAULT_PROVIDER_CONFIG } from '../interfaces/Assistant';
+import { isThinkingLevel } from '../shared/assistantModels';
 import { loadAssistantStore, writeAssistantStore } from './assistantStoreFile';
 
 /**
@@ -122,6 +123,11 @@ export class AssistantConfig {
         typeof value.defaultModel === 'string' && value.defaultModel.trim()
           ? value.defaultModel
           : current.defaultModel,
+      ...(isThinkingLevel(value.thinkingLevel)
+        ? { thinkingLevel: value.thinkingLevel }
+        : current.thinkingLevel !== undefined
+          ? { thinkingLevel: current.thinkingLevel }
+          : {}),
     };
   }
 

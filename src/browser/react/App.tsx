@@ -5,9 +5,9 @@ import {
   Separator,
   type GroupImperativeHandle,
   type PanelImperativeHandle,
-  type PanelSize,
 } from 'react-resizable-panels';
 import { Toaster } from 'sonner';
+import { useTranslation } from './hooks/useTranslation';
 
 import {
   ManagersProvider,
@@ -436,6 +436,7 @@ export const Shell: React.FC<{
     setRightSidebarSize,
   } = useUIState();
   const { mode } = useManagers();
+  const { t } = useTranslation();
   // AI Assistant is desktop-only. On web the assistant pane is not
   // rendered at all — see the Decisions table in
   // docs/AI_ASSISTANT.md for the rationale (no localStorage key
@@ -459,15 +460,11 @@ export const Shell: React.FC<{
     else if (!rightSidebarOpen && !panel.isCollapsed()) panel.collapse();
   }, [rightSidebarOpen, showAssistant]);
 
-  // Push every drag tick into UIStateContext so the size persists
-  // through the session save pipeline (debounced 300ms by
-  // FileManager.scheduleSessionSave). The panel reports size as a
-  // percentage of the outer Group, matching how we persist it. We
-  // suppress zero-size events fired while the panel is collapsed so
-  // collapsing doesn't clobber the user's last-chosen expanded size.
-  const handleAssistantResize = React.useCallback(
-    (panelSize: PanelSize) => {
-      const size = panelSize.asPercentage;
+  // Persist settled layouts instead of re-rendering the shell and changing
+  // panel defaults on every pointer move. Collapsing retains the last width.
+  const handleLayoutChanged = React.useCallback(
+    (layout: Record<string, number>) => {
+      const size = layout['assistant-pane'];
       if (size > 0 && size !== rightSidebarSize) {
         setRightSidebarSize(size);
       }
@@ -476,7 +473,12 @@ export const Shell: React.FC<{
   );
 
   return (
-    <Group orientation="horizontal" id="mkeditor-layout">
+    <Group
+      orientation="horizontal"
+      id="mkeditor-layout"
+      resizeTargetMinimumSize={{ fine: 18, coarse: 28 }}
+      onLayoutChanged={handleLayoutChanged}
+    >
       <Panel
         id="sidebar-pane"
         panelRef={sidebarPanelRef}
@@ -492,14 +494,28 @@ export const Shell: React.FC<{
       </Panel>
       {showAssistant && (
         <>
-          <Separator className="gutter sidebar-gutter-horizontal" />
+          <Separator
+            aria-label={t('assistant:resize_sidebar')}
+            data-testid="assistant-resizer"
+            className="assistant-resizer relative z-10 flex w-2 shrink-0 touch-none cursor-col-resize items-center justify-center bg-border/50 outline-none transition-colors hover:bg-primary/40 focus-visible:bg-primary/40 focus-visible:ring-1 focus-visible:ring-primary"
+          >
+            {/* Keep near-edge pointer events owned by this separator rather
+                than the editor's nested panel group. */}
+            <span
+              aria-hidden="true"
+              className="absolute inset-y-0 -inset-x-[5px]"
+            />
+            <span
+              aria-hidden="true"
+              className="h-8 w-0.5 rounded-full bg-muted-foreground/60"
+            />
+          </Separator>
           <Panel
             id="assistant-pane"
             panelRef={assistantPanelRef}
             collapsible
             defaultSize={`${rightSidebarSize}%`}
             minSize="15%"
-            onResize={handleAssistantResize}
           >
             <AssistantSidebar />
           </Panel>

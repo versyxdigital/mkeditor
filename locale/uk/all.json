@@ -78,7 +78,20 @@
     "error_ollama_unreachable": "Не вдалося звʼязатися з демоном Ollama.",
     "error_model_unsupported_tools": "Ця модель не підтримує виклики інструментів. Спробуйте модель, яка підтримує (наприклад, llama3.1 або qwen2.5).",
     "error_cancelled": "Скасовано.",
-    "error_unknown": "Запит не вдалося виконати."
+    "error_unknown": "Запит не вдалося виконати.",
+    "custom_model": "Власна модель…",
+    "custom_model_id": "Ідентифікатор власної моделі",
+    "thinking_label": "Рівень міркування",
+    "thinking_auto": "Типовий для моделі",
+    "thinking_none": "Вимкнено",
+    "thinking_minimal": "Мінімальний",
+    "thinking_low": "Низький",
+    "thinking_medium": "Середній",
+    "thinking_high": "Високий",
+    "thinking_xhigh": "Дуже високий",
+    "thinking_max": "Максимальний",
+    "thinking_help": "Застосовується до майбутніх повідомлень. Вищі рівні можуть потребувати більше часу й токенів.",
+    "thinking_unavailable": "Використовуються типові налаштування моделі. Для цієї моделі не вказано налаштовуваних рівнів міркування."
   },
   "assistant-tools": {
     "confirm_title": "Дозволити {{toolName}}?",
@@ -123,7 +136,8 @@
     "tabs_label": "Постачальник ШІ",
     "no_providers_enabled": "Жоден постачальник ще не підключений. Увімкніть один у налаштуваннях, щоб почати чат.",
     "provider_ready_placeholder": "{{provider}} готовий — інтерфейс чату з'явиться на наступному етапі.",
-    "open_settings": "Відкрити налаштування"
+    "open_settings": "Відкрити налаштування",
+    "resize_sidebar": "Змінити ширину панелі ШІ-помічника"
   },
   "menus-alerts": {
     "primary": "Основний",

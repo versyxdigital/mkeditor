@@ -36,5 +36,18 @@
   "error_ollama_unreachable": "无法连接 Ollama 守护进程。",
   "error_model_unsupported_tools": "此模型不支持工具调用。请尝试支持的模型（如 llama3.1 或 qwen2.5）。",
   "error_cancelled": "已取消。",
-  "error_unknown": "请求失败。"
+  "error_unknown": "请求失败。",
+  "custom_model": "自定义模型…",
+  "custom_model_id": "自定义模型 ID",
+  "thinking_label": "思考级别",
+  "thinking_auto": "模型默认值",
+  "thinking_none": "关闭",
+  "thinking_minimal": "最低",
+  "thinking_low": "低",
+  "thinking_medium": "中",
+  "thinking_high": "高",
+  "thinking_xhigh": "极高",
+  "thinking_max": "最高",
+  "thinking_help": "应用于后续消息。更高级别可能需要更长时间并消耗更多 token。",
+  "thinking_unavailable": "此模型使用其默认设置。尚未列出此模型可配置的思考级别。"
 }

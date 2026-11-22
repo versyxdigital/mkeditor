@@ -4,18 +4,21 @@ import type {
   ChatConversation,
   InflightChatCall,
   ProviderId,
+  ThinkingLevel,
 } from '../../../../app/interfaces/Assistant';
 import type {
   AssistantContextChip,
   AssistantManager,
 } from '../../../core/AssistantManager';
-import { useAssistantChat } from '../../contexts/AssistantContext';
+import {
+  useAssistantChat,
+  useAssistantConfig,
+} from '../../contexts/AssistantContext';
 import { useFiles } from '../../contexts/FilesContext';
 import { useManagers } from '../../contexts/ManagersContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Switch } from '../ui/switch';
@@ -23,6 +26,8 @@ import { Icon } from '../Icon';
 import { ChatMessage } from './ChatMessage';
 import { ContextChipsRow } from './ContextChip';
 import { MentionPicker } from './MentionPicker';
+import { ProviderModelSettings } from './ProviderModelSettings';
+import { OllamaChatModelSelect } from './OllamaChatModelSelect';
 
 interface ChatPaneProps {
   provider: ProviderId;
@@ -36,7 +41,7 @@ interface ChatPaneProps {
 /**
  * The main chat surface for a single conversation.
  *
- * Composition: a small header (editable model id) + scrollable
+ * Composition: a header with model/thinking dropdowns + scrollable
  * message list with auto-scroll-to-bottom (suspended while the user
  * scrolls up) + textarea input with Enter-sends / Shift+Enter-newline
  * and a Send/Stop toggle keyed off whether this conversation has an
@@ -61,7 +66,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   const [draft, setDraft] = React.useState(
     () => manager?.getDraft(provider, conversation.id) ?? '',
   );
-  const [modelEditor, setModelEditor] = React.useState(conversation.model);
 
   // Latest-value ref so the unmount cleanup below can read the
   // current input without re-running on every keystroke (which would
@@ -71,7 +75,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     draftRef.current = draft;
   }, [draft]);
 
-  // Re-seed local input + model state when the user switches to a
+  // Re-seed the local input when the user switches to a
   // different conversation (the same component instance is reused
   // by ProviderTab; React doesn't unmount it on prop change).
   const draftOwner = React.useRef({ provider, id: conversation.id, manager });
@@ -91,13 +95,12 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       const nextDraft = manager?.getDraft(provider, conversation.id) ?? '';
       draftRef.current = nextDraft;
       setDraft(nextDraft);
-      setModelEditor(conversation.model);
       draftOwner.current = { provider, id: conversation.id, manager };
     }
     // Intentionally tracks `conversation.id` only (and the surrounding
     // identity deps); we do NOT include `draft` because a refresh on
     // every keystroke would create a feedback loop with `setDraft`.
-  }, [conversation.id, conversation.model, manager, provider]);
+  }, [conversation.id, manager, provider]);
 
   // Push the draft back into the manager when the component unmounts
   // (e.g. provider tab change). Reads via `draftRef.current` so the
@@ -319,10 +322,18 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     return () => el.removeEventListener('keydown', handler);
   }, [manager, inflight, pickerOpen, provider]);
 
-  const handleModelBlur = React.useCallback(() => {
-    if (!manager) return;
-    manager.setConversationModel(provider, conversation.id, modelEditor);
-  }, [manager, provider, conversation.id, modelEditor]);
+  const handleModelChange = React.useCallback(
+    (model: string) => {
+      manager?.setConversationModel(provider, conversation.id, model);
+    },
+    [manager, provider, conversation.id],
+  );
+  const handleThinkingChange = React.useCallback(
+    (level: ThinkingLevel) => {
+      manager?.setConversationThinkingLevel(provider, conversation.id, level);
+    },
+    [manager, provider, conversation.id],
+  );
 
   const handleAutoAcceptChange = React.useCallback(
     (value: boolean) => {
@@ -378,9 +389,9 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     >
       <ChatHeader
         conversation={conversation}
-        modelEditor={modelEditor}
-        onModelChange={setModelEditor}
-        onModelBlur={handleModelBlur}
+        provider={provider}
+        onModelChange={handleModelChange}
+        onThinkingChange={handleThinkingChange}
         onAutoAcceptChange={handleAutoAcceptChange}
         onShareActiveFileChange={handleShareActiveFileChange}
         onShareSelectionChange={handleShareSelectionChange}
@@ -413,7 +424,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             onKeyDown={handleKeyDown}
             placeholder={t('assistant-chat:input_placeholder')}
             rows={2}
-            className="flex-1 resize-none rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="min-w-0 flex-1 resize-none rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             data-testid="chat-input"
             aria-label={t('assistant-chat:input_aria')}
           />
@@ -461,14 +472,14 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 };
 
 /* -------------------------------------------------------------------- */
-/*  Header — editable model id                                            */
+/*  Header — conversation model and thinking controls                      */
 /* -------------------------------------------------------------------- */
 
 const ChatHeader: React.FC<{
   conversation: ChatConversation;
-  modelEditor: string;
+  provider: ProviderId;
   onModelChange: (next: string) => void;
-  onModelBlur: () => void;
+  onThinkingChange: (next: ThinkingLevel) => void;
   onAutoAcceptChange: (value: boolean) => void;
   onShareActiveFileChange: (value: boolean) => void;
   onShareSelectionChange: (value: boolean) => void;
@@ -478,9 +489,9 @@ const ChatHeader: React.FC<{
   onToggleConvList?: () => void;
 }> = ({
   conversation,
-  modelEditor,
+  provider,
   onModelChange,
-  onModelBlur,
+  onThinkingChange,
   onAutoAcceptChange,
   onShareActiveFileChange,
   onShareSelectionChange,
@@ -488,121 +499,142 @@ const ChatHeader: React.FC<{
   onToggleConvList,
 }) => {
   const { t } = useTranslation();
+  const { snapshot, manager } = useAssistantConfig();
+  const preference =
+    provider !== 'ollama'
+      ? snapshot.config?.[provider].thinkingLevel
+      : undefined;
   return (
-    <div className="flex items-center gap-2 border-b border-border px-2 py-1.5">
-      {onToggleConvList && (
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          onClick={onToggleConvList}
-          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-          aria-label={t(
-            convListCollapsed
-              ? 'assistant-chat:show_conversations_aria'
-              : 'assistant-chat:hide_conversations_aria',
-          )}
-          aria-expanded={!convListCollapsed}
-          data-testid="chat-toggle-conv-list"
-        >
-          <Icon name={convListCollapsed ? 'chevron-right' : 'chevron-left'} />
-        </Button>
-      )}
-      <span
-        className="flex-1 truncate text-xs font-medium"
-        title={conversation.title}
-      >
-        {conversation.title}
-      </span>
-      <label className="text-xs text-muted-foreground" htmlFor="chat-model">
-        {t('assistant-chat:model_label')}
-      </label>
-      <Input
-        id="chat-model"
-        type="text"
-        value={modelEditor}
-        onChange={(e) => onModelChange(e.target.value)}
-        onBlur={onModelBlur}
-        className="h-6 w-40 text-xs"
-        spellCheck={false}
-        aria-label={t('assistant-chat:model_aria')}
-      />
-      <Popover>
-        <PopoverTrigger asChild>
+    <div className="flex flex-col gap-2 border-b border-border px-2 py-1.5">
+      <div className="flex min-w-0 items-center gap-2">
+        {onToggleConvList && (
           <Button
             type="button"
             size="icon"
             variant="ghost"
-            aria-label={t('assistant-chat:options_aria')}
+            onClick={onToggleConvList}
             className="h-6 w-6 text-muted-foreground hover:text-foreground"
-            data-testid="chat-options"
+            aria-label={t(
+              convListCollapsed
+                ? 'assistant-chat:show_conversations_aria'
+                : 'assistant-chat:hide_conversations_aria',
+            )}
+            aria-expanded={!convListCollapsed}
+            data-testid="chat-toggle-conv-list"
           >
-            <Icon name="cog" />
+            <Icon name={convListCollapsed ? 'chevron-right' : 'chevron-left'} />
           </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="end"
-          className="w-72 space-y-3 rounded-md border border-border bg-popover p-3 text-sm shadow-md"
+        )}
+        <span
+          className="flex-1 truncate text-xs font-medium"
+          title={conversation.title}
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <Label
-                htmlFor="share-active-file-toggle"
-                className="text-xs font-medium"
-              >
-                {t('assistant-chat:share_active_file_label')}
-              </Label>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('assistant-chat:share_active_file_help')}
-              </p>
+          {conversation.title}
+        </span>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label={t('assistant-chat:options_aria')}
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+              data-testid="chat-options"
+            >
+              <Icon name="cog" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            className="w-72 space-y-3 rounded-md border border-border bg-popover p-3 text-sm shadow-md"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <Label
+                  htmlFor="share-active-file-toggle"
+                  className="text-xs font-medium"
+                >
+                  {t('assistant-chat:share_active_file_label')}
+                </Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t('assistant-chat:share_active_file_help')}
+                </p>
+              </div>
+              <Switch
+                id="share-active-file-toggle"
+                checked={conversation.shareActiveFile}
+                onCheckedChange={onShareActiveFileChange}
+                data-testid="chat-share-active-file"
+              />
             </div>
-            <Switch
-              id="share-active-file-toggle"
-              checked={conversation.shareActiveFile}
-              onCheckedChange={onShareActiveFileChange}
-              data-testid="chat-share-active-file"
-            />
-          </div>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <Label
-                htmlFor="share-selection-toggle"
-                className="text-xs font-medium"
-              >
-                {t('assistant-chat:share_selection_label')}
-              </Label>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('assistant-chat:share_selection_help')}
-              </p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <Label
+                  htmlFor="share-selection-toggle"
+                  className="text-xs font-medium"
+                >
+                  {t('assistant-chat:share_selection_label')}
+                </Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t('assistant-chat:share_selection_help')}
+                </p>
+              </div>
+              <Switch
+                id="share-selection-toggle"
+                checked={conversation.shareSelection}
+                onCheckedChange={onShareSelectionChange}
+                data-testid="chat-share-selection"
+              />
             </div>
-            <Switch
-              id="share-selection-toggle"
-              checked={conversation.shareSelection}
-              onCheckedChange={onShareSelectionChange}
-              data-testid="chat-share-selection"
-            />
-          </div>
-          <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
-            <div className="flex-1">
-              <Label
-                htmlFor="auto-accept-toggle"
-                className="text-xs font-medium"
-              >
-                {t('assistant-chat:auto_accept_label')}
-              </Label>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('assistant-chat:auto_accept_help')}
-              </p>
+            <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
+              <div className="flex-1">
+                <Label
+                  htmlFor="auto-accept-toggle"
+                  className="text-xs font-medium"
+                >
+                  {t('assistant-chat:auto_accept_label')}
+                </Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t('assistant-chat:auto_accept_help')}
+                </p>
+              </div>
+              <Switch
+                id="auto-accept-toggle"
+                checked={conversation.autoAcceptWrites}
+                onCheckedChange={onAutoAcceptChange}
+                data-testid="chat-auto-accept"
+              />
             </div>
-            <Switch
-              id="auto-accept-toggle"
-              checked={conversation.autoAcceptWrites}
-              onCheckedChange={onAutoAcceptChange}
-              data-testid="chat-auto-accept"
-            />
-          </div>
-        </PopoverContent>
-      </Popover>
+          </PopoverContent>
+        </Popover>
+      </div>
+      <div className="flex min-w-0 flex-wrap gap-2">
+        {provider !== 'ollama' ? (
+          <ProviderModelSettings
+            key={`${provider}:${conversation.id}`}
+            idPrefix="chat"
+            provider={provider}
+            model={conversation.model}
+            modelLabel={t('assistant-chat:model_label')}
+            modelAriaLabel={t('assistant-chat:model_aria')}
+            thinkingLevel={conversation.thinkingLevel ?? preference}
+            onModelChange={onModelChange}
+            onThinkingChange={onThinkingChange}
+            compact
+          />
+        ) : (
+          <OllamaChatModelSelect
+            key={conversation.id}
+            model={conversation.model}
+            onChange={onModelChange}
+            loadModels={() =>
+              manager?.refreshOllamaModels(
+                snapshot.config?.ollama.baseUrl ?? 'http://localhost:11434',
+              ) ?? Promise.resolve([])
+            }
+          />
+        )}
+      </div>
     </div>
   );
 };

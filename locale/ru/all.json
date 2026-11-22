@@ -78,7 +78,20 @@
     "error_ollama_unreachable": "Не удалось связаться с демоном Ollama.",
     "error_model_unsupported_tools": "Эта модель не поддерживает вызовы инструментов. Попробуйте модель, которая поддерживает (например, llama3.1 или qwen2.5).",
     "error_cancelled": "Отменено.",
-    "error_unknown": "Запрос не выполнен."
+    "error_unknown": "Запрос не выполнен.",
+    "custom_model": "Другая модель…",
+    "custom_model_id": "Идентификатор другой модели",
+    "thinking_label": "Уровень рассуждений",
+    "thinking_auto": "По умолчанию для модели",
+    "thinking_none": "Выкл.",
+    "thinking_minimal": "Минимальный",
+    "thinking_low": "Низкий",
+    "thinking_medium": "Средний",
+    "thinking_high": "Высокий",
+    "thinking_xhigh": "Очень высокий",
+    "thinking_max": "Максимальный",
+    "thinking_help": "Применяется к будущим сообщениям. Более высокие уровни могут требовать больше времени и токенов.",
+    "thinking_unavailable": "Используются настройки модели по умолчанию. Для этой модели настраиваемые уровни рассуждений не указаны."
   },
   "assistant-tools": {
     "confirm_title": "Разрешить {{toolName}}?",
@@ -123,7 +136,8 @@
     "tabs_label": "Провайдер ИИ",
     "no_providers_enabled": "Провайдеры ещё не подключены. Включите один в настройках, чтобы начать общение.",
     "provider_ready_placeholder": "{{provider}} готов — интерфейс чата появится на следующем этапе.",
-    "open_settings": "Открыть настройки"
+    "open_settings": "Открыть настройки",
+    "resize_sidebar": "Изменить ширину панели ИИ-помощника"
   },
   "menus-alerts": {
     "primary": "Основной",

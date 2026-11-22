@@ -3,5 +3,6 @@
   "tabs_label": "Proveedor de IA",
   "no_providers_enabled": "Aún no hay proveedores conectados. Habilite uno en Configuración para empezar a chatear.",
   "provider_ready_placeholder": "{{provider}} está listo — la interfaz de chat llega en la próxima fase.",
-  "open_settings": "Abrir Configuración"
+  "open_settings": "Abrir Configuración",
+  "resize_sidebar": "Cambiar el tamaño del panel del asistente de IA"
 }

@@ -36,5 +36,18 @@
   "error_ollama_unreachable": "Der Ollama-Daemon ist nicht erreichbar.",
   "error_model_unsupported_tools": "Dieses Modell unterstützt keine Tool-Aufrufe. Versuche ein Modell, das dies tut (z. B. llama3.1 oder qwen2.5).",
   "error_cancelled": "Abgebrochen.",
-  "error_unknown": "Die Anfrage ist fehlgeschlagen."
+  "error_unknown": "Die Anfrage ist fehlgeschlagen.",
+  "custom_model": "Benutzerdefiniertes Modell…",
+  "custom_model_id": "Benutzerdefinierte Modell-ID",
+  "thinking_label": "Denktiefe",
+  "thinking_auto": "Modellstandard",
+  "thinking_none": "Aus",
+  "thinking_minimal": "Minimal",
+  "thinking_low": "Niedrig",
+  "thinking_medium": "Mittel",
+  "thinking_high": "Hoch",
+  "thinking_xhigh": "Sehr hoch",
+  "thinking_max": "Maximum",
+  "thinking_help": "Gilt für zukünftige Nachrichten. Höhere Stufen können länger dauern und mehr Tokens verbrauchen.",
+  "thinking_unavailable": "Dieses Modell verwendet seinen Standard. Für dieses Modell sind keine einstellbaren Denkstufen aufgeführt."
 }

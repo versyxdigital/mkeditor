@@ -86,6 +86,79 @@ describe('AssistantManager.subscribeConfig + getConfigSnapshot', () => {
 });
 
 describe('AssistantManager outbound channels', () => {
+  it('isolates conversation thinking overrides and clears incompatible levels when the model changes', () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge, { disablePacedReveal: true });
+    mgr.setConfigFromServer({
+      ...SAMPLE_PUSH,
+      config: {
+        ...SAMPLE_PUSH.config,
+        anthropic: {
+          ...SAMPLE_PUSH.config.anthropic,
+          defaultModel: 'claude-sonnet-5-5',
+          thinkingLevel: 'low',
+        },
+      },
+    });
+    const first = mgr.createConversation('anthropic');
+    const second = mgr.createConversation('anthropic');
+    mgr.setConversationThinkingLevel('anthropic', first, 'max');
+    const one = mgr.startCall('anthropic', first, 'first');
+    const two = mgr.startCall('anthropic', second, 'second');
+    const requests = sent
+      .filter((message) => message.channel === 'to:ai:chat')
+      .map((message) => message.data);
+    expect(requests).toEqual([
+      expect.objectContaining({ thinkingLevel: 'max' }),
+      expect.objectContaining({ thinkingLevel: 'low' }),
+    ]);
+    mgr.setConversationModel('anthropic', first, 'claude-haiku-4-5');
+    mgr.setConversationThinkingLevel('anthropic', first, 'high');
+    expect(
+      mgr
+        .getChatSnapshot()
+        .conversations.anthropic.find((conv) => conv.id === first)
+        ?.thinkingLevel,
+    ).toBe('auto');
+    mgr.onChatDone(one!);
+    mgr.onChatDone(two!);
+    mgr.flushPersist();
+  });
+  it('captures the provider thinking preference for chat calls while keeping connection probes independent', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    mgr.setConfigFromServer({
+      ...SAMPLE_PUSH,
+      config: {
+        ...SAMPLE_PUSH.config,
+        anthropic: {
+          ...SAMPLE_PUSH.config.anthropic,
+          defaultModel: 'claude-sonnet-5-5',
+          thinkingLevel: 'high',
+        },
+      },
+    });
+    const conversation = mgr.createConversation('anthropic');
+    const chatId = mgr.startCall('anthropic', conversation, 'hello');
+    expect(
+      sent.find((message) => message.channel === 'to:ai:chat')?.data,
+    ).toEqual(
+      expect.objectContaining({
+        model: 'claude-sonnet-5-5',
+        thinkingLevel: 'high',
+      }),
+    );
+    const probe = mgr.testConnection('anthropic', 'claude-sonnet-5-5');
+    const requests = sent.filter((message) => message.channel === 'to:ai:chat');
+    expect(requests[1].data).not.toHaveProperty('thinkingLevel');
+    mgr.onChatDone((requests[1].data as { callId: string }).callId);
+    await probe;
+    mgr.onChatDone(chatId!);
+    mgr.flushPersist();
+  });
+
   it('requestConfigRefresh fires to:ai:config:get', () => {
     const { bridge, sent } = makeBridge();
     const mgr = new AssistantManager(bridge as never, {

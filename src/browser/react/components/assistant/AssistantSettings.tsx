@@ -23,6 +23,8 @@ import {
 import { Switch } from '../ui/switch';
 import { Icon } from '../Icon';
 import { ProviderLogo } from './ProviderLogo';
+import { ProviderModelSettings } from './ProviderModelSettings';
+import { getThinkingLevels } from '../../../../app/shared/assistantModels';
 
 /**
  * AI Assistant settings. Mounted inside `<SettingsModal>` on the
@@ -103,12 +105,7 @@ const ApiProviderRow: React.FC<{
 
   const [keyInput, setKeyInput] = React.useState('');
   const [showKey, setShowKey] = React.useState(false);
-  const [modelInput, setModelInput] = React.useState(cfg?.defaultModel ?? '');
   const [status, setStatus] = React.useState<TestStatus>('unknown');
-
-  React.useEffect(() => {
-    if (cfg?.defaultModel) setModelInput(cfg.defaultModel);
-  }, [cfg?.defaultModel]);
 
   if (!cfg || !manager) return null;
   const disabledByEncryption = !snapshot.encryptionAvailable;
@@ -138,13 +135,20 @@ const ApiProviderRow: React.FC<{
     });
   };
 
-  const handleModelBlur = () => {
-    const trimmed = modelInput.trim();
-    if (!trimmed || trimmed === cfg.defaultModel) return;
+  const handleModelChange = (model: string) => {
+    if (model === cfg.defaultModel) return;
     manager.setProviderConfig({
       provider,
-      config: { defaultModel: trimmed },
+      config: {
+        defaultModel: model,
+        ...(cfg.thinkingLevel &&
+        cfg.thinkingLevel !== 'auto' &&
+        !getThinkingLevels(provider, model).includes(cfg.thinkingLevel)
+          ? { thinkingLevel: 'auto' as const }
+          : {}),
+      },
     });
+    setStatus('unknown');
   };
 
   const runTest = async () => {
@@ -254,19 +258,15 @@ const ApiProviderRow: React.FC<{
         </div>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={`${provider}-model`}>
-          {t('assistant-settings:default_model_label')}
-        </Label>
-        <Input
-          id={`${provider}-model`}
-          type="text"
-          value={modelInput}
-          onChange={(e) => setModelInput(e.target.value)}
-          onBlur={handleModelBlur}
-          spellCheck={false}
-        />
-      </div>
+      <ProviderModelSettings
+        provider={provider}
+        model={cfg.defaultModel}
+        thinkingLevel={cfg.thinkingLevel}
+        onModelChange={handleModelChange}
+        onThinkingChange={(thinkingLevel) =>
+          manager.setProviderConfig({ provider, config: { thinkingLevel } })
+        }
+      />
 
       <div>
         <Button

@@ -20,12 +20,17 @@ import type {
   PersistedConversations,
   ToolInvocation,
   ToolResultRequest,
+  ThinkingLevel,
   UiChatMessage,
   UiMessageSegment,
 } from '../../app/interfaces/Assistant';
 import type { ToolExecutor } from './AssistantTools';
 import { encryptForMain } from './SecureChannelClient';
 import { cancelToolConfirmsForCallId } from '../toolConfirm';
+import {
+  getThinkingLevels,
+  isThinkingLevel,
+} from '../../app/shared/assistantModels';
 
 /**
  * Surface AssistantManager uses to gather context at send time
@@ -626,6 +631,13 @@ export class AssistantManager {
     const trimmed = model.trim();
     if (!trimmed || trimmed === conv.model) return;
     conv.model = trimmed;
+    if (
+      conv.thinkingLevel &&
+      conv.thinkingLevel !== 'auto' &&
+      !getThinkingLevels(provider, trimmed).includes(conv.thinkingLevel)
+    ) {
+      conv.thinkingLevel = 'auto';
+    }
     conv.updatedAt = Date.now();
     this.rebuildChatSnapshot();
   }
@@ -636,6 +648,25 @@ export class AssistantManager {
   ): void {
     if (this.activeConv[provider] === conversationId) return;
     this.activeConv[provider] = conversationId;
+    this.rebuildChatSnapshot();
+  }
+
+  public setConversationThinkingLevel(
+    provider: ProviderId,
+    conversationId: string,
+    level: ThinkingLevel,
+  ): void {
+    const conv = this.conversations[provider].get(conversationId);
+    if (
+      !conv ||
+      !isThinkingLevel(level) ||
+      (level !== 'auto' &&
+        !getThinkingLevels(provider, conv.model).includes(level)) ||
+      conv.thinkingLevel === level
+    )
+      return;
+    conv.thinkingLevel = level;
+    conv.updatedAt = Date.now();
     this.rebuildChatSnapshot();
   }
 
@@ -734,6 +765,12 @@ export class AssistantManager {
       model: conv.model,
       messages: wireMessages,
       tools: this.toolExecutor?.describe() ?? undefined,
+      ...(conv.thinkingLevel
+        ? { thinkingLevel: conv.thinkingLevel }
+        : provider !== 'ollama' &&
+            this.snapshot.config?.[provider].thinkingLevel
+          ? { thinkingLevel: this.snapshot.config[provider].thinkingLevel }
+          : {}),
     };
     this.bridge.send('to:ai:chat', req);
     this.rebuildChatSnapshot();
@@ -1525,6 +1562,7 @@ export class AssistantManager {
           providerId: conv.providerId,
           title: conv.title,
           model: conv.model,
+          ...(conv.thinkingLevel ? { thinkingLevel: conv.thinkingLevel } : {}),
           messages,
           autoAcceptWrites: conv.autoAcceptWrites,
           shareActiveFile: conv.shareActiveFile,
@@ -1649,6 +1687,9 @@ export class AssistantManager {
           providerId: provider,
           title: persisted.title,
           model: persisted.model,
+          ...(isThinkingLevel(persisted.thinkingLevel)
+            ? { thinkingLevel: persisted.thinkingLevel }
+            : {}),
           messages,
           autoAcceptWrites: persisted.autoAcceptWrites === true,
           shareActiveFile: persisted.shareActiveFile !== false,

@@ -78,7 +78,20 @@
     "error_ollama_unreachable": "Não foi possível contactar o daemon Ollama.",
     "error_model_unsupported_tools": "Este modelo não suporta chamadas a ferramentas. Tenta um modelo que suporte (p. ex. llama3.1 ou qwen2.5).",
     "error_cancelled": "Cancelado.",
-    "error_unknown": "O pedido falhou."
+    "error_unknown": "O pedido falhou.",
+    "custom_model": "Modelo personalizado…",
+    "custom_model_id": "ID do modelo personalizado",
+    "thinking_label": "Nível de raciocínio",
+    "thinking_auto": "Padrão do modelo",
+    "thinking_none": "Desativado",
+    "thinking_minimal": "Mínimo",
+    "thinking_low": "Baixo",
+    "thinking_medium": "Médio",
+    "thinking_high": "Alto",
+    "thinking_xhigh": "Muito alto",
+    "thinking_max": "Máximo",
+    "thinking_help": "Aplica-se às próximas mensagens. Níveis mais altos podem demorar mais e usar mais tokens.",
+    "thinking_unavailable": "Este modelo usa o seu padrão. Não há níveis de raciocínio configuráveis listados para este modelo."
   },
   "assistant-tools": {
     "confirm_title": "Permitir {{toolName}}?",
@@ -123,7 +136,8 @@
     "tabs_label": "Fornecedor de IA",
     "no_providers_enabled": "Nenhum fornecedor ligado ainda. Ative um nas Definições para começar a conversar.",
     "provider_ready_placeholder": "{{provider}} está pronto — a interface de chat chega na próxima fase.",
-    "open_settings": "Abrir Definições"
+    "open_settings": "Abrir Definições",
+    "resize_sidebar": "Redimensionar o painel do assistente de IA"
   },
   "menus-alerts": {
     "primary": "Primário",

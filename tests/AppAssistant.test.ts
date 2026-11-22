@@ -178,6 +178,38 @@ const baseRequest = (
 });
 
 describe('AppAssistant.chat — streaming + callId fan-out', () => {
+  it.each([
+    [
+      'anthropic',
+      'claude-sonnet-5-5',
+      'high',
+      { anthropic: { thinking: { type: 'adaptive' }, effort: 'high' } },
+    ],
+    ['openai', 'gpt-6.2-sol', 'max', { openai: { reasoningEffort: 'max' } }],
+    ['openai', 'gpt-5', 'minimal', { openai: { reasoningEffort: 'minimal' } }],
+    ['openai', 'gpt-5.5', 'none', { openai: { reasoningEffort: 'none' } }],
+    ['openai', 'gpt-6.2-astra', 'none', undefined],
+    ['openai', 'gpt-4.1', 'high', undefined],
+    ['anthropic', 'custom-model', 'high', undefined],
+    ['anthropic', 'claude-sonnet-5-5', 'auto', undefined],
+    ['anthropic', 'claude-sonnet-5-5', 'invalid', undefined],
+  ] as const)(
+    'applies compatible thinking options for %s / %s / %s',
+    async (provider, model, thinkingLevel, expected) => {
+      const ctx = makeContext();
+      const { assistant } = buildAssistant(ctx);
+      seedKey(provider, 'sk-test');
+      mockStreamText.mockReturnValueOnce(makeStreamResult([]));
+      assistant.chat({
+        ...baseRequest('thinking', 'hello', provider),
+        model,
+        thinkingLevel: thinkingLevel as ChatRequest['thinkingLevel'],
+      });
+      await flush();
+      expect(mockStreamText.mock.calls[0][0].providerOptions).toEqual(expected);
+    },
+  );
+
   it('aborts every upstream call when its owning window is disposed', () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
@@ -723,6 +755,7 @@ describe('AppAssistant — tool-call → tool-result loop', () => {
 
     assistant.chat({
       ...baseRequest('call-race'),
+      thinkingLevel: 'high',
       tools: [
         {
           name: 'get_active_file',
@@ -773,6 +806,9 @@ describe('AppAssistant — tool-call → tool-result loop', () => {
     // Turn 2 fired exactly once, and its messages include the
     // assistant message (with tool_use) BEFORE the tool message.
     expect(mockStreamText).toHaveBeenCalledTimes(2);
+    expect(mockStreamText.mock.calls[1][0].providerOptions).toEqual({
+      anthropic: { thinking: { type: 'adaptive' }, effort: 'high' },
+    });
     const turn2Args = mockStreamText.mock.calls[1][0] as {
       messages: Array<{ role: string }>;
     };

@@ -10,6 +10,10 @@
 
 import * as React from 'react';
 import { act, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { AssistantManager } from '../../src/browser/core/AssistantManager';
+import { useAssistantChat } from '../../src/browser/react/contexts/AssistantContext';
+import { DEFAULT_PROVIDER_CONFIG } from '../../src/app/interfaces/Assistant';
 
 import { ChatPane } from '../../src/browser/react/components/assistant/ChatPane';
 import { fakeAssistantManager, renderWithProviders } from '../utils/render';
@@ -292,22 +296,134 @@ describe('<ChatPane> — send/stop toggle', () => {
   });
 });
 
-describe('<ChatPane> — model editor', () => {
-  it('blur on the model input fires setConversationModel with the typed value', () => {
+beforeAll(() => {
+  Element.prototype.scrollIntoView = jest.fn();
+  Element.prototype.hasPointerCapture = jest.fn(() => false);
+  Element.prototype.setPointerCapture = jest.fn();
+  Element.prototype.releasePointerCapture = jest.fn();
+});
+
+describe('<ChatPane> — model and thinking dropdowns', () => {
+  it('selects a readable model and commits its API ID immediately', async () => {
+    const user = userEvent.setup();
     const { conv, snapshot } = snapshotWith({ messages: [] });
     const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
     renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
       managers: { assistantManager: am as never },
     });
-    const modelInput = screen.getByLabelText(
-      'assistant-chat:model_aria',
-    ) as HTMLInputElement;
-    fireEvent.change(modelInput, { target: { value: 'claude-opus-4-7' } });
-    fireEvent.blur(modelInput);
+    const modelSelect = screen.getByRole('combobox', {
+      name: 'assistant-chat:model_aria',
+    });
+    expect(modelSelect).toHaveTextContent('Sonnet 4.6');
+    await user.click(modelSelect);
+    await user.click(screen.getByRole('option', { name: 'Sonnet 5.5' }));
     expect(am.setConversationModel).toHaveBeenCalledWith(
       'anthropic',
       'conv-1',
-      'claude-opus-4-7',
+      'claude-sonnet-5-5',
+    );
+  });
+
+  it('sends the selected model and thinking level through the real manager and persists the conversation choice', async () => {
+    const user = userEvent.setup();
+    const bridge = { send: jest.fn(), receive: jest.fn() };
+    const manager = new AssistantManager(bridge, { disablePacedReveal: true });
+    manager.setConfigFromServer({
+      encryptionAvailable: true,
+      config: {
+        anthropic: {
+          ...DEFAULT_PROVIDER_CONFIG.anthropic,
+          enabled: true,
+          hasKey: true,
+          thinkingLevel: 'low',
+        },
+        openai: { ...DEFAULT_PROVIDER_CONFIG.openai, hasKey: false },
+        ollama: { ...DEFAULT_PROVIDER_CONFIG.ollama, hasKey: false },
+      },
+    });
+    const id = manager.createConversation('anthropic');
+    const Probe = () => {
+      const { chat } = useAssistantChat();
+      return (
+        <ChatPane
+          provider="anthropic"
+          conversation={chat.conversations.anthropic.find(
+            (conv) => conv.id === id,
+          )!}
+        />
+      );
+    };
+    const { unmount } = renderWithProviders(<Probe />, {
+      managers: { assistantManager: manager },
+    });
+    expect(
+      screen.getByLabelText('assistant-settings:thinking_label'),
+    ).toHaveTextContent('assistant-settings:thinking_low');
+    await user.click(
+      screen.getByRole('combobox', { name: 'assistant-chat:model_aria' }),
+    );
+    await user.click(screen.getByRole('option', { name: 'Sonnet 5.5' }));
+    await user.click(
+      screen.getByLabelText('assistant-settings:thinking_label'),
+    );
+    expect(
+      screen.queryByRole('option', {
+        name: 'assistant-settings:thinking_none',
+      }),
+    ).toBeNull();
+    await user.click(
+      screen.getByRole('option', { name: 'assistant-settings:thinking_xhigh' }),
+    );
+    expect(
+      screen.getByRole('combobox', { name: 'assistant-chat:model_aria' }),
+    ).toHaveTextContent('Sonnet 5.5');
+    await user.type(screen.getByTestId('chat-input'), 'Hello');
+    await user.click(screen.getByTestId('chat-send'));
+    await waitFor(() =>
+      expect(bridge.send).toHaveBeenCalledWith(
+        'to:ai:chat',
+        expect.objectContaining({
+          model: 'claude-sonnet-5-5',
+          thinkingLevel: 'xhigh',
+        }),
+      ),
+    );
+    expect(manager.serialize()!.conversations.anthropic[0]).toEqual(
+      expect.objectContaining({
+        model: 'claude-sonnet-5-5',
+        thinkingLevel: 'xhigh',
+      }),
+    );
+    const request = bridge.send.mock.calls.find(
+      ([channel]) => channel === 'to:ai:chat',
+    )![1];
+    act(() => manager.onChatDone(request.callId));
+    unmount();
+    manager.flushPersist();
+  });
+
+  it('populates the Ollama chat dropdown from installed models', async () => {
+    const user = userEvent.setup();
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    am.refreshOllamaModels.mockResolvedValue(['qwen3:8b', 'llama3.2']);
+    renderWithProviders(
+      <ChatPane
+        provider="ollama"
+        conversation={{ ...conv, providerId: 'ollama', model: 'llama3.2' }}
+      />,
+      {
+        managers: { assistantManager: am as never },
+      },
+    );
+    await user.click(
+      screen.getByRole('combobox', { name: 'assistant-chat:model_aria' }),
+    );
+    await user.click(await screen.findByRole('option', { name: 'qwen3:8b' }));
+    expect(am.setConversationModel).toHaveBeenCalledWith(
+      'ollama',
+      conv.id,
+      'qwen3:8b',
     );
   });
 });

@@ -36,5 +36,18 @@
   "error_ollama_unreachable": "Impossibile contattare il daemon Ollama.",
   "error_model_unsupported_tools": "Questo modello non supporta le chiamate agli strumenti. Prova un modello che lo faccia (es. llama3.1 o qwen2.5).",
   "error_cancelled": "Annullato.",
-  "error_unknown": "La richiesta non è riuscita."
+  "error_unknown": "La richiesta non è riuscita.",
+  "custom_model": "Modello personalizzato…",
+  "custom_model_id": "ID del modello personalizzato",
+  "thinking_label": "Livello di ragionamento",
+  "thinking_auto": "Predefinito del modello",
+  "thinking_none": "Disattivato",
+  "thinking_minimal": "Minimo",
+  "thinking_low": "Basso",
+  "thinking_medium": "Medio",
+  "thinking_high": "Alto",
+  "thinking_xhigh": "Molto alto",
+  "thinking_max": "Massimo",
+  "thinking_help": "Si applica ai messaggi futuri. I livelli più alti possono richiedere più tempo e usare più token.",
+  "thinking_unavailable": "Questo modello usa il valore predefinito. Non sono elencati livelli di ragionamento configurabili per questo modello."
 }

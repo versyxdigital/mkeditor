@@ -78,7 +78,20 @@
     "error_ollama_unreachable": "无法连接 Ollama 守护进程。",
     "error_model_unsupported_tools": "此模型不支持工具调用。请尝试支持的模型（如 llama3.1 或 qwen2.5）。",
     "error_cancelled": "已取消。",
-    "error_unknown": "请求失败。"
+    "error_unknown": "请求失败。",
+    "custom_model": "自定义模型…",
+    "custom_model_id": "自定义模型 ID",
+    "thinking_label": "思考级别",
+    "thinking_auto": "模型默认值",
+    "thinking_none": "关闭",
+    "thinking_minimal": "最低",
+    "thinking_low": "低",
+    "thinking_medium": "中",
+    "thinking_high": "高",
+    "thinking_xhigh": "极高",
+    "thinking_max": "最高",
+    "thinking_help": "应用于后续消息。更高级别可能需要更长时间并消耗更多 token。",
+    "thinking_unavailable": "此模型使用其默认设置。尚未列出此模型可配置的思考级别。"
   },
   "assistant-tools": {
     "confirm_title": "允许 {{toolName}}?",
@@ -123,7 +136,8 @@
     "tabs_label": "AI 提供商",
     "no_providers_enabled": "尚未连接任何提供商。请在“设置”中启用一个以开始聊天。",
     "provider_ready_placeholder": "{{provider}} 已就绪 — 聊天界面将在下一阶段推出。",
-    "open_settings": "打开设置"
+    "open_settings": "打开设置",
+    "resize_sidebar": "调整 AI 助手侧栏大小"
   },
   "menus-alerts": {
     "primary": "主要",

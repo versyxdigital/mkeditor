@@ -36,5 +36,18 @@
   "error_ollama_unreachable": "Couldn't reach the Ollama daemon.",
   "error_model_unsupported_tools": "This model doesn't support tool calls. Try a model that does (e.g. llama3.1 or qwen2.5).",
   "error_cancelled": "Cancelled.",
-  "error_unknown": "The request failed."
+  "error_unknown": "The request failed.",
+  "custom_model": "Custom model…",
+  "custom_model_id": "Custom model ID",
+  "thinking_label": "Thinking level",
+  "thinking_auto": "Model default",
+  "thinking_none": "Off",
+  "thinking_minimal": "Minimal",
+  "thinking_low": "Low",
+  "thinking_medium": "Medium",
+  "thinking_high": "High",
+  "thinking_xhigh": "Extra high",
+  "thinking_max": "Maximum",
+  "thinking_help": "Applies to future messages. Higher levels can take longer and use more tokens.",
+  "thinking_unavailable": "This model uses its own default. Configurable thinking levels are not listed for this model."
 }

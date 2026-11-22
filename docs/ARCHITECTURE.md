@@ -337,6 +337,8 @@ When `settings.scrollsync` is true and the editor scrolls:
 
 Same acknowledgement chain but with `to:file:saveas` and `{ content, requestId, excludedPaths }`. The picker destination is checked against other open document paths before writing. The result rekeys the captured source model, even if the user switched tabs while the dialog was open; it does not reopen or replace whichever tab happens to be active. Legacy callers may still pass a content string.
 
+Successful `from:file:save-result` acknowledgements also insert the saved path into the current explorer tree through `FileTreeManager.addFileToTree`, since correlated saves do not emit `from:file:opened`. This makes new files visible immediately while preserving loaded subtrees. Failed/cancelled saves do not insert entries; paths outside the current workspace are ignored, and repeated saves do not create duplicates.
+
 ### 4.7 Open file
 
 - From the menu: AppMenu sends `from:file:open` → renderer sends `to:file:open` → `AppStorage.showOpenDialog` → on selection, `setActiveFile` → `from:file:opened`.
@@ -505,6 +507,12 @@ The right-hand sidebar that hosts per-provider chat surfaces (Anthropic / OpenAI
 - [AssistantTools](../src/browser/core/AssistantTools.ts) (renderer) is the tool catalog + dispatcher. Tools call directly into [FileManager](../src/browser/core/FileManager.ts) / [FileTreeManager](../src/browser/core/FileTreeManager.ts) / [EditorManager](../src/browser/core/EditorManager.ts) — there is no new IPC surface for tool execution. Write-class tools (`write_file`, `edit_file`, `create_file`, `replace_selection`, `insert_at_cursor`) route through `confirmExternal` first unless the conversation's per-chat "auto-accept writes" toggle is on.
 - React lives under [src/browser/react/components/AssistantSidebar.tsx](../src/browser/react/components/AssistantSidebar.tsx) and [src/browser/react/components/assistant/](../src/browser/react/components/assistant/). The sidebar reads `useAssistantConfig` (sanitized snapshot) and `useAssistantChat` (live chat state) from [AssistantContext](../src/browser/react/contexts/AssistantContext.tsx).
 
+**Model and thinking settings.** Anthropic and OpenAI settings use readable model names from the shared [assistantModels.ts](../src/app/shared/assistantModels.ts) catalog, with a custom-ID option that preserves models outside the list. The same catalog defines supported thinking levels, checked against the official [Claude model/effort documentation](https://platform.claude.com/docs/en/build-with-claude/effort) and [OpenAI model documentation](https://developers.openai.com/api/docs/models). Keep capabilities alongside IDs when updating the catalog. Ollama continues to discover installed models from its daemon. Default model changes apply to new conversations; existing conversations retain their model override. The optional provider `thinkingLevel` preference applies to future chat messages and is captured in each `ChatRequest`, including subsequent tool turns. Main maps compatible levels to Anthropic adaptive thinking/effort or OpenAI reasoning effort. Unknown models and incompatible conversation overrides use model defaults; connection probes do not inherit the thinking preference. Older stores without the preference also retain model defaults.
+
+The chat header reuses `ProviderModelSettings` for its model and thinking dropdowns, so readable names, custom IDs, and supported effort levels stay consistent with Settings. Chat changes update that conversation immediately. An optional conversation `thinkingLevel` overrides the provider preference and survives history restore; old conversations inherit the provider setting. Switching to a model that cannot use an explicit conversation level resets that override to the model default. Ollama's chat dropdown discovers installed models when opened and retains a custom-ID fallback. Controls wrap vertically in narrow panes.
+
+The assistant divider has an eight-pixel visible grip and expanded pointer targets (18 pixels for mouse, 28 for touch), plus keyboard resizing. `Shell` persists nonzero widths through the group's settled `onLayoutChanged` callback rather than updating React state on every drag tick. Collapsing retains the last expanded width.
+
 **Storage.** `~/.mkeditor/assistant.json` is the on-disk file. Shape:
 
 ```json
@@ -513,32 +521,21 @@ The right-hand sidebar that hosts per-provider chat surfaces (Anthropic / OpenAI
   "providers": {
     "anthropic": {
       "enabled": true,
-      "model": "claude-sonnet-4-6",
-      "apiKey": "<encrypted>"
+      "defaultModel": "claude-sonnet-5-5",
+      "thinkingLevel": "high"
     },
-    "openai": { "enabled": false, "model": "gpt-5", "apiKey": null },
+    "openai": { "enabled": false, "defaultModel": "gpt-5" },
     "ollama": {
       "enabled": true,
-      "model": "llama3.2",
-      "baseUrl": "http://localhost:11434",
-      "apiKey": null
+      "defaultModel": "llama3.2",
+      "baseUrl": "http://localhost:11434"
     }
   },
-  "conversations": [
-    {
-      "id": "conv-…",
-      "provider": "anthropic",
-      "title": "…",
-      "createdAt": 0,
-      "updatedAt": 0,
-      "autoAcceptWrites": false,
-      "messages": [/* UiChatMessage[] */]
-    }
-  ]
+  "keys": { "anthropic": "<encrypted base64>" }
 }
 ```
 
-The `apiKey` value is a `safeStorage`-encrypted base64 blob. On corrupted decrypt it nulls out the key and disables the provider (rather than throwing on boot).
+The `keys` entries are `safeStorage`-encrypted base64 blobs. Corrupted decrypts are treated as missing keys. The optional `conversations` section contains the `PersistedConversations` object defined in [Assistant.ts](../src/app/interfaces/Assistant.ts); config and key writes preserve this history.
 
 **IPC channels** (whitelisted in [preload.ts](../src/app/preload.ts)). The `:ai:` namespace is the chat/config plane (chosen for brevity — `assistant` reads as a heavier word when scanning IPC tables); `from:assistant:toggle` lives under `:assistant:` because it's a UI-shell event, not a chat-plane message:
 

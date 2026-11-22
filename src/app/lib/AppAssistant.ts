@@ -27,6 +27,7 @@ import type {
 } from '../interfaces/Assistant';
 import { AssistantKeyStore } from './AssistantKeyStore';
 import { AssistantConfig } from './AssistantConfig';
+import { getThinkingProviderOptions } from '../shared/assistantModels';
 
 /**
  * Factory hooks for the SDK's per-provider model constructors. Exposed
@@ -281,6 +282,11 @@ export class AppAssistant {
       const tools = AppAssistant.buildToolSet(request.tools ?? []);
       result = streamText({
         model,
+        providerOptions: getThinkingProviderOptions(
+          request.provider,
+          request.model,
+          request.thinkingLevel,
+        ),
         ...(state.instructions.length > 0
           ? { instructions: state.instructions }
           : {}),

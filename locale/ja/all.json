@@ -78,7 +78,20 @@
     "error_ollama_unreachable": "Ollama デーモンに接続できません。",
     "error_model_unsupported_tools": "このモデルはツール呼び出しに対応していません。対応モデル（例: llama3.1、qwen2.5）をお試しください。",
     "error_cancelled": "キャンセルされました。",
-    "error_unknown": "リクエストに失敗しました。"
+    "error_unknown": "リクエストに失敗しました。",
+    "custom_model": "カスタムモデル…",
+    "custom_model_id": "カスタムモデル ID",
+    "thinking_label": "思考レベル",
+    "thinking_auto": "モデルの既定値",
+    "thinking_none": "オフ",
+    "thinking_minimal": "最小",
+    "thinking_low": "低",
+    "thinking_medium": "中",
+    "thinking_high": "高",
+    "thinking_xhigh": "非常に高い",
+    "thinking_max": "最大",
+    "thinking_help": "今後のメッセージに適用されます。高いレベルでは時間とトークンの使用量が増える場合があります。",
+    "thinking_unavailable": "このモデルは既定の設定を使用します。このモデルの設定可能な思考レベルは登録されていません。"
   },
   "assistant-tools": {
     "confirm_title": "{{toolName}} を許可しますか?",
@@ -123,7 +136,8 @@
     "tabs_label": "AI プロバイダー",
     "no_providers_enabled": "まだプロバイダーが接続されていません。設定で一つ有効にしてチャットを始めましょう。",
     "provider_ready_placeholder": "{{provider}} の準備ができました — チャット UI は次のフェーズで登場します。",
-    "open_settings": "設定を開く"
+    "open_settings": "設定を開く",
+    "resize_sidebar": "AI アシスタントのサイドバーのサイズを変更"
   },
   "menus-alerts": {
     "primary": "プライマリ",

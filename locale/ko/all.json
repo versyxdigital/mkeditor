@@ -78,7 +78,20 @@
     "error_ollama_unreachable": "Ollama 데몬에 연결할 수 없습니다.",
     "error_model_unsupported_tools": "이 모델은 도구 호출을 지원하지 않습니다. 지원 모델(예: llama3.1, qwen2.5)을 시도하세요.",
     "error_cancelled": "취소되었습니다.",
-    "error_unknown": "요청이 실패했습니다."
+    "error_unknown": "요청이 실패했습니다.",
+    "custom_model": "사용자 지정 모델…",
+    "custom_model_id": "사용자 지정 모델 ID",
+    "thinking_label": "사고 수준",
+    "thinking_auto": "모델 기본값",
+    "thinking_none": "끄기",
+    "thinking_minimal": "최소",
+    "thinking_low": "낮음",
+    "thinking_medium": "중간",
+    "thinking_high": "높음",
+    "thinking_xhigh": "매우 높음",
+    "thinking_max": "최대",
+    "thinking_help": "이후 메시지에 적용됩니다. 수준이 높을수록 더 오래 걸리고 더 많은 토큰을 사용할 수 있습니다.",
+    "thinking_unavailable": "이 모델은 기본 설정을 사용합니다. 이 모델에 대해 설정 가능한 사고 수준이 등록되지 않았습니다."
   },
   "assistant-tools": {
     "confirm_title": "{{toolName}} 허용?",
@@ -123,7 +136,8 @@
     "tabs_label": "AI 공급자",
     "no_providers_enabled": "아직 연결된 공급자가 없습니다. 채팅을 시작하려면 설정에서 하나를 활성화하세요.",
     "provider_ready_placeholder": "{{provider}} 준비 완료 — 채팅 UI는 다음 단계에 도착합니다.",
-    "open_settings": "설정 열기"
+    "open_settings": "설정 열기",
+    "resize_sidebar": "AI 도우미 사이드바 크기 조절"
   },
   "menus-alerts": {
     "primary": "기본",

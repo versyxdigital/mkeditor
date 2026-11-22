@@ -47,6 +47,28 @@ const fileFor = (tmpHome: string) =>
 const tmpFor = (tmpHome: string) => fileFor(tmpHome) + '.tmp';
 
 describe('AssistantConfig.load', () => {
+  it('persists thinking preferences and ignores invalid levels without erasing the saved value', () => {
+    withTempHome((tmpHome) => {
+      const Config = loadAssistantConfig(tmpHome);
+      expect(Config.load().anthropic.thinkingLevel).toBeUndefined();
+      Config.update({
+        provider: 'anthropic',
+        config: { thinkingLevel: 'high' },
+      });
+      expect(Config.load().anthropic.thinkingLevel).toBe('high');
+      Config.update({
+        provider: 'anthropic',
+        config: { thinkingLevel: 'invalid' as never },
+      });
+      expect(Config.load().anthropic.thinkingLevel).toBe('high');
+      Config.update({
+        provider: 'anthropic',
+        config: { thinkingLevel: 'auto' },
+      });
+      expect(Config.load().anthropic.thinkingLevel).toBe('auto');
+    });
+  });
+
   it('returns DEFAULT_PROVIDER_CONFIG when no file exists', () => {
     withTempHome((tmpHome) => {
       const cfg = loadAssistantConfig(tmpHome).load();

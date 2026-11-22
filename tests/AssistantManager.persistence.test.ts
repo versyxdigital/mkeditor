@@ -174,6 +174,8 @@ describe('AssistantManager.restore', () => {
     source.renameConversation('anthropic', conv, 'Round-trip!');
     source.setActiveProvider('anthropic');
     source.setDraft('anthropic', conv, 'still typing');
+    source.setConversationModel('anthropic', conv, 'claude-sonnet-5-5');
+    source.setConversationThinkingLevel('anthropic', conv, 'xhigh');
     const snap = source.serialize()!;
 
     const { bridge: b2 } = makeBridge();
@@ -185,6 +187,8 @@ describe('AssistantManager.restore', () => {
     expect(out.activeConversation.anthropic).toBe(conv);
     expect(out.conversations.anthropic).toHaveLength(1);
     expect(out.conversations.anthropic[0].title).toBe('Round-trip!');
+    expect(out.conversations.anthropic[0].model).toBe('claude-sonnet-5-5');
+    expect(out.conversations.anthropic[0].thinkingLevel).toBe('xhigh');
     expect(out.drafts[`anthropic:${conv}`]).toBe('still typing');
   });
 

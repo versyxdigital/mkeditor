@@ -13,12 +13,17 @@
 /** The three providers the user can connect in v1. */
 export type ProviderId = 'anthropic' | 'openai' | 'ollama';
 
+export type ThinkingLevel =
+  'auto' | 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
 /** Non-secret config shared by the API-key-bearing providers. */
 export interface ApiProviderConfig {
   /** Whether the provider should appear as a tab in the assistant sidebar. */
   enabled: boolean;
   /** Model selected as the default for new conversations. */
   defaultModel: string;
+  /** Omitted on older stores: use the model's own default thinking effort. */
+  thinkingLevel?: ThinkingLevel;
 }
 
 /** Non-secret config for the local-only Ollama provider. */
@@ -102,6 +107,8 @@ export interface ChatRequest {
    * round-trip stays cheap; ordinary chat calls leave it unset.
    */
   maxOutputTokens?: number;
+  /** Provider preference captured when sending; applied only if this model supports it. */
+  thinkingLevel?: ThinkingLevel;
 }
 
 /** Payload of `to:ai:cancel`. */
@@ -262,6 +269,7 @@ export interface PersistedConversation {
   providerId: ProviderId;
   title: string;
   model: string;
+  thinkingLevel?: ThinkingLevel;
   messages: PersistedChatMessage[];
   autoAcceptWrites: boolean;
   shareActiveFile: boolean;
@@ -452,6 +460,8 @@ export interface ChatConversation {
    * through the chat header.
    */
   model: string;
+  /** Optional override; omitted conversations inherit the provider preference. */
+  thinkingLevel?: ThinkingLevel;
   messages: UiChatMessage[];
   /**
    * Per-conversation override for write-class tool confirmations.
