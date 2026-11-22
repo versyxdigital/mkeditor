@@ -301,3 +301,61 @@ describe('AssistantConfig — schema field name', () => {
     });
   });
 });
+
+describe('AssistantConfig runtime validation regressions', () => {
+  it('ignores malformed values and extra fields in patches', () => {
+    withTempHome((tmpHome) => {
+      const Config = loadAssistantConfig(tmpHome);
+      const before = Config.load();
+      const result = Config.update({
+        provider: 'ollama',
+        config: {
+          enabled: 'false',
+          baseUrl: 42,
+          defaultModel: null,
+          secret: 'must not persist',
+        },
+      } as never);
+      expect(result).toEqual(before);
+      expect(readFileSync(fileFor(tmpHome), 'utf-8')).not.toContain(
+        'must not persist',
+      );
+      expect(() =>
+        Config.update({ provider: 'ollama', config: null } as never),
+      ).not.toThrow();
+    });
+  });
+
+  it('normalises malformed stored config fields without dropping encrypted keys', () => {
+    withTempHome((tmpHome) => {
+      const Config = loadAssistantConfig(tmpHome);
+      Config.update({ provider: 'ollama', config: { enabled: true } });
+      const fs = jest.requireActual('fs') as typeof import('fs');
+      const stored = JSON.parse(fs.readFileSync(fileFor(tmpHome), 'utf-8'));
+      stored.providers.ollama.baseUrl = 42;
+      stored.providers.ollama.enabled = 'false';
+      stored.providers.ollama.defaultModel = null;
+      stored.keys = { anthropic: 'encrypted-key' };
+      fs.writeFileSync(fileFor(tmpHome), JSON.stringify(stored), 'utf-8');
+      expect(Config.load().ollama).toMatchObject({
+        enabled: false,
+        baseUrl: 'http://localhost:11434',
+      });
+      expect(typeof Config.load().ollama.defaultModel).toBe('string');
+      Config.update({ provider: 'openai', config: { enabled: true } });
+      expect(
+        JSON.parse(fs.readFileSync(fileFor(tmpHome), 'utf-8')).keys,
+      ).toEqual({ anthropic: 'encrypted-key' });
+    });
+  });
+
+  it('keeps fallback provider objects independent between loads', () => {
+    withTempHome((tmpHome) => {
+      loadAssistantConfig(tmpHome);
+      const { loadAssistantStore } =
+        require('../src/app/lib/assistantStoreFile') as typeof import('../src/app/lib/assistantStoreFile');
+      loadAssistantStore().providers.anthropic.enabled = true;
+      expect(loadAssistantStore().providers.anthropic.enabled).toBe(false);
+    });
+  });
+});

@@ -2,8 +2,7 @@ import * as React from 'react';
 
 import {
   dirnameOf,
-  isFileSchemeUrl,
-  isPurelyRelativeAssetPath,
+  isLocalAssetPath,
   resolveLocalAssetSrc,
 } from '../../core/resolveLocalAssetSrc';
 import { refreshLines } from '../../extensions/editor/ScrollSync';
@@ -22,7 +21,12 @@ type MarkdownAPI = typeof import('../../core/Markdown').Markdown;
 let markdownPromise: Promise<MarkdownAPI> | null = null;
 function loadMarkdown(): Promise<MarkdownAPI> {
   if (!markdownPromise) {
-    markdownPromise = import('../../core/Markdown').then((m) => m.Markdown);
+    markdownPromise = import('../../core/Markdown')
+      .then((m) => m.Markdown)
+      .catch((error) => {
+        markdownPromise = null;
+        throw error;
+      });
   }
   return markdownPromise;
 }
@@ -65,15 +69,26 @@ export const PreviewPane: React.FC = () => {
   React.useEffect(() => {
     let cancelled = false;
     let md: MarkdownAPI | null = null;
+    let lastSource: string | null = null;
+    let lastHtml = '';
+    let lastContext: typeof baseInfoRef.current | null = null;
 
     const render = () => {
       if (!contentRef.current || !md) return;
-      const html = md.render(editorManager?.getValue() ?? '');
-      contentRef.current.innerHTML = '';
-      contentRef.current.appendChild(
-        buildPreviewFragment(html, baseInfoRef.current),
-      );
-      refreshLines();
+      const source = editorManager?.getValue() ?? '';
+      const context = baseInfoRef.current;
+      if (source === lastSource && context === lastContext) return;
+      try {
+        const html = source === lastSource ? lastHtml : md.render(source);
+        const fragment = buildPreviewFragment(html, context);
+        contentRef.current.replaceChildren(fragment);
+        lastSource = source;
+        lastHtml = html;
+        lastContext = context;
+        refreshLines();
+      } catch (error) {
+        logger.error('PreviewPane.render', error);
+      }
     };
 
     // Load Markdown once, then wire up the render handler. While the
@@ -81,11 +96,13 @@ export const PreviewPane: React.FC = () => {
     // dropped — the catch-up `render()` call after the load handles
     // the initial state, and subsequent edits stay within the editor's
     // debounce window so nothing visible is lost.
-    void loadMarkdown().then((api) => {
-      if (cancelled) return;
-      md = api;
-      render();
-    });
+    void loadMarkdown()
+      .then((api) => {
+        if (cancelled) return;
+        md = api;
+        render();
+      })
+      .catch((error) => logger.error('PreviewPane.loadMarkdown', error));
 
     dispatcher.addEventListener('editor:render', render);
     return () => {
@@ -125,7 +142,8 @@ export const PreviewPane: React.FC = () => {
         const text = new TextDecoder().decode(bytes);
         void navigator.clipboard
           .writeText(text)
-          .then(() => sonnerToast('success', t('navbar:code_copied')));
+          .then(() => sonnerToast('success', t('navbar:code_copied')))
+          .catch((error) => logger.error('PreviewPane.copy', error));
       } catch (err) {
         logger?.error('PreviewPane.copy', JSON.stringify(err));
       }
@@ -186,17 +204,10 @@ function buildPreviewFragment(
     });
     if (resolved) {
       img.setAttribute('src', resolved);
-    } else if (!baseDir && isPurelyRelativeAssetPath(src)) {
-      // Transitional render: first paint fires after the markdown
-      // chunk loads but before session restore has propagated the
-      // active file into FilesContext, so we don't yet know which
-      // directory to resolve against. Blank the src so the browser
-      // doesn't 404 against the bundle's `dist/` directory — the
-      // re-render triggered by activeFile/treeRoot landing puts the
-      // correct `file:///…` URL in place a moment later.
-      img.removeAttribute('src');
-    } else if (isFileSchemeUrl(src)) {
-      // Explicit `file://...` URL that the resolver rejected.
+    } else if (isLocalAssetPath(src)) {
+      // Rejected paths must not fall back to browser resolution, which
+      // could load an absolute path outside the workspace. This also
+      // suppresses bundle-relative requests before restore supplies a base.
       img.removeAttribute('src');
     }
   }
@@ -215,8 +226,8 @@ function buildPreviewFragment(
     });
     if (resolved) {
       a.setAttribute('href', resolved);
-    } else if (isFileSchemeUrl(href)) {
-      // Same containment policy as <img>: `file://...`.
+    } else if (isLocalAssetPath(href)) {
+      // Apply the same local-path containment policy as images.
       a.removeAttribute('href');
     }
   }

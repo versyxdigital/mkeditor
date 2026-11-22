@@ -1566,7 +1566,8 @@ export class AssistantManager {
         clearTimeout(this.persistTimer);
         this.persistTimer = null;
       }
-      for (const callId of Array.from(this.inflightChats.keys())) this.cancelCall(callId);
+      for (const callId of Array.from(this.inflightChats.keys()))
+        this.cancelCall(callId);
       this.pendingChunkBuffers.clear();
       if (this.revealFrameHandle !== null) {
         this.cancelFrame(this.revealFrameHandle);
@@ -1597,31 +1598,52 @@ export class AssistantManager {
       const entries = snapshot.conversations?.[provider];
       const persistedList = Array.isArray(entries) ? entries : [];
       for (const persisted of persistedList) {
-        if (!persisted || typeof persisted.id !== 'string' ||
-            typeof persisted.title !== 'string' || typeof persisted.model !== 'string' ||
-            !Array.isArray(persisted.messages) || !Array.isArray(persisted.mentions) ||
-            !Number.isFinite(persisted.createdAt) || !Number.isFinite(persisted.updatedAt)) continue;
+        if (
+          !persisted ||
+          typeof persisted.id !== 'string' ||
+          typeof persisted.title !== 'string' ||
+          typeof persisted.model !== 'string' ||
+          !Array.isArray(persisted.messages) ||
+          !Array.isArray(persisted.mentions) ||
+          !Number.isFinite(persisted.createdAt) ||
+          !Number.isFinite(persisted.updatedAt)
+        )
+          continue;
         // Re-hydrate as a runtime ChatConversation. Messages get
         // their runtime status mapped 1:1 (persisted statuses are
         // already in the runtime vocabulary minus 'streaming').
-        const messages: UiChatMessage[] = persisted.messages.filter((m) =>
-          m && typeof m.id === 'string' && typeof m.content === 'string' &&
-          (m.role === 'user' || m.role === 'assistant') &&
-          (m.status === 'complete' || m.status === 'cancelled' || m.status === 'failed') &&
-          Number.isFinite(m.createdAt)
-        ).map((m) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-          status: m.status,
-          ...(m.errorCode ? { errorCode: m.errorCode } : {}),
-          ...(m.errorMessage ? { errorMessage: m.errorMessage } : {}),
-          ...(Array.isArray(m.toolCalls) && m.toolCalls.length > 0
-            ? { toolCalls: m.toolCalls.filter((tc) => tc && typeof tc.toolCallId === 'string' &&
-                typeof tc.toolName === 'string' && (tc.status === 'succeeded' || tc.status === 'failed')) }
-            : {}),
-          createdAt: m.createdAt,
-        }));
+        const messages: UiChatMessage[] = persisted.messages
+          .filter(
+            (m) =>
+              m &&
+              typeof m.id === 'string' &&
+              typeof m.content === 'string' &&
+              (m.role === 'user' || m.role === 'assistant') &&
+              (m.status === 'complete' ||
+                m.status === 'cancelled' ||
+                m.status === 'failed') &&
+              Number.isFinite(m.createdAt),
+          )
+          .map((m) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            status: m.status,
+            ...(m.errorCode ? { errorCode: m.errorCode } : {}),
+            ...(m.errorMessage ? { errorMessage: m.errorMessage } : {}),
+            ...(Array.isArray(m.toolCalls) && m.toolCalls.length > 0
+              ? {
+                  toolCalls: m.toolCalls.filter(
+                    (tc) =>
+                      tc &&
+                      typeof tc.toolCallId === 'string' &&
+                      typeof tc.toolName === 'string' &&
+                      (tc.status === 'succeeded' || tc.status === 'failed'),
+                  ),
+                }
+              : {}),
+            createdAt: m.createdAt,
+          }));
         const conv: ChatConversation = {
           id: persisted.id,
           providerId: provider,
@@ -1631,18 +1653,25 @@ export class AssistantManager {
           autoAcceptWrites: persisted.autoAcceptWrites === true,
           shareActiveFile: persisted.shareActiveFile !== false,
           shareSelection: persisted.shareSelection === true,
-          mentions: persisted.mentions.filter((path) => typeof path === 'string'),
+          mentions: persisted.mentions.filter(
+            (path) => typeof path === 'string',
+          ),
           createdAt: persisted.createdAt,
           updatedAt: persisted.updatedAt,
         };
         this.conversations[provider].set(conv.id, conv);
       }
       const active = snapshot.activeConversation?.[provider];
-      this.activeConv[provider] = active && this.conversations[provider].has(active)
-        ? active : this.firstByRecency(provider)?.id ?? null;
+      this.activeConv[provider] =
+        active && this.conversations[provider].has(active)
+          ? active
+          : (this.firstByRecency(provider)?.id ?? null);
     }
-    this.activeProviderTab = PROVIDER_IDS.includes(snapshot.activeProvider as ProviderId)
-      ? snapshot.activeProvider : null;
+    this.activeProviderTab = PROVIDER_IDS.includes(
+      snapshot.activeProvider as ProviderId,
+    )
+      ? snapshot.activeProvider
+      : null;
     if (snapshot.drafts) {
       for (const [k, v] of Object.entries(snapshot.drafts)) {
         if (typeof v === 'string' && v.length > 0) this.drafts.set(k, v);

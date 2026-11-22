@@ -90,37 +90,55 @@ export function registerBridgeListeners(
   bridge.receive('from:folder:open', () => manager.menuFolderOpen());
 
   // Handle post-folder open events
-  bridge.receive('from:folder:opened', async ({ tree: t, path }) => {
-    const rootChanged = !tree.treeRoot || !isPathWithinTree(path, tree.treeRoot) ||
-      (tree.openingFolder && !isPathWithinTree(tree.treeRoot, path));
-    // Genuine workspace switch (had a root, now have a different one).
-    const switchingWorkspace = rootChanged && tree.treeRoot !== null;
-    if (switchingWorkspace) {
-      const proceed = await files.closeAllTabsForWorkspaceSwitch();
-      if (!proceed) {
-        // User cancelled the unsaved-changes prompt. Don't adopt the
-        // new tree, don't publish the new workspace root to main.
-        tree.openingFolder = false;
+  bridge.receive(
+    'from:folder:opened',
+    async ({ tree: t, path, workspaceChange = false }) => {
+      // Lazy replies can arrive after another workspace has been adopted.
+      // Only an explicit picker selection may replace an existing root.
+      if (
+        tree.treeRoot &&
+        !workspaceChange &&
+        !isPathWithinTree(path, tree.treeRoot)
+      )
         return;
+      const rootChanged = workspaceChange || !tree.treeRoot;
+      // Genuine workspace switch (had a root, now have a different one).
+      const switchingWorkspace = rootChanged && tree.treeRoot !== null;
+      if (switchingWorkspace) {
+        const proceed = await files.closeAllTabsForWorkspaceSwitch();
+        if (!proceed) {
+          // User cancelled the unsaved-changes prompt. Don't adopt the
+          // new tree, don't publish the new workspace root to main.
+          tree.openingFolder = false;
+          return;
+        }
+        const assistant = manager.assistantManager;
+        if (assistant) {
+          for (const callId of Object.keys(
+            assistant.getChatSnapshot().inflight,
+          )) {
+            assistant.cancelCall(callId);
+          }
+        }
       }
-    }
-    if (tree.openingFolder || rootChanged) {
-      tree.treeRoot = path;
-      tree.openingFolder = false;
-    }
-    tree.buildFileTree(t, path);
-    // Persist the new workspace root if it changed. Sub-directory
-    // expands (lazy-load) reuse the existing root, so they don't need
-    // their own save trigger.
-    if (rootChanged) {
-      files.scheduleSessionSave();
-      // Publish the new workspace root to main so the `mked:fs:*`
-      // handlers (AI assistant file ops) can enforce it as their
-      // trust boundary. Without this, any `mked:fs:*` invoke would
-      // be denied because main's workspaceRoot stays null.
-      bridge.send('to:workspace:set', { root: path });
-    }
-  });
+      if (rootChanged) {
+        tree.treeRoot = path;
+        tree.openingFolder = false;
+      }
+      tree.buildFileTree(t, path);
+      // Persist the new workspace root if it changed. Sub-directory
+      // expands (lazy-load) reuse the existing root, so they don't need
+      // their own save trigger.
+      if (rootChanged) {
+        files.scheduleSessionSave();
+        // Publish the new workspace root to main so the `mked:fs:*`
+        // handlers (AI assistant file ops) can enforce it as their
+        // trust boundary. Without this, any `mked:fs:*` invoke would
+        // be denied because main's workspaceRoot stays null.
+        bridge.send('to:workspace:set', { root: path });
+      }
+    },
+  );
 
   // Enable opening files from outside of the renderer execution context.
   bridge.receive('from:file:open', () => manager.menuFileOpen());
@@ -277,6 +295,7 @@ export function registerBridgeListeners(
   // and waits up to ~250 ms for the `to:session:save` ack — so the
   // serialisation runs synchronously here and we ship immediately.
   bridge.receive('from:session:flush-request', () => {
+    providers.exportSettings?.flushPersist();
     bridge.send('to:session:save', files.serializeSession());
   });
 

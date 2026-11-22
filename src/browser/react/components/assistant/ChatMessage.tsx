@@ -267,7 +267,7 @@ const MarkdownText: React.FC<{
 const THINKING_ROTATION_MS = 2200;
 
 const ThinkingIndicator: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const gerunds = React.useMemo(() => {
     const raw = t('assistant-chat:thinking_gerunds');
     const parts = raw
@@ -277,7 +277,7 @@ const ThinkingIndicator: React.FC = () => {
     // Fallback when the locale key is missing or empty — avoids ever
     // rendering an empty span.
     return parts.length > 0 ? parts : ['Thinking'];
-  }, [t]);
+  }, [t, language]);
   const [idx, setIdx] = React.useState(() =>
     Math.floor(Math.random() * gerunds.length),
   );
@@ -303,7 +303,7 @@ const ThinkingIndicator: React.FC = () => {
         aria-hidden="true"
       />
       <span aria-live="polite" aria-label={t('assistant-chat:streaming')}>
-        {gerunds[idx]}…
+        {gerunds[idx % gerunds.length]}…
       </span>
     </span>
   );

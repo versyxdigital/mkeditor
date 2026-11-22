@@ -159,9 +159,11 @@ describe('runQuitFlush', () => {
       ...deps,
       clearTimer,
       send: (channel) => {
-        harness.emit(channel === 'from:session:flush-request'
-          ? 'to:session:save'
-          : 'to:ai:conversations:flush');
+        harness.emit(
+          channel === 'from:session:flush-request'
+            ? 'to:session:save'
+            : 'to:ai:conversations:flush',
+        );
       },
     });
     expect(onDone).toHaveBeenCalledTimes(1);
@@ -171,10 +173,14 @@ describe('runQuitFlush', () => {
 
   it('still finishes and removes listeners when a disappearing renderer makes send throw', () => {
     const { deps, onDone, harness } = makeHarness();
-    expect(() => runQuitFlush({
-      ...deps,
-      send: () => { throw new Error('window destroyed'); },
-    })).not.toThrow();
+    expect(() =>
+      runQuitFlush({
+        ...deps,
+        send: () => {
+          throw new Error('window destroyed');
+        },
+      }),
+    ).not.toThrow();
     harness.fireTimeout();
     expect(onDone).toHaveBeenCalledTimes(1);
     expect(harness.listenerCount()).toBe(0);

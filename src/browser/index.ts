@@ -269,12 +269,14 @@ function onEditorReadyInner() {
         ? (opts) => window.mked!.pasteImage(opts)
         : (opts) =>
             (bridge as InstanceType<typeof WebFileBridge>).pasteImage(opts);
-    new PasteImageHandler(
-      mkeditor,
-      bridgeManager.fileManager,
-      settingsProvider,
-      writer,
-    ).attach();
+    editorManager.registerCleanup(
+      new PasteImageHandler(
+        mkeditor,
+        bridgeManager.fileManager,
+        settingsProvider,
+        writer,
+      ).attach(),
+    );
   }
 
   // Source the active editable path from FileManager (renderer-side,
@@ -284,9 +286,10 @@ function onEditorReadyInner() {
   // link resolution stays anchored to the user's real working
   // document. Reading via the main process here would lag tab
   // switches (main only learns about `from:file:opened`).
-  new MkedLinkProvider(mkeditor, () =>
+  const linkProvider = new MkedLinkProvider(mkeditor, () =>
     bridgeManager.fileManager.getActiveEditablePath(),
   );
+  editorManager.registerCleanup(() => linkProvider.dispose());
 
   if (api !== 'web') {
     api.receive('from:i18n:set', (lng: string) => {

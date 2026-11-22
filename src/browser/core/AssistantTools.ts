@@ -520,16 +520,25 @@ function joinUnderRoot(root: string, rel: string): string {
  * should have already guarded against that via the in-memory
  * editor edit, but we throw here so a misuse surfaces clearly.
  */
-async function awaitedSaveFile(path: string, content: string): Promise<void> {
+async function awaitedSaveFile(
+  ctx: ToolContext,
+  path: string,
+  content: string,
+): Promise<void> {
   const mked = window.mked;
   if (!mked?.saveFile) {
     throw new Error(
       'saveFile: main-process bridge unavailable (web mode); writing files is desktop-only.',
     );
   }
+  const model = ctx.bridge.fileManager.models.get(path);
+  const version = model?.getAlternativeVersionId();
   const result = await mked.saveFile(path, content);
   if (!result.ok) {
     throw new Error(`Failed to save ${path}: ${result.error}`);
+  }
+  if (model && version !== undefined) {
+    ctx.bridge.fileManager.recordSavedVersion(path, model, content, version);
   }
 }
 
@@ -852,7 +861,7 @@ const CATALOG: Record<string, ToolSpec> = {
       // Await the disk write so a failure (read-only fs, permission
       // denied, etc.) surfaces to the agent instead of returning a
       // misleading `ok: true`.
-      await awaitedSaveFile(path, content);
+      await awaitedSaveFile(ctx, path, content);
       return { ok: true, path };
     },
   },
@@ -1032,7 +1041,7 @@ const CATALOG: Record<string, ToolSpec> = {
       // Await the disk write — the in-memory edit succeeded so the
       // user sees the change, but the agent must hear about a save
       // failure rather than getting `ok: true`.
-      await awaitedSaveFile(path, model.getValue());
+      await awaitedSaveFile(ctx, path, model.getValue());
       return { ok: true, path };
     },
   },
@@ -1204,7 +1213,7 @@ const CATALOG: Record<string, ToolSpec> = {
       // already filters out untitled-, so no extra guard is needed.
       const path = ctx.bridge.fileManager.getActiveEditablePath();
       if (path) {
-        await awaitedSaveFile(path, editor.getValue());
+        await awaitedSaveFile(ctx, path, editor.getValue());
       }
       return { ok: true };
     },
@@ -1257,7 +1266,7 @@ const CATALOG: Record<string, ToolSpec> = {
       // accessor already filters out untitled- ids.
       const path = ctx.bridge.fileManager.getActiveEditablePath();
       if (path) {
-        await awaitedSaveFile(path, editor.getValue());
+        await awaitedSaveFile(ctx, path, editor.getValue());
       }
       return { ok: true };
     },
@@ -1281,6 +1290,7 @@ const CATALOG: Record<string, ToolSpec> = {
  */
 export class AssistantTools implements ToolExecutor {
   private readonly ctx: ToolContext;
+  private readonly approvalTargets = new WeakMap<object, () => boolean>();
 
   constructor(bridge: BridgeManager) {
     this.ctx = { bridge };
@@ -1334,6 +1344,45 @@ export class AssistantTools implements ToolExecutor {
     if (!spec || !spec.preview) return null;
     try {
       this.validateArguments(spec, args);
+      if (name === 'replace_selection' || name === 'insert_at_cursor') {
+        const editor = this.ctx.bridge.mkeditor;
+        const model = editor.getModel();
+        const path = this.ctx.bridge.fileManager.getActiveEditablePath();
+        const rangeKey = () => {
+          const range = editor.getSelection();
+          return range
+            ? [
+                range.startLineNumber,
+                range.startColumn,
+                range.endLineNumber,
+                range.endColumn,
+              ].join(':')
+            : null;
+        };
+        const positionKey = () => {
+          const position = editor.getPosition();
+          return position ? `${position.lineNumber}:${position.column}` : null;
+        };
+        const selection = editor.getSelection();
+        const before =
+          selection && model ? model.getValueInRange(selection) : null;
+        const range = rangeKey();
+        const position = positionKey();
+        // A confirmation authorises the previewed target, not whichever tab or
+        // selection happens to be active when the user eventually accepts.
+        this.approvalTargets.set(
+          args as object,
+          () =>
+            editor.getModel() === model &&
+            this.ctx.bridge.fileManager.getActiveEditablePath() === path &&
+            (name === 'replace_selection'
+              ? rangeKey() === range &&
+                (selection && model
+                  ? model.getValueInRange(selection)
+                  : null) === before
+              : positionKey() === position),
+        );
+      }
       return spec.preview(args, this.ctx);
     } catch {
       // Preview is best-effort; if it fails (e.g. model not yet open)
@@ -1357,6 +1406,13 @@ export class AssistantTools implements ToolExecutor {
     const spec = this.getSpec(name);
     if (!spec) throw new UnknownToolError(name);
     this.validateArguments(spec, args);
+    const approvedTarget = this.approvalTargets.get(args as object);
+    this.approvalTargets.delete(args as object);
+    if (approvedTarget && !approvedTarget()) {
+      throw new Error(
+        'Editor target changed since the tool preview. Request a new tool call.',
+      );
+    }
     return spec.execute(args, this.ctx);
   }
 }

@@ -10,9 +10,10 @@ import {
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log/main';
-import { existsSync, writeFileSync } from 'fs';
+import { existsSync, writeFileSync, promises as fs } from 'fs';
 import { homedir } from 'os';
-import { join, normalize } from 'path';
+import { extname, join, normalize } from 'path';
+import { fileURLToPath } from 'url';
 import { AppAssistant } from './lib/AppAssistant';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
@@ -23,6 +24,7 @@ import { AppWindow } from './lib/AppWindow';
 import { runQuitFlush } from './lib/quitFlush';
 import { iconBase64 } from './assets/icon';
 import type { LogConfig } from './interfaces/Logging';
+import { WORKSPACE_EXTENSIONS_DOTTED } from './shared/fileExtensions';
 
 /** --------------------App Logging------------------------------- */
 
@@ -76,6 +78,7 @@ protocol.registerSchemesAsPrivileged([
 /** --------------------App Entry--------------------------------- */
 
 let context: BrowserWindow | null;
+let pendingOpenFile: string | null = null;
 
 /**
  * Main entry point for MKEditor app.
@@ -83,6 +86,8 @@ let context: BrowserWindow | null;
  * @param file - present if we are opening the app from a file
  */
 function main(file: string | null = null) {
+  // Authorisation belongs to this window's workspace selection/restore.
+  AppStorage.setWorkspaceRoot(null);
   // Pick the window chrome per platform. Windows + Linux become frameless
   // so the renderer's `<TitleBar>` can draw the logo, menu bar, and
   // window-control buttons. macOS keeps the native traffic lights via
@@ -151,6 +156,7 @@ function main(file: string | null = null) {
   // instance; the renderer reaches it only through the IPC surface
   // AppBridge whitelists.
   const assistant = new AppAssistant(context);
+  context.once('closed', () => assistant.dispose());
   bridge.provide('assistant', assistant);
 
   bridge.register(); // Register all IPC event listeners
@@ -189,9 +195,36 @@ function main(file: string | null = null) {
     return new Response(''); // satisfy the protocol
   });
 
-  // Set the window open handler for HTTP(S) URLs.*
+  // External URLs launch in the browser; preview file links must pass
+  // workspace/type checks before opening a document or OS application.
+  const linkWindow = context;
   context.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url); // Use the user's default browser
+    try {
+      const scheme = new URL(url).protocol;
+      if (scheme === 'http:' || scheme === 'https:' || scheme === 'mailto:') {
+        void Promise.resolve(shell.openExternal(url)).catch((error) => {
+          log.error('Unable to open external link', error);
+        });
+      } else if (scheme === 'file:') {
+        const path = fileURLToPath(url);
+        void AppStorage.assertInWorkspace(path)
+          .then(async (safePath) => {
+            const extension = extname(safePath).toLowerCase();
+            if (!WORKSPACE_EXTENSIONS_DOTTED.has(extension)) return;
+            const stats = await fs.stat(safePath);
+            if (!stats.isFile() || linkWindow.isDestroyed()) return;
+            if (extension === '.md') {
+              await AppStorage.openPath(linkWindow, safePath);
+            } else {
+              const error = await shell.openPath(safePath);
+              if (error) log.error('Unable to open workspace link', error);
+            }
+          })
+          .catch((error) => log.error('Unable to open workspace link', error));
+      }
+    } catch {
+      // Malformed or unsupported links cannot launch an OS application.
+    }
     return { action: 'deny' }; // No new window in main process
   });
 
@@ -206,12 +239,14 @@ function main(file: string | null = null) {
       context.webContents.send('from:settings:set', settings.loadFile());
 
       const sessionEnabled = settings.applied?.sessionRestore ?? true;
-      context.webContents.send(
-        'from:session:restore',
-        sessionEnabled
-          ? AppSession.buildRestoreEnvelope(AppSession.load())
-          : { session: null, missing: [], contents: {} },
-      );
+      const envelope = sessionEnabled
+        ? AppSession.buildRestoreEnvelope(AppSession.load())
+        : { session: null, missing: [], contents: {} };
+      const restoreRoot = envelope.session?.workspaceRoot;
+      if (restoreRoot && !AppStorage.offerWorkspaceRoot(restoreRoot, true)) {
+        envelope.session = { ...envelope.session!, workspaceRoot: null };
+      }
+      context.webContents.send('from:session:restore', envelope);
 
       // Hydrate the renderer with the sanitized AI Assistant config.
       // The payload exposes per-provider `hasKey: boolean` only —
@@ -241,6 +276,9 @@ function main(file: string | null = null) {
 
   context.on('closed', () => {
     nativeTheme.off('updated', handleNativeThemeUpdated);
+    // macOS can recreate the window without restarting the process. The
+    // protocol callback owns this window's bridge and must not survive it.
+    protocol.unhandle('mked');
     context = null;
   });
 
@@ -271,7 +309,8 @@ app.on('ready', () => {
   if (process.platform === 'win32' && process.argv.length >= 2) {
     file = process.argv[1];
   }
-  main(file);
+  main(pendingOpenFile ?? file);
+  pendingOpenFile = null;
 });
 
 autoUpdater.on('update-available', async (event) => {
@@ -298,17 +337,15 @@ app.on('activate', () => {
 });
 
 // MacOS - open with... Also handle files using the same runnning instance
-app.on('open-file', (event) => {
+app.on('open-file', (event, file) => {
   event.preventDefault();
-  let file: string | null = null;
-  if (process.platform === 'win32' && process.argv.length >= 2) {
-    file = process.argv[1];
-  }
-
-  if (!context) {
+  if (context) {
+    AppStorage.openActiveFile(context, file);
+  } else if (app.isReady()) {
     main(file);
   } else {
-    AppStorage.openActiveFile(context, file);
+    // macOS delivers open-file before ready when launching from Finder.
+    pendingOpenFile = file;
   }
 });
 

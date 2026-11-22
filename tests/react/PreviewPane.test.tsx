@@ -27,6 +27,125 @@ jest.mock('../../src/browser/extensions/editor/ScrollSync', () => ({
 }));
 
 describe('<PreviewPane>', () => {
+  it('reuses unchanged Markdown and DOM across duplicate render events', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    const renderer = Markdown.render as jest.Mock;
+    renderer.mockClear();
+    const dispatcher = fakeDispatcher();
+    let value = '# Cached';
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        dispatcher: dispatcher as any,
+        editorManager: { getValue: () => value } as any,
+      },
+    });
+    await waitFor(() =>
+      expect(container.querySelector('rendered')?.textContent).toBe('# Cached'),
+    );
+    const original = container.querySelector('rendered');
+    act(() => {
+      dispatcher.render();
+      dispatcher.render();
+    });
+    expect(renderer).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('rendered')).toBe(original);
+    value = '# Changed';
+    act(() => {
+      dispatcher.render();
+    });
+    expect(renderer).toHaveBeenCalledTimes(2);
+    expect(container.querySelector('rendered')?.textContent).toBe('# Changed');
+  });
+
+  it('reuses parsed Markdown while rewriting assets after a file switch', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    const renderer = Markdown.render as jest.Mock;
+    renderer.mockClear();
+    renderer.mockReturnValueOnce('<img src="logo.png">');
+    const dispatcher = fakeDispatcher();
+    const files = fakeFileManager({ activeFile: 'C:/work/first/readme.md' });
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        dispatcher: dispatcher as any,
+        editorManager: { getValue: () => '![logo](logo.png)' } as any,
+        fileManager: files as any,
+        fileTreeManager: fakeFileTreeManager({ treeRoot: 'C:/work' }) as any,
+      },
+    });
+    await waitFor(() =>
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        'file:///C:/work/first/logo.png',
+      ),
+    );
+    act(() => {
+      files.activateFile('C:/work/second/readme.md');
+    });
+    await waitFor(() =>
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        'file:///C:/work/second/logo.png',
+      ),
+    );
+    expect(renderer).toHaveBeenCalledTimes(1);
+  });
+
+  it('strips rejected absolute and relative local paths before they reach the live DOM', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<img src="/etc/private.png"><img src="../../private.png"><a href="D:/private.pdf">outside</a>',
+    );
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        dispatcher: fakeDispatcher() as any,
+        editorManager: { getValue: () => 'local assets' } as any,
+        fileManager: fakeFileManager({
+          activeFile: 'C:/work/notes/readme.md',
+        }) as any,
+        fileTreeManager: fakeFileTreeManager({ treeRoot: 'C:/work' }) as any,
+      },
+    });
+    await waitFor(() =>
+      expect(container.querySelectorAll('img')).toHaveLength(2),
+    );
+    expect(container.querySelector('img[src]')).toBeNull();
+    expect(container.querySelector('a[href]')).toBeNull();
+  });
+
+  it('handles rejected clipboard promises without an unhandled rejection', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<div class="md-codeblock" data-source="aGVsbG8="><button class="md-codeblock-copy">Copy</button></div>',
+    );
+    const previous = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    const writeText = jest.fn().mockRejectedValue(new Error('denied'));
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const { container } = renderWithProviders(<PreviewPane />, {
+        managers: {
+          dispatcher: fakeDispatcher() as any,
+          editorManager: { getValue: () => 'copy' } as any,
+        },
+      });
+      await waitFor(() =>
+        expect(container.querySelector('button')).not.toBeNull(),
+      );
+      await act(async () => {
+        container.querySelector('button')!.click();
+      });
+      expect(writeText).toHaveBeenCalledWith('hello');
+      expect(errors).toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+      if (previous) Object.defineProperty(navigator, 'clipboard', previous);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+    }
+  });
+
   it('renders the initial markdown after the lazy Markdown chunk loads', async () => {
     const dispatcher = fakeDispatcher();
     const editorManager = {

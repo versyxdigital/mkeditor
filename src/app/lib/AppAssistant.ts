@@ -166,6 +166,11 @@ export class AppAssistant {
     return true;
   }
 
+  /** Abort upstream work when the owning window is destroyed. */
+  dispose(): void {
+    for (const callId of this.calls.keys()) this.cancel(callId);
+  }
+
   /**
    * Buffer a tool result. When every pending tool from the prior
    * assistant turn has been satisfied, the awaiting `runTurn` resumes

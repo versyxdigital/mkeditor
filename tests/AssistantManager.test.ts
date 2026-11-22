@@ -1545,46 +1545,77 @@ describe('AssistantManager — done/error routing (test path still works after P
   });
 });
 
-
 describe('AssistantManager async tool lifecycle regressions', () => {
-  it.each([false, true])('does not publish late tool success/failure after cancellation (reject=%s)', async (reject) => {
-    const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
-    const conversation = mgr.createConversation('anthropic');
-    const callId = mgr.startCall('anthropic', conversation, 'hi')!;
-    let finish!: (value: unknown) => void;
-    let fail!: (reason: Error) => void;
-    const work = new Promise((resolve, reject) => { finish = resolve; fail = reject; });
-    mgr.setToolExecutor({
-      hasTool: () => true, describe: () => [], classify: () => 'read',
-      buildPreview: () => null, getFullPreviewContent: async () => undefined,
-      execute: () => work,
-    });
-    mgr.onToolCall({ callId, toolCallId: 'late', toolName: 'read_file', arguments: {} });
-    mgr.cancelCall(callId);
-    if (reject) fail(new Error('late failure')); else finish({ ok: true });
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(sent.filter((s) => s.channel === 'to:ai:tool-result')).toEqual([]);
-    expect(mgr.getChatSnapshot().conversations.anthropic[0].messages[1].status).toBe('cancelled');
-  });
+  it.each([false, true])(
+    'does not publish late tool success/failure after cancellation (reject=%s)',
+    async (reject) => {
+      const { bridge, sent } = makeBridge();
+      const mgr = new AssistantManager(bridge as never, {
+        disablePacedReveal: true,
+      });
+      const conversation = mgr.createConversation('anthropic');
+      const callId = mgr.startCall('anthropic', conversation, 'hi')!;
+      let finish!: (value: unknown) => void;
+      let fail!: (reason: Error) => void;
+      const work = new Promise((resolve, reject) => {
+        finish = resolve;
+        fail = reject;
+      });
+      mgr.setToolExecutor({
+        hasTool: () => true,
+        describe: () => [],
+        classify: () => 'read',
+        buildPreview: () => null,
+        getFullPreviewContent: async () => undefined,
+        execute: () => work,
+      });
+      mgr.onToolCall({
+        callId,
+        toolCallId: 'late',
+        toolName: 'read_file',
+        arguments: {},
+      });
+      mgr.cancelCall(callId);
+      if (reject) fail(new Error('late failure'));
+      else finish({ ok: true });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(sent.filter((s) => s.channel === 'to:ai:tool-result')).toEqual([]);
+      expect(
+        mgr.getChatSnapshot().conversations.anthropic[0].messages[1].status,
+      ).toBe('cancelled');
+    },
+  );
 
   it('executes a replayed tool call at most once', async () => {
     const { bridge, sent } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const conversation = mgr.createConversation('anthropic');
     const callId = mgr.startCall('anthropic', conversation, 'hi')!;
     const execute = jest.fn(async () => ({ ok: true }));
     mgr.setToolExecutor({
-      hasTool: () => true, describe: () => [], classify: () => 'read',
-      buildPreview: () => null, getFullPreviewContent: async () => undefined, execute,
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'read',
+      buildPreview: () => null,
+      getFullPreviewContent: async () => undefined,
+      execute,
     });
-    const event = { callId, toolCallId: 'once', toolName: 'read_file', arguments: {} };
+    const event = {
+      callId,
+      toolCallId: 'once',
+      toolName: 'read_file',
+      arguments: {},
+    };
     mgr.onToolCall(event);
     mgr.onToolCall(event);
     await Promise.resolve();
     mgr.onToolCall(event);
     expect(execute).toHaveBeenCalledTimes(1);
-    expect(sent.filter((s) => s.channel === 'to:ai:tool-result')).toHaveLength(1);
+    expect(sent.filter((s) => s.channel === 'to:ai:tool-result')).toHaveLength(
+      1,
+    );
   });
 });

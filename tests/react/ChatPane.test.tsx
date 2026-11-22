@@ -9,7 +9,7 @@
  */
 
 import * as React from 'react';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { ChatPane } from '../../src/browser/react/components/assistant/ChatPane';
 import { fakeAssistantManager, renderWithProviders } from '../utils/render';
@@ -88,6 +88,93 @@ function snapshotWith(opts: {
 }
 
 describe('<ChatPane> — input + send', () => {
+  it('keeps the latest conversation draft separate when switching before unmount', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    const second = { ...conv, id: 'conv-2' };
+    am.getDraft.mockImplementation((_provider, id) =>
+      id === second.id ? 'second stored draft' : '',
+    );
+    const { rerender, unmount } = renderWithProviders(
+      <ChatPane provider="anthropic" conversation={conv} />,
+      {
+        managers: { assistantManager: am as never },
+      },
+    );
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: 'first current draft' },
+    });
+    rerender(<ChatPane provider="anthropic" conversation={second} />);
+    expect(am.setDraft).toHaveBeenCalledWith(
+      'anthropic',
+      'conv-1',
+      'first current draft',
+    );
+    expect(screen.getByTestId('chat-input')).toHaveValue('second stored draft');
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: 'second current draft' },
+    });
+    unmount();
+    expect(am.setDraft).toHaveBeenLastCalledWith(
+      'anthropic',
+      'conv-2',
+      'second current draft',
+    );
+  });
+
+  it('does not send while an IME composition is using Enter to confirm text', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: 'composing' },
+    });
+    fireEvent.keyDown(screen.getByTestId('chat-input'), {
+      key: 'Enter',
+      isComposing: true,
+    });
+    expect(am.contextFor).not.toHaveBeenCalled();
+    expect(screen.getByTestId('chat-input')).toHaveValue('composing');
+  });
+
+  it('retains a newly typed draft and prevents a second send while context is still loading', async () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    let finish!: (value: null) => void;
+    am.contextFor.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: 'first' },
+    });
+    fireEvent.click(screen.getByTestId('chat-send'));
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: 'next draft' },
+    });
+    fireEvent.keyDown(screen.getByTestId('chat-input'), { key: 'Enter' });
+    expect(am.contextFor).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('chat-send')).toBeDisabled();
+    await act(async () => {
+      finish(null);
+    });
+    expect(am.startCall).toHaveBeenCalledTimes(1);
+    expect(am.startCall).toHaveBeenCalledWith(
+      'anthropic',
+      'conv-1',
+      'first',
+      null,
+    );
+    expect(screen.getByTestId('chat-input')).toHaveValue('next draft');
+  });
+
   it('renders messages from the conversation', () => {
     const { conv, snapshot } = snapshotWith({
       messages: [

@@ -119,7 +119,7 @@ export class CompletionProvider {
   public async updateCompletionProvider(type: keyof typeof this.matchers) {
     try {
       // Remove the existing provider (otherwise you get duplicates).
-      await this.disposeCompletionProvider();
+      this.disposeCompletionProvider();
 
       // Register the new provider, passing the pattern to match and proposals
       // to suggest.
@@ -140,9 +140,13 @@ export class CompletionProvider {
   /**
    * Dispose the current completion provider.
    */
-  private async disposeCompletionProvider() {
+  private disposeCompletionProvider() {
     this.provider?.dispose();
     this.provider = null;
+  }
+
+  public dispose(): void {
+    this.disposeCompletionProvider();
   }
 
   /**
@@ -213,15 +217,12 @@ export class CompletionProvider {
    * @returns
    */
   private getTextUntilPosition(model: editor.ITextModel, position: Position) {
-    return model
-      .getValueInRange({
-        startLineNumber: 1,
-        startColumn: 1,
-        endLineNumber: position.lineNumber,
-        endColumn: position.column,
-      })
-      .split('\n')
-      .pop();
+    return model.getValueInRange({
+      startLineNumber: position.lineNumber,
+      startColumn: 1,
+      endLineNumber: position.lineNumber,
+      endColumn: position.column,
+    });
   }
 
   /**

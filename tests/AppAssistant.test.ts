@@ -178,6 +178,22 @@ const baseRequest = (
 });
 
 describe('AppAssistant.chat — streaming + callId fan-out', () => {
+  it('aborts every upstream call when its owning window is disposed', () => {
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    seedKey('anthropic', 'sk-x');
+    mockStreamText.mockImplementation(() => makeStreamResult([]));
+    assistant.chat(baseRequest('one'));
+    assistant.chat(baseRequest('two'));
+    const signals = mockStreamText.mock.calls.map(
+      ([options]) => options.abortSignal,
+    );
+    assistant.dispose();
+    expect(signals).toHaveLength(2);
+    expect(signals.every((signal) => signal.aborted)).toBe(true);
+    expect(assistant.cancel('one')).toBe(false);
+    expect(assistant.cancel('two')).toBe(false);
+  });
   it('forwards text-delta chunks as from:ai:chunk tagged with the callId', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
@@ -978,5 +994,95 @@ describe('AppAssistant.listOllamaModels', () => {
       error: 'ECONNREFUSED',
     });
     (globalThis as unknown as { fetch: typeof origFetch }).fetch = origFetch;
+  });
+});
+
+describe('AppAssistant cancellation race regressions', () => {
+  it('does not send completion after cancellation during response-message resolution', async () => {
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    seedKey('anthropic', 'sk-x');
+    let finish!: (messages: unknown[]) => void;
+    mockStreamText.mockReturnValueOnce({
+      ...makeStreamResult([]),
+      responseMessages: new Promise((resolve) => {
+        finish = resolve;
+      }),
+    });
+    assistant.chat(baseRequest('await-response'));
+    await flush();
+    expect(assistant.cancel('await-response')).toBe(true);
+    finish([]);
+    await flush();
+    expect(countSends(ctx, 'from:ai:done')).toBe(0);
+    expect(countSends(ctx, 'from:ai:error')).toBe(0);
+  });
+
+  it('does not send completion after cancellation while usage is resolving', async () => {
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    seedKey('anthropic', 'sk-x');
+    let finish!: (usage: unknown) => void;
+    mockStreamText.mockReturnValueOnce({
+      ...makeStreamResult([]),
+      usage: new Promise((resolve) => {
+        finish = resolve;
+      }),
+    });
+    assistant.chat(baseRequest('await-usage'));
+    await flush();
+    expect(assistant.cancel('await-usage')).toBe(true);
+    finish({ inputTokens: 1, outputTokens: 2, totalTokens: 3 });
+    await flush();
+    expect(countSends(ctx, 'from:ai:done')).toBe(0);
+  });
+
+  it('keeps a replacement call registered when the cancelled stream finishes late', async () => {
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    seedKey('anthropic', 'sk-x');
+    let releaseOld!: () => void;
+    let releaseNew!: () => void;
+    const oldGate = new Promise<void>((resolve) => {
+      releaseOld = resolve;
+    });
+    const newGate = new Promise<void>((resolve) => {
+      releaseNew = resolve;
+    });
+    mockStreamText
+      .mockReturnValueOnce({
+        ...makeStreamResult([]),
+        stream: (async function* () {
+          await oldGate;
+          yield { type: 'text-delta', text: 'stale' };
+        })(),
+      })
+      .mockReturnValueOnce({
+        ...makeStreamResult([]),
+        stream: (async function* () {
+          await newGate;
+          yield { type: 'text-delta', text: 'new' };
+        })(),
+      });
+    assistant.chat(baseRequest('reused-id'));
+    assistant.chat(baseRequest('reused-id', 'replacement'));
+    releaseOld();
+    await flush();
+    expect(countSends(ctx, 'from:ai:chunk')).toBe(0);
+    expect(assistant.cancel('reused-id')).toBe(true);
+    releaseNew();
+    await flush();
+    expect(countSends(ctx, 'from:ai:chunk')).toBe(0);
+    expect(countSends(ctx, 'from:ai:done')).toBe(0);
+  });
+
+  it('maps malformed tool metadata to an error instead of leaking an unhandled rejection', async () => {
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    seedKey('anthropic', 'sk-x');
+    assistant.chat({ ...baseRequest('bad-tools'), tools: [null as never] });
+    await flush();
+    expect(countSends(ctx, 'from:ai:error')).toBe(1);
+    expect(assistant.cancel('bad-tools')).toBe(false);
   });
 });

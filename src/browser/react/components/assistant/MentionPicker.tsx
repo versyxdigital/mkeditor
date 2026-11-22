@@ -59,9 +59,9 @@ export const MentionPicker: React.FC<MentionPickerProps> = ({
   // skips the callback otherwise.
   const [tick, forceTick] = React.useReducer((n: number) => n + 1, 0);
   React.useEffect(() => {
-    if (!fileTreeManager) return;
+    if (!open || !fileTreeManager) return;
     return fileTreeManager.on('change', forceTick);
-  }, [fileTreeManager]);
+  }, [fileTreeManager, open]);
 
   // On-demand lazy-load: when the user types a query that looks like
   // a directory hint (`native/quick…`), request the prefix-matching
@@ -86,7 +86,7 @@ export const MentionPicker: React.FC<MentionPickerProps> = ({
   }, [open, query, fileTreeManager, tick]);
 
   const matches = React.useMemo<FlatMatch[]>(() => {
-    if (!fileTreeManager) return [];
+    if (!open || !fileTreeManager) return [];
     const snap = fileTreeManager.getSnapshot();
     if (!snap.treeRoot) return [];
     const needle = query.trim().toLowerCase();
@@ -128,6 +128,12 @@ export const MentionPicker: React.FC<MentionPickerProps> = ({
     setHighlight(0);
   }, [query, open]);
 
+  React.useEffect(() => {
+    setHighlight((current) =>
+      Math.min(current, Math.max(0, matches.length - 1)),
+    );
+  }, [matches]);
+
   // Keyboard navigation. Bound at window level while open — the
   // input doesn't lose focus when arrows are pressed.
   React.useEffect(() => {
@@ -135,7 +141,7 @@ export const MentionPicker: React.FC<MentionPickerProps> = ({
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setHighlight((h) => Math.min(h + 1, matches.length - 1));
+        setHighlight((h) => Math.max(0, Math.min(h + 1, matches.length - 1)));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setHighlight((h) => Math.max(h - 1, 0));

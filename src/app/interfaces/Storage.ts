@@ -12,4 +12,5 @@ export interface SaveFileOptions {
   encoding: BufferEncoding;
   reset?: boolean;
   openFile?: boolean;
+  excludedPaths?: string[];
 }

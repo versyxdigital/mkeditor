@@ -30,19 +30,45 @@ import { t } from '../../i18n';
  * for the same locale's namespaces).
  */
 let eventBump = 0;
+const listeners = new Set<() => void>();
+let resourceStore: typeof i18next.store | undefined;
+
+function fire() {
+  eventBump += 1;
+  listeners.forEach((listener) => listener());
+}
+
+function subscribeToResources() {
+  if (resourceStore === i18next.store) return;
+  resourceStore?.off('added', fire);
+  resourceStore?.off('removed', fire);
+  resourceStore = i18next.store;
+  // Resource changes are emitted by ResourceStore, not by i18next.
+  resourceStore?.on('added', fire);
+  resourceStore?.on('removed', fire);
+}
+
+function initialized() {
+  subscribeToResources();
+  fire();
+}
 
 function subscribe(callback: () => void) {
-  const fire = () => {
-    eventBump += 1;
-    callback();
-  };
-  i18next.on('languageChanged', fire);
-  i18next.on('initialized', fire);
-  i18next.on('added', fire);
+  listeners.add(callback);
+  if (listeners.size === 1) {
+    i18next.on('languageChanged', fire);
+    i18next.on('initialized', initialized);
+    subscribeToResources();
+  }
   return () => {
-    i18next.off('languageChanged', fire);
-    i18next.off('initialized', fire);
-    i18next.off('added', fire);
+    listeners.delete(callback);
+    if (listeners.size === 0) {
+      i18next.off('languageChanged', fire);
+      i18next.off('initialized', initialized);
+      resourceStore?.off('added', fire);
+      resourceStore?.off('removed', fire);
+      resourceStore = undefined;
+    }
   };
 }
 

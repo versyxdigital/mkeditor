@@ -74,6 +74,10 @@ interface TreeEntry {
   hasChildren?: boolean;
 }
 
+type SaveResult =
+  | { ok: true; path: string }
+  | { ok: false; cancelled?: boolean; error?: string };
+
 /**
  * Bridge implementation for the web build, backed by the File System
  * Access API. Implements the same `ContextBridgeAPI` surface the
@@ -97,6 +101,11 @@ export class WebFileBridge implements ContextBridgeAPI {
   private rootName = '';
   private handles = new Map<string, Handle>();
   private listeners = new Map<string, Array<(...args: any[]) => void>>();
+  private pendingRoot: {
+    handle: FileSystemDirectoryHandle;
+    handles: Map<string, Handle>;
+  } | null = null;
+  private imageWriteQueue: Promise<void> = Promise.resolve();
 
   // ContextBridgeAPI ---------------------------------------------------
 
@@ -105,6 +114,12 @@ export class WebFileBridge implements ContextBridgeAPI {
       case 'to:folder:open':
         void this.openFolder();
         break;
+      case 'to:file:open':
+        void this.openFile();
+        break;
+      case 'to:file:new':
+        this.emit('from:file:opened', { content: '', file: null });
+        break;
       case 'to:folder:create':
         void this.createFolder(data.parent, data.name);
         break;
@@ -112,10 +127,24 @@ export class WebFileBridge implements ContextBridgeAPI {
         void this.openPath(data.path);
         break;
       case 'to:file:save':
-        void this.saveFile(data.file, data.content);
+        void this.saveFile(data.file, data.content, data.requestId);
         break;
       case 'to:file:saveas':
-        void this.saveAs(data);
+        void this.saveAs(
+          typeof data === 'string' ? data : data.content,
+          typeof data === 'string' ? undefined : data.requestId,
+          typeof data === 'string' ? [] : data.excludedPaths,
+        );
+        break;
+      case 'to:workspace:set':
+        if (this.pendingRoot && this.pendingRoot.handle.name === data?.root) {
+          const pending = this.pendingRoot;
+          this.pendingRoot = null;
+          this.rootHandle = pending.handle;
+          this.rootName = pending.handle.name;
+          this.handles = pending.handles;
+          void saveRootHandle(pending.handle);
+        }
         break;
       case 'to:file:create':
         void this.createFile(data.parent, data.name);
@@ -148,7 +177,6 @@ export class WebFileBridge implements ContextBridgeAPI {
       case 'to:editor:state':
       case 'to:settings:save':
       case 'to:i18n:set':
-      case 'to:file:new':
         break;
     }
   }
@@ -194,7 +222,8 @@ export class WebFileBridge implements ContextBridgeAPI {
   public async disconnectWorkspace(): Promise<void> {
     this.rootHandle = null;
     this.rootName = '';
-    this.handles.clear();
+    this.handles = new Map();
+    this.pendingRoot = null;
     try {
       await deleteRootHandle();
     } catch (err) {
@@ -246,11 +275,13 @@ export class WebFileBridge implements ContextBridgeAPI {
    * a `beforeunload` flush. Any error (quota exceeded, storage
    * disabled) is logged and swallowed; the renderer keeps running.
    */
-  private persistSession(payload: SessionPayload): void {
+  private persistSession(payload: SessionPayload): boolean {
     try {
       localStorage.setItem(LS_KEY_SESSION, JSON.stringify(payload));
+      return true;
     } catch (err) {
       logger?.error('WebFileBridge.persistSession', JSON.stringify(err));
+      return false;
     }
   }
 
@@ -294,13 +325,21 @@ export class WebFileBridge implements ContextBridgeAPI {
         const parsed = JSON.parse(raw) as Partial<SessionPayload>;
         if (
           parsed &&
-          parsed.version === 1 &&
+          (parsed.version === 1 || parsed.version === 2) &&
           Array.isArray(parsed.tabs) &&
           (parsed.activeFile === null || typeof parsed.activeFile === 'string')
         ) {
           payload = {
-            version: 1,
-            tabs: parsed.tabs as SessionTab[],
+            version: parsed.version,
+            tabs: parsed.tabs.filter(
+              (tab): tab is SessionTab =>
+                !!tab &&
+                typeof tab === 'object' &&
+                typeof tab.path === 'string' &&
+                typeof tab.name === 'string' &&
+                (tab.untitledContent === undefined ||
+                  typeof tab.untitledContent === 'string'),
+            ),
             activeFile: parsed.activeFile ?? null,
             // workspaceRoot is desktop-only; web rebuilds via the
             // IDB handle map regardless of what was persisted.
@@ -332,7 +371,7 @@ export class WebFileBridge implements ContextBridgeAPI {
         kept.push(tab);
         continue;
       }
-      const handle = this.handles.get(tab.path);
+      const handle = await this.lookupHandle(tab.path);
       if (!handle || handle.kind !== 'file') {
         missing.push(tab.path);
         continue;
@@ -352,7 +391,7 @@ export class WebFileBridge implements ContextBridgeAPI {
 
     this.emit('from:session:restore', {
       session: {
-        version: 1,
+        version: payload.version,
         tabs: kept,
         activeFile: activeStillPresent ? payload.activeFile : null,
         workspaceRoot: this.rootHandle ? this.rootName : null,
@@ -403,11 +442,13 @@ export class WebFileBridge implements ContextBridgeAPI {
       const existing =
         payload?.tabs.filter((t) => t.path !== 'untitled-1') ?? [];
       payload = {
-        version: 1,
+        version: payload?.version ?? 2,
         tabs: [migrated, ...existing],
         activeFile: payload?.activeFile ?? 'untitled-1',
         workspaceRoot: payload?.workspaceRoot ?? null,
       };
+      // Do not delete the only durable copy until its replacement is saved.
+      if (!this.persistSession(payload)) return payload;
     }
 
     try {
@@ -450,7 +491,14 @@ export class WebFileBridge implements ContextBridgeAPI {
         id: 'mkeditor-root',
         mode: 'readwrite',
       });
-      await this.activateRoot(handle);
+      const handles = new Map<string, Handle>([[handle.name, handle]]);
+      const tree = await this.listChildren(handle, handle.name, handles);
+      this.pendingRoot = { handle, handles };
+      this.emit('from:folder:opened', {
+        path: handle.name,
+        tree,
+        workspaceChange: true,
+      });
     } catch (err) {
       if ((err as DOMException)?.name === 'AbortError') return;
       this.emit('from:notification:display', {
@@ -461,13 +509,98 @@ export class WebFileBridge implements ContextBridgeAPI {
   }
 
   private async activateRoot(handle: FileSystemDirectoryHandle): Promise<void> {
+    const handles = new Map<string, Handle>([[handle.name, handle]]);
+    const tree = await this.listChildren(handle, handle.name, handles);
     this.rootHandle = handle;
     this.rootName = handle.name;
-    this.handles.clear();
-    this.handles.set(this.rootName, handle);
+    this.handles = handles;
     await saveRootHandle(handle);
-    const tree = await this.listChildren(handle, this.rootName);
     this.emit('from:folder:opened', { path: this.rootName, tree });
+  }
+
+  private async openFile(): Promise<void> {
+    if (typeof window.showOpenFilePicker !== 'function') {
+      this.emit('from:notification:display', {
+        status: 'error',
+        key: 'notifications:unable_open_file',
+      });
+      return;
+    }
+    const root = this.rootHandle;
+    const cache = this.handles;
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        multiple: false,
+        types: [
+          {
+            description: 'Markdown',
+            accept: { 'text/markdown': ['.md', '.txt'] },
+          },
+        ],
+      });
+      if (!handle) return;
+      const content = await (await handle.getFile()).text();
+      this.assertWorkspace(root, cache);
+      let path = await this.findPathOfFileHandle(handle);
+      this.assertWorkspace(root, cache);
+      if (!path) {
+        path = `external/${handle.name}`;
+        let index = 2;
+        while (this.handles.has(path))
+          path = `external/${index++}/${handle.name}`;
+      }
+      this.handles.set(path, handle);
+      this.emit('from:file:opened', { content, file: path });
+    } catch (error) {
+      if ((error as DOMException).name === 'AbortError') return;
+      this.emit('from:notification:display', {
+        status: 'error',
+        key: 'notifications:unable_open_file',
+      });
+    }
+  }
+
+  /** Resolve a saved nested path without requiring its parents to be expanded. */
+  private async lookupHandle(path: string): Promise<Handle | undefined> {
+    const cache = this.handles;
+    const root = this.rootHandle;
+    const rootName = this.rootName;
+    const cached = cache.get(path);
+    if (cached) return cached;
+    const segments = path.split('/');
+    if (
+      !root ||
+      segments[0] !== rootName ||
+      segments.some(
+        (segment) => !segment || segment === '.' || segment === '..',
+      )
+    )
+      return undefined;
+    let current = root;
+    let cursor = rootName;
+    try {
+      for (let index = 1; index < segments.length; index++) {
+        cursor += `/${segments[index]}`;
+        if (index === segments.length - 1) {
+          const file = await current.getFileHandle(segments[index], {
+            create: false,
+          });
+          if (this.rootHandle !== root || this.handles !== cache)
+            return undefined;
+          cache.set(cursor, file);
+          return file;
+        }
+        current = await current.getDirectoryHandle(segments[index], {
+          create: false,
+        });
+        if (this.rootHandle !== root || this.handles !== cache)
+          return undefined;
+        cache.set(cursor, current);
+      }
+    } catch {
+      // Missing or inaccessible paths are reported as missing by restore.
+    }
+    return undefined;
   }
 
   private async openPath(path: string): Promise<void> {
@@ -512,7 +645,24 @@ export class WebFileBridge implements ContextBridgeAPI {
     try {
       const file = await handle.getFile();
       const url = URL.createObjectURL(file);
-      window.open(url, '_blank');
+      let opened: Window | null;
+      try {
+        opened = window.open(url, '_blank');
+      } catch (error) {
+        URL.revokeObjectURL(url);
+        throw error;
+      }
+      if (!opened) {
+        URL.revokeObjectURL(url);
+        this.emit('from:notification:display', {
+          status: 'error',
+          key: 'notifications:unable_open_path',
+        });
+        return;
+      }
+      // Keep the URL long enough for native PDF/image viewers to consume
+      // it, then release the Blob rather than retaining it until tab exit.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (err) {
       logger?.error('WebFileBridge.openPathExternal', JSON.stringify(err));
       this.emit('from:notification:display', {
@@ -525,12 +675,13 @@ export class WebFileBridge implements ContextBridgeAPI {
   private async listChildren(
     handle: FileSystemDirectoryHandle,
     basePath: string,
+    cache = this.handles,
   ): Promise<TreeEntry[]> {
     const items: TreeEntry[] = [];
     for await (const [name, child] of handle.entries()) {
       const fullPath = `${basePath}/${name}`;
       if (child.kind === 'directory') {
-        this.handles.set(fullPath, child);
+        cache.set(fullPath, child);
         items.push({
           type: 'directory',
           name,
@@ -541,7 +692,7 @@ export class WebFileBridge implements ContextBridgeAPI {
         const lower = name.toLowerCase();
         const dot = lower.lastIndexOf('.');
         if (dot >= 0 && WORKSPACE_EXTENSIONS_DOTTED.has(lower.slice(dot))) {
-          this.handles.set(fullPath, child);
+          cache.set(fullPath, child);
           items.push({ type: 'file', name, path: fullPath });
         }
       }
@@ -551,24 +702,30 @@ export class WebFileBridge implements ContextBridgeAPI {
 
   // Save ---------------------------------------------------------------
 
-  private async saveFile(path: string, content: string): Promise<void> {
-    const handle = this.handles.get(path);
-    if (!handle || handle.kind !== 'file') {
-      this.emit('from:notification:display', {
-        status: 'error',
-        key: 'notifications:unable_save_markdown',
-      });
-      return;
-    }
+  private replySave(requestId: string | undefined, result: SaveResult): void {
+    if (requestId) this.emit('from:file:save-result', { requestId, ...result });
+  }
+
+  private async saveFile(
+    path: string,
+    content: string,
+    requestId?: string,
+  ): Promise<void> {
     try {
-      const writable = await handle.createWritable();
-      await writable.write(content);
-      await writable.close();
+      const handle = await this.lookupHandle(path);
+      if (!handle || handle.kind !== 'file')
+        throw new Error('File handle is unavailable.');
+      await writeFileHandle(handle, content);
+      this.replySave(requestId, { ok: true, path });
       this.emit('from:notification:display', {
         status: 'success',
         key: 'notifications:saved_markdown_success',
       });
     } catch (err) {
+      this.replySave(requestId, {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
       logger?.error('WebFileBridge.save', JSON.stringify(err));
       this.emit('from:notification:display', {
         status: 'error',
@@ -577,8 +734,18 @@ export class WebFileBridge implements ContextBridgeAPI {
     }
   }
 
-  private async saveAs(content: string): Promise<void> {
+  private async saveAs(
+    content: string,
+    requestId?: string,
+    excludedPaths: string[] = [],
+  ): Promise<void> {
+    const root = this.rootHandle;
+    const cache = this.handles;
     if (typeof window.showSaveFilePicker !== 'function') {
+      this.replySave(requestId, {
+        ok: false,
+        error: 'File save is unavailable.',
+      });
       this.emit('from:notification:display', {
         status: 'error',
         message: 'Your browser does not support file save.',
@@ -589,46 +756,56 @@ export class WebFileBridge implements ContextBridgeAPI {
       const handle = await window.showSaveFilePicker({
         suggestedName: 'untitled.md',
         types: [
-          {
-            description: 'Markdown',
-            accept: { 'text/markdown': ['.md'] },
-          },
+          { description: 'Markdown', accept: { 'text/markdown': ['.md'] } },
         ],
       });
-      const writable = await handle.createWritable();
-      await writable.write(content);
-      await writable.close();
-
-      let virtualPath: string | null = null;
-      // If the save landed inside the open workspace, surface it in
-      // the tree and refresh its parent directory.
-      if (this.rootHandle) {
-        virtualPath = await this.findPathOfFileHandle(handle);
-        if (virtualPath) {
-          const lastSep = virtualPath.lastIndexOf('/');
-          const parentPath = virtualPath.slice(0, lastSep);
-          const parentHandle = this.handles.get(parentPath);
-          if (parentHandle && parentHandle.kind === 'directory') {
-            const tree = await this.listChildren(parentHandle, parentPath);
-            this.emit('from:folder:opened', { path: parentPath, tree });
-          }
+      this.assertWorkspace(root, cache);
+      let virtualPath = await this.findPathOfFileHandle(handle);
+      this.assertWorkspace(root, cache);
+      if (virtualPath && excludedPaths.includes(virtualPath)) {
+        throw new Error('The destination is already open in another tab.');
+      }
+      await writeFileHandle(handle, content);
+      this.assertWorkspace(root, cache);
+      if (!virtualPath) {
+        virtualPath = `external/${handle.name}`;
+        let index = 2;
+        while (this.handles.has(virtualPath)) {
+          virtualPath = `external/${index++}/${handle.name}`;
         }
       }
-
-      if (!virtualPath) {
-        // Foreign save target — track under a synthetic prefix so the
-        // FileManager can use it as a tab key.
-        virtualPath = `external/${handle.name}`;
-        this.handles.set(virtualPath, handle);
-      }
-
-      this.emit('from:file:opened', { content, file: virtualPath });
+      this.handles.set(virtualPath, handle);
+      if (!requestId)
+        this.emit('from:file:opened', { content, file: virtualPath });
+      this.replySave(requestId, { ok: true, path: virtualPath });
       this.emit('from:notification:display', {
         status: 'success',
         key: 'notifications:saved_markdown_success',
       });
+      if (this.rootHandle && virtualPath.startsWith(`${this.rootName}/`)) {
+        const parentPath = virtualPath.slice(0, virtualPath.lastIndexOf('/'));
+        const parent = this.handles.get(parentPath);
+        if (parent?.kind === 'directory') {
+          try {
+            const tree = await this.listChildren(parent, parentPath);
+            this.emit('from:folder:opened', { path: parentPath, tree });
+          } catch {
+            // The saved file remains usable even when listing fails.
+          }
+        }
+      }
     } catch (err) {
-      if ((err as DOMException)?.name === 'AbortError') return;
+      const cancelled = (err as DOMException)?.name === 'AbortError';
+      this.replySave(requestId, {
+        ok: false,
+        cancelled,
+        error: cancelled
+          ? undefined
+          : err instanceof Error
+            ? err.message
+            : String(err),
+      });
+      if (cancelled) return;
       logger?.error('WebFileBridge.saveAs', JSON.stringify(err));
       this.emit('from:notification:display', {
         status: 'error',
@@ -637,15 +814,46 @@ export class WebFileBridge implements ContextBridgeAPI {
     }
   }
 
+  private assertWorkspace(
+    root: FileSystemDirectoryHandle | null,
+    cache: Map<string, Handle>,
+  ): void {
+    if (this.rootHandle !== root || this.handles !== cache) {
+      throw new Error('The workspace changed during the file operation.');
+    }
+  }
+
   private async findPathOfFileHandle(
     target: FileSystemFileHandle,
   ): Promise<string | null> {
-    for (const [path, handle] of this.handles) {
+    const root = this.rootHandle;
+    const cache = this.handles;
+    const rootName = this.rootName;
+    for (const [path, handle] of cache) {
       if (handle.kind !== 'file') continue;
+      if (handle === target) return path;
+      let same = false;
       try {
-        if (await target.isSameEntry(handle)) return path;
+        same = await target.isSameEntry(handle);
       } catch {
-        // ignore — isSameEntry can throw on cross-origin handles
+        // Cross-origin handles cannot be compared.
+      }
+      this.assertWorkspace(root, cache);
+      if (same) return path;
+    }
+    if (root && typeof root.resolve === 'function') {
+      const segments = await root.resolve(target);
+      this.assertWorkspace(root, cache);
+      if (segments?.length) {
+        let parent = root;
+        let cursor = rootName;
+        for (const segment of segments.slice(0, -1)) {
+          parent = await parent.getDirectoryHandle(segment, { create: false });
+          this.assertWorkspace(root, cache);
+          cursor += `/${segment}`;
+          cache.set(cursor, parent);
+        }
+        return `${rootName}/${segments.join('/')}`;
       }
     }
     return null;
@@ -657,7 +865,30 @@ export class WebFileBridge implements ContextBridgeAPI {
    * Save pasted-image bytes into the virtual workspace and return the
    * virtual path.
    */
-  public async pasteImage(opts: {
+  public pasteImage(opts: {
+    sourceFile: string;
+    directory: string;
+    bytes: Uint8Array;
+    extension: string;
+  }): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
+    const root = this.rootHandle;
+    const pending = this.imageWriteQueue.then(() => {
+      if (this.rootHandle !== root) {
+        return {
+          ok: false as const,
+          error: 'The workspace changed before the image was saved.',
+        };
+      }
+      return this.writePastedImage(opts);
+    });
+    this.imageWriteQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return pending;
+  }
+
+  private async writePastedImage(opts: {
     sourceFile: string;
     directory: string;
     bytes: Uint8Array;
@@ -666,7 +897,14 @@ export class WebFileBridge implements ContextBridgeAPI {
     if (!this.rootHandle) {
       return { ok: false, error: 'No folder is open in the editor.' };
     }
+    const root = this.rootHandle;
+    const cache = this.handles;
     try {
+      if (
+        !opts.sourceFile.replace(/\\/g, '/').startsWith(`${this.rootName}/`)
+      ) {
+        throw new Error('The source file is outside the workspace.');
+      }
       const targetDir = this.resolvePasteTargetDir(
         opts.sourceFile,
         opts.directory,
@@ -679,20 +917,24 @@ export class WebFileBridge implements ContextBridgeAPI {
         baseName,
         safeExt,
       );
+      this.assertWorkspace(root, cache);
       const fileHandle = await dirHandle.getFileHandle(finalName, {
         create: true,
       });
-      const writable = await fileHandle.createWritable();
       // Copy into a fresh ArrayBuffer.
       const buffer = new ArrayBuffer(opts.bytes.byteLength);
       new Uint8Array(buffer).set(opts.bytes);
-      await writable.write(buffer);
-      await writable.close();
+      await writeFileHandle(fileHandle, buffer);
+      this.assertWorkspace(root, cache);
       const fullPath = `${targetDir}/${finalName}`;
       this.handles.set(fullPath, fileHandle);
       // Refresh the file-tree row for the target directory.
-      const tree = await this.listChildren(dirHandle, targetDir);
-      this.emit('from:folder:opened', { path: targetDir, tree });
+      try {
+        const tree = await this.listChildren(dirHandle, targetDir);
+        this.emit('from:folder:opened', { path: targetDir, tree });
+      } catch {
+        // The image was saved; explorer refresh is best effort.
+      }
       return { ok: true, path: fullPath };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -741,17 +983,20 @@ export class WebFileBridge implements ContextBridgeAPI {
   private async ensureVirtualDirectory(
     virtualPath: string,
   ): Promise<FileSystemDirectoryHandle> {
-    if (!this.rootHandle) throw new Error('No workspace is open.');
+    const root = this.rootHandle;
+    const cache = this.handles;
+    if (!root) throw new Error('No workspace is open.');
     const segments = virtualPath.split('/').filter((s) => s.length > 0);
     if (segments.length === 0 || segments[0] !== this.rootName) {
       throw new Error(`Path is outside the workspace: ${virtualPath}`);
     }
-    let current: FileSystemDirectoryHandle = this.rootHandle;
+    let current: FileSystemDirectoryHandle = root;
     let cursor = this.rootName;
     for (let i = 1; i < segments.length; i++) {
       cursor = `${cursor}/${segments[i]}`;
       current = await current.getDirectoryHandle(segments[i], { create: true });
-      this.handles.set(cursor, current);
+      this.assertWorkspace(root, cache);
+      cache.set(cursor, current);
     }
     return current;
   }
@@ -768,15 +1013,9 @@ export class WebFileBridge implements ContextBridgeAPI {
       n === 1 ? `${baseName}.${extension}` : `${baseName}_${n}.${extension}`;
     for (let n = 1; n <= 1000; n++) {
       const name = candidate(n);
-      try {
-        await dir.getFileHandle(name, { create: false });
-        // exists — try next
-      } catch {
-        return name;
-      }
+      if (!(await entryExists(dir, name))) return name;
     }
-    const rand = Math.floor(Math.random() * 0xffff).toString(16);
-    return `${baseName}_${Date.now()}-${rand}.${extension}`;
+    throw new Error('Unable to allocate an unused image filename.');
   }
 
   // Create / rename / delete -------------------------------------------
@@ -785,6 +1024,8 @@ export class WebFileBridge implements ContextBridgeAPI {
     const parent = this.handles.get(parentPath);
     if (!parent || parent.kind !== 'directory') return;
     try {
+      if (await entryExists(parent, name))
+        throw new Error('File already exists.');
       const fileHandle = await parent.getFileHandle(name, { create: true });
       const fullPath = `${parentPath}/${name}`;
       this.handles.set(fullPath, fileHandle);
@@ -828,53 +1069,21 @@ export class WebFileBridge implements ContextBridgeAPI {
   private async renamePath(path: string, name: string): Promise<void> {
     const handle = this.handles.get(path);
     if (!handle) return;
-
-    const lastSep = path.lastIndexOf('/');
-    if (lastSep === -1) return; // can't rename the root
-    const parentPath = path.slice(0, lastSep);
-    const parent = this.handles.get(parentPath);
-    if (!parent || parent.kind !== 'directory') return;
-
-    // The File System Access API has no rename primitive — copy then
-    // remove. Directories require a recursive walk.
-    try {
-      if (handle.kind === 'file') {
-        const newHandle = await parent.getFileHandle(name, { create: true });
-        const writable = await newHandle.createWritable();
-        const original = await handle.getFile();
-        await writable.write(await original.arrayBuffer());
-        await writable.close();
-        await parent.removeEntry(handle.name);
-        const newPath = `${parentPath}/${name}`;
-        this.handles.delete(path);
-        this.handles.set(newPath, newHandle);
-        this.emit('from:path:renamed', { oldPath: path, newPath, name });
-      } else {
-        const newDir = await parent.getDirectoryHandle(name, { create: true });
-        await copyDirectory(handle, newDir);
-        await parent.removeEntry(handle.name, { recursive: true });
-        // Forget every cached descendant — paths have moved.
-        for (const key of [...this.handles.keys()]) {
-          if (key === path || key.startsWith(`${path}/`)) {
-            this.handles.delete(key);
-          }
-        }
-        const newPath = `${parentPath}/${name}`;
-        this.handles.set(newPath, newDir);
-      }
-      const tree = await this.listChildren(parent, parentPath);
-      this.emit('from:folder:opened', { path: parentPath, tree });
-      this.emit('from:notification:display', {
-        status: 'success',
-        key: 'notifications:renamed_success',
-      });
-    } catch (err) {
-      logger?.error('WebFileBridge.rename', JSON.stringify(err));
-      this.emit('from:notification:display', {
-        status: 'error',
-        key: 'notifications:unable_rename',
-      });
-    }
+    if (name === handle.name) return;
+    const parentPath = path.slice(0, path.lastIndexOf('/'));
+    const result =
+      !name || name === '.' || name === '..' || /[\\/]/.test(name)
+        ? { ok: false as const }
+        : await this.moveItem({
+            srcPath: path,
+            dstPath: `${parentPath}/${name}`,
+          });
+    this.emit('from:notification:display', {
+      status: result.ok ? 'success' : 'error',
+      key: result.ok
+        ? 'notifications:renamed_success'
+        : 'notifications:unable_rename',
+    });
   }
 
   /**
@@ -916,8 +1125,17 @@ export class WebFileBridge implements ContextBridgeAPI {
       // structured `outside the workspace` error rather than a
       // generic "no handle".
       const requireInside = (p: string) => {
-        const segments = p.split('/').filter(Boolean);
-        if (segments[0] !== this.rootName) {
+        const segments = p.split('/');
+        if (
+          segments[0] !== this.rootName ||
+          segments.some(
+            (segment) =>
+              !segment ||
+              segment === '.' ||
+              segment === '..' ||
+              segment.includes('\\'),
+          )
+        ) {
           throw new Error(`Path is outside the workspace: ${p}`);
         }
       };
@@ -975,19 +1193,8 @@ export class WebFileBridge implements ContextBridgeAPI {
         }
       }
 
-      // Collision check: if a handle already exists at the
-      // destination name, refuse rather than overwrite.
-      try {
-        await dstParent.getFileHandle(dstName, { create: false });
+      if (await entryExists(dstParent, dstName)) {
         return { ok: false, error: 'destination_exists' };
-      } catch {
-        // not a file — check for a directory of the same name
-        try {
-          await dstParent.getDirectoryHandle(dstName, { create: false });
-          return { ok: false, error: 'destination_exists' };
-        } catch {
-          // ENOENT — slot is free
-        }
       }
 
       // Copy + remove. Same primitives `renamePath` uses.
@@ -1004,10 +1211,8 @@ export class WebFileBridge implements ContextBridgeAPI {
         const newHandle = await dstParent.getFileHandle(dstName, {
           create: true,
         });
-        const writable = await newHandle.createWritable();
         const original = await srcHandle.getFile();
-        await writable.write(await original.arrayBuffer());
-        await writable.close();
+        await writeFileHandle(newHandle, await original.arrayBuffer());
         await srcParent.removeEntry(srcHandle.name);
         this.handles.delete(srcPath);
         this.handles.set(dstPath, newHandle);
@@ -1121,6 +1326,39 @@ export class WebFileBridge implements ContextBridgeAPI {
   }
 }
 
+async function entryExists(
+  parent: FileSystemDirectoryHandle,
+  name: string,
+): Promise<boolean> {
+  try {
+    await parent.getFileHandle(name, { create: false });
+    return true;
+  } catch (error) {
+    if ((error as DOMException).name === 'TypeMismatchError') return true;
+    if ((error as DOMException).name === 'NotFoundError') return false;
+    throw error;
+  }
+}
+
+/** Abort failed writable streams so abandoned locks and partial writes are released. */
+async function writeFileHandle(
+  handle: FileSystemFileHandle,
+  content: string | ArrayBuffer,
+): Promise<void> {
+  const writable = await handle.createWritable();
+  try {
+    await writable.write(content);
+    await writable.close();
+  } catch (error) {
+    try {
+      await writable.abort();
+    } catch {
+      /* best effort */
+    }
+    throw error;
+  }
+}
+
 // Recursive directory copy used by rename ----------------------------
 
 async function copyDirectory(
@@ -1130,10 +1368,8 @@ async function copyDirectory(
   for await (const [name, child] of source.entries()) {
     if (child.kind === 'file') {
       const newFile = await target.getFileHandle(name, { create: true });
-      const writable = await newFile.createWritable();
       const file = await child.getFile();
-      await writable.write(await file.arrayBuffer());
-      await writable.close();
+      await writeFileHandle(newFile, await file.arrayBuffer());
     } else {
       const newDir = await target.getDirectoryHandle(name, { create: true });
       await copyDirectory(child, newDir);
@@ -1157,12 +1393,17 @@ async function saveRootHandle(
 ): Promise<void> {
   try {
     const db = await openDb();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(IDB_STORE, 'readwrite');
-      tx.objectStore(IDB_STORE).put(handle, ROOT_KEY);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put(handle, ROOT_KEY);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      });
+    } finally {
+      db.close();
+    }
   } catch (err) {
     logger?.error('WebFileBridge.persist', JSON.stringify(err));
   }
@@ -1170,24 +1411,34 @@ async function saveRootHandle(
 
 async function deleteRootHandle(): Promise<void> {
   const db = await openDb();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(IDB_STORE, 'readwrite');
-    tx.objectStore(IDB_STORE).delete(ROOT_KEY);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(ROOT_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
 }
 
 async function loadRootHandle(): Promise<FileSystemDirectoryHandle | null> {
   try {
     const db = await openDb();
-    return await new Promise((resolve) => {
-      const tx = db.transaction(IDB_STORE, 'readonly');
-      const req = tx.objectStore(IDB_STORE).get(ROOT_KEY);
-      req.onsuccess = () =>
-        resolve((req.result as FileSystemDirectoryHandle) ?? null);
-      req.onerror = () => resolve(null);
-    });
+    try {
+      return await new Promise((resolve) => {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const req = tx.objectStore(IDB_STORE).get(ROOT_KEY);
+        req.onsuccess = () =>
+          resolve((req.result as FileSystemDirectoryHandle) ?? null);
+        req.onerror = () => resolve(null);
+        tx.onabort = () => resolve(null);
+      });
+    } finally {
+      db.close();
+    }
   } catch {
     return null;
   }

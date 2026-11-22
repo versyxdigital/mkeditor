@@ -58,22 +58,47 @@ export const PromptsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [pending, setPending] = React.useState<PendingPrompt | null>(null);
+  const pendingRef = React.useRef<PendingPrompt | null>(null);
+  const queueRef = React.useRef<PendingPrompt[]>([]);
+  const mountedRef = React.useRef(true);
 
   const open = React.useCallback(
     (request: PromptRequest) =>
       new Promise<PromptResult>((resolve) => {
-        setPending({ request, resolve });
+        if (!mountedRef.current) {
+          resolve({ button: null });
+          return;
+        }
+        const next = { request, resolve };
+        if (pendingRef.current) {
+          queueRef.current.push(next);
+        } else {
+          pendingRef.current = next;
+          setPending(next);
+        }
       }),
     [],
   );
 
-  const handleResolve = React.useCallback(
-    (result: PromptResult) => {
-      pending?.resolve(result);
-      setPending(null);
-    },
-    [pending],
-  );
+  const handleResolve = React.useCallback((result: PromptResult) => {
+    pendingRef.current?.resolve(result);
+    const next = queueRef.current.shift() ?? null;
+    pendingRef.current = next;
+    setPending(next);
+  }, []);
+
+  React.useEffect(() => {
+    mountedRef.current = true;
+    // Strict Mode may replay setup after cleanup without a fresh render.
+    setPending(pendingRef.current);
+    return () => {
+      mountedRef.current = false;
+      pendingRef.current?.resolve({ button: null });
+      pendingRef.current = null;
+      for (const entry of queueRef.current) entry.resolve({ button: null });
+      queueRef.current = [];
+    };
+  }, []);
 
   const value = React.useMemo(() => ({ open }), [open]);
 
@@ -122,7 +147,7 @@ const PromptDialog: React.FC<{
   React.useEffect(() => {
     if (!request) return;
     setValue(request.input?.defaultValue ?? '');
-  }, [request]);
+  }, [pending]);
 
   const open = pending !== null;
 

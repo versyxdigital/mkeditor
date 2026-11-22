@@ -28,6 +28,16 @@ export function isFileSchemeUrl(src: string): boolean {
   return /^file:/i.test(src);
 }
 
+/** Whether an asset URL requires local path resolution and containment. */
+export function isLocalAssetPath(src: string): boolean {
+  return (
+    isFileSchemeUrl(src) ||
+    isPurelyRelativeAssetPath(src) ||
+    /^[a-zA-Z]:[\\/]/.test(src) ||
+    (src.startsWith('/') && !src.startsWith('//'))
+  );
+}
+
 export function resolveLocalAssetSrc(
   src: string,
   ctx: ResolveContext,
@@ -49,11 +59,14 @@ export function resolveLocalAssetSrc(
   // Decode percent-encoded sequences (e.g. `my%20notes.png` →
   // `my notes.png`) so the segment walk operates on real path
   // characters.
+  const suffixIndex = src.search(/[?#]/);
+  const pathPart = suffixIndex < 0 ? src : src.slice(0, suffixIndex);
+  const suffix = suffixIndex < 0 ? '' : src.slice(suffixIndex);
   let decoded: string;
   try {
-    decoded = decodeURI(src);
+    decoded = decodeURIComponent(pathPart);
   } catch {
-    decoded = src;
+    return null;
   }
   const srcNorm = decoded.replace(/\\/g, '/');
   const isWindowsAbs = /^[a-zA-Z]:\//.test(srcNorm);
@@ -78,7 +91,7 @@ export function resolveLocalAssetSrc(
     return null;
   }
 
-  return toFileUrl(normalized);
+  return toFileUrl(normalized) + suffix;
 }
 
 /**
@@ -123,7 +136,7 @@ function resolveFileSchemeUrl(
   if (workspaceRoot !== null && !isWithinWorkspace(normalized, workspaceRoot)) {
     return null;
   }
-  return toFileUrl(normalized);
+  return toFileUrl(normalized) + url.search + url.hash;
 }
 
 function isFilesystemPath(p: string): boolean {
@@ -132,13 +145,19 @@ function isFilesystemPath(p: string): boolean {
 }
 
 function isWithinWorkspace(absolute: string, workspaceRoot: string): boolean {
-  const root = workspaceRoot.replace(/\\/g, '/').replace(/\/+$/, '');
+  const root =
+    workspaceRoot === '/'
+      ? '/'
+      : normalizeSegments(workspaceRoot.replace(/\\/g, '/')).replace(
+          /\/+$/,
+          '',
+        );
   if (!root) return false;
   const windowsSide =
     /^[a-zA-Z]:\//.test(root) || /^[a-zA-Z]:\//.test(absolute);
   const a = windowsSide ? absolute.toLowerCase() : absolute;
   const r = windowsSide ? root.toLowerCase() : root;
-  return a === r || a.startsWith(`${r}/`);
+  return a === r || a.startsWith(r === '/' ? '/' : `${r}/`);
 }
 
 /**
@@ -162,7 +181,10 @@ function normalizeSegments(absolute: string): string {
     }
     out.push(seg);
   }
-  return out.join('/');
+  const normalized = out.join('/');
+  if (normalized === '' && absolute.startsWith('/')) return '/';
+  if (/^[a-zA-Z]:$/.test(normalized)) return normalized + '/';
+  return normalized;
 }
 
 function toFileUrl(absPath: string): string {
@@ -186,5 +208,7 @@ export function dirnameOf(filePath: string): string {
   const norm = filePath.replace(/\\/g, '/');
   const idx = norm.lastIndexOf('/');
   if (idx < 0) return '';
+  if (idx === 0 || (idx === 2 && /^[a-zA-Z]:\//.test(norm)))
+    return norm.slice(0, idx + 1);
   return norm.slice(0, idx);
 }

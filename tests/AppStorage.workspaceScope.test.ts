@@ -145,7 +145,10 @@ describe('AppStorage.assertInWorkspace', () => {
         try {
           symlinkSync(secret, link, 'file');
         } catch (err) {
-          if (['EPERM', 'EACCES'].includes((err as NodeJS.ErrnoException).code!)) return;
+          if (
+            ['EPERM', 'EACCES'].includes((err as NodeJS.ErrnoException).code!)
+          )
+            return;
           throw err;
         }
         AppStorage.setWorkspaceRoot(root);
@@ -160,12 +163,19 @@ describe('AppStorage.assertInWorkspace', () => {
     await withTempRoot(async (root) => {
       await withTempRoot(async (outside) => {
         const link = join(root, 'shortcut');
-        symlinkSync(outside, link, process.platform === 'win32' ? 'junction' : 'dir');
+        symlinkSync(
+          outside,
+          link,
+          process.platform === 'win32' ? 'junction' : 'dir',
+        );
         AppStorage.setWorkspaceRoot(root);
         await expect(
-          AppStorage.assertInWorkspace(join(link, 'missing', 'nested', 'note.md'), {
-            mustExist: false,
-          }),
+          AppStorage.assertInWorkspace(
+            join(link, 'missing', 'nested', 'note.md'),
+            {
+              mustExist: false,
+            },
+          ),
         ).rejects.toThrow(/outside the workspace/);
       });
     });
@@ -177,7 +187,8 @@ describe('AppStorage.assertInWorkspace', () => {
       try {
         symlinkSync(join(root, '..', 'missing-secret.md'), link, 'file');
       } catch (err) {
-        if (['EPERM', 'EACCES'].includes((err as NodeJS.ErrnoException).code!)) return;
+        if (['EPERM', 'EACCES'].includes((err as NodeJS.ErrnoException).code!))
+          return;
         throw err;
       }
       AppStorage.setWorkspaceRoot(root);

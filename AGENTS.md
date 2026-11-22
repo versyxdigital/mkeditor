@@ -102,6 +102,7 @@ When implementing changes, preserve these priorities:
 - Keep functions and helpers focused. Prefer direct, readable control flow, explicit success/failure results where callers need them, and small dependency interfaces/callbacks for test seams.
 - Use comments to explain lifecycle ordering, platform constraints, invariants, and non-obvious workarounds. Update relevant comments when behaviour changes; avoid narrating straightforward statements.
 - Preserve existing debounce/batching and lazy-loading boundaries. Monaco, manager imports, and modals are loaded asynchronously to limit startup work. Avoid pulling heavy SDKs, extra Monaco features/languages, or large UI dependencies into the initial renderer bundle without a task-specific reason.
+- Webpack routes bare Monaco imports through [src/browser/monaco.ts](src/browser/monaco.ts) to retain the supported language/feature subset and version-specific diff lifecycle fixes. Keep [tests/monaco.compatibility.test.ts](tests/monaco.compatibility.test.ts) and real-browser editing/completion/diff checks in the validation path when upgrading Monaco or changing this entry point.
 
 ## UI, Markdown, and localisation
 

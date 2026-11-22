@@ -77,7 +77,6 @@ export class AppSettings {
     if (!this.isNewFile && !hasAllKeys(this.settings, loaded)) {
       this.saveSettingsToFile(merged);
     }
-
   }
 
   /**
@@ -121,7 +120,11 @@ export class AppSettings {
       });
 
       const parsed: unknown = JSON.parse(file);
-      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      if (
+        typeof parsed !== 'object' ||
+        parsed === null ||
+        Array.isArray(parsed)
+      ) {
         throw new Error('Invalid settings object');
       }
       return parsed;

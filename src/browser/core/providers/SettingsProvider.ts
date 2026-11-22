@@ -18,13 +18,20 @@ function normalizeSettings(value: unknown): EditorSettings {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return next;
   const stored = value as Partial<EditorSettings>;
   const booleanKeys = [
-    'autoindent', 'darkmode', 'wordwrap', 'whitespace', 'minimap',
-    'systemtheme', 'scrollsync', 'sessionRestore',
+    'autoindent',
+    'darkmode',
+    'wordwrap',
+    'whitespace',
+    'minimap',
+    'systemtheme',
+    'scrollsync',
+    'sessionRestore',
   ] as const;
   for (const key of booleanKeys) {
     if (typeof stored[key] === 'boolean') next[key] = stored[key];
   }
-  if (typeof stored.locale === 'string' && stored.locale) next.locale = stored.locale;
+  if (typeof stored.locale === 'string' && stored.locale)
+    next.locale = stored.locale;
   if (Array.isArray(stored.fileExplorer?.extensions)) {
     next.fileExplorer.extensions = stored.fileExplorer.extensions.filter(
       (extension): extension is string => typeof extension === 'string',

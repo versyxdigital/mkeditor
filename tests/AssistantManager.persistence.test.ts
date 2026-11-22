@@ -340,3 +340,58 @@ describe('AssistantManager — debounced save', () => {
     ).toHaveLength(0);
   });
 });
+
+describe('AssistantManager restore boundary regressions', () => {
+  it('skips malformed conversation collections and entries without throwing', () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const malformed = {
+      conversations: {
+        anthropic: [null, {}, { id: 'bad', messages: null }],
+        openai: {},
+      },
+      activeProvider: 'not-a-provider',
+    };
+    expect(() => mgr.restore(malformed as never)).not.toThrow();
+    expect(mgr.serialize()).toBeNull();
+    expect(mgr.getActiveProvider()).toBeNull();
+  });
+
+  it('cancels old inflight work when replacing history', () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conv, 'old request')!;
+    const saved = mgr.serialize();
+    mgr.restore(saved);
+    expect(mgr.ownsCallId(callId)).toBe(false);
+    expect(sent).toContainEqual({ channel: 'to:ai:cancel', data: { callId } });
+    const snapshot = mgr.getChatSnapshot();
+    mgr.onChatDone(callId);
+    expect(mgr.getChatSnapshot()).toBe(snapshot);
+  });
+
+  it('rejects stale active conversation ids and invalid sharing flags on restore', () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('anthropic');
+    const saved = mgr.serialize()!;
+    saved.activeConversation.anthropic = 'missing';
+    saved.conversations.anthropic[0].autoAcceptWrites = 'false' as never;
+    saved.conversations.anthropic[0].messages = [null as never];
+    mgr.restore(saved);
+    expect(mgr.getChatSnapshot().activeConversation.anthropic).toBe(conv);
+    expect(
+      mgr.getChatSnapshot().conversations.anthropic[0].autoAcceptWrites,
+    ).toBe(false);
+    expect(mgr.getChatSnapshot().conversations.anthropic[0].messages).toEqual(
+      [],
+    );
+  });
+});

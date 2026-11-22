@@ -308,11 +308,11 @@ Same as above minus:
 
 1. User types in Monaco.
 2. `onDidChangeModelContent` fires in [EditorManager.watch](../src/browser/core/EditorManager.ts).
-3. Debounced `updateBridgedContent()` runs (~250ms) → desktop sends `to:editor:state` with `hasChanged` boolean; web writes content to `localStorage`.
+3. Debounced `updateBridgedContent()` runs (~250ms). `FileManager` publishes dirty state across all editable tabs so switching to a clean tab cannot disable quit protection. Web content persistence follows the session save pipeline.
 4. `CompletionProvider.autoContinueListMarkers` runs synchronously if Enter was the last key.
 5. `CompletionProvider.suggestOnValidInput` updates active proposal regex if user just typed `:::` or ` ``` `.
-6. `setTimeout(..., 150)` fires `dispatcher.render()`.
-7. `<PreviewPane>` subscribes to `editor:render` and writes `Markdown.render(value)` into `#preview-content.innerHTML`, then calls `refreshLines()` to invalidate the ScrollSync line cache.
+6. A single pending 150ms timer coalesces content-change bursts into `dispatcher.render()` while continuing to refresh during sustained typing. Disposal cancels pending render/bridge timers and listeners.
+7. `<PreviewPane>` subscribes to `editor:render`, reuses rendered HTML while source is unchanged, and replaces preview children only when source or asset context changes. Replacement calls `refreshLines()` to invalidate the ScrollSync line cache.
 8. `useCounts` (in `<Navbar>`) also subscribes to `editor:render` and recomputes word/character counts from the latest editor value.
 9. `LineNumber` extension stamped `class="has-line-data" data-line-start data-line-end` on rendered tokens so ScrollSync can find them.
 
@@ -322,19 +322,20 @@ When `settings.scrollsync` is true and the editor scrolls:
 
 1. `EditorManager.watch` reads `getVisibleRanges()[0].startLineNumber`.
 2. Calls `ScrollSync(line, dom.preview.wrapper)`.
-3. ScrollSync looks up the cached line elements (rebuilt on demand after a render), interpolates between two adjacent ones, and adjusts `preview.scrollTop`.
+3. ScrollSync searches cached, sorted line elements within the preview using binary search, interpolates between neighbours, and adjusts `preview.scrollTop` using preview-relative coordinates. Assistant-message markers are excluded.
 
 ### 4.5 Save (desktop)
 
-`Ctrl/Cmd+S` → AppMenu sends `from:file:save` with payload `'to:file:save'`.
+`Ctrl/Cmd+S` → AppMenu sends `from:file:save`; the title bar can call the same manager action directly.
 
-- [BridgeListeners](../src/browser/core/BridgeListeners.ts:70) receives this, reads the current model + active file path, and replies on `to:file:save` with `{ content, file }`.
-- `AppBridge` ipc handler calls `AppStorage.saveFile`, which writes the file synchronously and pushes `from:notification:display` (success/error key).
-- The saved path is set as the active file → `from:file:opened` fires → renderer updates tab name + original tracker.
+- [FileManager](../src/browser/core/FileManager.ts) captures model identity, content, and alternative-version ID, then sends `to:file:save` with `{ content, file, openFile: false, requestId }`.
+- `AppBridge` awaits the actual write and replies on `from:file:save-result` with `{ requestId, ok, path?, cancelled?, error? }`. Legacy uncorrelated callers remain supported. `AppStorage.writeTextFile` serializes menu and AI writes by canonical destination.
+- The renderer updates only the captured model's saved baseline after acknowledgement. Edits made during the write stay dirty; late replies cannot reverse a rename. Save-and-close/workspace Save all preserve buffers on cancellation, failure, timeout, or additional edits.
+- Web uses the same request/result contract through `WebFileBridge` and acknowledges only after the writable stream closes. Successful direct AI writes record their captured saved version through `FileManager.recordSavedVersion`.
 
 ### 4.6 Save As / new untitled
 
-Same chain but with `to:file:saveas` (no path). The user picks a path in the OS dialog; on success it's set as active and a `from:file:opened` is sent back.
+Same acknowledgement chain but with `to:file:saveas` and `{ content, requestId, excludedPaths }`. The picker destination is checked against other open document paths before writing. The result rekeys the captured source model, even if the user switched tabs while the dialog was open; it does not reopen or replace whichever tab happens to be active. Legacy callers may still pass a content string.
 
 ### 4.7 Open file
 
@@ -345,7 +346,8 @@ Same chain but with `to:file:saveas` (no path). The user picks a path in the OS 
 
 ### 4.8 File tree workflow
 
-- User clicks **Open Folder** in the menu or empty-tree context menu → `to:folder:open` → `AppStorage.openDirectory` → `from:folder:opened` with `{ path, tree }`.
+- User clicks **Open Folder** in the menu or empty-tree context menu → `to:folder:open` → native/browser picker → `from:folder:opened` with `{ path, tree, workspaceChange: true }`. Explicit selections require the workspace-switch flow even when different browser folders have the same name. Web stages handles until `to:workspace:set` confirms acceptance. Cancellation preserves the old root; acceptance cancels AI calls before adopting the new root. Unmarked stale listings outside the current root are ignored.
+- Desktop main offers verified roots through `AppStorage.offerWorkspaceRoot` after a native selection or main-generated restore. Renderer acknowledgement can adopt only the current/offered root. Directory requests cannot authorize a root, and session saves cannot persist an unapproved root for the next launch.
 - [FileTreeManager.buildFileTree](../src/browser/core/FileTreeManager.ts) updates its in-memory snapshot when receiving a new root or partial subtree, sorted directories-first by name. Each directory is registered in `directoryMap` so subsequent partial updates can be merged in place. Snapshot emit drives a React re-render via `FileTreeContext`.
 - `<FileTreePanel>` renders the tree from `FileTreeContext`; expand state lives in component-local React state. Lazy-loading fires `fileTreeManager.requestDirectoryContents(path)` on first expand of a `hasChildren && !loaded` directory.
 - Right-click on any row populates `contextNode` from the closest `<li[data-path]>` and feeds it to [getContextMenuItems](../src/browser/core/mappings/explorerContextMenu.ts) inside a single top-level Radix `<ContextMenu>` wrapper. Items depend on whether you clicked empty space, a file, or a folder. Actions translate to `to:file:create`, `to:folder:create`, `to:file:rename`, `to:file:delete`, `to:file:properties`. Prompt + confirm flows go through `promptExternal` / `confirmExternal` (`PromptsContext`).
@@ -651,6 +653,8 @@ Webpack config ([webpack.config.js](../webpack.config.js)):
 
 - Single entry: `[src/browser/index.ts, scss/index.scss]`.
 - Monaco bundled via `MonacoWebpackPlugin` with explicit `languages: ['markdown']` and a fixed feature allowlist (no full Monaco footprint).
+- Bare Monaco imports resolve to [src/browser/monaco.ts](../src/browser/monaco.ts), which re-exports the subset API and explicitly registers caret/suggestion controllers absent from Monaco 0.57's subset metadata. The package umbrella entry would otherwise load every language service. Renderer output cleanup removes obsolete chunks while preserving `dist/app/`.
+- The Monaco entry also restores persistent hover/Markdown factories after diff creation and ignores worker failures only when the diff was cancelled or its models were disposed. This prevents closing a diff preview from breaking later completion menus or emitting obsolete computation errors; live worker errors still propagate. [tests/monaco.compatibility.test.ts](../tests/monaco.compatibility.test.ts) covers these version-specific workarounds.
 - CopyWebpackPlugin pulls in icon assets, the HTML view, the `locale/` tree, and KaTeX fonts.
 - HTML minimizer + Terser for production.
 

@@ -47,6 +47,109 @@ function Probe({
 }
 
 describe('useExpandableContent', () => {
+  it('deduplicates rapid expansion clicks while a read is pending', async () => {
+    const fetcher = jest.fn(() => new Promise<string>(() => {}));
+    render(
+      <Probe
+        initialContent={`head${PREVIEW_TRUNCATION_MARKER}`}
+        fetcher={fetcher}
+      />,
+    );
+    await act(async () => {
+      screen.getByTestId('toggle').click();
+      screen.getByTestId('toggle').click();
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('loading')).toHaveTextContent('true');
+  });
+
+  it('discards an old read when a new preview arrives while it is pending', async () => {
+    let finishOld!: (value: string) => void;
+    let finishNew!: (value: string) => void;
+    const oldFetcher = () =>
+      new Promise<string>((resolve) => {
+        finishOld = resolve;
+      });
+    const newFetcher = () =>
+      new Promise<string>((resolve) => {
+        finishNew = resolve;
+      });
+    const { rerender } = render(
+      <Probe
+        initialContent={`old${PREVIEW_TRUNCATION_MARKER}`}
+        fetcher={oldFetcher}
+      />,
+    );
+    await act(async () => {
+      screen.getByTestId('toggle').click();
+    });
+    rerender(
+      <Probe
+        initialContent={`new${PREVIEW_TRUNCATION_MARKER}`}
+        fetcher={newFetcher}
+      />,
+    );
+    await act(async () => {
+      screen.getByTestId('toggle').click();
+    });
+    await act(async () => {
+      finishOld('stale old text');
+    });
+    expect(screen.getByTestId('content').textContent).toBe(
+      `new${PREVIEW_TRUNCATION_MARKER}`,
+    );
+    expect(screen.getByTestId('loading')).toHaveTextContent('true');
+    await act(async () => {
+      finishNew('current full text');
+    });
+    expect(screen.getByTestId('content')).toHaveTextContent(
+      'current full text',
+    );
+  });
+
+  it('ignores failures belonging to an earlier preview', async () => {
+    let fail!: (error: Error) => void;
+    const { rerender } = render(
+      <Probe
+        initialContent={`old${PREVIEW_TRUNCATION_MARKER}`}
+        fetcher={() =>
+          new Promise<string>((_resolve, reject) => {
+            fail = reject;
+          })
+        }
+      />,
+    );
+    await act(async () => {
+      screen.getByTestId('toggle').click();
+    });
+    rerender(
+      <Probe initialContent="current" fetcher={async () => 'current'} />,
+    );
+    await act(async () => {
+      fail(new Error('obsolete failure'));
+    });
+    expect(screen.getByTestId('error')).toBeEmptyDOMElement();
+    expect(screen.getByTestId('content')).toHaveTextContent('current');
+  });
+
+  it('surfaces a synchronous fetcher error as a recoverable read failure', async () => {
+    render(
+      <Probe
+        initialContent={`head${PREVIEW_TRUNCATION_MARKER}`}
+        fetcher={() => {
+          throw new Error('synchronous failure');
+        }}
+      />,
+    );
+    await act(async () => {
+      screen.getByTestId('toggle').click();
+    });
+    expect(screen.getByTestId('error')).toHaveTextContent(
+      'synchronous failure',
+    );
+    expect(screen.getByTestId('loading')).toHaveTextContent('false');
+  });
+
   it('returns the content as-is when not truncated', () => {
     const fetcher = jest.fn();
     render(<Probe initialContent="short" fetcher={fetcher} />);

@@ -8,7 +8,13 @@
  */
 
 import * as React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react';
 
 import { MentionPicker } from '../../src/browser/react/components/assistant/MentionPicker';
 import type {
@@ -72,6 +78,41 @@ function makeFileTree(opts: {
 }
 
 describe('<MentionPicker>', () => {
+  it('keeps keyboard selection valid when results arrive after an empty list', () => {
+    const ftm = makeFileTree({ treeRoot: '/w', nodes: [] });
+    const onPick = jest.fn();
+    render(
+      <MentionPicker
+        query=""
+        open
+        onPick={onPick}
+        onClose={jest.fn()}
+        fileTreeManager={ftm}
+      />,
+    );
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    act(() => {
+      ftm._replace([{ type: 'file', path: '/w/a.md', name: 'a.md' }]);
+    });
+    fireEvent.keyDown(window, { key: 'Enter' });
+    expect(onPick).toHaveBeenCalledWith('/w/a.md');
+  });
+
+  it('does not subscribe to or traverse the workspace while hidden', () => {
+    const ftm = makeFileTree({ treeRoot: '/w', nodes: [] });
+    render(
+      <MentionPicker
+        query=""
+        open={false}
+        onPick={jest.fn()}
+        onClose={jest.fn()}
+        fileTreeManager={ftm}
+      />,
+    );
+    expect(ftm.on).not.toHaveBeenCalled();
+    expect(ftm.getSnapshot).not.toHaveBeenCalled();
+  });
+
   it('renders nothing when closed', () => {
     const ftm = makeFileTree({
       treeRoot: '/w',

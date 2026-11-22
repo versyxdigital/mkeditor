@@ -181,7 +181,12 @@ export class FileTreeManager {
    * the current root.
    */
   public addFileToTree(path: string) {
-    if (!this.treeRoot || !isPathWithinTree(path, this.treeRoot) || path === this.treeRoot) return;
+    if (
+      !this.treeRoot ||
+      !isPathWithinTree(path, this.treeRoot) ||
+      path === this.treeRoot
+    )
+      return;
 
     const sep = this.treeRoot.includes('\\') ? '\\' : '/';
     const segments = path.split(/[/\\]/);
@@ -265,7 +270,9 @@ export class FileTreeManager {
       hasChildren: node.hasChildren,
       loaded: node.loaded,
       children: Array.isArray(node.children)
-        ? sortNodes(validateNodes(node.children)).map((child) => this.registerNode(this.cloneNode(child)))
+        ? sortNodes(validateNodes(node.children)).map((child) =>
+            this.registerNode(this.cloneNode(child)),
+          )
         : undefined,
     };
   }
@@ -325,12 +332,16 @@ function findInsertIndex(children: TreeNode[], node: TreeNode): number {
 
 /** Segment-aware containment for OS and virtual explorer paths. */
 export function isPathWithinTree(path: string, root: string): boolean {
-  const normalize = (value: string) => value.replace(/\\/g, '/').replace(/\/+$/, '') || '/';
+  const normalize = (value: string) =>
+    value.replace(/\\/g, '/').replace(/\/+$/, '') || '/';
   let candidate = normalize(path);
   let parent = normalize(root);
   if (/^[a-z]:/i.test(parent)) {
     candidate = candidate.toLowerCase();
     parent = parent.toLowerCase();
   }
-  return candidate === parent || candidate.startsWith(parent.endsWith('/') ? parent : parent + '/');
+  return (
+    candidate === parent ||
+    candidate.startsWith(parent.endsWith('/') ? parent : parent + '/')
+  );
 }

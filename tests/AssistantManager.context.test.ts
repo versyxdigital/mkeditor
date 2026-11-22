@@ -482,12 +482,15 @@ describe('AssistantManager — startCall integration (P6 system context)', () =>
   });
 });
 
-
 describe('AssistantManager fresh explicit context regressions', () => {
   it('rehydrates restored mentions and sends current unsaved content', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
-    const cp = makeContextProvider({ fileContents: new Map([['/x.md', 'old']]) });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const cp = makeContextProvider({
+      fileContents: new Map([['/x.md', 'old']]),
+    });
     mgr.setContextProvider(cp);
     const conv = mgr.createConversation('anthropic');
     mgr.setShareActiveFile('anthropic', conv, false);
@@ -495,20 +498,30 @@ describe('AssistantManager fresh explicit context regressions', () => {
     const saved = mgr.serialize();
     mgr.restore(saved);
     cp._state.fileContents.set('/x.md', 'fresh unsaved edit');
-    expect((await mgr.contextFor('anthropic', conv))?.content).toContain('fresh unsaved edit');
+    expect((await mgr.contextFor('anthropic', conv))?.content).toContain(
+      'fresh unsaved edit',
+    );
     cp._state.fileContents.delete('/x.md');
     expect(await mgr.contextFor('anthropic', conv)).toBeNull();
   });
 
   it('honours context removal and sharing toggles while mention I/O is pending', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
-    const cp = makeContextProvider({ active: { path: '/active.md', content: 'PRIVATE' }, fileContents: new Map([['/x.md', 'mention']]) });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const cp = makeContextProvider({
+      active: { path: '/active.md', content: 'PRIVATE' },
+      fileContents: new Map([['/x.md', 'mention']]),
+    });
     mgr.setContextProvider(cp);
     const conv = mgr.createConversation('anthropic');
     await mgr.addMention('anthropic', conv, '/x.md');
     let finish!: (result: { content: string }) => void;
-    cp.readFile = () => new Promise((resolve) => { finish = resolve; });
+    cp.readFile = () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      });
     const pending = mgr.contextFor('anthropic', conv);
     mgr.removeMention('anthropic', conv, '/x.md');
     mgr.setShareActiveFile('anthropic', conv, false);
@@ -518,10 +531,15 @@ describe('AssistantManager fresh explicit context regressions', () => {
 
   it('does not resurrect a mention after its conversation is deleted during the read', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
     const cp = makeContextProvider();
     let finish!: (result: { content: string }) => void;
-    cp.readFile = () => new Promise((resolve) => { finish = resolve; });
+    cp.readFile = () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      });
     mgr.setContextProvider(cp);
     const conv = mgr.createConversation('anthropic');
     const pending = mgr.addMention('anthropic', conv, '/x.md');
@@ -534,8 +552,17 @@ describe('AssistantManager fresh explicit context regressions', () => {
 
   it('uses a fence wider than arbitrary nested fences', async () => {
     const { bridge } = makeBridge();
-    const mgr = new AssistantManager(bridge as never, { disablePacedReveal: true });
-    mgr.setContextProvider(makeContextProvider({ active: { path: '/nested.md', content: '``````md\n```nested```\n``````' } }));
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    mgr.setContextProvider(
+      makeContextProvider({
+        active: {
+          path: '/nested.md',
+          content: '``````md\n```nested```\n``````',
+        },
+      }),
+    );
     const conv = mgr.createConversation('anthropic');
     const message = await mgr.contextFor('anthropic', conv);
     expect(message?.content.startsWith('```````md')).toBe(true);

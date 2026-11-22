@@ -13,6 +13,9 @@ module.exports = {
     ],
   },
   output: {
+    // Drop obsolete renderer chunks after changing the Monaco subset, while
+    // retaining the separately compiled Electron main/preload output.
+    clean: { keep: /^app(?:\/|$)/ },
     globalObject: 'self',
     filename: 'mkeditor.bundle.js',
     path: path.resolve(__dirname, 'dist'),
@@ -63,6 +66,19 @@ module.exports = {
   },
   resolve: {
     extensions: ['.tsx', '.ts', '.jsx', '.js'],
+    // The package root eagerly registers all Monaco languages and features,
+    // bypassing the plugin's subset. Alias only bare imports, preserving the
+    // editor.api and contribution imports inside this small lazy entry point.
+    alias: {
+      'monaco-editor$': path.resolve(__dirname, 'src/browser/monaco.ts'),
+      // Monaco's exports map only resolves JavaScript subpaths. Keep this
+      // required stylesheet import explicit instead of bypassing the API alias.
+      'monaco-editor/base/browser/ui/codicons/codicon/codicon-modifiers.css$':
+        path.resolve(
+          __dirname,
+          'node_modules/monaco-editor/esm/vs/base/browser/ui/codicons/codicon/codicon-modifiers.css',
+        ),
+    },
   },
   plugins: [
     new MonacoWebpackPlugin({
@@ -73,6 +89,10 @@ module.exports = {
       // markdown editor surface (or are bound to keybindings we don't
       // expose).
       features: [
+        'codeEditor',
+        'diffEditor',
+        'codicon',
+        'tokenization',
         'bracketMatching',
         'caretOperations',
         'clipboard',
@@ -85,7 +105,8 @@ module.exports = {
         'links',
         'multicursor',
         'quickCommand',
-        'suggest',
+        // SuggestController is explicitly registered in src/browser/monaco.ts;
+        // 0.57's 'suggest' metadata instead includes unused inline suggestions.
         'wordHighlighter',
         'wordOperations',
       ],

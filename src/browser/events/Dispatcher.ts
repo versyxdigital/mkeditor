@@ -11,7 +11,11 @@ export class BaseDispatcher implements Dispatcher {
   };
 
   addEventListener(type: string, listener: ListenerEventCallback): void {
-    if (this.listeners === undefined) this.listeners = {};
+    if (this.listeners === undefined) {
+      this.listeners = Object.create(null) as NonNullable<
+        Dispatcher['listeners']
+      >;
+    }
     const listeners = this.listeners;
 
     if (listeners[type] === undefined) {
@@ -56,9 +60,6 @@ export class BaseDispatcher implements Dispatcher {
       }
     }
 
-    logger?.debug(
-      'Renderer event dispatch',
-      JSON.stringify({ listenerSet, event }),
-    );
+    logger?.debug('Renderer event dispatch', { type: event.type });
   }
 }

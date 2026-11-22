@@ -1,4 +1,4 @@
-import { type editor, languages } from 'monaco-editor';
+import { type IDisposable, type editor, languages } from 'monaco-editor';
 
 /**
  * Getter returning the absolute path of the currently-editable tab —
@@ -17,11 +17,12 @@ import { type editor, languages } from 'monaco-editor';
 export type ActiveFilePathGetter = () => string | null;
 
 export class MkedLinkProvider {
+  private readonly registration: IDisposable;
   constructor(
     _: editor.IStandaloneCodeEditor,
     getActiveFilePath: ActiveFilePathGetter,
   ) {
-    languages.registerLinkProvider('markdown', {
+    this.registration = languages.registerLinkProvider('markdown', {
       provideLinks: async (m) => {
         const mked = window.mked;
         const links: languages.ILink[] = [];
@@ -41,7 +42,12 @@ export class MkedLinkProvider {
         while ((match = regex.exec(text))) {
           const url = match[1];
           if (!url.endsWith('.md')) continue;
-          if (/^[a-zA-Z]+:\/\//.test(url) || url.startsWith('#')) continue;
+          if (
+            /^[a-zA-Z]+:\/\//.test(url) ||
+            url.startsWith('#') ||
+            url.startsWith('//')
+          )
+            continue;
 
           const resolved = await mked.resolvePath(baseDir, url);
 
@@ -53,7 +59,7 @@ export class MkedLinkProvider {
           // files were unlinkable, which was the most common
           // complaint with the old behaviour.
 
-          const startOffset = match.index + match[0].indexOf(url);
+          const startOffset = match.index + match[0].indexOf('](') + 2;
           const endOffset = startOffset + url.length;
           const startPos = m.getPositionAt(startOffset);
           const endPos = m.getPositionAt(endOffset);
@@ -89,5 +95,9 @@ export class MkedLinkProvider {
         return null;
       },
     });
+  }
+
+  public dispose(): void {
+    this.registration.dispose();
   }
 }

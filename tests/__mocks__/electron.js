@@ -77,6 +77,7 @@ const ipcMain = {
 const protocol = {
   registerSchemesAsPrivileged: jest.fn(),
   handle: jest.fn(),
+  unhandle: jest.fn(),
 };
 
 // safeStorage mock — used by AssistantKeyStore.

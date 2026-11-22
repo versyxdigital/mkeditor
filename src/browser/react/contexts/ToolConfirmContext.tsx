@@ -74,25 +74,32 @@ export const ToolConfirmProvider: React.FC<{ children: React.ReactNode }> = ({
   const queueRef = React.useRef<QueuedConfirm[]>([]);
   // Mirror of `request` so `cancelForCallId` (held with a stable
   // identity across renders) can read the latest value without
-  // capturing a stale closure. Updated in the effect below on every
-  // render.
+  // capturing a stale closure. Updated synchronously with each queue
+  // transition so cancellation also works before React commits a render.
   const requestRef = React.useRef<ToolConfirmRequest | null>(null);
+  const mountedRef = React.useRef(true);
 
   /** Promote the next queued entry into the on-screen slot (if any). */
   const showNextFromQueue = React.useCallback(() => {
     const next = queueRef.current.shift();
     if (!next) {
       currentResolverRef.current = null;
+      requestRef.current = null;
       setRequest(null);
       return;
     }
     currentResolverRef.current = next.resolve;
+    requestRef.current = next.request;
     setRequest(next.request);
   }, []);
 
   const open = React.useCallback(
     (req: ToolConfirmRequest): Promise<boolean> => {
       return new Promise<boolean>((resolve) => {
+        if (!mountedRef.current) {
+          resolve(false);
+          return;
+        }
         if (currentResolverRef.current) {
           // A dialog is already on screen — queue this request behind
           // it. The prior dialog is NOT force-resolved (that's the
@@ -102,6 +109,7 @@ export const ToolConfirmProvider: React.FC<{ children: React.ReactNode }> = ({
           return;
         }
         currentResolverRef.current = resolve;
+        requestRef.current = req;
         setRequest(req);
       });
     },
@@ -174,14 +182,18 @@ export const ToolConfirmProvider: React.FC<{ children: React.ReactNode }> = ({
     [showNextFromQueue],
   );
 
-  // Keep `requestRef` in sync with the rendered request so
-  // `cancelForCallId` reads the latest value. The module-level seam
-  // registrations (opener + canceller) happen in `<ToolConfirmBridge>`
-  // inside App.tsx, not here — keeps the manager → React wiring
-  // concentrated in one place.
   React.useEffect(() => {
-    requestRef.current = request;
-  }, [request]);
+    mountedRef.current = true;
+    setRequest(requestRef.current);
+    return () => {
+      mountedRef.current = false;
+      currentResolverRef.current?.(false);
+      currentResolverRef.current = null;
+      requestRef.current = null;
+      for (const entry of queueRef.current) entry.resolve(false);
+      queueRef.current = [];
+    };
+  }, []);
 
   const value = React.useMemo<ToolConfirmState>(
     () => ({

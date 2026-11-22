@@ -483,6 +483,11 @@ describe('isFileSchemeUrl', () => {
 });
 
 describe('dirnameOf', () => {
+  it('preserves POSIX and Windows root directories', () => {
+    expect(dirnameOf('/readme.md')).toBe('/');
+    expect(dirnameOf('C:/readme.md')).toBe('C:/');
+  });
+
   it('returns the directory portion of a Windows path', () => {
     expect(dirnameOf('C:\\work\\notes\\readme.md')).toBe('C:/work/notes');
   });
@@ -493,5 +498,40 @@ describe('dirnameOf', () => {
 
   it('returns empty string for a bare filename', () => {
     expect(dirnameOf('readme.md')).toBe('');
+  });
+});
+
+describe('asset URL suffixes and encoded paths', () => {
+  const context = { baseDir: 'C:/work/notes', workspaceRoot: 'C:/work' };
+
+  it('preserves query and fragment suffixes on relative and explicit file URLs', () => {
+    expect(resolveLocalAssetSrc('logo.svg?v=1#symbol', context)).toBe(
+      'file:///C:/work/notes/logo.svg?v=1#symbol',
+    );
+    expect(
+      resolveLocalAssetSrc('file:///C:/work/logo.svg?v=1#symbol', context),
+    ).toBe('file:///C:/work/logo.svg?v=1#symbol');
+  });
+
+  it('decodes reserved filename characters without double encoding', () => {
+    expect(resolveLocalAssetSrc('my%23plot.png', context)).toBe(
+      'file:///C:/work/notes/my%23plot.png',
+    );
+  });
+
+  it('checks containment after decoding encoded path separators', () => {
+    expect(resolveLocalAssetSrc('..%2F..%2Fsecret.png', context)).toBeNull();
+  });
+
+  it('supports folders opened at filesystem roots', () => {
+    expect(
+      resolveLocalAssetSrc('logo.png', { baseDir: '/', workspaceRoot: '/' }),
+    ).toBe('file:///logo.png');
+    expect(
+      resolveLocalAssetSrc('logo.png', {
+        baseDir: 'C:/',
+        workspaceRoot: 'C:/',
+      }),
+    ).toBe('file:///C:/logo.png');
   });
 });

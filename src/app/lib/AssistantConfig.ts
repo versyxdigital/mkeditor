@@ -54,7 +54,8 @@ export class AssistantConfig {
    * `from:ai:config` push without re-reading the file.
    */
   static update(request: ConfigSetRequest): ProviderConfigMap | null {
-    if (!request || !AssistantConfig.PROVIDERS.includes(request.provider)) return null;
+    if (!request || !AssistantConfig.PROVIDERS.includes(request.provider))
+      return null;
     const store = loadAssistantStore();
     const merged: ProviderConfigMap = {
       ...AssistantConfig.withDefaults(store.providers),
@@ -91,29 +92,53 @@ export class AssistantConfig {
     partial: AssistantStoreFile['providers'],
   ): ProviderConfigMap {
     return {
-      anthropic: AssistantConfig.mergeApi(DEFAULT_PROVIDER_CONFIG.anthropic, partial.anthropic),
-      openai: AssistantConfig.mergeApi(DEFAULT_PROVIDER_CONFIG.openai, partial.openai),
-      ollama: AssistantConfig.mergeOllama(DEFAULT_PROVIDER_CONFIG.ollama, partial.ollama),
+      anthropic: AssistantConfig.mergeApi(
+        DEFAULT_PROVIDER_CONFIG.anthropic,
+        partial.anthropic,
+      ),
+      openai: AssistantConfig.mergeApi(
+        DEFAULT_PROVIDER_CONFIG.openai,
+        partial.openai,
+      ),
+      ollama: AssistantConfig.mergeOllama(
+        DEFAULT_PROVIDER_CONFIG.ollama,
+        partial.ollama,
+      ),
     };
   }
 
-  private static mergeApi(current: ApiProviderConfig, patch: unknown): ApiProviderConfig {
-    const value = typeof patch === 'object' && patch !== null
-      ? patch as Record<string, unknown> : {};
+  private static mergeApi(
+    current: ApiProviderConfig,
+    patch: unknown,
+  ): ApiProviderConfig {
+    const value =
+      typeof patch === 'object' && patch !== null
+        ? (patch as Record<string, unknown>)
+        : {};
     return {
-      enabled: typeof value.enabled === 'boolean' ? value.enabled : current.enabled,
-      defaultModel: typeof value.defaultModel === 'string' && value.defaultModel.trim()
-        ? value.defaultModel : current.defaultModel,
+      enabled:
+        typeof value.enabled === 'boolean' ? value.enabled : current.enabled,
+      defaultModel:
+        typeof value.defaultModel === 'string' && value.defaultModel.trim()
+          ? value.defaultModel
+          : current.defaultModel,
     };
   }
 
-  private static mergeOllama(current: OllamaProviderConfig, patch: unknown): OllamaProviderConfig {
-    const value = typeof patch === 'object' && patch !== null
-      ? patch as Record<string, unknown> : {};
+  private static mergeOllama(
+    current: OllamaProviderConfig,
+    patch: unknown,
+  ): OllamaProviderConfig {
+    const value =
+      typeof patch === 'object' && patch !== null
+        ? (patch as Record<string, unknown>)
+        : {};
     return {
       ...AssistantConfig.mergeApi(current, value),
-      baseUrl: typeof value.baseUrl === 'string' && value.baseUrl.trim()
-        ? value.baseUrl : current.baseUrl,
+      baseUrl:
+        typeof value.baseUrl === 'string' && value.baseUrl.trim()
+          ? value.baseUrl
+          : current.baseUrl,
     };
   }
 

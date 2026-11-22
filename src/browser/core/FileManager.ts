@@ -314,7 +314,15 @@ export class FileManager {
       })),
       activeFile: this.activeFile,
     };
+    // Window-close protection must include inactive dirty tabs as well.
+    this.bridge.send('to:editor:state', this.hasDirtyTabs());
     this.listeners.forEach((l) => l());
+  }
+
+  private hasDirtyTabs(): boolean {
+    return this.snapshot.tabs.some(
+      (tab) => tab.dirty && !tab.name.endsWith('.log'),
+    );
   }
 
   /**
@@ -391,8 +399,11 @@ export class FileManager {
 
     // Snapshot before any prompt.
     const paths = Array.from(this.tabs.keys());
-    const dirtyPaths = paths.filter((p) => this.dirtyByPath.get(p) === true ||
-      (p.startsWith('untitled-') && !!this.models.get(p)?.getValue()));
+    const dirtyPaths = paths.filter(
+      (p) =>
+        this.dirtyByPath.get(p) === true ||
+        (p.startsWith('untitled-') && !!this.models.get(p)?.getValue()),
+    );
 
     if (dirtyPaths.length > 0) {
       const result = await openPromptExternal({
@@ -503,7 +514,11 @@ export class FileManager {
     const original = this.originals.get(path) ?? '';
     const current = mdl.getValue();
 
-    if ((original !== current || (path.startsWith('untitled-') && current !== '')) && !path.endsWith('.log')) {
+    if (
+      (original !== current ||
+        (path.startsWith('untitled-') && current !== '')) &&
+      !path.endsWith('.log')
+    ) {
       const result = await openPromptExternal({
         title: t('modals-unsaved:title'),
         description: t('modals-unsaved:text'),
@@ -569,7 +584,7 @@ export class FileManager {
         // and Monaco's internal state doesn't recover cleanly from the
         // disposed-then-reattach sequence.
         this.activateFile(nextPath, nextInfo?.name);
-        mdl.dispose();
+        this.disposeClosedModel(mdl);
         this.scheduleSessionSave();
         return 'closed';
       }
@@ -582,17 +597,30 @@ export class FileManager {
       this.tabs.set(newPath, { path: newPath, name: newName, dirty: false });
       this.trackTab(newPath, model);
       this.activateFile(newPath, newName);
-      mdl.dispose();
+      this.disposeClosedModel(mdl);
       this.scheduleSessionSave();
       return 'closed';
     }
 
-    // Inactive tab — Monaco doesn't reference this model, so disposing
-    // now is safe.
-    mdl.dispose();
+    this.disposeClosedModel(mdl);
     this.emitChange();
     this.scheduleSessionSave();
     return 'closed';
+  }
+
+  /** Dispose a removed tab without leaving Monaco attached to its model. */
+  private disposeClosedModel(model: editor.ITextModel): void {
+    if (this.mkeditor.getModel() === model) {
+      const overlay =
+        this.activeFile && this.diffTabs.has(this.activeFile)
+          ? this.activeFile
+          : null;
+      const nextPath = this.models.keys().next().value;
+      if (nextPath) this.activateFile(nextPath);
+      else this.seedUntitled('');
+      if (overlay) this.activateFile(overlay);
+    }
+    model.dispose();
   }
 
   /**
@@ -1069,7 +1097,7 @@ export class FileManager {
    */
   public trackContentHasChanged(hasChanged: boolean) {
     if (this.isLogFile) hasChanged = false;
-    this.bridge.send('to:editor:state', hasChanged);
+    this.bridge.send('to:editor:state', hasChanged || this.hasDirtyTabs());
     this.contentHasChanged = hasChanged;
   }
 
@@ -1128,7 +1156,13 @@ export class FileManager {
     this.modelSaves.set(model, pending);
     try {
       if (saveAs || path.startsWith('untitled-')) {
-        this.bridge.send('to:file:saveas', { content: current, requestId });
+        this.bridge.send('to:file:saveas', {
+          content: current,
+          requestId,
+          excludedPaths: [...this.models.keys()].filter(
+            (candidate) => candidate !== path,
+          ),
+        });
       } else {
         this.bridge.send('to:file:save', {
           file: path,
@@ -1153,7 +1187,10 @@ export class FileManager {
     let path = [...this.models].find(
       ([, model]) => model === pending.model,
     )?.[0];
-    if (!result.ok || !path) {
+    if (!result.ok || !path || path !== pending.path) {
+      // A rename/move performed while the write was pending owns the live
+      // path. A late acknowledgement for the old path cannot undo it or
+      // claim the new path was written.
       pending.resolve(false);
       return;
     }
@@ -1171,19 +1208,32 @@ export class FileManager {
       );
       path = savedPath;
     }
-    this.originals.set(path, pending.content);
-    this.baselineVersions.set(path, pending.version);
-    this.dirtyByPath.set(
+    this.recordSavedVersion(
       path,
-      pending.model.getAlternativeVersionId() !== pending.version,
+      pending.model,
+      pending.content,
+      pending.version,
     );
-    if (this.mkeditor.getModel() === pending.model) {
-      this.dispatcher.setTrackedContent({ content: pending.content });
-      this.trackContentHasChanged(pending.model.getValue() !== pending.content);
+    pending.resolve(true);
+  }
+
+  /** Record a successful acknowledged write, including writes initiated by tools. */
+  public recordSavedVersion(
+    path: string,
+    model: editor.ITextModel,
+    content: string,
+    version: number,
+  ): void {
+    if (this.models.get(path) !== model) return;
+    this.originals.set(path, content);
+    this.baselineVersions.set(path, version);
+    this.dirtyByPath.set(path, model.getAlternativeVersionId() !== version);
+    if (this.mkeditor.getModel() === model) {
+      this.dispatcher.setTrackedContent({ content });
+      this.trackContentHasChanged(model.getValue() !== content);
     }
     this.emitChange();
     this.scheduleSessionSave();
-    pending.resolve(true);
   }
 
   /**
@@ -1456,7 +1506,9 @@ export class FileManager {
 
       // Existing models may have been seeded in a different tab order.
       // Restore the saved order instead of retaining Map insertion history.
-      this.tabs = new Map(session.tabs.map((tab) => [tab.path, this.tabs.get(tab.path)!]));
+      this.tabs = new Map(
+        session.tabs.map((tab) => [tab.path, this.tabs.get(tab.path)!]),
+      );
 
       // Pick what to activate. Prefer the persisted active file;
       // fall back to the first tab if the persisted active is gone.

@@ -1,9 +1,9 @@
-import { editor, KeyCode } from 'monaco-editor';
+import { editor, KeyCode, type IDisposable } from 'monaco-editor';
 import type { EditorProviders } from '../interfaces/Providers';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { ScrollSync } from '../extensions/editor/ScrollSync';
 import { welcomeMarkdown } from '../assets/intro';
-import { debounce, logger } from '../util';
+import { logger } from '../util';
 import { dom } from '../dom';
 
 /**
@@ -75,6 +75,11 @@ export class EditorManager {
 
   /** The loaded original editor value for tracking */
   private loadedInitialEditorValue: string | null = null;
+  private cleanupCallbacks: Array<() => void> = [];
+  private editorSubscriptions: IDisposable[] = [];
+  private watching = false;
+  private renderTimer: number | null = null;
+  private bridgeTimer: number | null = null;
 
   /** Editor functional providers */
   public providers: EditorProviders = {
@@ -174,15 +179,27 @@ export class EditorManager {
 
       // Set loadedInitialEditorValue for tracking file changes.
       this.loadedInitialEditorValue = this.mkeditor.getValue();
-      this.dispatcher.addEventListener('editor:track:content', (event) => {
+      const trackContent = (event: { detail: string }) => {
         this.loadedInitialEditorValue = event.detail;
-      });
+      };
+      this.dispatcher.addEventListener('editor:track:content', trackContent);
+      this.registerCleanup(() =>
+        this.dispatcher.removeEventListener(
+          'editor:track:content',
+          trackContent,
+        ),
+      );
 
       // Window resize relayouts Monaco. The editor-pane resize is now
       // observed by <EditorHost>'s ResizeObserver, and the split-pane
       // drag fires Panel.onResize from <Workspace>.
-      window.onload = () => this.mkeditor?.layout();
-      window.onresize = () => this.mkeditor?.layout();
+      const layout = () => this.mkeditor?.layout();
+      window.addEventListener('load', layout);
+      window.addEventListener('resize', layout);
+      this.registerCleanup(() => {
+        window.removeEventListener('load', layout);
+        window.removeEventListener('resize', layout);
+      });
 
       // Trigger initial preview render. <PreviewPane> subscribes to
       // editor:render and writes innerHTML; <Counts> recomputes the
@@ -194,7 +211,7 @@ export class EditorManager {
         this.watch();
       }
     } catch (err) {
-      this.mkeditor = null;
+      this.dispose();
       logger?.error('EditorManager.create', JSON.stringify(err));
     }
 
@@ -242,9 +259,32 @@ export class EditorManager {
    * unmount so a subsequent mount can call create() again.
    */
   public dispose() {
-    if (!this.mkeditor) return;
-    this.mkeditor.dispose();
+    const instance = this.mkeditor;
     this.mkeditor = null;
+    if (this.renderTimer !== null) window.clearTimeout(this.renderTimer);
+    if (this.bridgeTimer !== null) window.clearTimeout(this.bridgeTimer);
+    this.renderTimer = this.bridgeTimer = null;
+    this.watching = false;
+    const cleanups = [
+      ...this.editorSubscriptions
+        .splice(0)
+        .map((subscription) => () => subscription.dispose()),
+      ...this.cleanupCallbacks.splice(0),
+      () => this.providers.completion?.dispose(),
+      () => instance?.dispose(),
+    ];
+    for (const cleanup of cleanups) {
+      try {
+        cleanup();
+      } catch (error) {
+        logger.warn('Editor resource cleanup failed', error);
+      }
+    }
+  }
+
+  /** Attach composition-owned resources to the editor's lifetime. */
+  public registerCleanup(cleanup: () => void): void {
+    this.cleanupCallbacks.push(cleanup);
   }
 
   /**
@@ -348,54 +388,71 @@ export class EditorManager {
    * Watch and re-render the editor for changes.
    */
   public watch() {
-    const debouncedUpdateBridgedContent = debounce(
-      () => this.updateBridgedContent(),
-      250,
-    );
+    const instance = this.mkeditor;
+    if (!instance || this.watching) return;
+    this.watching = true;
+    const remember = (disposable: IDisposable) => {
+      if (disposable) this.editorSubscriptions.push(disposable);
+    };
 
     // Track Enter key presses to determine if we should attempt list continuation
-    this.mkeditor?.onKeyDown((e) => {
-      if (!this.providers.completion) return;
-      if (e.keyCode === KeyCode.Enter) {
-        // Only auto-continue lists on plain Enter (not Shift+Enter)
-        this.providers.completion.shouldHandleEnterList = !e.shiftKey;
-      } else {
-        this.providers.completion.shouldHandleEnterList = false;
-      }
-    });
+    remember(
+      instance.onKeyDown((e) => {
+        if (!this.providers.completion) return;
+        if (e.keyCode === KeyCode.Enter) {
+          // Only auto-continue lists on plain Enter (not Shift+Enter)
+          this.providers.completion.shouldHandleEnterList = !e.shiftKey;
+        } else {
+          this.providers.completion.shouldHandleEnterList = false;
+        }
+      }),
+    );
 
     // When the editor content changes, update the main process through the IPC handler
     // so that it can do things such as set the title notifying the user of unsaved changes,
     // prompt the user to save if they try to close the app or open a new file, etc.
-    this.mkeditor?.onDidChangeModelContent((event) => {
-      // Update the tracked content over the execution bridge.
-      debouncedUpdateBridgedContent();
+    remember(
+      instance.onDidChangeModelContent((event) => {
+        // Update the tracked content over the execution bridge.
+        if (this.bridgeTimer !== null) window.clearTimeout(this.bridgeTimer);
+        this.bridgeTimer = window.setTimeout(() => {
+          this.bridgeTimer = null;
+          if (this.mkeditor === instance) this.updateBridgedContent();
+        }, 250);
 
-      // Auto-continue list markers when Enter was pressed.
-      this.providers.completion?.autoContinueListMarkers(event.changes);
+        // Auto-continue list markers when Enter was pressed.
+        this.providers.completion?.autoContinueListMarkers(event.changes);
 
-      // Register dynamic completions provider to suggest items based on input.
-      this.providers.completion?.suggestOnValidInput(event.changes[0].text);
+        // Register dynamic completions provider to suggest items based on input.
+        const change = event.changes[0];
+        if (change) this.providers.completion?.suggestOnValidInput(change.text);
 
-      // Add a small timeout for the render. The dispatch fires the
-      // editor:render event — the constructor listener updates word/
-      // character counts and <PreviewPane> writes innerHTML.
-      setTimeout(() => {
-        this.dispatcher.render();
-      }, 150);
-    });
+        // Add a small timeout for the render. The dispatch fires the
+        // editor:render event — the constructor listener updates word/
+        // character counts and <PreviewPane> writes innerHTML.
+        // Coalesce bursts while still rendering during continuous typing.
+        if (this.renderTimer === null) {
+          this.renderTimer = window.setTimeout(() => {
+            this.renderTimer = null;
+            if (this.mkeditor === instance) this.dispatcher.render();
+          }, 150);
+        }
+      }),
+    );
 
     // Track the editor scroll state and update the preview scroll position to match.
     // Note: this method isn't perfect, for example, in cases of large images there is
     // a slight discrepancy of about 20-30px, but for the most part it works.
-    this.mkeditor?.onDidScrollChange(() => {
-      if (this.providers.settings?.getSetting('scrollsync')) {
-        const visibleRange = this.mkeditor?.getVisibleRanges()[0];
-        if (visibleRange) {
-          // Note: requires markdown line-numbers extension to be active
-          ScrollSync(visibleRange.startLineNumber, dom.preview.wrapper);
+    remember(
+      instance.onDidScrollChange(() => {
+        if (this.providers.settings?.getSetting('scrollsync')) {
+          const visibleRange = this.mkeditor?.getVisibleRanges()[0];
+          if (visibleRange) {
+            // Note: requires markdown line-numbers extension to be active
+            ScrollSync(visibleRange.startLineNumber, dom.preview.wrapper);
+          }
         }
-      }
-    });
+      }),
+    );
   }
 }

@@ -71,6 +71,7 @@ describe('BridgeListeners session handlers', () => {
   };
   let files: {
     restoreSession: jest.Mock;
+    onSaveResult: jest.Mock;
     serializeSession: jest.Mock;
     openingFile: boolean;
     untitledCounter: number;
@@ -96,6 +97,7 @@ describe('BridgeListeners session handlers', () => {
     };
     files = {
       restoreSession: jest.fn(),
+      onSaveResult: jest.fn(),
       serializeSession: jest.fn(() => ({
         version: 1 as const,
         tabs: [],
@@ -163,6 +165,12 @@ describe('BridgeListeners session handlers', () => {
       tree as never,
       manager as never,
     );
+  });
+
+  it('routes correlated filesystem acknowledgements to FileManager', () => {
+    const result = { requestId: 'save-one', ok: false, cancelled: true };
+    handlers['from:file:save-result'](result);
+    expect(files.onSaveResult).toHaveBeenCalledWith(result);
   });
 
   it('from:session:restore calls FileManager.restoreSession with the envelope', () => {

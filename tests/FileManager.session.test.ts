@@ -114,6 +114,7 @@ async function loadFileManager() {
 
 describe('FileManager.serializeSession', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     jest.useFakeTimers();
   });
   afterEach(() => {
@@ -258,6 +259,7 @@ describe('FileManager.serializeSession', () => {
 
 describe('FileManager.restoreSession', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     jest.useFakeTimers();
   });
   afterEach(() => {
@@ -454,6 +456,7 @@ describe('FileManager.restoreSession', () => {
 
 describe('FileManager.scheduleSessionSave', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     jest.useFakeTimers();
   });
   afterEach(() => {
@@ -605,6 +608,7 @@ describe('FileManager.scheduleSessionSave', () => {
 
 describe('FileManager.restoreSession reconciliation', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     jest.useFakeTimers();
   });
   afterEach(() => {
@@ -728,6 +732,7 @@ describe('FileManager.restoreSession reconciliation', () => {
 
 describe('FileManager.restoreSession gate', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     jest.useFakeTimers();
   });
   afterEach(() => {
@@ -810,6 +815,7 @@ describe('FileManager.restoreSession gate', () => {
 
 describe('FileManager.activateFile re-activation', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     jest.useFakeTimers();
   });
   afterEach(() => {
@@ -915,6 +921,7 @@ describe('FileManager.activateFile re-activation', () => {
 
 describe('FileManager serialize ↔ restore round-trip', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     jest.useFakeTimers();
   });
   afterEach(() => {
@@ -955,6 +962,7 @@ describe('FileManager serialize ↔ restore round-trip', () => {
 
 describe('FileManager per-tab dirty tracking', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     jest.useFakeTimers();
   });
   afterEach(() => {
@@ -984,7 +992,7 @@ describe('FileManager per-tab dirty tracking', () => {
 
     // Now switch the tab to a real-file path and save against it.
     // (saveContentToFile short-circuits to saveas for untitled paths.)
-    fm.replaceUntitled('/real.md', 'real.md', 'real-content');
+    fm.replaceUntitled('/real.md', 'real.md', 'original');
     // replaceUntitled re-baselines via trackTab, so dirty flips back to false.
     expect(fm.getSnapshot().tabs[0].dirty).toBe(false);
 
@@ -995,7 +1003,17 @@ describe('FileManager per-tab dirty tracking', () => {
     realModel._simulateEdit();
     expect(fm.getSnapshot().tabs[0].dirty).toBe(true);
 
-    fm.saveContentToFile();
+    const save = fm.saveContentToFile();
+    expect(fm.getSnapshot().tabs[0].dirty).toBe(true);
+    const request = (bridge.send as jest.Mock).mock.calls.findLast(
+      ([channel]) => channel === 'to:file:save',
+    )![1];
+    fm.onSaveResult({
+      requestId: request.requestId,
+      ok: true,
+      path: '/real.md',
+    });
+    await expect(save).resolves.toBe(true);
     expect(fm.getSnapshot().tabs[0].dirty).toBe(false);
   });
 
@@ -1094,7 +1112,7 @@ describe('FileManager per-tab dirty tracking', () => {
       new EditorDispatcher(),
     );
 
-    fm.seedUntitled('a');
+    fm.seedUntitled('');
     fm.seedUntitled('b');
     fm.seedUntitled('c');
     // Dirty the SECOND tab so `closeAllTabs` reaches it, opens the
@@ -1139,7 +1157,7 @@ describe('FileManager per-tab dirty tracking', () => {
       new EditorDispatcher(),
     );
 
-    fm.seedUntitled('a');
+    fm.seedUntitled('');
     fm.seedUntitled('b');
     fm.seedUntitled('c');
     // Dirty the third tab and cancel its prompt. With `keepPath`

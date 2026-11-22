@@ -1,8 +1,6 @@
 /**
- * Targeted test for the `to:session:save` IPC handler registered by
- * `AppBridge.register()`. The handler is a 2-line forward to
- * `AppSession.save`; the round-trip persistence behaviour is covered
- * in `AppSession.test.ts`, so we only assert the wiring here.
+ * Session IPC forwarding. Workspace-root authority is additionally
+ * covered with real AppStorage state in AppStorage.workspaceAuthorization.
  */
 
 jest.mock('../src/app/lib/AppSession', () => ({
@@ -19,7 +17,7 @@ jest.mock('../src/app/lib/AppSession', () => ({
 }));
 
 jest.mock('../src/app/lib/AppStorage', () => ({
-  AppStorage: {},
+  AppStorage: { getSessionWorkspaceRoot: jest.fn(() => null) },
 }));
 
 import { ipcMain } from 'electron';

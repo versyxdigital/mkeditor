@@ -145,7 +145,13 @@ export class AppBridge {
     // by the renderer's debounced session save trigger and by the
     // renderer's flush-request handler during quit.
     this.on('to:session:save', (_event, payload: SessionPayload) => {
-      AppSession.save(payload);
+      if (!payload || typeof payload !== 'object') return;
+      AppSession.save({
+        ...payload,
+        workspaceRoot: AppStorage.getSessionWorkspaceRoot(
+          payload.workspaceRoot,
+        ),
+      });
     });
 
     // Wipe the persisted session file. Fired by the renderer's
@@ -288,6 +294,7 @@ export class AppBridge {
       const result = await AppStorage.saveFile(this.context, {
         id: event.sender.id,
         data: correlated ? data.content : data,
+        excludedPaths: correlated ? data.excludedPaths : undefined,
         encoding: 'utf-8',
         openFile: requestId ? false : undefined,
       });
@@ -442,7 +449,7 @@ export class AppBridge {
             mustExist: false,
           });
           await fsPromises.mkdir(dirname(safePath), { recursive: true });
-          await fsPromises.writeFile(safePath, content, 'utf-8');
+          await AppStorage.writeTextFile(safePath, content);
           return { ok: true, path: safePath };
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
@@ -572,12 +579,10 @@ export class AppBridge {
       }
     });
 
-    // Renderer publishes the current workspace root whenever it
-    // adopts a new one (BridgeListeners.from:folder:opened detects
-    // the change). Main stores it as the trust boundary for all
-    // `mked:fs:*` invokes — see `AppStorage.assertInWorkspace`.
+    // Acknowledge adoption only for roots offered by a native picker or
+    // main's restore envelope. The renderer cannot choose the boundary.
     this.on('to:workspace:set', (_e, payload: { root: string | null }) => {
-      AppStorage.setWorkspaceRoot(payload?.root ?? null);
+      AppStorage.adoptWorkspaceRoot(payload?.root);
     });
 
     // ---- AI Assistant ----------------------------------------------

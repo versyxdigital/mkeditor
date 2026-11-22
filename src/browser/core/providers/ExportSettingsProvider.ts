@@ -9,13 +9,18 @@ function normalizeSettings(value: unknown): ExportSettings {
   const next = { ...defaults };
   if (!value || typeof value !== 'object' || Array.isArray(value)) return next;
   const stored = value as Partial<ExportSettings>;
-  if (typeof stored.withStyles === 'boolean') next.withStyles = stored.withStyles;
-  if (stored.container === 'container' || stored.container === 'container-fluid') {
+  if (typeof stored.withStyles === 'boolean')
+    next.withStyles = stored.withStyles;
+  if (
+    stored.container === 'container' ||
+    stored.container === 'container-fluid'
+  ) {
     next.container = stored.container;
   }
   for (const key of ['fontSize', 'lineSpacing'] as const) {
     const value = stored[key];
-    if (typeof value === 'number' && Number.isFinite(value) && value > 0) next[key] = value;
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0)
+      next[key] = value;
   }
   for (const key of ['background', 'fontColor'] as const) {
     if (typeof stored[key] === 'string' && stored[key]) next[key] = stored[key];
@@ -170,6 +175,14 @@ export class ExportSettingsProvider {
   }
 
   /** Persist if the serialised settings actually changed. */
+  public flushPersist(): void {
+    if (this.saveTimer !== null) {
+      window.clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+    }
+    this.save();
+  }
+
   private save() {
     const nextJSON = JSON.stringify(this.currentSettings);
     if (nextJSON === this.lastPersistedJSON) return;

@@ -97,7 +97,9 @@ function renderCodeblock(
   lang: string,
 ) {
   const isTerminal = terminalLanguages.has(lang);
-  const label = languageDisplayNames[lang] ?? (lang || '');
+  const label = Object.prototype.hasOwnProperty.call(languageDisplayNames, lang)
+    ? languageDisplayNames[lang]
+    : lang;
   const wrapperClasses = isTerminal
     ? 'md-codeblock md-codeblock--terminal'
     : 'md-codeblock';
@@ -109,7 +111,9 @@ function renderCodeblock(
   if (typeof btoa === 'function') {
     const bytes = new TextEncoder().encode(rawSource);
     let binary = '';
-    for (const byte of bytes) binary += String.fromCharCode(byte);
+    for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+    }
     sourceBase64 = btoa(binary);
   } else {
     sourceBase64 = Buffer.from(rawSource, 'utf-8').toString('base64');
@@ -120,7 +124,7 @@ function renderCodeblock(
       '<i></i><i></i><i></i></span>'
     : '';
   const langLabel = label
-    ? `<span class="md-codeblock-lang">${label}</span>`
+    ? `<span class="md-codeblock-lang">${Markdown.utils.escapeHtml(label)}</span>`
     : '';
 
   return (
@@ -155,7 +159,7 @@ const Markdown = new MarkdownIt({
         return renderCodeblock(
           str,
           '<pre class="hljs"><code class="hljs language-' +
-            lang +
+            escapeHtml(lang) +
             '">' +
             code +
             '</code></pre>',
@@ -179,14 +183,23 @@ const Markdown = new MarkdownIt({
 // `<pre><code>` wrap when the returned string starts with `<pre`,
 // and our `renderCodeblock` wrapper starts with `<div>` so the body
 // would otherwise end up inside an extra outer <pre>.
-Markdown.renderer.rules.fence = (tokens, idx, options) => {
+Markdown.renderer.rules.fence = (tokens, idx, options, _env, self) => {
   const token = tokens[idx];
   const info = token.info ? Markdown.utils.unescapeAll(token.info).trim() : '';
   const langName = info ? info.split(/\s+/g)[0] : '';
 
   if (options.highlight) {
     const out = options.highlight(token.content, langName, '');
-    if (out) return out + '\n';
+    if (out) {
+      // The custom codeblock wrapper replaces markdown-it's fence output,
+      // so carry the token's scroll-sync attributes onto that wrapper.
+      return (
+        out.replace(/^<div class="([^"]*)"/, (_match, classes: string) => {
+          token.attrJoin('class', classes);
+          return `<div${self.renderAttrs(token)}`;
+        }) + '\n'
+      );
+    }
   }
 
   return (

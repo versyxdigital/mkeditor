@@ -74,16 +74,25 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   // Re-seed local input + model state when the user switches to a
   // different conversation (the same component instance is reused
   // by ProviderTab; React doesn't unmount it on prop change).
-  const prevConvId = React.useRef(conversation.id);
+  const draftOwner = React.useRef({ provider, id: conversation.id, manager });
   React.useEffect(() => {
-    if (prevConvId.current !== conversation.id) {
+    const previous = draftOwner.current;
+    if (
+      previous.id !== conversation.id ||
+      previous.provider !== provider ||
+      previous.manager !== manager
+    ) {
       // Persist the outgoing conversation's draft before swapping.
-      if (manager) {
-        manager.setDraft(provider, prevConvId.current, draft);
-      }
-      setDraft(manager?.getDraft(provider, conversation.id) ?? '');
+      previous.manager?.setDraft(
+        previous.provider,
+        previous.id,
+        draftRef.current,
+      );
+      const nextDraft = manager?.getDraft(provider, conversation.id) ?? '';
+      draftRef.current = nextDraft;
+      setDraft(nextDraft);
       setModelEditor(conversation.model);
-      prevConvId.current = conversation.id;
+      draftOwner.current = { provider, id: conversation.id, manager };
     }
     // Intentionally tracks `conversation.id` only (and the surrounding
     // identity deps); we do NOT include `draft` because a refresh on
@@ -99,9 +108,8 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   // effect above.
   React.useEffect(() => {
     return () => {
-      if (manager) {
-        manager.setDraft(provider, conversation.id, draftRef.current);
-      }
+      const owner = draftOwner.current;
+      owner.manager?.setDraft(owner.provider, owner.id, draftRef.current);
     };
   }, []);
 
@@ -193,6 +201,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   const handleInputChange = React.useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const text = e.target.value;
+      draftRef.current = text;
       setDraft(text);
       updatePickerFromInput(text, e.target.selectionStart ?? text.length);
     },
@@ -212,6 +221,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       const at = pickerAnchor;
       const cursor = inputRef.current?.selectionStart ?? draft.length;
       const next = at >= 0 ? draft.slice(0, at) + draft.slice(cursor) : draft;
+      draftRef.current = next;
       setDraft(next);
       setPickerOpen(false);
       // Restore focus + cursor position to where the `@` used to be.
@@ -225,13 +235,18 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     [manager, provider, conversation.id, draft, pickerAnchor],
   );
 
+  const preparingSend = React.useRef(false);
+  const [isPreparingSend, setIsPreparingSend] = React.useState(false);
   const handleSend = React.useCallback(async () => {
     if (!manager) return;
-    if (inflight) return; // belt-and-braces; the button is disabled too
+    if (inflight || preparingSend.current) return;
     const text = draft.trim();
     if (!text) return;
     // Capture the draft up front so a slow contextFor() can't lose a
     // race with another keystroke.
+    preparingSend.current = true;
+    setIsPreparingSend(true);
+    draftRef.current = '';
     setDraft('');
     setPickerOpen(false);
     let systemContext = null;
@@ -241,7 +256,12 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       // Best-effort context — never block the send on a broken
       // mention or transient read failure.
     }
-    manager.startCall(provider, conversation.id, text, systemContext);
+    try {
+      manager.startCall(provider, conversation.id, text, systemContext);
+    } finally {
+      preparingSend.current = false;
+      setIsPreparingSend(false);
+    }
   }, [manager, inflight, draft, provider, conversation.id]);
 
   const handleStop = React.useCallback(() => {
@@ -251,6 +271,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.nativeEvent.isComposing) return;
       // While the mention picker owns Enter / Arrow keys, don't send.
       if (pickerOpen && (e.key === 'Enter' || e.key.startsWith('Arrow'))) {
         return;
@@ -366,7 +387,10 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         convListCollapsed={convListCollapsed}
         onToggleConvList={onToggleConvList}
       />
-      <MessageList messages={conversation.messages} />
+      <MessageList
+        key={`${provider}:${conversation.id}`}
+        messages={conversation.messages}
+      />
       <ContextChipsRow
         chips={chips}
         onRemoveActive={handleRemoveActive}
@@ -409,7 +433,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
               type="button"
               size="sm"
               onClick={() => void handleSend()}
-              disabled={!draft.trim() || !manager}
+              disabled={!draft.trim() || !manager || isPreparingSend}
               data-testid="chat-send"
             >
               <span>{t('assistant-chat:send')}</span>
