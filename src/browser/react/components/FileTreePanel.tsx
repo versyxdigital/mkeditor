@@ -290,8 +290,9 @@ export const FileTreePanel: React.FC = () => {
 
   // Apply the extension + search filter to the tree. Files are kept
   // only if their extension is in the active set AND (search empty
-  // OR name matches case-insensitive substring). Directories are kept
-  // only if some descendant survives. When the user is searching, the
+  // OR name matches case-insensitive substring). Empty directories stay
+  // visible without a search; other directories need a surviving or
+  // not-yet-loaded descendant. When the user is searching, the
   // surviving directories must auto-expand so the matches are visible
   // without further clicks — collected in `searchExpansion` and OR'd
   // with the user-driven `expandedPaths` set inside `<NodeRow>`.
@@ -594,7 +595,8 @@ const NodeRow: React.FC<NodeRowProps> = ({
 /**
  * Walk the tree, dropping files whose extension isn't in the active
  * set or whose name doesn't match `searchQuery` (when non-empty), and
- * dropping directories whose entire subtree disappeared as a result.
+ * dropping non-empty directories whose entire subtree disappeared as a
+ * result. Empty directories remain browsable when no search is active.
  */
 export function filterTree(
   nodes: TreeNode[],
@@ -633,7 +635,8 @@ export function filterTree(
         continue;
       }
       // No children loaded yet (or known-empty directory).
-      if (node.hasChildren && !node.loaded) {
+      // Learning that a directory is empty must not remove its row.
+      if (!query || (node.hasChildren && !node.loaded)) {
         out.push(node);
       }
     }
