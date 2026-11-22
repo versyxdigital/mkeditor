@@ -1,3 +1,29 @@
+// Importing main must never truncate the developer's real application log
+// or restore a real session. Simulate an unwritable previous log as well.
+jest.mock('fs', () => ({
+  ...jest.requireActual('fs'),
+  existsSync: jest.fn(() => true),
+  writeFileSync: jest.fn(() => {
+    throw new Error('read-only log');
+  }),
+}));
+
+jest.mock('electron-log/main', () => ({
+  transports: { file: {} },
+  initialize: jest.fn(),
+}));
+
+jest.mock('../src/app/lib/AppSession', () => ({
+  AppSession: {
+    load: jest.fn(() => null),
+    buildRestoreEnvelope: jest.fn(() => ({
+      session: null,
+      missing: [],
+      contents: {},
+    })),
+  },
+}));
+
 jest.mock('../src/app/lib/AppBridge', () => ({
   AppBridge: jest.fn().mockImplementation(() => ({
     provide: jest.fn(),
@@ -38,10 +64,17 @@ jest.mock('../src/app/lib/AppStorage', () => ({
   },
 }));
 
+// AppAssistant loads the ESM-only `ai` package, which Jest's CommonJS
+// runtime can't require.
+jest.mock('../src/app/lib/AppAssistant', () => ({
+  AppAssistant: jest.fn(),
+}));
+
 import { app, BrowserWindow, nativeTheme } from 'electron';
 
 describe('Electron main app', () => {
   it('creates main window on ready', () => {
+    const warning = jest.spyOn(console, 'warn').mockImplementation(() => {});
     require('../src/app/main');
     const readyHandler = app.on.mock.calls.find(
       (c: any) => c[0] === 'ready',
@@ -49,6 +82,11 @@ describe('Electron main app', () => {
     readyHandler();
     expect(BrowserWindow).toHaveBeenCalled();
     expect(app.on).toHaveBeenCalledWith('ready', expect.any(Function));
+    expect(warning).toHaveBeenCalledWith(
+      'Unable to truncate the previous MKEditor log.',
+      expect.any(Error),
+    );
+    warning.mockRestore();
   });
 
   it('subscribes to nativeTheme.on("updated") so live OS theme switches propagate without a relaunch', () => {

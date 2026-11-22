@@ -31,7 +31,13 @@ const logpath = join(normalize(homedir()), '.mkeditor/main.log');
 
 // Truncate the log file
 if (existsSync(logpath)) {
-  writeFileSync(logpath, '');
+  try {
+    writeFileSync(logpath, '');
+  } catch (err) {
+    // Logging must not prevent the editor opening when the previous log
+    // is locked or the user no longer has write access to its directory.
+    console.warn('Unable to truncate the previous MKEditor log.', err);
+  }
 }
 
 // Configure the logger

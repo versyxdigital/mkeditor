@@ -2,7 +2,7 @@
 
 Phased plan for making MKEditor reopen with the same tabs, the same active tab, and the same cursor/scroll positions after the app is closed and relaunched. The high-level entry in [ROADMAP.md](ROADMAP.md) links here.
 
-Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
+Read first: [../AGENTS.md](../AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Decisions
 

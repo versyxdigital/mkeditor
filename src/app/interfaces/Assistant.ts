@@ -318,10 +318,7 @@ export type ApiProviderId = 'anthropic' | 'openai';
  * `ToolCallRecord` shape in the doc's Persistence Schema).
  */
 export type ChatMessageStatus =
-  | 'streaming'
-  | 'complete'
-  | 'cancelled'
-  | 'failed';
+  'streaming' | 'complete' | 'cancelled' | 'failed';
 
 /**
  * Renderer-side view of a single message in a chat conversation.
@@ -348,8 +345,7 @@ export type ChatMessageStatus =
  * persistence payload).
  */
 export type UiMessageSegment =
-  | { type: 'text'; text: string }
-  | { type: 'tool-call'; toolCallId: string };
+  { type: 'text'; text: string } | { type: 'tool-call'; toolCallId: string };
 
 export interface UiChatMessage {
   id: string;
@@ -392,10 +388,7 @@ export interface UiChatMessage {
  *   tool-result is sent back to the SDK so the model can recover.
  */
 export type ToolInvocationStatus =
-  | 'pending-confirm'
-  | 'executing'
-  | 'succeeded'
-  | 'failed';
+  'pending-confirm' | 'executing' | 'succeeded' | 'failed';
 
 /** A single tool call rendered as a card inside the assistant bubble. */
 export interface ToolInvocation {

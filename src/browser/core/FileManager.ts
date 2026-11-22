@@ -50,6 +50,24 @@ export interface DiffTabPayload {
   sourcePath?: string;
 }
 
+export interface FileSaveResult {
+  requestId: string;
+  ok: boolean;
+  path?: string;
+  cancelled?: boolean;
+  error?: string;
+}
+
+interface PendingSave {
+  path: string;
+  model: editor.ITextModel;
+  content: string;
+  version: number;
+  promise: Promise<boolean>;
+  resolve: (ok: boolean) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
 export interface FilesSnapshot {
   tabs: TabInfo[];
   activeFile: string | null;
@@ -88,6 +106,10 @@ export class FileManager {
    * active in this session.
    */
   private lastEditableFile: string | null = null;
+
+  private static nextSaveRequest = 1;
+  private pendingSaves = new Map<string, PendingSave>();
+  private modelSaves = new Map<editor.ITextModel, PendingSave>();
 
   /** Flag to determine whether the content has changed */
   public contentHasChanged = false;
@@ -269,8 +291,8 @@ export class FileManager {
     if (active) {
       const tab = this.tabs.get(active);
       const kind = tab?.kind ?? 'file';
-      if (kind === 'file' && !active.startsWith('untitled-')) {
-        return active;
+      if (kind === 'file') {
+        return active.startsWith('untitled-') ? null : active;
       }
     }
     if (
@@ -329,16 +351,6 @@ export class FileManager {
    * alt-version. Called after a successful save (and any other moment
    * the on-disk content catches up to the editor buffer).
    */
-  private markTabClean(path: string): void {
-    const model = this.models.get(path);
-    if (!model) return;
-    this.baselineVersions.set(path, model.getAlternativeVersionId());
-    if (this.dirtyByPath.get(path)) {
-      this.dirtyByPath.set(path, false);
-      this.emitChange();
-    }
-  }
-
   /** Tear down dirty-tracking for a tab being closed/renamed. */
   private detachTabTracking(path: string): void {
     this.modelListeners.get(path)?.dispose();
@@ -379,7 +391,8 @@ export class FileManager {
 
     // Snapshot before any prompt.
     const paths = Array.from(this.tabs.keys());
-    const dirtyPaths = paths.filter((p) => this.dirtyByPath.get(p) === true);
+    const dirtyPaths = paths.filter((p) => this.dirtyByPath.get(p) === true ||
+      (p.startsWith('untitled-') && !!this.models.get(p)?.getValue()));
 
     if (dirtyPaths.length > 0) {
       const result = await openPromptExternal({
@@ -411,21 +424,12 @@ export class FileManager {
       }
 
       if (result.button === 'confirm') {
-        // Fire save IPC for each dirty tab.
         for (const path of dirtyPaths) {
-          const mdl = this.models.get(path);
-          if (!mdl) continue;
-          const current = mdl.getValue();
-          if (path.startsWith('untitled')) {
-            this.bridge.send('to:file:saveas', current);
-          } else {
-            this.bridge.send('to:file:save', {
-              content: current,
-              file: path,
-              openFile: false,
-            });
-          }
+          if (!(await this.saveTab(path))) return false;
         }
+        // Editing can continue while a picker or write is pending. Never
+        // discard a newer revision merely because an earlier save succeeded.
+        if ([...this.dirtyByPath.values()].some(Boolean)) return false;
       }
     }
 
@@ -499,7 +503,7 @@ export class FileManager {
     const original = this.originals.get(path) ?? '';
     const current = mdl.getValue();
 
-    if (original !== current && !this.isLogFile) {
+    if ((original !== current || (path.startsWith('untitled-') && current !== '')) && !path.endsWith('.log')) {
       const result = await openPromptExternal({
         title: t('modals-unsaved:title'),
         description: t('modals-unsaved:text'),
@@ -523,15 +527,14 @@ export class FileManager {
       });
 
       if (result.button === 'confirm') {
-        if (path.startsWith('untitled')) {
-          this.bridge.send('to:file:saveas', current);
-        } else {
-          this.bridge.send('to:file:save', {
-            content: current,
-            file: path,
-            openFile: false,
-          });
-        }
+        if (!(await this.saveTab(path))) return 'aborted';
+        // Save As can rekey the original tab while another tab is active.
+        const savedPath = [...this.models].find(
+          ([, model]) => model === mdl,
+        )?.[0];
+        if (!savedPath) return 'not_found';
+        path = savedPath;
+        if (this.dirtyByPath.get(path)) return 'aborted';
       } else if (result.button !== 'deny') {
         // null (Esc/overlay) or 'cancel' — abort the close.
         return 'aborted';
@@ -662,6 +665,10 @@ export class FileManager {
     const oldPath = this.activeFile;
     const mdl = this.models.get(oldPath);
     if (!mdl) return false;
+    // External file opens must never replace a populated scratch buffer.
+    // A Save As acknowledgement uses renameTab instead; legacy Save As
+    // may still adopt the buffer when the saved text matches exactly.
+    if (mdl.getValue() !== '' && mdl.getValue() !== content) return false;
 
     this.models.delete(oldPath);
     this.originals.delete(oldPath);
@@ -1003,9 +1010,7 @@ export class FileManager {
     // `getActiveEditablePath()` can surface it while a diff overlay is
     // active. Untitled tabs are excluded — saving `untitled-N` via IPC
     // is meaningless.
-    if (!path.startsWith('untitled-')) {
-      this.lastEditableFile = path;
-    }
+    this.lastEditableFile = path.startsWith('untitled-') ? null : path;
 
     const filename = name || path.split(/[\\/]/).pop() || '';
 
@@ -1072,20 +1077,113 @@ export class FileManager {
    * Save the active file contents.
    * @returns
    */
-  public saveContentToFile() {
-    if (this.activeFile && !this.activeFile.startsWith('untitled')) {
-      this.bridge.send('to:file:save', {
-        content: this.mkeditor.getValue(),
-        file: this.activeFile,
+  public saveContentToFile(saveAs = false): Promise<boolean> {
+    const path =
+      this.activeFile && this.models.has(this.activeFile)
+        ? this.activeFile
+        : [...this.models].find(
+            ([, model]) => model === this.mkeditor.getModel(),
+          )?.[0];
+    return path ? this.saveTab(path, saveAs) : Promise.resolve(false);
+  }
+
+  /** Save one captured model and wait for the filesystem acknowledgement. */
+  private saveTab(path: string, saveAs = false): Promise<boolean> {
+    const model = this.models.get(path);
+    if (!model) return Promise.resolve(false);
+    const current = model.getValue();
+    const existing = this.modelSaves.get(model);
+    if (existing) {
+      if (existing.content === current && !saveAs) return existing.promise;
+      // Serialize saves of the same model so an older disk write cannot
+      // overtake a newer one. Resolve the path again after a pending Save As.
+      return existing.promise.then(() => {
+        const latestPath = [...this.models].find(
+          ([, candidate]) => candidate === model,
+        )?.[0];
+        return latestPath ? this.saveTab(latestPath, saveAs) : false;
       });
-      this.originals.set(this.activeFile, this.mkeditor.getValue());
-      this.dispatcher.setTrackedContent({
-        content: this.mkeditor.getValue(),
-      });
-      this.markTabClean(this.activeFile);
-    } else {
-      this.bridge.send('to:file:saveas', this.mkeditor.getValue());
     }
+    const requestId = `file-save-${FileManager.nextSaveRequest++}`;
+    let resolve!: (ok: boolean) => void;
+    const promise = new Promise<boolean>((done) => {
+      resolve = done;
+    });
+    // A lost bridge response must leave the buffer intact and dirty rather
+    // than hanging a close operation forever. A late reply is ignored.
+    const timer = setTimeout(
+      () => this.onSaveResult({ requestId, ok: false }),
+      60_000,
+    );
+    const pending = {
+      path,
+      model,
+      content: current,
+      version: model.getAlternativeVersionId(),
+      promise,
+      resolve,
+      timer,
+    };
+    this.pendingSaves.set(requestId, pending);
+    this.modelSaves.set(model, pending);
+    try {
+      if (saveAs || path.startsWith('untitled-')) {
+        this.bridge.send('to:file:saveas', { content: current, requestId });
+      } else {
+        this.bridge.send('to:file:save', {
+          file: path,
+          content: current,
+          openFile: false,
+          requestId,
+        });
+      }
+    } catch {
+      this.onSaveResult({ requestId, ok: false });
+    }
+    return promise;
+  }
+
+  /** Apply a correlated save result to its source tab, never the active tab. */
+  public onSaveResult(result: FileSaveResult): void {
+    const pending = this.pendingSaves.get(result?.requestId);
+    if (!pending) return;
+    this.pendingSaves.delete(result.requestId);
+    this.modelSaves.delete(pending.model);
+    clearTimeout(pending.timer);
+    let path = [...this.models].find(
+      ([, model]) => model === pending.model,
+    )?.[0];
+    if (!result.ok || !path) {
+      pending.resolve(false);
+      return;
+    }
+    const savedPath = result.path ?? path;
+    // Do not overwrite another open model if Save As chose its path.
+    if (savedPath !== path && this.models.has(savedPath)) {
+      pending.resolve(false);
+      return;
+    }
+    if (savedPath !== path) {
+      this.renameTab(
+        path,
+        savedPath,
+        savedPath.split(/[\\/]/).pop() ?? savedPath,
+      );
+      path = savedPath;
+    }
+    this.originals.set(path, pending.content);
+    this.baselineVersions.set(path, pending.version);
+    this.dirtyByPath.set(
+      path,
+      pending.model.getAlternativeVersionId() !== pending.version,
+    );
+    if (this.mkeditor.getModel() === pending.model) {
+      this.dispatcher.setTrackedContent({ content: pending.content });
+      this.trackContentHasChanged(pending.model.getValue() !== pending.content);
+    }
+    this.emitChange();
+    this.scheduleSessionSave();
+    pending.resolve(true);
   }
 
   /**
@@ -1356,6 +1454,10 @@ export class FileManager {
         });
       }
 
+      // Existing models may have been seeded in a different tab order.
+      // Restore the saved order instead of retaining Map insertion history.
+      this.tabs = new Map(session.tabs.map((tab) => [tab.path, this.tabs.get(tab.path)!]));
+
       // Pick what to activate. Prefer the persisted active file;
       // fall back to the first tab if the persisted active is gone.
       let toActivate: string | null = session.activeFile;
@@ -1364,6 +1466,9 @@ export class FileManager {
       }
       if (toActivate) {
         const info = this.tabs.get(toActivate);
+        // Even when the same seeded tab remains active, restore its saved
+        // cursor/scroll state instead of retaining the placeholder view.
+        this.activeFile = null;
         this.activateFile(toActivate, info?.name);
       } else {
         this.emitChange();

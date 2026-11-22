@@ -1,9 +1,27 @@
 import type { ExportSettings, SettingsFile } from '../../interfaces/Editor';
 import { exportSettings as defaults } from '../../config';
-import { syncPreviewToExportSettings } from '../../util';
+import { logger, syncPreviewToExportSettings } from '../../util';
 import { dom } from '../../dom';
 
 type PersistHandler = (next: Partial<SettingsFile>) => void;
+
+function normalizeSettings(value: unknown): ExportSettings {
+  const next = { ...defaults };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return next;
+  const stored = value as Partial<ExportSettings>;
+  if (typeof stored.withStyles === 'boolean') next.withStyles = stored.withStyles;
+  if (stored.container === 'container' || stored.container === 'container-fluid') {
+    next.container = stored.container;
+  }
+  for (const key of ['fontSize', 'lineSpacing'] as const) {
+    const value = stored[key];
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) next[key] = value;
+  }
+  for (const key of ['background', 'fontColor'] as const) {
+    if (typeof stored[key] === 'string' && stored[key]) next[key] = stored[key];
+  }
+  return next;
+}
 
 /**
  * Export-settings data + IPC owner. React's <ExportSettingsModal> reads
@@ -66,14 +84,7 @@ export class ExportSettingsProvider {
   // ---------------------------------------------------------------------
 
   public getDefaultSettings() {
-    return {
-      withStyles: true,
-      container: 'container-fluid',
-      fontSize: 16,
-      lineSpacing: 1.5,
-      background: '#ffffff',
-      fontColor: '#212529',
-    } as ExportSettings;
+    return { ...defaults };
   }
 
   public getSettings() {
@@ -82,7 +93,7 @@ export class ExportSettingsProvider {
 
   /** Apply a complete settings object (e.g., from `from:settings:set`). */
   public setSettings(next: ExportSettings) {
-    this.currentSettings = { ...next };
+    this.currentSettings = normalizeSettings(next);
     this.applyPreviewSync();
     this.emit();
   }
@@ -107,7 +118,8 @@ export class ExportSettingsProvider {
   }
 
   private applyPreviewSync() {
-    syncPreviewToExportSettings(this.currentSettings, dom.preview.dom);
+    const preview = dom.preview.dom;
+    if (preview) syncPreviewToExportSettings(this.currentSettings, preview);
   }
 
   // ---------------------------------------------------------------------
@@ -116,15 +128,15 @@ export class ExportSettingsProvider {
 
   private loadSettings() {
     if (this.mode === 'web') {
-      const storage = localStorage.getItem('mkeditor-export-settings');
-      if (storage) {
-        try {
-          this.currentSettings = JSON.parse(storage) as ExportSettings;
-        } catch {
-          this.currentSettings = { ...defaults };
+      try {
+        const storage = localStorage.getItem('mkeditor-export-settings');
+        const parsed: unknown = storage ? JSON.parse(storage) : null;
+        this.currentSettings = normalizeSettings(parsed);
+        if (JSON.stringify(parsed) !== JSON.stringify(this.currentSettings)) {
           this.updateSettingsInLocalStorage();
         }
-      } else {
+      } catch {
+        this.currentSettings = { ...defaults };
         this.updateSettingsInLocalStorage();
       }
     }
@@ -132,11 +144,17 @@ export class ExportSettingsProvider {
     this.snapshot = { ...this.currentSettings };
   }
 
-  public updateSettingsInLocalStorage() {
-    localStorage.setItem(
-      'mkeditor-export-settings',
-      JSON.stringify(this.currentSettings),
-    );
+  public updateSettingsInLocalStorage(): boolean {
+    try {
+      localStorage.setItem(
+        'mkeditor-export-settings',
+        JSON.stringify(this.currentSettings),
+      );
+      return true;
+    } catch (error) {
+      logger.warn('Unable to persist export settings', error);
+      return false;
+    }
   }
 
   /** Schedule a debounced persist (250ms default, 400ms for the slider). */
@@ -157,9 +175,10 @@ export class ExportSettingsProvider {
     if (nextJSON === this.lastPersistedJSON) return;
 
     if (this.mode === 'web') {
-      this.updateSettingsInLocalStorage();
+      if (!this.updateSettingsInLocalStorage()) return;
     } else {
-      this.persistHandler?.({ exportSettings: this.currentSettings });
+      if (!this.persistHandler) return;
+      this.persistHandler({ exportSettings: this.currentSettings });
     }
 
     this.lastPersistedJSON = nextJSON;

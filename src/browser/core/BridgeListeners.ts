@@ -15,8 +15,8 @@ import type {
 } from '../../app/interfaces/Assistant';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import type { BridgeManager } from './BridgeManager';
-import type { FileManager } from './FileManager';
-import type { FileTreeManager } from './FileTreeManager';
+import type { FileManager, FileSaveResult } from './FileManager';
+import { isPathWithinTree, type FileTreeManager } from './FileTreeManager';
 import {
   openModalExternal,
   type ModalKey,
@@ -83,12 +83,16 @@ export function registerBridgeListeners(
   // re-routing through `bridge.receive`.
   bridge.receive('from:file:new', () => manager.menuFileNew());
   bridge.receive('from:file:save', () => manager.menuFileSave());
+  bridge.receive('from:file:save-result', (result: FileSaveResult) =>
+    files.onSaveResult(result),
+  );
   bridge.receive('from:file:saveas', () => manager.menuFileSaveAs());
   bridge.receive('from:folder:open', () => manager.menuFolderOpen());
 
   // Handle post-folder open events
   bridge.receive('from:folder:opened', async ({ tree: t, path }) => {
-    const rootChanged = !tree.treeRoot || !path.startsWith(tree.treeRoot);
+    const rootChanged = !tree.treeRoot || !isPathWithinTree(path, tree.treeRoot) ||
+      (tree.openingFolder && !isPathWithinTree(tree.treeRoot, path));
     // Genuine workspace switch (had a root, now have a different one).
     const switchingWorkspace = rootChanged && tree.treeRoot !== null;
     if (switchingWorkspace) {

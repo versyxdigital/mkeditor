@@ -323,17 +323,13 @@ export class BridgeManager {
   }
 
   public menuFileSave(): void {
-    // Delegate to FileManager so every save path (toolbar button,
-    // menu accelerator Ctrl+S, native macOS menu, in-window
-    // TitleBar) clears the tab's unsaved-changes dot via the same
-    // `markTabClean` call. Previously this branch duplicated the
-    // body but skipped `markTabClean`, so the file was saved on
-    // disk while the dot stayed lit.
+    // FileManager clears the dirty baseline only after the correlated
+    // filesystem acknowledgement, including saves from every menu surface.
     this.fileManager.saveContentToFile();
   }
 
   public menuFileSaveAs(): void {
-    this.bridge.send('to:file:saveas', this.mkeditor.getValue());
+    void this.fileManager.saveContentToFile(true);
   }
 
   public menuFolderOpen(): void {

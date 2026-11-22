@@ -56,7 +56,12 @@ export interface ToolExecutor {
 
 interface ToolSpec {
   description: string;
-  parameters: object; // JSON Schema
+  parameters: {
+    type: 'object';
+    properties: Record<string, { type: 'string'; description?: string }>;
+    required?: string[];
+    additionalProperties: false;
+  };
   toolClass: ToolClass;
   execute(args: unknown, ctx: ToolContext): Promise<unknown>;
   preview?(args: unknown, ctx: ToolContext): ToolConfirmPreview;
@@ -142,7 +147,7 @@ export function buildEditContextSnippet(
   if (idx < 0) return null;
 
   // Mirror execute's uniqueness check.
-  const secondIdx = fileText.indexOf(oldText, idx + oldText.length);
+  const secondIdx = fileText.indexOf(oldText, idx + 1);
   if (secondIdx >= 0) return null;
 
   // Split for line-based slicing. Source is LF-normalised above so
@@ -171,7 +176,7 @@ export function buildEditContextSnippet(
   const before = snippetLines.join('\n');
   // The match is guaranteed to occur exactly once in `fileText`; the
   // sliced snippet contains it once too. Single-shot replace.
-  const after = before.replace(oldText, newText);
+  const after = before.replace(oldText, () => newText);
 
   const truncated = contextStart > 0 || contextEnd < totalLines - 1;
   // `detail` reports the LINES BEING EDITED — single line if the
@@ -955,8 +960,9 @@ const CATALOG: Record<string, ToolSpec> = {
       // on Accept), surface the unchanged content so the diff renders
       // honestly — no fake replacement. The Accept path will then
       // throw the same "oldText not found" the user expects.
-      return before.includes(needle)
-        ? before.replace(needle, replacement)
+      const first = before.indexOf(needle);
+      return needle && first >= 0 && before.indexOf(needle, first + 1) < 0
+        ? before.replace(needle, () => replacement)
         : before;
     },
     async execute(args, ctx) {
@@ -1003,7 +1009,7 @@ const CATALOG: Record<string, ToolSpec> = {
           `edit_file: oldText not found in ${path}. The text must appear verbatim (whitespace and punctuation matter). Pass enough surrounding context to be unique.`,
         );
       }
-      const secondIdx = haystack.indexOf(needle, firstIdx + needle.length);
+      const secondIdx = haystack.indexOf(needle, firstIdx + 1);
       if (secondIdx >= 0) {
         throw new Error(
           `edit_file: oldText matched multiple places in ${path}. Include more surrounding context so the match is unique.`,
@@ -1281,7 +1287,34 @@ export class AssistantTools implements ToolExecutor {
   }
 
   hasTool(name: string): boolean {
-    return name in CATALOG;
+    return Object.prototype.hasOwnProperty.call(CATALOG, name);
+  }
+
+  private getSpec(name: string): ToolSpec | undefined {
+    return this.hasTool(name) ? CATALOG[name] : undefined;
+  }
+
+  /** Provider schema metadata cannot replace validation at execution time. */
+  private validateArguments(spec: ToolSpec, args: unknown): void {
+    if (typeof args !== 'object' || args === null || Array.isArray(args)) {
+      throw new Error('Tool arguments must be an object');
+    }
+    const values = args as Record<string, unknown>;
+    for (const key of spec.parameters.required ?? []) {
+      if (!Object.prototype.hasOwnProperty.call(values, key)) {
+        throw new Error(`Missing required tool argument: ${key}`);
+      }
+    }
+    for (const [key, value] of Object.entries(values)) {
+      if (
+        !Object.prototype.hasOwnProperty.call(spec.parameters.properties, key)
+      ) {
+        throw new Error(`Unknown tool argument: ${key}`);
+      }
+      if (typeof value !== spec.parameters.properties[key].type) {
+        throw new Error(`Invalid tool argument: ${key} must be a string`);
+      }
+    }
   }
 
   describe(): ToolDescriptor[] {
@@ -1293,13 +1326,14 @@ export class AssistantTools implements ToolExecutor {
   }
 
   classify(name: string): ToolClass {
-    return CATALOG[name]?.toolClass ?? 'unknown';
+    return this.getSpec(name)?.toolClass ?? 'unknown';
   }
 
   buildPreview(name: string, args: unknown): ToolConfirmPreview | null {
-    const spec = CATALOG[name];
+    const spec = this.getSpec(name);
     if (!spec || !spec.preview) return null;
     try {
+      this.validateArguments(spec, args);
       return spec.preview(args, this.ctx);
     } catch {
       // Preview is best-effort; if it fails (e.g. model not yet open)
@@ -1313,14 +1347,16 @@ export class AssistantTools implements ToolExecutor {
     args: unknown,
     side: 'before' | 'after',
   ): Promise<string | undefined> {
-    const spec = CATALOG[name];
+    const spec = this.getSpec(name);
     if (!spec || !spec.getFullContent) return undefined;
+    this.validateArguments(spec, args);
     return spec.getFullContent(args, this.ctx, side);
   }
 
   async execute(name: string, args: unknown): Promise<unknown> {
-    const spec = CATALOG[name];
+    const spec = this.getSpec(name);
     if (!spec) throw new UnknownToolError(name);
+    this.validateArguments(spec, args);
     return spec.execute(args, this.ctx);
   }
 }

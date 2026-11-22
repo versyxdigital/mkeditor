@@ -1,6 +1,6 @@
-import type MarkdownIt from 'markdown-it';
+import type { MarkdownIt } from 'markdown-it';
 
-const TableStyle = (md: MarkdownIt, options: any) => {
+const TableStyle = (md: MarkdownIt, options?: any) => {
   const defaults = {
     tableClassList: ['table', 'table-sm', 'table-bordered', 'table-striped'],
   };

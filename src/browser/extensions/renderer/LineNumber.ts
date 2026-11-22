@@ -1,4 +1,4 @@
-import type MarkdownIt from 'markdown-it';
+import type { MarkdownIt } from 'markdown-it';
 import { selfRender } from '../../util';
 import { dom } from '../../dom';
 

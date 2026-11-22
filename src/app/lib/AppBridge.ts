@@ -71,6 +71,7 @@ export class AppBridge {
   }> = [];
   private invokeChannels: string[] = [];
   private disposed = false;
+  private registered = false;
 
   /**
    * Create a new AppBridge instance to manage IPC traffic.
@@ -103,6 +104,9 @@ export class AppBridge {
    * @returns
    */
   register() {
+    if (this.registered || this.disposed) return;
+    this.registered = true;
+
     // Enable logging from the renderer context
     this.on('log', (_e, { level, msg, meta }: LogMessage) => {
       const logger = this.providers.logger?.log;
@@ -235,46 +239,65 @@ export class AppBridge {
           fromOpen = false,
           openPath = null,
           openFile = true,
+          requestId,
         },
       ) => {
         if (await this.promptUserConfirmSave(this.context, prompt)) {
-          AppStorage.saveFile(this.context, {
+          const result = await AppStorage.saveFile(this.context, {
             id: event.sender.id,
             data: content,
             filePath: file,
             encoding: 'utf-8',
-            openFile,
-          }).then(() => {
-            if (openPath) {
-              AppStorage.openPath(this.context, openPath);
-            } else if (fromOpen) {
-              AppStorage.showOpenDialog(this.context);
-            }
-
-            this.setWindowTitle();
+            openFile: requestId ? false : openFile,
           });
-        } else {
+          if (requestId && !this.context.isDestroyed()) {
+            this.context.webContents.send('from:file:save-result', {
+              requestId,
+              ...result,
+            });
+          }
+          if (!result.ok) return;
           if (openPath) {
-            AppStorage.openPath(this.context, openPath);
+            await AppStorage.openPath(this.context, openPath);
           } else if (fromOpen) {
-            AppStorage.showOpenDialog(this.context);
+            await AppStorage.showOpenDialog(this.context);
+          }
+          this.setWindowTitle();
+        } else {
+          if (requestId && !this.context.isDestroyed()) {
+            this.context.webContents.send('from:file:save-result', {
+              requestId,
+              ok: false,
+              cancelled: true,
+            });
+          }
+          if (openPath) {
+            await AppStorage.openPath(this.context, openPath);
+          } else if (fromOpen) {
+            await AppStorage.showOpenDialog(this.context);
           }
         }
       },
     );
 
-    // Save as event, doesn't require checks on "activeFile",
-    // this will simply just call AppStorage save and triger
-    // the dialog for the user to save the file to the location
-    // of their choice.
-    this.on('to:file:saveas', (event, data) => {
-      AppStorage.saveFile(this.context, {
+    // Legacy callers pass a string. Correlated saves await the result
+    // without reopening whichever tab happens to be active after the picker.
+    this.on('to:file:saveas', async (event, data) => {
+      const correlated = typeof data === 'object' && data !== null;
+      const requestId = correlated ? data.requestId : undefined;
+      const result = await AppStorage.saveFile(this.context, {
         id: event.sender.id,
-        data,
+        data: correlated ? data.content : data,
         encoding: 'utf-8',
-      }).then(() => {
-        this.setWindowTitle();
+        openFile: requestId ? false : undefined,
       });
+      if (requestId && !this.context.isDestroyed()) {
+        this.context.webContents.send('from:file:save-result', {
+          requestId,
+          ...result,
+        });
+      }
+      this.setWindowTitle();
     });
 
     this.on(
@@ -664,7 +687,13 @@ export class AppBridge {
   ): void {
     const handler = (event: IpcMainEvent, ...args: unknown[]) => {
       if (event.sender.id !== this.context.webContents.id) return;
-      void fn(event, ...args);
+      try {
+        Promise.resolve(fn(event, ...args)).catch((err) => {
+          this.providers.logger?.log.error(`IPC ${channel} failed`, err);
+        });
+      } catch (err) {
+        this.providers.logger?.log.error(`IPC ${channel} failed`, err);
+      }
     };
     ipcMain.on(channel, handler);
     this.listeners.push({

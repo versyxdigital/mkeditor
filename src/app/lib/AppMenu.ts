@@ -176,8 +176,7 @@ export class AppMenu {
 
   /** Track the `to:command:run` handler so we can detach it on close. */
   private commandBridgeHandler:
-    | ((event: IpcMainEvent, commandId: string) => void)
-    | null = null;
+    ((event: IpcMainEvent, commandId: string) => void) | null = null;
 
   /**
    * Register the `to:command:run` IPC listener so the renderer's

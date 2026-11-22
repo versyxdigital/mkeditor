@@ -1,11 +1,5 @@
 import { app, dialog, type BrowserWindow } from 'electron';
-import {
-  statSync,
-  readFileSync,
-  writeFileSync,
-  realpathSync,
-  promises as fs,
-} from 'fs';
+import { readFileSync, writeFileSync, realpathSync, promises as fs } from 'fs';
 import {
   basename,
   join,
@@ -75,14 +69,13 @@ export class AppStorage {
   /**
    * Throw if `target` is outside the open workspace (or no workspace
    * is open). Returns the resolved (canonicalised, symlink-followed)
-   * absolute path when the check passes — callers should fs-op on
-   * the returned value, not the input, so symlink escapes can't
-   * race a TOCTOU between this check and the fs call.
+   * absolute path when the check passes. Callers must use the returned
+   * path rather than the original renderer-supplied alias.
    *
    * Pass `mustExist: false` for write/create paths whose target may
-   * not exist yet — the parent directory is canonicalised instead
-   * and the (un-realpath'd) basename is rejoined. The parent itself
-   * MUST exist for that mode; callers can `mkdir -p` separately.
+   * not exist yet. Existing targets are canonicalised too; for a missing
+   * target we resolve the nearest existing ancestor before appending
+   * missing segments. This catches symlinks above missing directories.
    */
   static async assertInWorkspace(
     target: string,
@@ -99,28 +92,30 @@ export class AppStorage {
     }
     let absolute = resolve(target);
     if (opts.mustExist === false) {
-      // For write/create: canonicalise the PARENT (which must exist)
-      // and rejoin the basename. We don't realpath the basename
-      // because the file isn't there yet — a same-named symlink
-      // racing into place between check and write is unlikely in
-      // practice and main would need OS-level atomic ops to prevent.
-      const parent = dirname(absolute);
-      const base = basename(absolute);
-      let canonicalParent: string;
-      try {
-        canonicalParent = await fs.realpath(parent);
-      } catch (err) {
-        const code = (err as NodeJS.ErrnoException).code;
-        if (code === 'ENOENT') {
-          // Parent doesn't exist yet — fall back to lexical
-          // resolution + scope check. mkdir -p in the caller will
-          // create it under the workspace root.
-          canonicalParent = parent;
-        } else {
-          throw err;
+      const missing: string[] = [];
+      let ancestor = absolute;
+      for (;;) {
+        try {
+          absolute = join(await fs.realpath(ancestor), ...missing);
+          break;
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+          // A dangling symlink exists but cannot be canonicalised. Never
+          // treat it as a missing filename and follow it during a write.
+          try {
+            await fs.lstat(ancestor);
+            throw new Error(`Cannot resolve symbolic link: ${ancestor}`);
+          } catch (statError) {
+            if ((statError as NodeJS.ErrnoException).code !== 'ENOENT') {
+              throw statError;
+            }
+          }
+          const parent = dirname(ancestor);
+          if (parent === ancestor) throw err;
+          missing.unshift(basename(ancestor));
+          ancestor = parent;
         }
       }
-      absolute = join(canonicalParent, base);
     } else {
       try {
         absolute = await fs.realpath(absolute);
@@ -224,104 +219,60 @@ export class AppStorage {
    * @param options - save file options
    * @returns
    */
-  static async saveFile(context: BrowserWindow, options: SaveFileOptions) {
-    const config = {
-      title: 'Save file',
-      defaultPath: 'Untitled',
-      buttonLabel: 'Save',
-
-      filters: [
-        { name: 'md', extensions: ['md'] },
-        { name: 'All Files', extensions: ['*'] },
-      ],
-    };
-
-    const isHTMLExport =
-      options.data && options.data.startsWith('<!DOCTYPE html>');
+  static async saveFile(
+    context: BrowserWindow,
+    options: SaveFileOptions,
+  ): Promise<
+    | { ok: true; path: string }
+    | { ok: false; cancelled?: boolean; error?: string }
+  > {
+    const isHTMLExport = options.data.startsWith('<!DOCTYPE html>');
     const errorAction = isHTMLExport
       ? 'notifications:unable_export_preview'
       : 'notifications:unable_save_markdown';
     const successAction = isHTMLExport
       ? 'notifications:exported_html_success'
       : 'notifications:saved_markdown_success';
+    const config = {
+      title: 'Save file',
+      defaultPath: isHTMLExport ? `export-0${options.id}` : 'Untitled',
+      buttonLabel: 'Save',
+      filters: [
+        ...(isHTMLExport ? [{ name: 'html', extensions: ['html'] }] : []),
+        { name: 'md', extensions: ['md'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    };
 
-    if (isHTMLExport) {
-      config.filters.unshift({
-        name: 'html',
-        extensions: ['html'],
-      });
-      config.defaultPath = `export-0${options.id}`;
-    }
-
-    if (options.filePath) {
-      let check;
-
-      try {
-        check = statSync(options.filePath);
-      } catch (err) {
-        const details = err as { code: string };
-        check = details.code || err;
-      }
-
-      if (check !== 'ENOENT') {
-        try {
-          writeFileSync(options.filePath, options.data, {
-            encoding: options.encoding ?? 'utf-8',
-          });
-
-          context.webContents.send('from:notification:display', {
-            status: 'success',
-            key: successAction,
-          });
-
-          if (!isHTMLExport && options.openFile !== false) {
-            AppStorage.setActiveFile(context, options.filePath);
-          }
-        } catch (err) {
-          context.webContents.send('from:notification:display', {
-            status: 'error',
-            key: errorAction,
-          });
+    try {
+      let filePath = options.filePath;
+      if (!filePath) {
+        const selection = await dialog.showSaveDialog(context, config);
+        if (selection.canceled || !selection.filePath) {
+          return { ok: false, cancelled: true };
         }
-      } else {
-        context.webContents.send('from:notification:display', {
-          status: 'error',
-          key: errorAction,
-        });
+        filePath = selection.filePath;
       }
-    } else {
-      dialog
-        .showSaveDialog(context, config)
-        .then(({ filePath }) => {
-          try {
-            writeFileSync(<string>filePath, options.data, {
-              encoding: options.encoding ?? 'utf-8',
-            });
-
-            context.webContents.send('from:notification:display', {
-              status: 'success',
-              key: successAction,
-            });
-
-            if (!isHTMLExport && options.openFile !== false) {
-              AppStorage.setActiveFile(context, filePath);
-            }
-          } catch (err: unknown) {
-            const details = err as { code: string };
-            if (details.code !== 'ENOENT') {
-              context.webContents.send('from:notification:display', {
-                status: 'error',
-                key: 'notifications:generic_error_try_again',
-              });
-            }
-          }
-        })
-        .catch(() => {
-          context.webContents.send('from:notification:display', {
-            status: 'error',
-            key: 'notifications:generic_error_try_again',
-          });
-        });
+      await fs.writeFile(filePath, options.data, {
+        encoding: options.encoding ?? 'utf-8',
+      });
+      context.webContents.send('from:notification:display', {
+        status: 'success',
+        key: successAction,
+      });
+      if (!isHTMLExport && options.openFile !== false) {
+        AppStorage.setActiveFile(context, filePath);
+      }
+      return { ok: true, path: filePath };
+    } catch (err) {
+      context.webContents.send('from:notification:display', {
+        status: 'error',
+        key: errorAction,
+      });
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
     }
   }
 
@@ -338,44 +289,33 @@ export class AppStorage {
     offscreen: BrowserWindow,
     options: SaveFileOptions,
   ) {
-    const defaultPath = `pdf-export-${options.id}`;
-    offscreen.setTitle(defaultPath);
-
-    await offscreen.loadURL(
-      `data:text/html;charset=utf-8,${encodeURIComponent(options.data)}`,
-    );
-
-    await offscreen.webContents.executeJavaScript(`
-      (async () => {
-        await document.fonts?.ready;
-        const images = Array.from(document.images).map(img =>
-          img.complete ? Promise.resolve() :
-          new Promise(res => { img.onload = img.onerror = () => res(); })
-        );
-        await Promise.all(images);
-      })();
-    `);
-
-    const pdf = await offscreen.webContents.printToPDF({
-      pageSize: 'A4',
-      printBackground: true,
-      preferCSSPageSize: true,
-    });
-
-    const { filePath } = await dialog.showSaveDialog(context, {
-      filters: [{ name: defaultPath, extensions: ['pdf'] }],
-      defaultPath: `${defaultPath}.pdf`,
-    });
-
-    if (!filePath) {
-      offscreen.destroy();
-      return;
-    }
-
     try {
-      writeFileSync(filePath, pdf, {
-        encoding: options.encoding ?? 'utf-8',
+      const defaultPath = `pdf-export-${options.id}`;
+      offscreen.setTitle(defaultPath);
+      await offscreen.loadURL(
+        `data:text/html;charset=utf-8,${encodeURIComponent(options.data)}`,
+      );
+      await offscreen.webContents.executeJavaScript(`
+        (async () => {
+          await document.fonts?.ready;
+          const images = Array.from(document.images).map(img =>
+            img.complete ? Promise.resolve() :
+            new Promise(res => { img.onload = img.onerror = () => res(); })
+          );
+          await Promise.all(images);
+        })();
+      `);
+      const pdf = await offscreen.webContents.printToPDF({
+        pageSize: 'A4',
+        printBackground: true,
+        preferCSSPageSize: true,
       });
+      const { canceled, filePath } = await dialog.showSaveDialog(context, {
+        filters: [{ name: defaultPath, extensions: ['pdf'] }],
+        defaultPath: `${defaultPath}.pdf`,
+      });
+      if (canceled || !filePath) return;
+      await fs.writeFile(filePath, pdf);
       context.webContents.send('from:notification:display', {
         status: 'success',
         key: 'notifications:exported_pdf_success',
@@ -386,7 +326,7 @@ export class AppStorage {
         key: 'notifications:unable_export_preview',
       });
     } finally {
-      offscreen.destroy();
+      if (!offscreen.isDestroyed()) offscreen.destroy();
     }
   }
 
@@ -397,37 +337,24 @@ export class AppStorage {
    * @returns
    */
   static async showOpenDialog(context: BrowserWindow) {
-    return new Promise((resolve) => {
-      dialog
-        .showOpenDialog({
-          filters: [
-            { name: 'Text Files', extensions: ['html', 'md', 'txt'] },
-            { name: 'All Files', extensions: ['*'] },
-          ],
-          properties: ['openFile'],
-        })
-        .then(({ filePaths }) => {
-          if (filePaths.length === 0) {
-            throw new Error('noselection');
-          }
-
-          const file = AppStorage.setActiveFile(context, filePaths[0]);
-
-          return resolve({
-            file: filePaths[0],
-            filename: file.filename,
-            content: file.content,
-          });
-        })
-        .catch((err) => {
-          if (err.message !== 'noselection') {
-            context.webContents.send('from:notification:display', {
-              status: 'error',
-              key: 'notifications:unable_open_file',
-            });
-          }
-        });
-    });
+    try {
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        filters: [
+          { name: 'Text Files', extensions: ['html', 'md', 'txt'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+        properties: ['openFile'],
+      });
+      if (canceled || filePaths.length === 0) return null;
+      const file = AppStorage.setActiveFile(context, filePaths[0]);
+      return { file: filePaths[0], ...file };
+    } catch {
+      context.webContents.send('from:notification:display', {
+        status: 'error',
+        key: 'notifications:unable_open_file',
+      });
+      return null;
+    }
   }
 
   /**
@@ -458,9 +385,9 @@ export class AppStorage {
     } catch (err) {
       const code = (err as any)?.code || (err as Error).message;
       const key =
-        code == 'EOENT' || code == 'invalidpath'
+        code == 'ENOENT' || code == 'invalidpath'
           ? 'notifications:path_not_exist'
-          : code == 'EACCESS'
+          : code == 'EACCES' || code == 'EPERM'
             ? 'notifications:permission_denied_open_path'
             : 'notifications:unable_open_path';
 
@@ -532,8 +459,9 @@ export class AppStorage {
       // "new file" flow and the AI assistant's `create_file` tool
       // route through here. fs.mkdir with `recursive: true` is a
       // no-op when the directory already exists.
-      await fs.mkdir(parent, { recursive: true });
-      await fs.writeFile(file, content, 'utf-8');
+      await fs.mkdir(dirname(file), { recursive: true });
+      // New-file actions must never truncate an existing document.
+      await fs.writeFile(file, content, { encoding: 'utf-8', flag: 'wx' });
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
       // Open the newly-written file as a tab. Inlined here (instead of

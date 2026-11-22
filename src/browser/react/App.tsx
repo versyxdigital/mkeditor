@@ -214,8 +214,7 @@ const MenuActionBridge: React.FC = () => {
             // the P8 Help → Configure AI Providers menu item that
             // opens Settings on a specific tab.
             const payload = action.payload as
-              | ModalKey
-              | { modal: ModalKey; tab?: 'general' | 'assistant' };
+              ModalKey | { modal: ModalKey; tab?: 'general' | 'assistant' };
             if (typeof payload === 'string') {
               openModal(payload);
             } else if (payload && typeof payload.modal === 'string') {

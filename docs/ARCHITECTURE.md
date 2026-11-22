@@ -1,6 +1,6 @@
 # MKEditor — Architecture
 
-This document describes how MKEditor is put together internally: how the two execution contexts (Electron main + renderer) interact, what each subsystem owns, and the data flows for the main user journeys (boot, edit/preview, save, open, export, settings change, language change). For a quick orientation see [CLAUDE.md](../CLAUDE.md); for build/run see [CONTRIBUTING.md](../CONTRIBUTING.md).
+This document describes how MKEditor is put together internally: how the two execution contexts (Electron main + renderer) interact, what each subsystem owns, and the data flows for the main user journeys (boot, edit/preview, save, open, export, settings change, language change). For a quick orientation see [AGENTS.md](../AGENTS.md); for build/run see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## 1. High-Level Picture
 
@@ -529,9 +529,7 @@ The right-hand sidebar that hosts per-provider chat surfaces (Anthropic / OpenAI
       "createdAt": 0,
       "updatedAt": 0,
       "autoAcceptWrites": false,
-      "messages": [
-        /* UiChatMessage[] */
-      ]
+      "messages": [/* UiChatMessage[] */]
     }
   ]
 }

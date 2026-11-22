@@ -150,7 +150,7 @@ const EMPTY_CHAT_SNAPSHOT: AssistantChatSnapshot = {
  * config-only consumers don't re-render on chat churn (chunks
  * arrive multiple times per second during streaming).
  *
- * Architectural responsibilities (CLAUDE.md): owns data + IPC;
+ * Architectural responsibilities (AGENTS.md): owns data + IPC;
  * never imports React. The composition root injects the bridge
  * ref through the constructor.
  */
@@ -931,6 +931,15 @@ export class AssistantManager {
   public onToolCall(payload: ChatToolCallEvent): void {
     const inflight = this.inflightChats.get(payload.callId);
     if (!inflight) return; // foreign callId (e.g. test ping) — silently drop
+    const conversation = this.conversations[inflight.provider].get(
+      inflight.conversationId,
+    );
+    const message = conversation?.messages.find(
+      (m) => m.id === inflight.assistantMessageId,
+    );
+    // Replayed events must not execute a write twice or replace a pending decision.
+    if (message?.toolCalls?.some((tc) => tc.toolCallId === payload.toolCallId))
+      return;
     this.drainPendingForCall(payload.callId);
     const executor = this.toolExecutor;
     if (!executor || !executor.hasTool(payload.toolName)) {
@@ -982,6 +991,7 @@ export class AssistantManager {
         payload.toolName,
         payload.arguments,
       );
+      if (this.inflightChats.get(payload.callId) !== inflight) return;
       this.updateToolCall(inflight, payload.toolCallId, (tc) => ({
         ...tc,
         status: 'succeeded',
@@ -989,6 +999,7 @@ export class AssistantManager {
       }));
       this.shipToolResult(payload.callId, payload.toolCallId, result);
     } catch (err) {
+      if (this.inflightChats.get(payload.callId) !== inflight) return;
       const message = err instanceof Error ? err.message : String(err);
       this.updateToolCall(inflight, payload.toolCallId, (tc) => ({
         ...tc,
@@ -1264,6 +1275,7 @@ export class AssistantManager {
     // Read first — if it throws, we don't poison the chip row with a
     // path we can't actually include.
     const { content } = await this.contextProvider.readFile(path);
+    if (this.conversations[provider].get(conversationId) !== conv) return;
     this.mentionContents.set(path, content);
     if (conv.mentions.includes(path)) {
       // Re-add: chip stays put, content gets refreshed (above), but
@@ -1384,9 +1396,10 @@ export class AssistantManager {
 
   /**
    * Assemble the system context message that gets prepended to the
-   * next send. Reads the active-file / selection synchronously off
-   * the context provider and the mention contents from the cache
-   * (`addMention` populates it eagerly). Returns null when there's
+   * next send. Refreshes explicitly mentioned files through the context
+   * provider so restored mentions and unsaved edits are included. Reads
+   * the active-file/selection after I/O and rechecks sharing controls.
+   * Returns null when there's
    * nothing to share — caller (`startCall`) just ships the message
    * history without a leading system turn.
    */
@@ -1396,25 +1409,42 @@ export class AssistantManager {
   ): Promise<ChatMessage | null> {
     const conv = this.conversations[provider].get(conversationId);
     if (!conv || !this.contextProvider) return null;
+    const contextProvider = this.contextProvider;
+    const mentions = await Promise.all(
+      conv.mentions.map(async (path) => {
+        try {
+          return {
+            path,
+            content: (await contextProvider.readFile(path)).content,
+          };
+        } catch {
+          // Deleted/inaccessible mentions should not reuse a stale cached document.
+          return { path, content: undefined };
+        }
+      }),
+    );
+    if (this.conversations[provider].get(conversationId) !== conv) return null;
     const blocks: string[] = [];
     const seenPaths = new Set<string>();
     const active = conv.shareActiveFile
-      ? this.contextProvider.getActiveFile()
+      ? contextProvider.getActiveFile()
       : null;
     if (active) {
       blocks.push(formatFileBlock(active.path, active.content));
       seenPaths.add(active.path);
     }
     if (conv.shareSelection) {
-      const sel = this.contextProvider.getSelection();
-      if (sel && sel.text) {
-        blocks.push(formatSelectionBlock(sel));
-      }
+      const sel = contextProvider.getSelection();
+      if (sel && sel.text) blocks.push(formatSelectionBlock(sel));
     }
-    for (const path of conv.mentions) {
-      if (seenPaths.has(path)) continue; // already included via active-file
-      const content = this.mentionContents.get(path);
-      if (content === undefined) continue; // not yet loaded — skip silently
+    for (const { path, content } of mentions) {
+      if (!conv.mentions.includes(path)) continue;
+      if (content === undefined) {
+        this.mentionContents.delete(path);
+        continue;
+      }
+      this.mentionContents.set(path, content);
+      if (seenPaths.has(path)) continue;
       blocks.push(formatFileBlock(path, content));
       seenPaths.add(path);
     }
@@ -1532,6 +1562,16 @@ export class AssistantManager {
     const wasEnabled = this.persistEnabled;
     this.persistEnabled = false;
     try {
+      if (this.persistTimer !== null) {
+        clearTimeout(this.persistTimer);
+        this.persistTimer = null;
+      }
+      for (const callId of Array.from(this.inflightChats.keys())) this.cancelCall(callId);
+      this.pendingChunkBuffers.clear();
+      if (this.revealFrameHandle !== null) {
+        this.cancelFrame(this.revealFrameHandle);
+        this.revealFrameHandle = null;
+      }
       // Clear any in-memory state first so restore is idempotent.
       this.conversations = {
         anthropic: new Map(),
@@ -1540,6 +1580,7 @@ export class AssistantManager {
       };
       this.activeConv = { anthropic: null, openai: null, ollama: null };
       this.drafts.clear();
+      this.mentionContents.clear();
       this.activeProviderTab = null;
       if (!snapshot) {
         this.rebuildChatSnapshot();
@@ -1553,42 +1594,55 @@ export class AssistantManager {
 
   private applyRestoreSnapshot(snapshot: PersistedConversations): void {
     for (const provider of PROVIDER_IDS) {
-      const persistedList = snapshot.conversations?.[provider] ?? [];
+      const entries = snapshot.conversations?.[provider];
+      const persistedList = Array.isArray(entries) ? entries : [];
       for (const persisted of persistedList) {
+        if (!persisted || typeof persisted.id !== 'string' ||
+            typeof persisted.title !== 'string' || typeof persisted.model !== 'string' ||
+            !Array.isArray(persisted.messages) || !Array.isArray(persisted.mentions) ||
+            !Number.isFinite(persisted.createdAt) || !Number.isFinite(persisted.updatedAt)) continue;
         // Re-hydrate as a runtime ChatConversation. Messages get
         // their runtime status mapped 1:1 (persisted statuses are
         // already in the runtime vocabulary minus 'streaming').
-        const messages: UiChatMessage[] = persisted.messages.map((m) => ({
+        const messages: UiChatMessage[] = persisted.messages.filter((m) =>
+          m && typeof m.id === 'string' && typeof m.content === 'string' &&
+          (m.role === 'user' || m.role === 'assistant') &&
+          (m.status === 'complete' || m.status === 'cancelled' || m.status === 'failed') &&
+          Number.isFinite(m.createdAt)
+        ).map((m) => ({
           id: m.id,
           role: m.role,
           content: m.content,
           status: m.status,
           ...(m.errorCode ? { errorCode: m.errorCode } : {}),
           ...(m.errorMessage ? { errorMessage: m.errorMessage } : {}),
-          ...(m.toolCalls && m.toolCalls.length > 0
-            ? { toolCalls: m.toolCalls }
+          ...(Array.isArray(m.toolCalls) && m.toolCalls.length > 0
+            ? { toolCalls: m.toolCalls.filter((tc) => tc && typeof tc.toolCallId === 'string' &&
+                typeof tc.toolName === 'string' && (tc.status === 'succeeded' || tc.status === 'failed')) }
             : {}),
           createdAt: m.createdAt,
         }));
         const conv: ChatConversation = {
           id: persisted.id,
-          providerId: persisted.providerId,
+          providerId: provider,
           title: persisted.title,
           model: persisted.model,
           messages,
-          autoAcceptWrites: persisted.autoAcceptWrites,
-          shareActiveFile: persisted.shareActiveFile,
-          shareSelection: persisted.shareSelection,
-          mentions: [...persisted.mentions],
+          autoAcceptWrites: persisted.autoAcceptWrites === true,
+          shareActiveFile: persisted.shareActiveFile !== false,
+          shareSelection: persisted.shareSelection === true,
+          mentions: persisted.mentions.filter((path) => typeof path === 'string'),
           createdAt: persisted.createdAt,
           updatedAt: persisted.updatedAt,
         };
         this.conversations[provider].set(conv.id, conv);
       }
-      this.activeConv[provider] =
-        snapshot.activeConversation?.[provider] ?? null;
+      const active = snapshot.activeConversation?.[provider];
+      this.activeConv[provider] = active && this.conversations[provider].has(active)
+        ? active : this.firstByRecency(provider)?.id ?? null;
     }
-    this.activeProviderTab = snapshot.activeProvider ?? null;
+    this.activeProviderTab = PROVIDER_IDS.includes(snapshot.activeProvider as ProviderId)
+      ? snapshot.activeProvider : null;
     if (snapshot.drafts) {
       for (const [k, v] of Object.entries(snapshot.drafts)) {
         if (typeof v === 'string' && v.length > 0) this.drafts.set(k, v);
@@ -1893,7 +1947,7 @@ function baseName(path: string): string {
  * so models don't see a prematurely-closed code block.
  */
 function formatFileBlock(path: string, content: string): string {
-  const fence = content.includes('```') ? '````' : '```';
+  const fence = contextFence(content);
   return `${fence}md path="${path}"\n${content}\n${fence}`;
 }
 
@@ -1907,7 +1961,16 @@ function formatSelectionBlock(sel: {
   startLine: number;
   endLine: number;
 }): string {
-  const fence = sel.text.includes('```') ? '````' : '```';
+  const fence = contextFence(sel.text);
   const pathAttr = sel.path ? ` path="${sel.path}"` : '';
   return `${fence}md${pathAttr} lines="L${sel.startLine}-L${sel.endLine}"\n${sel.text}\n${fence}`;
+}
+
+/** Keep nested Markdown fences inside the context block, regardless of width. */
+function contextFence(content: string): string {
+  let width = 3;
+  for (const match of content.matchAll(/`{3,}/g)) {
+    width = Math.max(width, match[0].length + 1);
+  }
+  return '`'.repeat(width);
 }

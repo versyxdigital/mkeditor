@@ -1,6 +1,6 @@
 # MKEditor — Roadmap
 
-Living document. Tracks planned work, open architectural questions, and recently completed milestones. Update as decisions land. For current architecture see [ARCHITECTURE.md](ARCHITECTURE.md); for quick context see [../CLAUDE.md](../CLAUDE.md).
+Living document. Tracks planned work, open architectural questions, and recently completed milestones. Update as decisions land. For current architecture see [ARCHITECTURE.md](ARCHITECTURE.md); for quick context see [../AGENTS.md](../AGENTS.md).
 
 ## Status Legend
 
@@ -18,8 +18,8 @@ Living document. Tracks planned work, open architectural questions, and recently
 - 🟢 **Session restore** _(2026-05-17)_ — Open tabs, the active tab, the workspace folder, and per-tab cursor/scroll/folding state survive quit/relaunch on both desktop and web. Three-phase delivery covered in [SESSION_RESTORE.md](SESSION_RESTORE.md); end-to-end surface documented in [ARCHITECTURE.md §4.12](ARCHITECTURE.md).
 - 🟢 **Web file explorer** _(2026-05-17)_ — Sidebar can open, browse, and edit local folders in Chromium-based browsers via the File System Access API. Workspace handle persists across refresh via IndexedDB.
 - 🟢 **Dependency bumps + CI + pre-commit hook** _(2026-05-17)_ — Electron `^37.4.0` → `^42.1.0`, Monaco `^0.52.2` → `^0.55.1`, TS + ESLint upgraded. CI workflow extended with `prettier-check` and `build-editor`/`build-app` verification. Husky pre-commit hook runs `prettier-check` + `lint` + `test` on every commit (`npm install` wires it via `prepare`).
-- 🟢 **React migration** _(2026-05-16)_ — Renderer rewritten as React 19 + shadcn/ui + Tailwind v4 on top of the existing managers and IPC bridge. Bootstrap, SweetAlert2, split.js, and `@popperjs/core` removed. CSS bundle shrunk ~229 KB. See [REACT_MIGRATION.md](REACT_MIGRATION.md) for the full ten-phase history; current state described in [ARCHITECTURE.md](ARCHITECTURE.md) and [../CLAUDE.md](../CLAUDE.md).
-- 🟢 **Context & architecture docs** _(2026-05-16)_ — Added [CLAUDE.md](../CLAUDE.md) and [docs/ARCHITECTURE.md](ARCHITECTURE.md) covering process boundaries, IPC contract, renderer composition, data flows, build pipeline, conventions.
+- 🟢 **React migration** _(2026-05-16)_ — Renderer rewritten as React 19 + shadcn/ui + Tailwind v4 on top of the existing managers and IPC bridge. Bootstrap, SweetAlert2, split.js, and `@popperjs/core` removed. CSS bundle shrunk ~229 KB. See [REACT_MIGRATION.md](REACT_MIGRATION.md) for the full ten-phase history; current state described in [ARCHITECTURE.md](ARCHITECTURE.md) and [../AGENTS.md](../AGENTS.md).
+- 🟢 **Context & architecture docs** _(2026-05-16)_ — Added [AGENTS.md](../AGENTS.md) and [docs/ARCHITECTURE.md](ARCHITECTURE.md) covering process boundaries, IPC contract, renderer composition, data flows, build pipeline, conventions.
 
 ---
 

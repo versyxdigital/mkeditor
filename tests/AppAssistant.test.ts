@@ -17,13 +17,13 @@ import type { ChatRequest } from '../src/app/interfaces/Assistant';
 
 // Mock `ai` before importing AppAssistant so the import sees the mock.
 // `tool` and `jsonSchema` are pass-through identities (we never need
-// the real schema validation in these unit tests). `stepCountIs` is
+// the real schema validation in these unit tests). `isStepCount` is
 // a no-op factory returning a marker.
 jest.mock('ai', () => ({
   streamText: jest.fn(),
   tool: (spec: unknown) => spec,
   jsonSchema: (schema: unknown) => schema,
-  stepCountIs: (n: number) => ({ kind: 'stepCountIs', n }),
+  isStepCount: (n: number) => ({ kind: 'isStepCount', n }),
 }));
 
 // Mock the per-provider SDK adapters so importing them doesn't pull in
@@ -58,7 +58,7 @@ type Chunk =
 
 /**
  * Build a fake StreamTextResult that yields the given chunks in order
- * and exposes the response/usage/finishReason promises.
+ * and exposes the responseMessages/usage/finishReason promises.
  */
 function makeStreamResult(
   chunks: Chunk[],
@@ -73,13 +73,13 @@ function makeStreamResult(
   } = {},
 ) {
   return {
-    fullStream: (async function* (): AsyncGenerator<Chunk> {
+    stream: (async function* (): AsyncGenerator<Chunk> {
       for (const c of chunks) {
         await Promise.resolve();
         yield c;
       }
     })(),
-    response: Promise.resolve({ messages: opts.responseMessages ?? [] }),
+    responseMessages: Promise.resolve(opts.responseMessages ?? []),
     usage: Promise.resolve(opts.usage ?? {}),
     finishReason: Promise.resolve(opts.finishReason ?? 'stop'),
   };
@@ -295,6 +295,50 @@ describe('AppAssistant.chat — streaming + callId fan-out', () => {
     };
     expect(args.maxOutputTokens).toBeUndefined();
   });
+
+  it('sends system turns as instructions rather than inside messages', async () => {
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    seedKey('anthropic', 'sk-x');
+
+    mockStreamText.mockReturnValueOnce(
+      makeStreamResult([{ type: 'text-delta', text: 'ok' }]),
+    );
+
+    assistant.chat({
+      ...baseRequest('call-ctx'),
+      messages: [
+        { role: 'system', content: 'context here' },
+        { role: 'user', content: 'hello' },
+      ],
+    });
+    await flush();
+
+    const args = mockStreamText.mock.calls[0][0] as {
+      instructions?: unknown;
+      messages: Array<{ role: string }>;
+    };
+    expect(args.instructions).toEqual([
+      { role: 'system', content: 'context here' },
+    ]);
+    expect(args.messages).toEqual([{ role: 'user', content: 'hello' }]);
+  });
+
+  it('omits instructions when the request has no system turn', async () => {
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    seedKey('anthropic', 'sk-x');
+
+    mockStreamText.mockReturnValueOnce(
+      makeStreamResult([{ type: 'text-delta', text: 'ok' }]),
+    );
+
+    assistant.chat(baseRequest('call-no-ctx'));
+    await flush();
+
+    const args = mockStreamText.mock.calls[0][0] as { instructions?: unknown };
+    expect(args).not.toHaveProperty('instructions');
+  });
 });
 
 describe('AppAssistant.cancel', () => {
@@ -309,7 +353,7 @@ describe('AppAssistant.cancel', () => {
         capturedAbort = abortSignal;
         // A stream that pauses indefinitely after the first chunk until aborted.
         return {
-          fullStream: (async function* () {
+          stream: (async function* () {
             yield { type: 'text-delta', text: 'first' };
             // Wait for abort. The for-await loop in AppAssistant breaks on
             // `state.cancelled`, but this also exercises that we don't keep
@@ -318,7 +362,7 @@ describe('AppAssistant.cancel', () => {
               abortSignal.addEventListener('abort', () => resolve());
             });
           })(),
-          response: Promise.resolve({ messages: [] }),
+          responseMessages: Promise.resolve([]),
           usage: Promise.resolve({}),
           finishReason: Promise.resolve('stop'),
         };
@@ -359,8 +403,7 @@ describe('AppAssistant.chat — error mapping', () => {
     await flush();
 
     const err = findSend(ctx, 'from:ai:error') as
-      | { callId: string; code: string; message: string }
-      | undefined;
+      { callId: string; code: string; message: string } | undefined;
     expect(err?.code).toBe('missing_key');
     expect(err?.callId).toBe('call-no-key');
     // No chunks before the error.
@@ -383,8 +426,7 @@ describe('AppAssistant.chat — error mapping', () => {
     await flush();
 
     const err = findSend(ctx, 'from:ai:error') as
-      | { callId: string; code: string; message: string }
-      | undefined;
+      { callId: string; code: string; message: string } | undefined;
     expect(err?.callId).toBe('call-err');
     expect(err?.code).toBe('unknown');
     expect(err?.message).toContain('upstream blew up');
@@ -631,8 +673,8 @@ describe('AppAssistant — tool-call → tool-result loop', () => {
     // Turn 1: tool-call. We yield via a hand-rolled async iterator
     // so the test can wedge `submitToolResult` between the tool-call
     // yield and the stream's completion.
-    let resolveResponse!: (v: { messages: unknown[] }) => void;
-    const responsePromise = new Promise<{ messages: unknown[] }>((res) => {
+    let resolveResponse!: (v: unknown[]) => void;
+    const responsePromise = new Promise<unknown[]>((res) => {
       resolveResponse = res;
     });
     let releaseStream!: () => void;
@@ -641,7 +683,7 @@ describe('AppAssistant — tool-call → tool-result loop', () => {
     });
 
     const turn1Stream = {
-      fullStream: (async function* () {
+      stream: (async function* () {
         // Emit the tool-call immediately.
         yield {
           type: 'tool-call' as const,
@@ -652,7 +694,7 @@ describe('AppAssistant — tool-call → tool-result loop', () => {
         // ...then hold the stream open until the test releases it.
         await streamRelease;
       })(),
-      response: responsePromise,
+      responseMessages: responsePromise,
       usage: Promise.resolve({}),
       finishReason: Promise.resolve('tool-calls'),
     };
@@ -697,21 +739,19 @@ describe('AppAssistant — tool-call → tool-result loop', () => {
 
     // Now release the stream and resolve the response.
     releaseStream();
-    resolveResponse({
-      messages: [
-        {
-          role: 'assistant',
-          content: [
-            {
-              type: 'tool-call',
-              toolCallId: 'tc-race',
-              toolName: 'get_active_file',
-              input: {},
-            },
-          ],
-        },
-      ],
-    });
+    resolveResponse([
+      {
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool-call',
+            toolCallId: 'tc-race',
+            toolName: 'get_active_file',
+            input: {},
+          },
+        ],
+      },
+    ]);
     await flush();
 
     // Turn 2 fired exactly once, and its messages include the
@@ -912,8 +952,7 @@ describe('AppAssistant.listOllamaModels', () => {
     });
 
     const payload = findSend(ctx, 'from:ai:ollama:models') as
-      | { callId: string; error?: string; models?: string[] }
-      | undefined;
+      { callId: string; error?: string; models?: string[] } | undefined;
     expect(payload?.callId).toBe('oll-2');
     expect(payload?.error).toContain('502');
     expect(payload?.models).toBeUndefined();

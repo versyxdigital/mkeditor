@@ -1,6 +1,4 @@
-import type { Options } from 'markdown-it';
-import type Token from 'markdown-it/lib/token.mjs';
-import type Renderer from 'markdown-it/lib/renderer.mjs';
+import type { MarkdownItOptions, Renderer, Token } from 'markdown-it';
 import type { ContextBridgeAPI } from './interfaces/Bridge';
 import type { ExportSettings } from './interfaces/Editor';
 
@@ -127,7 +125,7 @@ export function getExecutionBridge() {
 export function selfRender(
   tokens: Token[],
   idx: number,
-  options: Options,
+  options: Required<MarkdownItOptions>,
   env: any,
   self: Renderer,
 ) {

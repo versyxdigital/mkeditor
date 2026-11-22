@@ -10,8 +10,7 @@ import type { SettingsProvider } from './providers/SettingsProvider';
  * Result envelope from the IPC / web bridge.
  */
 export type PastedImageResult =
-  | { ok: true; path: string }
-  | { ok: false; error: string };
+  { ok: true; path: string } | { ok: false; error: string };
 
 /**
  * Mode-agnostic writer. The composition root binds this to:

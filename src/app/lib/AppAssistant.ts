@@ -1,5 +1,11 @@
-import { streamText, tool, jsonSchema, stepCountIs } from 'ai';
-import type { LanguageModel, ModelMessage, Tool, ToolSet } from 'ai';
+import { streamText, tool, jsonSchema, isStepCount } from 'ai';
+import type {
+  LanguageModel,
+  ModelMessage,
+  SystemModelMessage,
+  Tool,
+  ToolSet,
+} from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOllama } from 'ollama-ai-provider-v2';
@@ -43,6 +49,8 @@ const DEFAULT_FACTORIES: ProviderModelFactories = {
 /** Per-callId in-flight state retained between turns of a tool loop. */
 interface CallState {
   request: ChatRequest;
+  /** System turns from the request (the renderer's shared-context block), sent as `instructions`. */
+  instructions: SystemModelMessage[];
   /** Conversation history we've accumulated, including assistant + tool messages from previous turns. */
   messages: ModelMessage[];
   /** Tool calls emitted in the most recent assistant turn that are still awaiting external results. */
@@ -110,9 +118,15 @@ export class AppAssistant {
       this.cancel(request.callId);
     }
 
+    // The SDK rejects system messages inside `messages`, so split them
+    // out and pass them through `instructions` instead.
+    const modelMessages = AppAssistant.toModelMessages(request.messages);
     const state: CallState = {
       request,
-      messages: AppAssistant.toModelMessages(request.messages),
+      instructions: modelMessages.filter(
+        (m): m is SystemModelMessage => m.role === 'system',
+      ),
+      messages: modelMessages.filter((m) => m.role !== 'system'),
       pending: new Map(),
       toolResults: new Map(),
       abortController: new AbortController(),
@@ -245,27 +259,31 @@ export class AppAssistant {
    * pure result-collector and the IPC handler can't trigger a race.
    */
   private async runTurn(state: CallState): Promise<void> {
+    if (state.cancelled || this.calls.get(state.request.callId) !== state)
+      return;
     const { request } = state;
     let model: LanguageModel;
     try {
       model = this.buildModel(request.provider, request.model);
     } catch (err) {
       this.sendError(request.callId, AppAssistant.mapError(err));
-      this.calls.delete(request.callId);
+      this.finishCall(state);
       return;
     }
 
-    const tools = AppAssistant.buildToolSet(request.tools ?? []);
-
     let result;
     try {
+      const tools = AppAssistant.buildToolSet(request.tools ?? []);
       result = streamText({
         model,
+        ...(state.instructions.length > 0
+          ? { instructions: state.instructions }
+          : {}),
         messages: state.messages,
         tools,
         abortSignal: state.abortController.signal,
         // We drive the loop externally; stop the SDK after the first model call.
-        stopWhen: stepCountIs(1),
+        stopWhen: isStepCount(1),
         // Honoured by both real providers; ignored by mock SDKs in tests.
         ...(request.maxOutputTokens !== undefined
           ? { maxOutputTokens: request.maxOutputTokens }
@@ -273,13 +291,13 @@ export class AppAssistant {
       });
     } catch (err) {
       this.sendError(request.callId, AppAssistant.mapError(err));
-      this.calls.delete(request.callId);
+      this.finishCall(state);
       return;
     }
 
     let aborted = false;
     try {
-      for await (const part of result.fullStream) {
+      for await (const part of result.stream) {
         if (state.cancelled) {
           aborted = true;
           break;
@@ -303,7 +321,7 @@ export class AppAssistant {
             break;
           case 'error':
             this.sendError(request.callId, AppAssistant.mapError(part.error));
-            this.calls.delete(request.callId);
+            this.finishCall(state);
             return;
           default:
             // text-start/end, reasoning-*, source, file, raw, start-step,
@@ -314,7 +332,7 @@ export class AppAssistant {
 
       if (aborted || state.cancelled) {
         // Cancellation is silent — the renderer knows it cancelled.
-        this.calls.delete(request.callId);
+        this.finishCall(state);
         return;
       }
 
@@ -322,7 +340,11 @@ export class AppAssistant {
       // running history so the next turn has full context. This MUST
       // happen before we push the tool message — Anthropic rejects a
       // tool_result block that has no preceding tool_use.
-      const responseMessages = (await result.response).messages;
+      const responseMessages = await result.responseMessages;
+      if (state.cancelled) {
+        this.finishCall(state);
+        return;
+      }
       for (const m of responseMessages) {
         state.messages.push(m as ModelMessage);
       }
@@ -339,7 +361,7 @@ export class AppAssistant {
         }
         // The chat may have been cancelled while we awaited the user.
         if (state.cancelled) {
-          this.calls.delete(request.callId);
+          this.finishCall(state);
           return;
         }
         // Append a tool message containing every result.
@@ -367,6 +389,10 @@ export class AppAssistant {
 
       const usage = await result.usage;
       const finishReason = await result.finishReason;
+      if (state.cancelled) {
+        this.finishCall(state);
+        return;
+      }
       this.sendDone({
         callId: request.callId,
         usage: {
@@ -376,14 +402,21 @@ export class AppAssistant {
         },
         finishReason,
       });
-      this.calls.delete(request.callId);
+      this.finishCall(state);
     } catch (err) {
       if (state.cancelled) {
-        this.calls.delete(request.callId);
+        this.finishCall(state);
         return;
       }
       this.sendError(request.callId, AppAssistant.mapError(err));
-      this.calls.delete(request.callId);
+      this.finishCall(state);
+    }
+  }
+
+  /** A cancelled run must never remove a replacement with the same callId. */
+  private finishCall(state: CallState): void {
+    if (this.calls.get(state.request.callId) === state) {
+      this.calls.delete(state.request.callId);
     }
   }
 
@@ -445,7 +478,7 @@ export class AppAssistant {
 
   // ---- Conversions --------------------------------------------------
 
-  /** Wire-message → SDK ModelMessage. v6's role taxonomy aligns 1:1. */
+  /** Wire-message → SDK ModelMessage. v7's role taxonomy aligns 1:1. */
   private static toModelMessages(messages: ChatMessage[]): ModelMessage[] {
     return messages.map((m) => {
       if (m.role === 'tool') {

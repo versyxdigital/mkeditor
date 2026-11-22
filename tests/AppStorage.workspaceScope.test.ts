@@ -136,6 +136,57 @@ describe('AppStorage.assertInWorkspace', () => {
     });
   });
 
+  it('mustExist: false rejects an existing file symlink outside the workspace', async () => {
+    await withTempRoot(async (root) => {
+      await withTempRoot(async (outside) => {
+        const secret = join(outside, 'secret.md');
+        writeFileSync(secret, 'do not overwrite');
+        const link = join(root, 'shortcut.md');
+        try {
+          symlinkSync(secret, link, 'file');
+        } catch (err) {
+          if (['EPERM', 'EACCES'].includes((err as NodeJS.ErrnoException).code!)) return;
+          throw err;
+        }
+        AppStorage.setWorkspaceRoot(root);
+        await expect(
+          AppStorage.assertInWorkspace(link, { mustExist: false }),
+        ).rejects.toThrow(/outside the workspace/);
+      });
+    });
+  });
+
+  it('mustExist: false resolves ancestors above missing parent directories', async () => {
+    await withTempRoot(async (root) => {
+      await withTempRoot(async (outside) => {
+        const link = join(root, 'shortcut');
+        symlinkSync(outside, link, process.platform === 'win32' ? 'junction' : 'dir');
+        AppStorage.setWorkspaceRoot(root);
+        await expect(
+          AppStorage.assertInWorkspace(join(link, 'missing', 'nested', 'note.md'), {
+            mustExist: false,
+          }),
+        ).rejects.toThrow(/outside the workspace/);
+      });
+    });
+  });
+
+  it('mustExist: false refuses dangling symlinks instead of treating them as missing', async () => {
+    await withTempRoot(async (root) => {
+      const link = join(root, 'dangling.md');
+      try {
+        symlinkSync(join(root, '..', 'missing-secret.md'), link, 'file');
+      } catch (err) {
+        if (['EPERM', 'EACCES'].includes((err as NodeJS.ErrnoException).code!)) return;
+        throw err;
+      }
+      AppStorage.setWorkspaceRoot(root);
+      await expect(
+        AppStorage.assertInWorkspace(link, { mustExist: false }),
+      ).rejects.toThrow(/symbolic link/);
+    });
+  });
+
   it('mustExist: true — surfaces ENOENT as a clear "file not found"', async () => {
     await withTempRoot(async (root) => {
       AppStorage.setWorkspaceRoot(root);

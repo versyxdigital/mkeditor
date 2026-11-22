@@ -82,7 +82,9 @@ export class FileTreeManager {
     // possible so React reconciliation is stable.
     this.snapshot = {
       treeRoot: this.treeRoot,
-      nodes: this.snapshot.nodes,
+      // Consumers memoize derived filtering by the nodes array identity.
+      // Mutating children without replacing this array leaves that UI stale.
+      nodes: [...this.snapshot.nodes],
     };
     this.listeners.forEach((l) => l());
   }
@@ -126,7 +128,7 @@ export class FileTreeManager {
       // root, which is always known) and ask main to repopulate
       // that subtree — the missing intermediate directory will
       // appear in the refreshed listing.
-      if (parentPath.startsWith(this.treeRoot)) {
+      if (isPathWithinTree(parentPath, this.treeRoot)) {
         const ancestor = this.findKnownAncestor(parentPath);
         if (ancestor) this.requestDirectoryContents(ancestor);
       }
@@ -136,11 +138,18 @@ export class FileTreeManager {
     // Lazy-load completed: replace children, mark loaded, and emit. If
     // the directory turned out empty, flip hasChildren=false so the
     // chevron disappears.
+    // A refreshed subtree can remove/rename directories. Drop descendants
+    // from the index so future replies cannot mutate detached old nodes.
+    for (const path of this.directoryIndex.keys()) {
+      if (path !== parentPath && isPathWithinTree(path, parentPath)) {
+        this.directoryIndex.delete(path);
+      }
+    }
     target.children = sorted.map((node) =>
       this.registerNode(this.cloneNode(node)),
     );
     target.loaded = true;
-    if (target.children.length === 0) target.hasChildren = false;
+    target.hasChildren = target.children.length > 0;
     this.emitChange();
   }
 
@@ -150,7 +159,7 @@ export class FileTreeManager {
    * root. Returns null only when `path` is outside the workspace.
    */
   private findKnownAncestor(path: string): string | null {
-    if (!this.treeRoot || !path.startsWith(this.treeRoot)) return null;
+    if (!this.treeRoot || !isPathWithinTree(path, this.treeRoot)) return null;
     const sep = this.treeRoot.includes('\\') ? '\\' : '/';
     let current = path;
     // Strip one segment at a time. Bounded by the root check
@@ -172,7 +181,7 @@ export class FileTreeManager {
    * the current root.
    */
   public addFileToTree(path: string) {
-    if (!this.treeRoot || !path.startsWith(this.treeRoot)) return;
+    if (!this.treeRoot || !isPathWithinTree(path, this.treeRoot) || path === this.treeRoot) return;
 
     const sep = this.treeRoot.includes('\\') ? '\\' : '/';
     const segments = path.split(/[/\\]/);
@@ -197,6 +206,7 @@ export class FileTreeManager {
         return;
       }
       if (!dir.children) dir.children = [];
+      dir.hasChildren = true;
       children = dir.children;
     }
     if (!children) return;
@@ -254,7 +264,9 @@ export class FileTreeManager {
       path: node.path,
       hasChildren: node.hasChildren,
       loaded: node.loaded,
-      children: node.children,
+      children: Array.isArray(node.children)
+        ? sortNodes(validateNodes(node.children)).map((child) => this.registerNode(this.cloneNode(child)))
+        : undefined,
     };
   }
 
@@ -309,4 +321,16 @@ function findInsertIndex(children: TreeNode[], node: TreeNode): number {
     }
   }
   return children.length;
+}
+
+/** Segment-aware containment for OS and virtual explorer paths. */
+export function isPathWithinTree(path: string, root: string): boolean {
+  const normalize = (value: string) => value.replace(/\\/g, '/').replace(/\/+$/, '') || '/';
+  let candidate = normalize(path);
+  let parent = normalize(root);
+  if (/^[a-z]:/i.test(parent)) {
+    candidate = candidate.toLowerCase();
+    parent = parent.toLowerCase();
+  }
+  return candidate === parent || candidate.startsWith(parent.endsWith('/') ? parent : parent + '/');
 }

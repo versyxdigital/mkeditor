@@ -2,7 +2,7 @@
 
 Phased plan for adding an in-editor AI Assistant to MKEditor — a right-hand sidebar (mirroring the file tree) that hosts per-provider chat surfaces, connects to OpenAI / Anthropic / Ollama, and gives an agent first-class read/write access to the workspace and the active editor. The high-level entry in [ROADMAP.md](ROADMAP.md) links here.
 
-Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
+Read first: [../AGENTS.md](../AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Decisions
 
@@ -468,7 +468,7 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
 9. **Smoke checklist** — manual checklist in the doc covering: enable + connect each provider; chat with each; cancel mid-stream; ask the agent to edit the active file; confirm + apply; reject; ask the agent to create a new file; relaunch and verify history. (Web smoke dropped — web AI is gone per P7 Decisions.)
 10. **Documentation** —
     - **[ARCHITECTURE.md](ARCHITECTURE.md)** — new §4.14 "AI Assistant" covering IPC channels, key storage, conversation persistence, tool dispatch, the desktop-only constraint.
-    - **[CLAUDE.md](../CLAUDE.md)** — add the AI Assistant managers + IPC channels to the relevant sections (Core Subsystems renderer, IPC Bridge Model).
+    - **[AGENTS.md](../AGENTS.md)** — add the AI Assistant managers + IPC channels to the relevant sections (Core Subsystems renderer, IPC Bridge Model).
     - **[ROADMAP.md](ROADMAP.md)** — move the milestone row into **Recently Landed** with the date.
 11. **Reviewers + commit approval.**
 
@@ -478,7 +478,7 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
 - ✅ Menu items appear under View and Help and behave correctly.
 - ✅ The Cmd/Ctrl+Shift+A toggle opens/closes the sidebar from anywhere.
 - ✅ All error states render a translated, actionable message.
-- ✅ `ARCHITECTURE.md`, `CLAUDE.md`, and `ROADMAP.md` reflect the shipped surface.
+- ✅ `ARCHITECTURE.md`, `AGENTS.md`, and `ROADMAP.md` reflect the shipped surface.
 - ✅ `npm test`, `npm run lint`, `npm run build-editor`, `npm run build-app` all green.
 - ✅ Smoke checklist passes on Windows desktop (web smoke dropped — web AI is gone per P7).
 

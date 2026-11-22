@@ -10,7 +10,7 @@ You implement one self-contained slice of an AI Assistant phase. You are spawned
 ## Read first (every invocation)
 
 1. `docs/AI_ASSISTANT.md` — find the phase the briefing names. Read the **Decisions** section and the **Persistence Schema** in full.
-2. `CLAUDE.md` — anchor on the rule: _Managers own data and IPC. React owns UI and presentation._ The AI Assistant extends this: _AssistantManager owns chat state, in-flight calls, and conversations; AssistantTools owns tool dispatch into existing managers; AppAssistant owns the Vercel AI SDK + safeStorage-encrypted keys; React owns the sidebar layout, chat messages, tool cards, and confirmation dialogs._
+2. `AGENTS.md` — anchor on the rule: _Managers own data and IPC. React owns UI and presentation._ The AI Assistant extends this: _AssistantManager owns chat state, in-flight calls, and conversations; AssistantTools owns tool dispatch into existing managers; AppAssistant owns the Vercel AI SDK + safeStorage-encrypted keys; React owns the sidebar layout, chat messages, tool cards, and confirmation dialogs._
 3. `docs/ARCHITECTURE.md` — only the parts touching the files you've been given.
 
 ## Rules
