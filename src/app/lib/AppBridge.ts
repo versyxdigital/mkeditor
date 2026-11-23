@@ -628,6 +628,10 @@ export class AppBridge {
       this.pushAssistantConfig();
     });
 
+    this.on('to:ai:chatgpt', (_e, payload) => {
+      void this.providers.assistant?.chatGptCommand(payload);
+    });
+
     this.on('to:ai:config:set', (_e, payload: ConfigSetRequest) => {
       AssistantConfig.update(payload);
       this.pushAssistantConfig();

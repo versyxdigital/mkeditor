@@ -28,6 +28,7 @@ import { ContextChipsRow } from './ContextChip';
 import { MentionPicker } from './MentionPicker';
 import { ProviderModelSettings } from './ProviderModelSettings';
 import { OllamaChatModelSelect } from './OllamaChatModelSelect';
+import { ChatGptUsage } from './ChatGptSettings';
 
 interface ChatPaneProps {
   provider: ProviderId;
@@ -60,6 +61,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   onToggleConvList,
 }) => {
   const { chat, manager } = useAssistantChat();
+  const { snapshot: configSnapshot } = useAssistantConfig();
   const { t, language } = useTranslation();
 
   const [draft, setDraft] = React.useState(
@@ -154,13 +156,12 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     () => (manager ? manager.contextChips(provider, conversation.id) : []),
     [manager, provider, conversation, chat, files, editorTick],
   );
-  const tokenEstimate = React.useMemo(
+  const baseTokenEstimate = React.useMemo(
     () =>
-      manager
-        ? manager.contextTokenEstimate(provider, conversation.id, draft)
-        : 0,
-    [manager, provider, conversation, chat, draft, files, editorTick],
+      manager ? manager.contextTokenEstimate(provider, conversation.id, '') : 0,
+    [manager, provider, conversation, chat, files, editorTick],
   );
+  const tokenEstimate = baseTokenEstimate + Math.ceil(draft.length / 4);
 
   // ---- @-mention picker state ---------------------------------------
   // We only open the picker when the user is actively typing a mention
@@ -426,11 +427,12 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
   const tokenIndicatorClass = cn(
     'text-xs text-muted-foreground',
-    // Amber-warn over a rough "small-ish window" threshold. Doc
-    // mentions the provider's published context window; we don't
-    // ship per-provider limits in v1 — 32k is a safe shared floor
-    // that flags clearly-large prompts without spamming for normal use.
-    tokenEstimate > 32000 && 'text-warning font-medium',
+    // Use the explicitly requested Ollama window when available. Other
+    // limits remain heuristic; the daemon default is not a model maximum.
+    tokenEstimate >
+      (provider === 'ollama'
+        ? configSnapshot.config?.ollama.contextLength || 32000
+        : 32000) && 'text-warning font-medium',
   );
 
   return (
@@ -510,6 +512,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             </Button>
           )}
         </div>
+        {provider === 'openai' && <ChatGptUsage />}
         <div
           className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1"
           data-testid="chat-composer-controls"

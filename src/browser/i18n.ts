@@ -55,6 +55,7 @@ const namespaces: { ns: string; path: string }[] = [
   { ns: 'modals-shortcuts', path: 'locale/{{lng}}/modals/shortcuts.json' },
   { ns: 'modals-move', path: 'locale/{{lng}}/modals/move.json' },
   { ns: 'assistant', path: 'locale/{{lng}}/assistant.json' },
+  { ns: 'chatgpt', path: 'locale/{{lng}}/chatgpt.json' },
   { ns: 'assistant-chat', path: 'locale/{{lng}}/assistant-chat.json' },
   { ns: 'assistant-settings', path: 'locale/{{lng}}/assistant-settings.json' },
   { ns: 'assistant-tools', path: 'locale/{{lng}}/assistant-tools.json' },

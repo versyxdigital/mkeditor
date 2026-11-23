@@ -9,6 +9,7 @@ import {
   isThinkingLevel,
 } from '../../../../app/shared/assistantModels';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useAssistantConfig } from '../../contexts/AssistantContext';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import {
@@ -43,7 +44,10 @@ export const ProviderModelSettings: React.FC<{
   compact = false,
 }) => {
   const { t } = useTranslation();
-  const models = ASSISTANT_MODELS[provider];
+  const { snapshot } = useAssistantConfig();
+  const auth = provider === 'openai' ? snapshot.chatgpt : undefined;
+  const models =
+    auth?.mode === 'chatgpt' ? auth.models : ASSISTANT_MODELS[provider];
   const knownModel = models.some((entry) => entry.id === model);
   const [custom, setCustom] = React.useState(!knownModel);
   const [draft, setDraft] = React.useState(model);

@@ -82,6 +82,8 @@ MKEditor comes with full support for exporting your markdown to HTML and PDF �
 
 MKEditor v4.0.0 comes with the ability to connect to your AI provider of choice 🤖 Choose between Anthropic, OpenAI, or a local Ollama install. Each provider gets its own chat tab with persisted conversation history and a workspace-aware tool catalog: the assistant can read, edit, and create files in your open folder (write actions ask you to confirm first).
 
+On desktop, OpenAI also supports your ChatGPT subscription: open **Settings → AI Providers → OpenAI**, choose **ChatGPT plan**, and select **Continue with ChatGPT**. Complete sign-in and grant plan access in your browser, then return to MKEditor. Eligible requests share your ChatGPT plan's limits. **Manage usage** opens ChatGPT's settings. You can switch back to **API key** explicitly; MKEditor never falls back to API billing automatically. Anthropic continues to use API-key authentication.
+
 > [!IMPORTANT]
 > API keys are encrypted with Electron's `safeStorage` and are never transmitted through the app in plaintext.
 

@@ -56,5 +56,8 @@
   "connection_not_tested": "Connection not tested",
   "last_tested": "Last tested: {{time}}",
   "provider_enabled": "Enabled",
-  "provider_disabled": "Disabled"
+  "provider_disabled": "Disabled",
+  "ollama_context_label": "Context window (tokens)",
+  "ollama_context_default": "Ollama default",
+  "ollama_context_help": "Includes chat history, tool definitions and file contents. Try 32,768 for document work. Larger windows need more memory; stay within your model’s supported limit. Applies to future messages."
 }

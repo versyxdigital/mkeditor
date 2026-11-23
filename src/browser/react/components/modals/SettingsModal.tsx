@@ -143,7 +143,7 @@ export const SettingsModal: React.FC = () => {
     >
       <DialogContent
         aria-describedby={undefined}
-        className="flex h-[min(860px,calc(100dvh-32px))] max-w-[1200px] flex-col overflow-hidden p-0"
+        className="thin-scrollbars flex h-[min(860px,calc(100dvh-32px))] max-w-[1200px] flex-col overflow-hidden p-0"
       >
         <DialogHeader className="shrink-0 border-b border-subtle px-5 py-4">
           <DialogTitle className="flex items-center gap-3">

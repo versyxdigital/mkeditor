@@ -24,6 +24,7 @@ import { Switch } from '../ui/switch';
 import { Icon } from '../Icon';
 import { ProviderLogo } from './ProviderLogo';
 import { ProviderModelSettings } from './ProviderModelSettings';
+import { ChatGptSettings } from './ChatGptSettings';
 import { getThinkingLevels } from '../../../../app/shared/assistantModels';
 
 /**
@@ -106,7 +107,11 @@ const ApiProviderRow: React.FC<{
   const [keyInput, setKeyInput] = React.useState('');
   const [showKey, setShowKey] = React.useState(false);
   const connection = useConnectionStatus(
-    JSON.stringify([cfg?.defaultModel, cfg?.hasKey]),
+    JSON.stringify([
+      cfg?.defaultModel,
+      cfg?.hasKey,
+      provider === 'openai' ? snapshot.chatgpt : null,
+    ]),
   );
   const keyInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -174,7 +179,11 @@ const ApiProviderRow: React.FC<{
     }
   };
 
-  const canTest = cfg.hasKey && !!cfg.defaultModel && !disabledByEncryption;
+  const usePlan = provider === 'openai' && snapshot.chatgpt?.mode === 'chatgpt';
+  const canTest =
+    (usePlan ? snapshot.chatgpt?.connected : cfg.hasKey) &&
+    !!cfg.defaultModel &&
+    !disabledByEncryption;
 
   return (
     <ProviderCard
@@ -184,107 +193,109 @@ const ApiProviderRow: React.FC<{
       onEnabledChange={handleEnable}
       disabled={disabledByEncryption}
     >
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={`${provider}-key`}>
-          {t('assistant-settings:api_key_label')}
-        </Label>
-        {/* Input + show/hide eye on one row, action buttons on the next.
+      {provider === 'openai' && <ChatGptSettings />}
+      {!usePlan && (
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`${provider}-key`}>
+            {t('assistant-settings:api_key_label')}
+          </Label>
+          {/* Input + show/hide eye on one row, action buttons on the next.
             Keeps things readable at ~320 px per provider column without
             squeezing the key input below 200 px. */}
-        <div className="flex items-center gap-2">
-          <Input
-            ref={keyInputRef}
-            id={`${provider}-key`}
-            type={showKey ? 'text' : 'password'}
-            placeholder={
-              cfg.hasKey
-                ? t('assistant-settings:api_key_placeholder_saved')
-                : t('assistant-settings:api_key_placeholder_empty')
-            }
-            value={keyInput}
-            onChange={(e) => setKeyInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitKey();
-            }}
-            disabled={disabledByEncryption}
-            autoComplete="off"
-            spellCheck={false}
-            className="min-w-0 flex-1"
-          />
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            onClick={() => setShowKey((v) => !v)}
-            title={
-              showKey
-                ? t('assistant-settings:hide_key')
-                : t('assistant-settings:show_key')
-            }
-            aria-label={
-              showKey
-                ? t('assistant-settings:hide_key')
-                : t('assistant-settings:show_key')
-            }
-            className="h-8 w-8 shrink-0"
-          >
-            <Icon name={showKey ? 'eye-slash' : 'eye'} />
-          </Button>
-        </div>
-        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-          <span
-            className={cn(
-              'flex items-center gap-1.5 text-xs',
-              cfg.hasKey ? 'text-success' : 'text-muted-foreground',
-            )}
-          >
-            <Icon
-              name={cfg.hasKey ? 'check' : 'question-circle'}
-              className="h-3.5 w-3.5"
+          <div className="flex items-center gap-2">
+            <Input
+              ref={keyInputRef}
+              id={`${provider}-key`}
+              type={showKey ? 'text' : 'password'}
+              placeholder={
+                cfg.hasKey
+                  ? t('assistant-settings:api_key_placeholder_saved')
+                  : t('assistant-settings:api_key_placeholder_empty')
+              }
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitKey();
+              }}
+              disabled={disabledByEncryption}
+              autoComplete="off"
+              spellCheck={false}
+              className="min-w-0 flex-1"
             />
-            {t(
-              cfg.hasKey
-                ? 'assistant-settings:key_configured'
-                : 'assistant-settings:key_not_configured',
-            )}
-          </span>
-          <div className="flex items-center gap-1">
-            {(!cfg.hasKey || keyInput) && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={commitKey}
-                disabled={!keyInput || disabledByEncryption}
-              >
-                {t('assistant-settings:save_key')}
-              </Button>
-            )}
-            {cfg.hasKey && !keyInput && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => keyInputRef.current?.focus()}
-                disabled={disabledByEncryption}
-              >
-                {t('assistant-settings:replace_key')}
-              </Button>
-            )}
-            {cfg.hasKey && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={handleClear}
-              >
-                {t('assistant-settings:clear_key')}
-              </Button>
-            )}
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={() => setShowKey((v) => !v)}
+              title={
+                showKey
+                  ? t('assistant-settings:hide_key')
+                  : t('assistant-settings:show_key')
+              }
+              aria-label={
+                showKey
+                  ? t('assistant-settings:hide_key')
+                  : t('assistant-settings:show_key')
+              }
+              className="h-8 w-8 shrink-0"
+            >
+              <Icon name={showKey ? 'eye-slash' : 'eye'} />
+            </Button>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+            <span
+              className={cn(
+                'flex items-center gap-1.5 text-xs',
+                cfg.hasKey ? 'text-success' : 'text-muted-foreground',
+              )}
+            >
+              <Icon
+                name={cfg.hasKey ? 'check' : 'question-circle'}
+                className="h-3.5 w-3.5"
+              />
+              {t(
+                cfg.hasKey
+                  ? 'assistant-settings:key_configured'
+                  : 'assistant-settings:key_not_configured',
+              )}
+            </span>
+            <div className="flex items-center gap-1">
+              {(!cfg.hasKey || keyInput) && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={commitKey}
+                  disabled={!keyInput || disabledByEncryption}
+                >
+                  {t('assistant-settings:save_key')}
+                </Button>
+              )}
+              {cfg.hasKey && !keyInput && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => keyInputRef.current?.focus()}
+                  disabled={disabledByEncryption}
+                >
+                  {t('assistant-settings:replace_key')}
+                </Button>
+              )}
+              {cfg.hasKey && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleClear}
+                >
+                  {t('assistant-settings:clear_key')}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-
+      )}
       <div className="grid grid-cols-2 gap-3">
         <ProviderModelSettings
           provider={provider}
@@ -321,7 +332,7 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
   const [models, setModels] = React.useState<string[]>([]);
   const [refreshing, setRefreshing] = React.useState(false);
   const connection = useConnectionStatus(
-    JSON.stringify([cfg?.baseUrl, cfg?.defaultModel]),
+    JSON.stringify([cfg?.baseUrl, cfg?.defaultModel, cfg?.contextLength]),
   );
 
   React.useEffect(() => {
@@ -404,6 +415,20 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
   };
 
   const visibleModels = Array.from(new Set([model, ...models].filter(Boolean)));
+  const contextLength = cfg.contextLength ?? 0;
+  const contextSizes = Array.from(
+    new Set([
+      0,
+      4096,
+      8192,
+      16384,
+      32768,
+      65536,
+      131072,
+      262144,
+      contextLength,
+    ]),
+  ).sort((a, b) => a - b);
 
   // Ollama lives on its own full-width row (no key field, more
   // dynamic content). The internal layout uses a two-column grid so
@@ -465,6 +490,41 @@ const OllamaProviderRow: React.FC<{ label: string }> = ({ label }) => {
             </Button>
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="ollama-context">
+          {t('assistant-settings:ollama_context_label')}
+        </Label>
+        <Select
+          value={String(contextLength)}
+          onValueChange={(value) => {
+            manager.setProviderConfig({
+              provider: 'ollama',
+              config: { contextLength: Number(value) },
+            });
+            connection.reset();
+          }}
+        >
+          <SelectTrigger
+            id="ollama-context"
+            aria-describedby="ollama-context-help"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {contextSizes.map((size) => (
+              <SelectItem key={size} value={String(size)}>
+                {size === 0
+                  ? t('assistant-settings:ollama_context_default')
+                  : size.toLocaleString()}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p id="ollama-context-help" className="text-xs text-muted-foreground">
+          {t('assistant-settings:ollama_context_help')}
+        </p>
       </div>
 
       <p className="text-xs text-muted-foreground">
@@ -645,7 +705,9 @@ function formatTestError(
   t: (key: string, vars?: Record<string, unknown>) => string,
 ): string {
   const key = code ?? 'unknown';
-  const translated = t(`assistant-settings:error_${key}`);
+  const translated = t(
+    `${key.startsWith('chatgpt_') ? 'chatgpt' : 'assistant-settings'}:error_${key}`,
+  );
   return detail ? `${translated} — ${detail}` : translated;
 }
 

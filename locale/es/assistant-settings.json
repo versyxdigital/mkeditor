@@ -56,5 +56,8 @@
   "connection_not_tested": "Conexión sin probar",
   "last_tested": "Última prueba: {{time}}",
   "provider_enabled": "Activado",
-  "provider_disabled": "Desactivado"
+  "provider_disabled": "Desactivado",
+  "ollama_context_label": "Ventana de contexto (tokens)",
+  "ollama_context_default": "Predeterminado de Ollama",
+  "ollama_context_help": "Incluye el historial, las definiciones de herramientas y los archivos. Prueba 32.768 para documentos. Un contexto mayor necesita más memoria; respeta el límite del modelo. Se aplica a mensajes futuros."
 }

@@ -47,6 +47,24 @@ const fileFor = (tmpHome: string) =>
 const tmpFor = (tmpHome: string) => fileFor(tmpHome) + '.tmp';
 
 describe('AssistantConfig.load', () => {
+  it('persists Ollama context size, rejects invalid updates and can restore the daemon default', () => {
+    withTempHome((tmpHome) => {
+      const Config = loadAssistantConfig(tmpHome);
+      expect(Config.load().ollama.contextLength).toBeUndefined();
+      Config.update({ provider: 'ollama', config: { contextLength: 32768 } });
+      expect(Config.load().ollama.contextLength).toBe(32768);
+      for (const contextLength of [-1, 1.5, NaN, Infinity, 1048577, '8192']) {
+        Config.update({
+          provider: 'ollama',
+          config: { contextLength: contextLength as number },
+        });
+        expect(Config.load().ollama.contextLength).toBe(32768);
+      }
+      Config.update({ provider: 'ollama', config: { contextLength: 0 } });
+      expect(Config.load().ollama.contextLength).toBe(0);
+    });
+  });
+
   it('persists thinking preferences and ignores invalid levels without erasing the saved value', () => {
     withTempHome((tmpHome) => {
       const Config = loadAssistantConfig(tmpHome);

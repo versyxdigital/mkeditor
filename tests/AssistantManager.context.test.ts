@@ -365,6 +365,48 @@ describe('AssistantManager — contextChips + tokenEstimate', () => {
     expect(chips[0].kind).toBe('active');
   });
 
+  it('includes tool definitions and previous tool results in the token estimate', () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('ollama');
+    const empty = mgr.contextTokenEstimate('ollama', conv, '');
+    mgr.setToolExecutor({
+      describe: () => [
+        {
+          name: 'read_file',
+          description: 'Read a file.',
+          parameters: { type: 'object', properties: {} },
+        },
+      ],
+    } as never);
+    const withTools = mgr.contextTokenEstimate('ollama', conv, '');
+    expect(withTools).toBeGreaterThan(empty);
+    const saved = mgr.serialize()!;
+    saved.conversations.ollama[0].messages.push({
+      id: 'prior-tool',
+      role: 'assistant',
+      content: '',
+      status: 'failed',
+      createdAt: Date.now(),
+      toolCalls: [
+        {
+          toolCallId: 'read-1',
+          toolName: 'read_file',
+          arguments: { path: '/w/file.md' },
+          status: 'succeeded',
+          result: { content: 'x'.repeat(8000) },
+        },
+      ],
+    });
+    mgr.restore(saved);
+    expect(mgr.contextTokenEstimate('ollama', conv, '')).toBeGreaterThan(
+      withTools + 2000,
+    );
+    mgr.flushPersist();
+  });
+
   it('tokenEstimate grows monotonically as the draft and mention contents grow', async () => {
     const { bridge } = makeBridge();
     const mgr = new AssistantManager(bridge as never, {

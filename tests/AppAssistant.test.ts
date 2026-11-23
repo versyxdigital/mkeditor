@@ -631,6 +631,11 @@ describe('AppAssistant.chat — error mapping', () => {
       'Error: context length exceeded — too many tokens for this model',
     ],
     [
+      'context_window_exceeded',
+      'ctx-ollama',
+      'the prompt is longer than the context length currently available to the model; shorten the prompt, adjust the context length in settings, or use a model with a longer context length',
+    ],
+    [
       'ollama_unreachable',
       'ollama-1',
       'ollama request to http://localhost:11434/api/chat failed: ECONNREFUSED',
@@ -729,6 +734,81 @@ describe('AppAssistant.chat — error mapping', () => {
 });
 
 describe('AppAssistant — tool-call → tool-result loop', () => {
+  it('keeps the configured Ollama context allocation through tool-result continuation', async () => {
+    const ctx = makeContext();
+    const { assistant } = buildAssistant(ctx);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { AssistantConfig } = require('../src/app/lib/AssistantConfig');
+    AssistantConfig.update({
+      provider: 'ollama',
+      config: { contextLength: 32768 },
+    });
+    mockStreamText.mockReturnValueOnce(
+      makeStreamResult(
+        [
+          {
+            type: 'tool-call',
+            toolCallId: 'read-ctx',
+            toolName: 'get_active_file',
+            input: {},
+          },
+        ],
+        {
+          responseMessages: [
+            {
+              role: 'assistant',
+              content: [
+                {
+                  type: 'tool-call',
+                  toolCallId: 'read-ctx',
+                  toolName: 'get_active_file',
+                  input: {},
+                },
+              ],
+            },
+          ],
+        },
+      ),
+    );
+    mockStreamText.mockReturnValueOnce(
+      makeStreamResult([{ type: 'text-delta', text: 'Read successfully.' }]),
+    );
+    assistant.chat(baseRequest('ctx-loop', 'Read the active file', 'ollama'));
+    await flush();
+    AssistantConfig.update({
+      provider: 'ollama',
+      config: { contextLength: 8192 },
+    });
+    assistant.submitToolResult({
+      callId: 'ctx-loop',
+      toolCallId: 'read-ctx',
+      result: { content: 'x'.repeat(8000) },
+    });
+    await flush();
+    expect(mockStreamText).toHaveBeenCalledTimes(2);
+    for (const [options] of mockStreamText.mock.calls) {
+      expect(options.providerOptions).toEqual({
+        ollama: { options: { num_ctx: 32768 } },
+      });
+    }
+    expect(findSend(ctx, 'from:ai:done')).toBeDefined();
+  });
+
+  it.each([undefined, 0])(
+    'leaves the Ollama allocation to the daemon for context size %s',
+    async (contextLength) => {
+      const ctx = makeContext();
+      const { assistant } = buildAssistant(ctx);
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { AssistantConfig } = require('../src/app/lib/AssistantConfig');
+      AssistantConfig.update({ provider: 'ollama', config: { contextLength } });
+      mockStreamText.mockReturnValueOnce(makeStreamResult([]));
+      assistant.chat(baseRequest('ctx-default', 'hello', 'ollama'));
+      await flush();
+      expect(mockStreamText.mock.calls[0][0].providerOptions).toBeUndefined();
+    },
+  );
+
   it('forwards tool calls, accepts a tool result, and re-invokes streamText', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);

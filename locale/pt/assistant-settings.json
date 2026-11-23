@@ -56,5 +56,8 @@
   "connection_not_tested": "Ligação não testada",
   "last_tested": "Último teste: {{time}}",
   "provider_enabled": "Ativado",
-  "provider_disabled": "Desativado"
+  "provider_disabled": "Desativado",
+  "ollama_context_label": "Janela de contexto (tokens)",
+  "ollama_context_default": "Padrão do Ollama",
+  "ollama_context_help": "Inclui histórico, definições de ferramentas e arquivos. Tente 32.768 para documentos. Janelas maiores precisam de mais memória; respeite o limite do modelo. Aplica-se às próximas mensagens."
 }

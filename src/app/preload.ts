@@ -47,6 +47,7 @@ const senderWhitelist = [
   'to:ai:cancel',
   'to:ai:tool-result',
   'to:ai:config:get',
+  'to:ai:chatgpt',
   'to:ai:config:set',
   'to:ai:key:set',
   'to:ai:key:clear',

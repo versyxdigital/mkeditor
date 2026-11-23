@@ -56,5 +56,8 @@
   "connection_not_tested": "Bağlantı test edilmedi",
   "last_tested": "Son test: {{time}}",
   "provider_enabled": "Etkin",
-  "provider_disabled": "Devre dışı"
+  "provider_disabled": "Devre dışı",
+  "ollama_context_label": "Bağlam penceresi (token)",
+  "ollama_context_default": "Ollama varsayılanı",
+  "ollama_context_help": "Sohbet geçmişini, araç tanımlarını ve dosya içeriklerini kapsar. Belgeler için 32.768 deneyin. Büyük pencereler daha fazla bellek gerektirir; model sınırını aşmayın. Sonraki mesajlara uygulanır."
 }

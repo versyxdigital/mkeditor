@@ -490,6 +490,44 @@ describe('<AssistantSettings> — Test connection toasts', () => {
 });
 
 describe('<AssistantSettings> — Ollama row', () => {
+  it('saves the requested context window and allows returning to the daemon default', async () => {
+    const user = userEvent.setup();
+    const snap = baseSnapshot();
+    const am = fakeAssistantManager({ initialSnapshot: snap });
+    renderWithProviders(<AssistantSettings />, {
+      managers: { assistantManager: am as never, mode: 'desktop' },
+    });
+    await user.click(
+      screen.getByLabelText('assistant-settings:ollama_context_label'),
+    );
+    await user.click(screen.getByRole('option', { name: '32,768' }));
+    expect(am.setProviderConfig).toHaveBeenCalledWith({
+      provider: 'ollama',
+      config: { contextLength: 32768 },
+    });
+    act(() =>
+      am._setSnapshot({
+        ...snap,
+        config: {
+          ...snap.config,
+          ollama: { ...snap.config.ollama, contextLength: 32768 },
+        },
+      }),
+    );
+    await user.click(
+      screen.getByLabelText('assistant-settings:ollama_context_label'),
+    );
+    await user.click(
+      screen.getByRole('option', {
+        name: 'assistant-settings:ollama_context_default',
+      }),
+    );
+    expect(am.setProviderConfig).toHaveBeenLastCalledWith({
+      provider: 'ollama',
+      config: { contextLength: 0 },
+    });
+  });
+
   it('Refresh button calls refreshOllamaModels and surfaces a success toast', async () => {
     const am = fakeAssistantManager({ initialSnapshot: baseSnapshot() });
     am.refreshOllamaModels.mockResolvedValueOnce(['llama3.2', 'qwen2.5']);

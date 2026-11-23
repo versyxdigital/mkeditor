@@ -48,6 +48,27 @@ const SAMPLE_PUSH = {
   encryptionAvailable: true,
 };
 
+test('browser sign-in receives translated presentation copy through the manager', () => {
+  const { bridge, sent } = makeBridge();
+  const manager = new AssistantManager(bridge as never);
+  manager.chatGptCommand({ action: 'sign-in', accountId: 'saved-account' });
+  expect(sent).toEqual([
+    {
+      channel: 'to:ai:chatgpt',
+      data: expect.objectContaining({
+        action: 'sign-in',
+        accountId: 'saved-account',
+        callback: expect.objectContaining({
+          language: 'en',
+          successTitle: expect.any(String),
+          errorTitle: expect.any(String),
+          returnToApp: expect.any(String),
+        }),
+      }),
+    },
+  ]);
+});
+
 describe('AssistantManager.subscribeConfig + getConfigSnapshot', () => {
   it('starts with a null-config snapshot', () => {
     const { bridge } = makeBridge();

@@ -77,7 +77,7 @@ export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
               <Icon name="exclamation-circle" />
               <span>
                 {t(
-                  `assistant-settings:error_${message.errorCode ?? 'unknown'}`,
+                  `${message.errorCode?.startsWith('chatgpt_') ? 'chatgpt' : 'assistant-settings'}:error_${message.errorCode ?? 'unknown'}`,
                 )}
               </span>
             </p>

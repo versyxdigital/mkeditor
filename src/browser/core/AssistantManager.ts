@@ -1,4 +1,9 @@
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
+import { t } from '../i18n';
+import type {
+  ChatGptCommand,
+  ChatGptSnapshot,
+} from '../../app/interfaces/ChatGpt';
 import type {
   ApiProviderId,
   AssistantChatSnapshot,
@@ -97,6 +102,7 @@ export interface AssistantContextChip {
  * warning and the test-connection / key-set buttons short-circuit.
  */
 export interface AssistantConfigSnapshot {
+  chatgpt?: ChatGptSnapshot;
   config: SanitizedProviderConfig | null;
   encryptionAvailable: boolean;
 }
@@ -365,6 +371,7 @@ export class AssistantManager {
    */
   public setConfigFromServer(payload: ConfigPushPayload): void {
     this.snapshot = {
+      chatgpt: payload.chatgpt,
       config: payload.config,
       encryptionAvailable: payload.encryptionAvailable,
     };
@@ -378,6 +385,27 @@ export class AssistantManager {
   /** Request an immediate `from:ai:config` push (called at bridge boot). */
   public requestConfigRefresh(): void {
     this.bridge.send('to:ai:config:get', null);
+  }
+
+  public chatGptCommand(command: ChatGptCommand): void {
+    this.bridge.send(
+      'to:ai:chatgpt',
+      command.action === 'sign-in'
+        ? {
+            ...command,
+            callback: {
+              language: document.documentElement.lang || 'en',
+              successTitle: t('chatgpt:callback_success_title'),
+              successBody: t('chatgpt:callback_success_body'),
+              errorTitle: t('chatgpt:callback_error_title'),
+              errorBody: t('chatgpt:callback_error_body'),
+              permissionTitle: t('chatgpt:callback_permission_title'),
+              permissionBody: t('chatgpt:callback_permission_body'),
+              returnToApp: t('chatgpt:callback_return'),
+            },
+          }
+        : command,
+    );
   }
 
   /** Persist non-secret per-provider config. */
@@ -1489,8 +1517,8 @@ export class AssistantManager {
   }
 
   /**
-   * Estimated token count for the next send: draft input + every chip's
-   * byte-count contribution + tag overhead, divided by 4. Cheap
+   * Estimated token count for the next send: history (including tool
+   * results), tool definitions, draft and shared file context, divided by 4. Cheap
    * heuristic, intentionally rough — surfaced to the user purely to
    * flag "you're about to ship a huge prompt." No tiktoken dependency
    * in v1 (see Decisions).
@@ -1501,7 +1529,11 @@ export class AssistantManager {
     draftText: string,
   ): number {
     const chips = this.contextChips(provider, conversationId);
+    const conv = this.conversations[provider].get(conversationId);
     let chars = draftText.length;
+    if (conv) chars += JSON.stringify(buildChatHistory(conv.messages)).length;
+    const tools = this.toolExecutor?.describe();
+    if (tools?.length) chars += JSON.stringify(tools).length;
     for (const chip of chips) {
       if (chip.byteCount !== undefined) {
         // Add a small constant for the fence/path tag wrapper we add

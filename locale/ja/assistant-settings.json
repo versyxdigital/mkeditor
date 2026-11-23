@@ -56,5 +56,8 @@
   "connection_not_tested": "接続は未テストです",
   "last_tested": "最終テスト：{{time}}",
   "provider_enabled": "有効",
-  "provider_disabled": "無効"
+  "provider_disabled": "無効",
+  "ollama_context_label": "コンテキストウィンドウ（トークン）",
+  "ollama_context_default": "Ollamaの既定値",
+  "ollama_context_help": "会話履歴、ツール定義、ファイルの内容を含みます。文書には32,768をお試しください。大きいほどメモリが必要です。モデルの上限を超えないでください。今後のメッセージに適用されます。"
 }

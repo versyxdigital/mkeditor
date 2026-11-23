@@ -145,6 +145,14 @@ export class AssistantConfig {
         typeof value.baseUrl === 'string' && value.baseUrl.trim()
           ? value.baseUrl
           : current.baseUrl,
+      ...(typeof value.contextLength === 'number' &&
+      Number.isInteger(value.contextLength) &&
+      value.contextLength >= 0 &&
+      value.contextLength <= 1048576
+        ? { contextLength: value.contextLength }
+        : current.contextLength !== undefined
+          ? { contextLength: current.contextLength }
+          : {}),
     };
   }
 

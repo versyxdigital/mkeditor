@@ -32,7 +32,7 @@ body[data-theme='dark'] {
   background: var(--text-secondary);
 }
 
-// Explorer and assistant regions share compact, unobtrusive scrollbars.
+// Explorer, assistant and Settings regions share compact, unobtrusive scrollbars.
 .thin-scrollbars {
   &,
   * {

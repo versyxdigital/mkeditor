@@ -32,6 +32,8 @@ export interface OllamaProviderConfig {
   /** Daemon base URL (default `http://localhost:11434`). */
   baseUrl: string;
   defaultModel: string;
+  /** Requested token window; omitted or zero leaves allocation to the daemon. */
+  contextLength?: number;
 }
 
 export interface ProviderConfigMap {
@@ -53,6 +55,8 @@ export interface SanitizedProviderConfig {
 }
 
 export interface ConfigPushPayload {
+  /** Optional on older builds; contains no OAuth credentials. */
+  chatgpt?: import('./ChatGpt').ChatGptSnapshot;
   config: SanitizedProviderConfig;
   /**
    * Resolved `safeStorage.isAsyncEncryptionAvailable()` result. When false, the
@@ -197,6 +201,8 @@ export interface ChatErrorEvent {
   /** Stable code the renderer uses to pick a translated message. */
   code:
     | 'missing_key'
+    | 'chatgpt_auth'
+    | 'chatgpt_usage_limit'
     | 'invalid_key'
     | 'rate_limited'
     | 'context_window_exceeded'
@@ -231,6 +237,8 @@ export interface OllamaModelsEvent {
  * P7) can be migrated rather than dropped.
  */
 export interface AssistantStoreFile {
+  /** Independently validated by ChatGptStore; tokens are safeStorage ciphertext. */
+  chatgpt?: unknown;
   version: 1;
   /**
    * Per-provider non-secret config. Named `providers` to match the
