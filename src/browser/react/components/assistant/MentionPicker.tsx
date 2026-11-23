@@ -72,6 +72,7 @@ export const MentionPicker: React.FC<MentionPickerProps> = ({
     let generation = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const refresh = async () => {
+      if (!active) return;
       clearTimeout(timer);
       if (document.visibilityState === 'hidden') {
         timer = setTimeout(() => void refresh(), 2000);

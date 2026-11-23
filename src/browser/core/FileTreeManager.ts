@@ -135,6 +135,16 @@ export class FileTreeManager {
     this.fileListingRevision++;
   }
 
+  public workspaceFilesChanged(...paths: string[]): void {
+    if (
+      !this.treeRoot ||
+      !paths.some((path) => isPathWithinTree(path, this.treeRoot!))
+    )
+      return;
+    this.invalidateFileListing();
+    this.emitChange();
+  }
+
   // ---------------------------------------------------------------------
   // Observable surface
   // ---------------------------------------------------------------------
