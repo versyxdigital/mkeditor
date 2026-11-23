@@ -31,7 +31,7 @@
     "@tailwindcss/postcss": "^4.3.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
+    "@testing-library/user-event": "^14.6.13",
     "@types/jest": "^30.0.0",
     "@types/markdown-it": "^14.1.2",
     "@types/markdown-it-container": "^4.0.0",
