@@ -85,7 +85,7 @@ export const TitleBar: React.FC = () => {
     <div
       data-testid="title-bar"
       className={cn(
-        'flex h-8 select-none items-center gap-1 border-b border-border bg-background pl-2 pr-0 text-xs',
+        'flex h-8 shrink-0 select-none items-center gap-1 bg-background pl-2 pr-0 text-xs',
       )}
       style={
         isDesktop ? ({ WebkitAppRegion: 'drag' } as React.CSSProperties) : {}

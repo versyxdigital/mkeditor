@@ -12,7 +12,7 @@ export const designSystemStylesheet = `
   --font-interface: ${interfaceFont};
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
   --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
-  --toolbar-height: 44px; --footer-height: 38px; --tab-height: 36px;
+  --toolbar-height: 32px; --footer-height: 38px; --tab-height: 36px;
   --control-height: 32px; --input-height: 34px; --sidebar-row-height: 30px;
   --radius-control: 6px; --radius-floating: 8px; --radius-dialog: 10px;
   --motion-hover: 120ms; --motion-panel: 160ms;

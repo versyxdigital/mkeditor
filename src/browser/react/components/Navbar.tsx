@@ -54,7 +54,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <nav className="flex h-11 shrink-0 min-w-0 items-center justify-between gap-4 border-b border-subtle bg-background px-3">
+      <nav className="flex h-[var(--toolbar-height)] shrink-0 min-w-0 items-center justify-between gap-2 border-b border-subtle bg-background px-2">
         <div className="flex min-w-0 items-center gap-2">
           <Button
             id="sidebar-toggle"
@@ -64,13 +64,13 @@ export const Navbar: React.FC = () => {
             title={t('navbar:toggle_sidebar')}
             aria-label={t('navbar:toggle_sidebar')}
             onClick={toggleSidebar}
-            className="h-[30px] w-[30px] shrink-0"
+            className="h-7 w-7 shrink-0 text-muted-foreground"
           >
-            <Icon name="bars" />
+            <Icon name="bars" className="h-3.5 w-3.5" />
           </Button>
           <span
             id="active-file"
-            className="truncate text-[14px] font-semibold text-foreground"
+            className="truncate text-xs font-medium text-muted-foreground"
             title={activeFileLabel ?? undefined}
           >
             {activeFileLabel ?? t('app:brand_name')}
@@ -86,7 +86,7 @@ export const Navbar: React.FC = () => {
                   className="h-6 w-6 text-muted-foreground hover:text-foreground text-xs"
                   aria-label={t('navbar:copy_path_tooltip')}
                 >
-                  <Icon name="copy" />
+                  <Icon name="copy" className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>{t('navbar:copy_path_tooltip')}</TooltipContent>
@@ -99,7 +99,7 @@ export const Navbar: React.FC = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-[30px] w-[30px] text-muted-foreground"
+                className="h-7 w-7 text-muted-foreground"
                 title={t('navbar:settings_tooltip')}
                 aria-label={t('navbar:settings_tooltip')}
                 onClick={(e) => {
@@ -107,7 +107,7 @@ export const Navbar: React.FC = () => {
                   openModal('settings');
                 }}
               >
-                <Icon name="cogs" />
+                <Icon name="cogs" className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>{t('navbar:settings_tooltip')}</TooltipContent>
@@ -117,7 +117,7 @@ export const Navbar: React.FC = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-[30px] w-[30px] text-muted-foreground"
+                className="h-7 w-7 text-muted-foreground"
                 title={t('navbar:shortcuts_tooltip')}
                 aria-label={t('navbar:shortcuts_tooltip')}
                 onClick={(e) => {
@@ -125,7 +125,7 @@ export const Navbar: React.FC = () => {
                   openModal('shortcuts');
                 }}
               >
-                <Icon name="question-circle" />
+                <Icon name="question-circle" className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>{t('navbar:shortcuts_tooltip')}</TooltipContent>
@@ -144,7 +144,7 @@ export const Navbar: React.FC = () => {
                   onClick={toggleRightSidebar}
                   className="h-7 w-7 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  <Icon name="comments" />
+                  <Icon name="comments" className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
