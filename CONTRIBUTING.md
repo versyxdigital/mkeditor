@@ -6,7 +6,7 @@ Contirbutions to MKEditor are welcomed. This document outlines how to build the 
 
 If you would like to build from source, please follow the steps below:
 
-Use Node.js 22 or later; CI runs Node.js 22. Dependency installations should use the checked-in lockfile. Fully quit a running development instance before updating Electron: Windows locks its installed runtime files while the app is open.
+Use Node.js 22.13 or later in the 22.x line, or Node.js 24 or later; CI runs Node.js 22. Dependency installations should use the checked-in lockfile. Fully quit a running development instance before updating Electron: Windows locks its installed runtime files while the app is open. Electron downloads its native runtime on first launch; `npm exec --no -- install-electron` can prepare it explicitly.
 
 1. Clone the repository:
 
