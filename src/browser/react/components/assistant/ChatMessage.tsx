@@ -49,10 +49,10 @@ export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
     >
       <div
         className={cn(
-          'max-w-[85%] min-w-0 rounded-md px-3 py-2 text-[13px]',
+          'min-w-0 rounded-md px-3 py-2 text-[13px]',
           isUser
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-muted text-foreground',
+            ? 'max-w-[85%] bg-[var(--accent-fill)] text-primary-foreground'
+            : 'w-full max-w-full bg-muted text-foreground',
           message.status === 'failed' && 'bg-destructive/10 text-destructive',
           message.status === 'cancelled' && 'opacity-70',
         )}

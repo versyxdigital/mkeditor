@@ -32,5 +32,7 @@
   "mention_picker_aria": "Scegli un file da menzionare",
   "mention_picker_empty": "Nessun file corrispondente",
   "hide_conversations_aria": "Nascondi elenco conversazioni",
-  "show_conversations_aria": "Mostra elenco conversazioni"
+  "show_conversations_aria": "Mostra elenco conversazioni",
+  "expand_input": "Espandi la casella del messaggio",
+  "collapse_input": "Riduci la casella del messaggio"
 }

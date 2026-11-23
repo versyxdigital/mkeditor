@@ -31,6 +31,10 @@ import {
   getThinkingLevels,
   isThinkingLevel,
 } from '../../app/shared/assistantModels';
+import {
+  buildChatHistory,
+  normalizeHistorySegments,
+} from '../../app/shared/assistantHistory';
 
 /**
  * Surface AssistantManager uses to gather context at send time
@@ -744,16 +748,9 @@ export class AssistantManager {
       startedAt: Date.now(),
     });
 
-    // Build the wire message list — pull every completed user/
-    // assistant message in the conversation, skip the streaming
-    // placeholder we just inserted, drop cancelled/failed messages
-    // (they confuse the model — `cancelled` carries no content,
-    // `failed` is similarly noisy).
-    const history: ChatMessage[] = conv.messages
-      .filter(
-        (m) => m.id !== assistantMsg.id && m.status === 'complete' && m.content,
-      )
-      .map((m) => ({ role: m.role, content: m.content }));
+    // Text alone loses the actual tool work visible in the chat. Replay
+    // resolved invocations as matched tool-use/result pairs as well.
+    const history = buildChatHistory(conv.messages);
 
     const wireMessages: ChatMessage[] = systemContext
       ? [systemContext, ...history]
@@ -1529,20 +1526,24 @@ export class AssistantManager {
         const messages: PersistedChatMessage[] = [];
         for (const m of conv.messages) {
           if (m.role !== 'user' && m.role !== 'assistant') continue;
-          // Streaming messages are mid-flight; the corresponding
-          // in-flight call is cancelled on quit, so the message body
-          // can't be recovered. Drop it.
-          if (m.status === 'streaming') continue;
+          const persistedToolCalls = m.toolCalls?.filter(
+            (tc) => tc.status === 'succeeded' || tc.status === 'failed',
+          );
+          // Unfinished text cannot resume after relaunch, but resolved
+          // tool work already happened and must survive an interrupted turn.
+          if (m.status === 'streaming' && !persistedToolCalls?.length) continue;
           const persistedStatus =
             m.status === 'complete' ||
             m.status === 'cancelled' ||
             m.status === 'failed'
               ? m.status
-              : 'complete';
+              : 'cancelled';
           // Keep only fully-resolved tool invocations. Pending /
           // executing entries can't pick back up across a restart.
-          const persistedToolCalls = m.toolCalls?.filter(
-            (tc) => tc.status === 'succeeded' || tc.status === 'failed',
+          const segments = normalizeHistorySegments(
+            m.segments,
+            m.content,
+            persistedToolCalls ?? [],
           );
           messages.push({
             id: m.id,
@@ -1554,6 +1555,7 @@ export class AssistantManager {
             ...(persistedToolCalls && persistedToolCalls.length > 0
               ? { toolCalls: persistedToolCalls }
               : {}),
+            ...(segments ? { segments } : {}),
             createdAt: m.createdAt,
           });
         }
@@ -1662,26 +1664,33 @@ export class AssistantManager {
                 m.status === 'failed') &&
               Number.isFinite(m.createdAt),
           )
-          .map((m) => ({
-            id: m.id,
-            role: m.role,
-            content: m.content,
-            status: m.status,
-            ...(m.errorCode ? { errorCode: m.errorCode } : {}),
-            ...(m.errorMessage ? { errorMessage: m.errorMessage } : {}),
-            ...(Array.isArray(m.toolCalls) && m.toolCalls.length > 0
-              ? {
-                  toolCalls: m.toolCalls.filter(
-                    (tc) =>
-                      tc &&
-                      typeof tc.toolCallId === 'string' &&
-                      typeof tc.toolName === 'string' &&
-                      (tc.status === 'succeeded' || tc.status === 'failed'),
-                  ),
-                }
-              : {}),
-            createdAt: m.createdAt,
-          }));
+          .map((m) => {
+            const toolCalls = Array.isArray(m.toolCalls)
+              ? m.toolCalls.filter(
+                  (tc) =>
+                    tc &&
+                    typeof tc.toolCallId === 'string' &&
+                    typeof tc.toolName === 'string' &&
+                    (tc.status === 'succeeded' || tc.status === 'failed'),
+                )
+              : [];
+            const segments = normalizeHistorySegments(
+              m.segments,
+              m.content,
+              toolCalls,
+            );
+            return {
+              id: m.id,
+              role: m.role,
+              content: m.content,
+              status: m.status,
+              ...(m.errorCode ? { errorCode: m.errorCode } : {}),
+              ...(m.errorMessage ? { errorMessage: m.errorMessage } : {}),
+              ...(toolCalls.length > 0 ? { toolCalls } : {}),
+              ...(segments ? { segments } : {}),
+              createdAt: m.createdAt,
+            };
+          });
         const conv: ChatConversation = {
           id: persisted.id,
           providerId: provider,

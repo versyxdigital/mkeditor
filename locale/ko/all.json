@@ -38,7 +38,9 @@
     "mention_picker_aria": "언급할 파일 선택",
     "mention_picker_empty": "일치하는 파일 없음",
     "hide_conversations_aria": "대화 목록 숨기기",
-    "show_conversations_aria": "대화 목록 표시"
+    "show_conversations_aria": "대화 목록 표시",
+    "expand_input": "메시지 입력창 펼치기",
+    "collapse_input": "메시지 입력창 접기"
   },
   "assistant-settings": {
     "loading": "공급자 구성을 불러오는 중…",

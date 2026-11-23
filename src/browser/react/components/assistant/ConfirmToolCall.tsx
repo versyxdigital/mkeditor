@@ -32,7 +32,10 @@ export const ConfirmToolCall: React.FC = () => {
         if (!o) resolve(false);
       }}
     >
-      <DialogContent aria-describedby={undefined} className="max-w-[640px]">
+      <DialogContent
+        aria-describedby={undefined}
+        className="thin-scrollbars max-w-[640px]"
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon name="exclamation-circle" />
@@ -124,7 +127,7 @@ const PreviewBlock: React.FC<{
           <p className="text-xs text-muted-foreground">
             {t('assistant-tools:preview_before')}
           </p>
-          <pre className="max-h-40 overflow-auto rounded border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+          <pre className="whitespace-pre-wrap rounded border border-destructive/30 bg-destructive/10 p-2 text-xs text-foreground [overflow-wrap:anywhere]">
             {preview.before}
           </pre>
         </div>
@@ -133,7 +136,7 @@ const PreviewBlock: React.FC<{
         <p className="text-xs text-muted-foreground">
           {t('assistant-tools:preview_after')}
         </p>
-        <pre className="max-h-60 overflow-auto rounded border border-success/30 bg-success/10 p-2 text-xs text-success">
+        <pre className="whitespace-pre-wrap rounded border border-success/30 bg-success/10 p-2 text-xs text-foreground [overflow-wrap:anywhere]">
           {preview.after}
         </pre>
       </div>
@@ -148,7 +151,7 @@ const ArgsBlock: React.FC<{ args: unknown }> = ({ args }) => {
       <p className="text-xs text-muted-foreground">
         {t('assistant-tools:args_label')}
       </p>
-      <pre className="max-h-40 overflow-auto rounded border border-border bg-muted p-2 text-xs">
+      <pre className="whitespace-pre-wrap rounded border border-border bg-muted p-2 text-xs [overflow-wrap:anywhere]">
         {JSON.stringify(args, null, 2)}
       </pre>
     </div>

@@ -11,9 +11,11 @@ import { faCode } from '@fortawesome/free-solid-svg-icons/faCode';
 import { faCog } from '@fortawesome/free-solid-svg-icons/faCog';
 import { faCogs } from '@fortawesome/free-solid-svg-icons/faCogs';
 import { faComments } from '@fortawesome/free-solid-svg-icons/faComments';
+import { faCompress } from '@fortawesome/free-solid-svg-icons/faCompress';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faDatabase } from '@fortawesome/free-solid-svg-icons/faDatabase';
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons/faExclamationCircle';
+import { faExpand } from '@fortawesome/free-solid-svg-icons/faExpand';
 import { faEye } from '@fortawesome/free-solid-svg-icons/faEye';
 import { faEyeSlash } from '@fortawesome/free-solid-svg-icons/faEyeSlash';
 import { faFileExport } from '@fortawesome/free-solid-svg-icons/faFileExport';
@@ -54,9 +56,11 @@ library.add(
   faCog,
   faCogs,
   faComments,
+  faCompress,
   faCopy,
   faDatabase,
   faExclamationCircle,
+  faExpand,
   faEye,
   faEyeSlash,
   faFile,

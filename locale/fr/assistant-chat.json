@@ -32,5 +32,7 @@
   "mention_picker_aria": "Choisir un fichier à mentionner",
   "mention_picker_empty": "Aucun fichier correspondant",
   "hide_conversations_aria": "Masquer la liste des conversations",
-  "show_conversations_aria": "Afficher la liste des conversations"
+  "show_conversations_aria": "Afficher la liste des conversations",
+  "expand_input": "Agrandir la zone de message",
+  "collapse_input": "Réduire la zone de message"
 }

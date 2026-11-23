@@ -15,9 +15,17 @@ The primary toolbar is 44px high, document tabs 36px, and the combined formattin
 
 The assistant keeps its model and thinking choices below the message input as borderless 24px dropdowns with accessible labels. Settings uses side navigation for the existing preference categories. Provider cards pair model/thinking fields, show enabled and key configuration feedback, and report connection results only after a test. Connection results reset when the tested configuration changes. Stored key values never populate the renderer.
 
+The message input grows with typed, pasted and restored drafts, up to 160px or 30% of the chat pane. A compact expand/collapse control below it opens a larger writing area, up to 480px or 60% of the pane; overflow uses the assistant's thin scrollbar. Width and window-height changes reflow the input while retaining the draft and selection. Editing at the end keeps the caret visible; resizing alone preserves the reading scroll position. Sending returns it to compact mode. Enter sends, Shift+Enter inserts a newline, and IME/mention-picker handling remains unchanged.
+
 Dialogs share a continuous sidebar-toned surface, including Settings and export preferences. Settings cards sit one tonal step above it. Shared inputs, selects and outline buttons use the editor surface and soft default borders throughout the application, including the assistant's New chat button, composer and rename field. Keep the teal focus ring; avoid dark inset fields and bright outlines against a lighter content panel. Define this styling in the shared primitives so new dialogs inherit it.
 
 Keep `text-on-accent` (text on filled primary buttons) separate from Tailwind's `accent-foreground` (text on hover/selection surfaces). The latter must resolve to normal foreground text, especially in dark mode; redefining it in the palette makes selected chat titles and menu items unreadable.
+
+Filled actions use `accent-fill`/`accent-fill-hover` with white labels in both themes. Keep this deeper teal separate from the brighter dark-theme `accent-primary` used for links, focus and indicators. Chat bubbles and checked checkboxes use the same fill/foreground pair.
+
+Tool calls use neutral cards with compact, keyboard-accessible disclosure headers, target paths and small status indicators. Arguments and results wrap long lines in place; large payloads use character/line-limited excerpts and explicit expansion instead of nested scrollbars. The surrounding chat owns scrolling. Inline write confirmation and editor diff navigation retain their existing approval behaviour.
+
+Assistant scroll regions and Monaco change previews use slim 6px scrollbars with transparent tracks. Plain text previews wrap instead of scrolling sideways. While a response is running, the composer shows a 32px Stop control with a filled square icon, an accessible name and a hover title. Hover and keyboard focus add a subtle red tint; avoid a solid red button with a dark label.
 
 The explorer starts at 240px and resizes between 180px and 360px, with the existing collapse control retained. The assistant remains independently resizable. Preview padding adapts from 24px in narrow panes to 48px in larger panes. The constrained document container is 760px wide; a saved full-width preference still takes precedence. Settings forms become a single column on smaller windows, and dialogs and menus scroll within the available viewport.
 

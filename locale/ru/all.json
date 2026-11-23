@@ -38,7 +38,9 @@
     "mention_picker_aria": "Выбрать файл для упоминания",
     "mention_picker_empty": "Нет подходящих файлов",
     "hide_conversations_aria": "Скрыть список разговоров",
-    "show_conversations_aria": "Показать список разговоров"
+    "show_conversations_aria": "Показать список разговоров",
+    "expand_input": "Развернуть поле сообщения",
+    "collapse_input": "Свернуть поле сообщения"
   },
   "assistant-settings": {
     "loading": "Загрузка конфигурации провайдера…",

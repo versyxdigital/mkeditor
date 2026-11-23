@@ -489,9 +489,23 @@ export class AppAssistant {
 
   // ---- Conversions --------------------------------------------------
 
-  /** Wire-message → SDK ModelMessage. v7's role taxonomy aligns 1:1. */
+  /** Translate wire text and historical tool requests/results into native SDK parts. */
   private static toModelMessages(messages: ChatMessage[]): ModelMessage[] {
     return messages.map((m) => {
+      if (m.role === 'assistant' && m.toolCalls?.length) {
+        return {
+          role: 'assistant',
+          content: [
+            ...(m.content ? [{ type: 'text' as const, text: m.content }] : []),
+            ...m.toolCalls.map((call) => ({
+              type: 'tool-call' as const,
+              toolCallId: call.toolCallId,
+              toolName: call.toolName,
+              input: call.arguments,
+            })),
+          ],
+        } satisfies ModelMessage;
+      }
       if (m.role === 'tool') {
         return {
           role: 'tool',

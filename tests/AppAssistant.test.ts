@@ -14,6 +14,7 @@ import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import type { ChatRequest } from '../src/app/interfaces/Assistant';
+import { buildChatHistory } from '../src/app/shared/assistantHistory';
 
 // Mock `ai` before importing AppAssistant so the import sees the mock.
 // `tool` and `jsonSchema` are pass-through identities (we never need
@@ -178,6 +179,116 @@ const baseRequest = (
 });
 
 describe('AppAssistant.chat — streaming + callId fan-out', () => {
+  it.each(['anthropic', 'openai', 'ollama'] as const)(
+    'replays historical tool requests and outcomes as native SDK messages for %s',
+    async (provider) => {
+      const ctx = makeContext();
+      const { assistant } = buildAssistant(ctx);
+      if (provider !== 'ollama') seedKey(provider, 'sk-test-history');
+      mockStreamText.mockReturnValueOnce(
+        makeStreamResult([], { finishReason: 'stop' }),
+      );
+      const messages = buildChatHistory([
+        {
+          id: 'u1',
+          role: 'user',
+          content: 'Create two poems',
+          status: 'complete',
+          createdAt: 1,
+        },
+        {
+          id: 'a1',
+          role: 'assistant',
+          content: 'One file was created; the other was declined.',
+          status: 'complete',
+          createdAt: 2,
+          toolCalls: [
+            {
+              toolCallId: 'created',
+              toolName: 'create_file',
+              arguments: { path: '/poems/one.md' },
+              status: 'succeeded',
+              result: { ok: true, path: '/poems/one.md' },
+            },
+            {
+              toolCallId: 'declined',
+              toolName: 'create_file',
+              arguments: { path: '/poems/two.md' },
+              status: 'failed',
+              errorCode: 'rejected',
+            },
+          ],
+        },
+        {
+          id: 'u2',
+          role: 'user',
+          content: 'What did you create?',
+          status: 'complete',
+          createdAt: 3,
+        },
+      ]);
+      assistant.chat({
+        ...baseRequest('recall', 'unused', provider),
+        messages,
+      });
+      await flush();
+      expect(mockStreamText.mock.calls[0][0].messages).toEqual([
+        { role: 'user', content: 'Create two poems' },
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool-call',
+              toolCallId: 'created',
+              toolName: 'create_file',
+              input: { path: '/poems/one.md' },
+            },
+            {
+              type: 'tool-call',
+              toolCallId: 'declined',
+              toolName: 'create_file',
+              input: { path: '/poems/two.md' },
+            },
+          ],
+        },
+        {
+          role: 'tool',
+          content: [
+            {
+              type: 'tool-result',
+              toolCallId: 'created',
+              toolName: 'create_file',
+              output: {
+                type: 'text',
+                value: '{"ok":true,"path":"/poems/one.md"}',
+              },
+            },
+          ],
+        },
+        {
+          role: 'tool',
+          content: [
+            {
+              type: 'tool-result',
+              toolCallId: 'declined',
+              toolName: 'create_file',
+              output: {
+                type: 'text',
+                value: '{"ok":false,"error":"rejected"}',
+              },
+            },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: 'One file was created; the other was declined.',
+        },
+        { role: 'user', content: 'What did you create?' },
+      ]);
+      expect(countSends(ctx, 'from:ai:tool-call')).toBe(0);
+    },
+  );
+
   it.each([
     [
       'anthropic',

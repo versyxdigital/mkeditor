@@ -32,6 +32,34 @@ body[data-theme='dark'] {
   background: var(--text-secondary);
 }
 
+// Assistant previews and chat use quieter chrome than the global scrollbars.
+.thin-scrollbars {
+  &,
+  * {
+    &::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: var(--text-muted);
+      border-radius: 3px;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background: var(--text-secondary);
+    }
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    &,
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--text-muted) transparent;
+    }
+  }
+}
+
 // Hidden at boot; showSplashScreen() fades these in together once Monaco
 // is ready, so nothing peeks through the fading splash overlay.
 #react-root,

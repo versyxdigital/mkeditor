@@ -32,5 +32,7 @@
   "mention_picker_aria": "Elegir un archivo para mencionar",
   "mention_picker_empty": "Sin archivos coincidentes",
   "hide_conversations_aria": "Ocultar lista de conversaciones",
-  "show_conversations_aria": "Mostrar lista de conversaciones"
+  "show_conversations_aria": "Mostrar lista de conversaciones",
+  "expand_input": "Expandir cuadro de mensaje",
+  "collapse_input": "Contraer cuadro de mensaje"
 }

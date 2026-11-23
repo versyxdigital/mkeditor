@@ -59,9 +59,12 @@ describe.each([
     expect(
       contrast(palette['accent-primary'], palette['bg-preview']),
     ).toBeGreaterThanOrEqual(4.5);
-    expect(
-      contrast(palette['accent-primary'], palette['text-on-accent']),
-    ).toBeGreaterThanOrEqual(4.5);
+    expect(palette['text-on-accent']).toBe('#FFFFFF');
+    for (const fill of ['accent-fill', 'accent-fill-hover'] as const) {
+      expect(
+        contrast(palette[fill], palette['text-on-accent']),
+      ).toBeGreaterThanOrEqual(4.5);
+    }
     for (const surface of ['bg-app', 'bg-sidebar', 'bg-elevated'] as const) {
       expect(
         contrast(palette['border-control'], palette[surface]),

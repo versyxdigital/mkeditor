@@ -98,6 +98,100 @@ function snapshotWith(opts: {
 }
 
 describe('<ChatPane> — input + send', () => {
+  it('keeps the typed end visible without resetting reading position on expansion', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    const input = screen.getByTestId('chat-input') as HTMLTextAreaElement;
+    // jsdom has no layout: supply a text area whose content exceeds its view.
+    Object.defineProperties(input, {
+      scrollHeight: { configurable: true, value: 800 },
+      clientHeight: { configurable: true, value: 80 },
+      offsetHeight: { configurable: true, value: 82 },
+    });
+    input.focus();
+    const draft = 'Long draft\n'.repeat(30);
+    fireEvent.change(input, {
+      target: {
+        value: draft,
+        selectionStart: draft.length,
+        selectionEnd: draft.length,
+      },
+    });
+    expect(input.scrollTop + input.clientHeight).toBeGreaterThanOrEqual(
+      input.scrollHeight,
+    );
+    input.scrollTop = 120;
+    fireEvent.click(
+      screen.getByRole('button', { name: 'assistant-chat:expand_input' }),
+    );
+    expect(input.scrollTop).toBe(120);
+    expect(input).toHaveValue(draft);
+  });
+
+  it('expands and collapses the composer without losing the draft or selection', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    const input = screen.getByTestId('chat-input') as HTMLTextAreaElement;
+    const draft = 'First paragraph\n\nSecond paragraph with more details.';
+    fireEvent.change(input, { target: { value: draft } });
+    input.setSelectionRange(6, 15);
+    const expand = screen.getByRole('button', {
+      name: 'assistant-chat:expand_input',
+    });
+    expect(expand).toHaveAttribute('aria-controls', input.id);
+    fireEvent.click(expand);
+    expect(
+      screen.getByRole('button', { name: 'assistant-chat:collapse_input' }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(input).toHaveValue(draft);
+    expect(input).toHaveFocus();
+    expect([input.selectionStart, input.selectionEnd]).toEqual([6, 15]);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'assistant-chat:collapse_input' }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'assistant-chat:expand_input' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+    expect(input).toHaveValue(draft);
+    expect(am.startCall).not.toHaveBeenCalled();
+  });
+
+  it('sends the complete expanded draft and returns the composer to compact mode', async () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    const draft = Array.from({ length: 20 }, (_, i) => `Requirement ${i}`).join(
+      '\n',
+    );
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: draft },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'assistant-chat:expand_input' }),
+    );
+    fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() =>
+      expect(am.startCall).toHaveBeenCalledWith(
+        'anthropic',
+        conv.id,
+        draft,
+        null,
+      ),
+    );
+    expect(screen.getByTestId('chat-input')).toHaveValue('');
+    expect(
+      screen.getByRole('button', { name: 'assistant-chat:expand_input' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('keeps the latest conversation draft separate when switching before unmount', () => {
     const { conv, snapshot } = snapshotWith({ messages: [] });
     const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
@@ -185,7 +279,7 @@ describe('<ChatPane> — input + send', () => {
     expect(screen.getByTestId('chat-input')).toHaveValue('next draft');
   });
 
-  it('renders messages from the conversation', () => {
+  it('renders messages from the conversation', async () => {
     const { conv, snapshot } = snapshotWith({
       messages: [
         { id: 'm1', role: 'user', content: 'hello', status: 'complete' },
@@ -198,6 +292,10 @@ describe('<ChatPane> — input + send', () => {
     });
     expect(screen.getByText('hello')).toBeInTheDocument();
     expect(screen.getByText('world')).toBeInTheDocument();
+    // Allow the lazy Markdown renderer to publish its ready notification.
+    await act(async () => {
+      await Promise.resolve();
+    });
   });
 
   it('Send button is disabled when the input is empty', () => {
@@ -259,7 +357,7 @@ describe('<ChatPane> — input + send', () => {
 });
 
 describe('<ChatPane> — send/stop toggle', () => {
-  it('shows Stop button (not Send) when this conversation has an in-flight call', () => {
+  it('shows an accessible icon-only Stop control when a call is in flight', () => {
     const { conv, snapshot } = snapshotWith({
       inflightCallId: 'chat-x',
       messages: [
@@ -277,7 +375,10 @@ describe('<ChatPane> — send/stop toggle', () => {
       managers: { assistantManager: am as never },
     });
     expect(screen.queryByTestId('chat-send')).toBeNull();
-    expect(screen.getByTestId('chat-stop')).toBeInTheDocument();
+    const stop = screen.getByRole('button', { name: 'assistant-chat:stop' });
+    expect(stop).toHaveAttribute('title', 'assistant-chat:stop');
+    expect(stop.textContent).toBe('');
+    expect(stop.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
   });
 
   it('clicking Stop fires cancelCall with the in-flight callId', () => {
@@ -297,7 +398,9 @@ describe('<ChatPane> — send/stop toggle', () => {
     renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
       managers: { assistantManager: am as never },
     });
-    fireEvent.click(screen.getByTestId('chat-stop'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'assistant-chat:stop' }),
+    );
     expect(am.cancelCall).toHaveBeenCalledWith('chat-x');
   });
 });

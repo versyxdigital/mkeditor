@@ -73,6 +73,14 @@ export interface ChatMessage {
   /** Set for role: 'tool' — identifies which call this result satisfies. */
   toolCallId?: string;
   toolName?: string;
+  /** Assistant tool requests; followed by their matching role: 'tool' results. */
+  toolCalls?: ChatToolCall[];
+}
+
+export interface ChatToolCall {
+  toolCallId: string;
+  toolName: string;
+  arguments: unknown;
 }
 
 /**
@@ -293,6 +301,8 @@ export interface PersistedChatMessage {
    * sense after restart.
    */
   toolCalls?: ToolInvocation[];
+  /** Optional on older stores; preserves text/tool ordering across restarts. */
+  segments?: UiMessageSegment[];
   createdAt: number;
 }
 

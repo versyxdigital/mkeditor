@@ -84,7 +84,7 @@ export const AssistantSidebar: React.FC = () => {
   return (
     <div
       id="assistant-sidebar"
-      className="flex h-full flex-col bg-sidebar"
+      className="thin-scrollbars flex h-full flex-col bg-sidebar"
       data-testid="assistant-sidebar"
     >
       <div className="explorer-title px-3 pt-4 pb-2">

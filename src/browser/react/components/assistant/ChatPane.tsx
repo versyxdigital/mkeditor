@@ -41,11 +41,10 @@ interface ChatPaneProps {
 /**
  * The main chat surface for a single conversation.
  *
- * Composition: a header with model/thinking dropdowns + scrollable
+ * Composition: a conversation header + scrollable
  * message list with auto-scroll-to-bottom (suspended while the user
  * scrolls up) + textarea input with Enter-sends / Shift+Enter-newline
- * and a Send/Stop toggle keyed off whether this conversation has an
- * in-flight call.
+ * and a Send/Stop toggle. Model/thinking controls sit below the input.
  *
  * Draft preservation: the input is local React state for snappiness,
  * but is synced through `manager.setDraft` on tab/conversation switch
@@ -61,7 +60,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   onToggleConvList,
 }) => {
   const { chat, manager } = useAssistantChat();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const [draft, setDraft] = React.useState(
     () => manager?.getDraft(provider, conversation.id) ?? '',
@@ -169,6 +168,60 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   // no whitespace. That's a much friendlier UX than "open on any `@`"
   // — e.g. it doesn't pop up when the user types an email address.
   const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const paneRef = React.useRef<HTMLDivElement | null>(null);
+  const inputId = React.useId();
+  const [composerExpanded, setComposerExpanded] = React.useState(false);
+  const measuredDraft = React.useRef(draft);
+
+  // Grow with typed/restored drafts and remeasure wrapped lines when the
+  // sidebar changes width. Keep room for the conversation on short windows.
+  const resizeInput = React.useCallback(() => {
+    const input = inputRef.current;
+    const pane = paneRef.current;
+    if (!input || !pane) return;
+    const scrollTop = input.scrollTop;
+    const paneHeight = pane.clientHeight || 480;
+    const cap = Math.max(
+      50,
+      Math.min(
+        composerExpanded ? 480 : 160,
+        paneHeight * (composerExpanded ? 0.6 : 0.3),
+      ),
+    );
+    input.style.height = 'auto';
+    const border = input.offsetHeight - input.clientHeight;
+    const contentHeight = input.scrollHeight + border;
+    const height = composerExpanded
+      ? cap
+      : Math.min(cap, Math.max(50, contentHeight));
+    input.style.height = `${Math.floor(height)}px`;
+    input.style.overflowY = contentHeight > height ? 'auto' : 'hidden';
+    input.scrollTop = scrollTop;
+  }, [composerExpanded]);
+  React.useLayoutEffect(() => {
+    const edited = measuredDraft.current !== draft;
+    measuredDraft.current = draft;
+    resizeInput();
+    const input = inputRef.current;
+    // Line-break insertion can report the old scroll position. Reveal the
+    // new end after sizing, but leave reading/resize scroll positions alone.
+    if (
+      edited &&
+      input &&
+      document.activeElement === input &&
+      input.selectionStart === input.value.length &&
+      input.selectionEnd === input.value.length
+    ) {
+      input.scrollTop = input.scrollHeight;
+    }
+  }, [resizeInput, draft, inflight, language]);
+  React.useEffect(() => {
+    const pane = paneRef.current;
+    if (!pane || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(resizeInput);
+    observer.observe(pane);
+    return () => observer.disconnect();
+  }, [resizeInput]);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [pickerQuery, setPickerQuery] = React.useState('');
   const [pickerAnchor, setPickerAnchor] = React.useState(-1); // index of `@` in draft
@@ -251,6 +304,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     setIsPreparingSend(true);
     draftRef.current = '';
     setDraft('');
+    setComposerExpanded(false);
     setPickerOpen(false);
     let systemContext = null;
     try {
@@ -296,7 +350,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   //                Radix popovers / dialogs keep their dismiss key).
   //   Cmd/Ctrl+K — open a new conversation on this provider tab.
   //   Cmd/Ctrl+/ — focus the input from anywhere in the pane.
-  const paneRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     const el = paneRef.current;
     if (!el) return;
@@ -383,7 +436,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   return (
     <div
       ref={paneRef}
-      className="flex h-full min-w-0 flex-col"
+      className="flex h-full min-h-0 min-w-0 flex-col"
       data-testid="chat-pane"
       tabIndex={-1}
     >
@@ -405,7 +458,10 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         onRemoveSelection={handleRemoveSelection}
         onRemoveMention={handleRemoveMention}
       />
-      <div className="relative border-t border-border p-2">
+      <div
+        className="relative shrink-0 border-t border-border p-2"
+        data-testid="chat-composer"
+      >
         <MentionPicker
           query={pickerQuery}
           open={pickerOpen}
@@ -415,26 +471,32 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         />
         <div className="flex items-end gap-2">
           <textarea
+            id={inputId}
             ref={inputRef}
             value={draft}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder={t('assistant-chat:input_placeholder')}
             rows={2}
-            className="min-w-0 flex-1 resize-none rounded-md border border-border bg-editor px-2 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="min-h-[50px] min-w-0 flex-1 resize-none rounded-md border border-border bg-editor px-2 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             data-testid="chat-input"
             aria-label={t('assistant-chat:input_aria')}
           />
           {inflight ? (
             <Button
               type="button"
-              size="sm"
-              variant="destructive"
+              size="icon"
+              variant="ghost"
+              className="shrink-0 border border-border bg-editor text-foreground hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive/50 focus-visible:bg-destructive/10 focus-visible:text-destructive active:bg-destructive/20"
               onClick={handleStop}
               data-testid="chat-stop"
+              aria-label={t('assistant-chat:stop')}
+              title={t('assistant-chat:stop')}
             >
-              <Icon name="exclamation-circle" />
-              <span>{t('assistant-chat:stop')}</span>
+              <span
+                aria-hidden="true"
+                className="h-3 w-3 rounded-[1px] bg-current"
+              />
             </Button>
           ) : (
             <Button
@@ -458,6 +520,34 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             onModelChange={handleModelChange}
             onThinkingChange={handleThinkingChange}
           />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 shrink-0 text-muted-foreground"
+            onClick={() => {
+              setComposerExpanded((value) => !value);
+              inputRef.current?.focus();
+            }}
+            aria-label={t(
+              composerExpanded
+                ? 'assistant-chat:collapse_input'
+                : 'assistant-chat:expand_input',
+            )}
+            title={t(
+              composerExpanded
+                ? 'assistant-chat:collapse_input'
+                : 'assistant-chat:expand_input',
+            )}
+            aria-expanded={composerExpanded}
+            aria-controls={inputId}
+            data-testid="chat-expand-input"
+          >
+            <Icon
+              name={composerExpanded ? 'compress' : 'expand'}
+              className="size-3"
+            />
+          </Button>
           <div
             className={cn('ml-auto shrink-0', tokenIndicatorClass)}
             data-testid="context-token-estimate"

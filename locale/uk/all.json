@@ -38,7 +38,9 @@
     "mention_picker_aria": "Вибрати файл для згадки",
     "mention_picker_empty": "Немає відповідних файлів",
     "hide_conversations_aria": "Сховати список розмов",
-    "show_conversations_aria": "Показати список розмов"
+    "show_conversations_aria": "Показати список розмов",
+    "expand_input": "Розгорнути поле повідомлення",
+    "collapse_input": "Згорнути поле повідомлення"
   },
   "assistant-settings": {
     "loading": "Завантаження конфігурації постачальника…",

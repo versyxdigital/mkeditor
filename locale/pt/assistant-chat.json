@@ -32,5 +32,7 @@
   "mention_picker_aria": "Escolher um ficheiro para mencionar",
   "mention_picker_empty": "Sem ficheiros correspondentes",
   "hide_conversations_aria": "Ocultar lista de conversas",
-  "show_conversations_aria": "Mostrar lista de conversas"
+  "show_conversations_aria": "Mostrar lista de conversas",
+  "expand_input": "Expandir caixa de mensagem",
+  "collapse_input": "Recolher caixa de mensagem"
 }

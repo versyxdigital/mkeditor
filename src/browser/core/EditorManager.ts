@@ -338,7 +338,15 @@ export class EditorManager {
       folding: false,
       wordWrap: 'on',
       renderOverviewRuler: false,
-      scrollbar: { vertical: 'auto', horizontal: 'hidden' },
+      scrollbar: {
+        vertical: 'auto',
+        horizontal: 'hidden',
+        verticalScrollbarSize: 6,
+        horizontalScrollbarSize: 6,
+        verticalSliderSize: 6,
+        horizontalSliderSize: 6,
+        useShadows: false,
+      },
     });
     diff.setModel({ original: originalModel, modified: modifiedModel });
 

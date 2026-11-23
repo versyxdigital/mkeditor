@@ -32,5 +32,7 @@
   "mention_picker_aria": "Pick a file to mention",
   "mention_picker_empty": "No matching files",
   "hide_conversations_aria": "Hide conversation list",
-  "show_conversations_aria": "Show conversation list"
+  "show_conversations_aria": "Show conversation list",
+  "expand_input": "Expand message box",
+  "collapse_input": "Collapse message box"
 }

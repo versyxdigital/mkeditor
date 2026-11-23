@@ -32,5 +32,7 @@
   "mention_picker_aria": "Kies een bestand om te vermelden",
   "mention_picker_empty": "Geen overeenkomende bestanden",
   "hide_conversations_aria": "Gesprekkenlijst verbergen",
-  "show_conversations_aria": "Gesprekkenlijst tonen"
+  "show_conversations_aria": "Gesprekkenlijst tonen",
+  "expand_input": "Berichtveld vergroten",
+  "collapse_input": "Berichtveld verkleinen"
 }
