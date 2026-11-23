@@ -9,5 +9,6 @@
   "save": "Salva e connetti",
   "saving": "Salvataggio della connessione…",
   "save_failed": "Impossibile salvare la chiave API in modo sicuro. Riprova.",
-  "updating": "Aggiornamento della connessione…"
+  "updating": "Aggiornamento della connessione…",
+  "anthropic_subscription_note": "Gli abbonamenti Claude non coprono l’utilizzo in MKEditor. Connettiti con una chiave API Anthropic; l’utilizzo dell’API viene fatturato separatamente."
 }

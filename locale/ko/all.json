@@ -55,7 +55,8 @@
     "save": "저장하고 연결",
     "saving": "연결 저장 중…",
     "save_failed": "API 키를 안전하게 저장하지 못했습니다. 다시 시도하세요.",
-    "updating": "연결 업데이트 중…"
+    "updating": "연결 업데이트 중…",
+    "anthropic_subscription_note": "Claude 구독에는 MKEditor에서의 사용이 포함되지 않습니다. Anthropic API 키로 연결하세요. API 사용 요금은 별도로 청구됩니다."
   },
   "assistant-settings": {
     "loading": "공급자 구성을 불러오는 중…",

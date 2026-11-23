@@ -55,7 +55,8 @@
     "save": "Guardar e ligar",
     "saving": "A guardar ligação…",
     "save_failed": "Não foi possível guardar a chave API em segurança. Tente novamente.",
-    "updating": "A atualizar ligação…"
+    "updating": "A atualizar ligação…",
+    "anthropic_subscription_note": "As subscrições Claude não cobrem a utilização no MKEditor. Ligue-se com uma chave API da Anthropic; a utilização da API é faturada separadamente."
   },
   "assistant-settings": {
     "loading": "A carregar configuração do fornecedor…",

@@ -55,7 +55,8 @@
     "save": "保存并连接",
     "saving": "正在保存连接…",
     "save_failed": "无法安全保存 API 密钥，请重试。",
-    "updating": "正在更新连接…"
+    "updating": "正在更新连接…",
+    "anthropic_subscription_note": "Claude 订阅不包含在 MKEditor 中的用量。请使用 Anthropic API 密钥连接；API 用量单独计费。"
   },
   "assistant-settings": {
     "loading": "正在加载提供商配置…",

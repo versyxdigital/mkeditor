@@ -9,5 +9,6 @@
   "save": "Enregistrer et connecter",
   "saving": "Enregistrement de la connexion…",
   "save_failed": "Impossible d’enregistrer la clé API de façon sécurisée. Réessayez.",
-  "updating": "Mise à jour de la connexion…"
+  "updating": "Mise à jour de la connexion…",
+  "anthropic_subscription_note": "Les abonnements Claude ne couvrent pas l’utilisation dans MKEditor. Connectez-vous avec une clé API Anthropic ; l’utilisation de l’API est facturée séparément."
 }

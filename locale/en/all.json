@@ -55,7 +55,8 @@
     "save": "Save and connect",
     "saving": "Saving connection…",
     "save_failed": "Couldn’t save the API key securely. Try again.",
-    "updating": "Updating connection…"
+    "updating": "Updating connection…",
+    "anthropic_subscription_note": "Claude subscriptions don’t cover usage in MKEditor. Connect with an Anthropic API key; API usage is billed separately."
   },
   "assistant-settings": {
     "loading": "Loading provider config…",

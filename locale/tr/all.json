@@ -55,7 +55,8 @@
     "save": "Kaydet ve bağlan",
     "saving": "Bağlantı kaydediliyor…",
     "save_failed": "API anahtarı güvenli şekilde kaydedilemedi. Tekrar deneyin.",
-    "updating": "Bağlantı güncelleniyor…"
+    "updating": "Bağlantı güncelleniyor…",
+    "anthropic_subscription_note": "Claude abonelikleri MKEditor kullanımını kapsamaz. Anthropic API anahtarıyla bağlanın; API kullanımı ayrı faturalandırılır."
   },
   "assistant-settings": {
     "loading": "Sağlayıcı yapılandırması yükleniyor…",

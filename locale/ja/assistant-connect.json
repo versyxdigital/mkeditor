@@ -9,5 +9,6 @@
   "save": "保存して接続",
   "saving": "接続を保存しています…",
   "save_failed": "API キーを安全に保存できませんでした。もう一度お試しください。",
-  "updating": "接続を更新しています…"
+  "updating": "接続を更新しています…",
+  "anthropic_subscription_note": "Claude のサブスクリプションは MKEditor での利用をカバーしません。Anthropic の API キーで接続してください。API の利用料金は別途請求されます。"
 }

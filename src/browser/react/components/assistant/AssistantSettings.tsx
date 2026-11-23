@@ -196,6 +196,14 @@ const ApiProviderRow: React.FC<{
       disabled={disabledByEncryption}
     >
       {provider === 'openai' && <ChatGptSettings />}
+      {provider === 'anthropic' && (
+        <p
+          role="note"
+          className="rounded-md border border-border bg-editor px-3 py-2 text-xs leading-5 text-muted-foreground"
+        >
+          {t('assistant-connect:anthropic_subscription_note')}
+        </p>
+      )}
       {!usePlan && (
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${provider}-key`}>

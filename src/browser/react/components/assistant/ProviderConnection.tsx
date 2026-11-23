@@ -100,6 +100,14 @@ export const ProviderConnection: React.FC<{
             { provider: label },
           )}
         </p>
+        {provider === 'anthropic' && (
+          <p
+            role="note"
+            className="rounded-md border border-border bg-editor px-3 py-2 text-xs leading-5 text-muted-foreground"
+          >
+            {t('assistant-connect:anthropic_subscription_note')}
+          </p>
+        )}
         {!snapshot.encryptionAvailable && (
           <p role="alert" className="text-xs text-destructive">
             {t('assistant-settings:encryption_unavailable')}
@@ -218,9 +226,11 @@ export const ProviderConnection: React.FC<{
               </Button>
             </>
           )}
-          <p className="text-xs leading-5 text-muted-foreground">
-            {t('assistant-connect:api_help', { provider: label })}
-          </p>
+          {provider !== 'anthropic' && (
+            <p className="text-xs leading-5 text-muted-foreground">
+              {t('assistant-connect:api_help', { provider: label })}
+            </p>
+          )}
           {failed && (
             <p role="alert" className="text-xs text-destructive">
               {t('assistant-connect:save_failed')}

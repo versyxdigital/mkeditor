@@ -55,7 +55,8 @@
     "save": "Speichern und verbinden",
     "saving": "Verbindung wird gespeichert…",
     "save_failed": "Der API-Schlüssel konnte nicht sicher gespeichert werden. Versuchen Sie es erneut.",
-    "updating": "Verbindung wird aktualisiert…"
+    "updating": "Verbindung wird aktualisiert…",
+    "anthropic_subscription_note": "Claude-Abonnements decken die Nutzung in MKEditor nicht ab. Verbinden Sie sich mit einem Anthropic-API-Schlüssel; die API-Nutzung wird separat abgerechnet."
   },
   "assistant-settings": {
     "loading": "Anbieterkonfiguration wird geladen…",
