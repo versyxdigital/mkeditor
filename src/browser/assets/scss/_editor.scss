@@ -34,3 +34,8 @@
   height: 100%;
   background: var(--bg-editor);
 }
+
+// Monaco draws its own thumbs; match the native thin-scrollbars styling.
+.monaco-scrollable-element > .scrollbar > .slider {
+  border-radius: 3px;
+}

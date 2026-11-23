@@ -501,6 +501,7 @@ export const Shell: React.FC<{
     >
       <Panel
         id="sidebar-pane"
+        className="thin-scrollbars"
         panelRef={sidebarPanelRef}
         collapsible
         defaultSize="240px"

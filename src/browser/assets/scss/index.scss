@@ -32,7 +32,7 @@ body[data-theme='dark'] {
   background: var(--text-secondary);
 }
 
-// Assistant previews and chat use quieter chrome than the global scrollbars.
+// Explorer and assistant regions share compact, unobtrusive scrollbars.
 .thin-scrollbars {
   &,
   * {

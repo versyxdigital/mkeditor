@@ -180,6 +180,13 @@ export class EditorManager {
           '(prefers-reduced-motion: reduce)',
         ).matches,
         roundedSelection: false,
+        scrollbar: {
+          verticalScrollbarSize: 6,
+          horizontalScrollbarSize: 6,
+          verticalSliderSize: 6,
+          horizontalSliderSize: 6,
+          useShadows: false,
+        },
         accessibilityPageSize: 1000,
       });
       console.info('mkeditor: Monaco editor instance created.');
