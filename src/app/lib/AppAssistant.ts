@@ -237,22 +237,28 @@ export class AppAssistant {
    * `from:ai:config`. Folds key-presence flags in from `AssistantKeyStore`.
    * Never includes a key value.
    */
-  buildSanitizedConfig() {
+  async buildSanitizedConfig() {
+    const [encryptionAvailable, anthropicHasKey, openaiHasKey] =
+      await Promise.all([
+        AssistantKeyStore.isEncryptionAvailable(),
+        AssistantKeyStore.hasKey('anthropic'),
+        AssistantKeyStore.hasKey('openai'),
+      ]);
     const config = AssistantConfig.load();
     return {
       config: {
         anthropic: {
           ...config.anthropic,
-          hasKey: AssistantKeyStore.hasKey('anthropic'),
+          hasKey: anthropicHasKey,
         },
         openai: {
           ...config.openai,
-          hasKey: AssistantKeyStore.hasKey('openai'),
+          hasKey: openaiHasKey,
         },
         // Ollama doesn't carry a key; carried as `hasKey: false` for symmetry.
         ollama: { ...config.ollama, hasKey: false as const },
       },
-      encryptionAvailable: AssistantKeyStore.isEncryptionAvailable(),
+      encryptionAvailable,
     };
   }
 
@@ -270,12 +276,14 @@ export class AppAssistant {
     const { request } = state;
     let model: LanguageModel;
     try {
-      model = this.buildModel(request.provider, request.model);
+      model = await this.buildModel(request.provider, request.model);
     } catch (err) {
+      if (state.cancelled || this.calls.get(request.callId) !== state) return;
       this.sendError(request.callId, AppAssistant.mapError(err));
       this.finishCall(state);
       return;
     }
+    if (state.cancelled || this.calls.get(request.callId) !== state) return;
 
     let result;
     try {
@@ -432,7 +440,10 @@ export class AppAssistant {
   }
 
   /** Construct (or rebuild on-demand) the SDK client for a provider. */
-  private buildModel(provider: ProviderId, modelId: string): LanguageModel {
+  private async buildModel(
+    provider: ProviderId,
+    modelId: string,
+  ): Promise<LanguageModel> {
     if (provider === 'ollama') {
       const cfg = AssistantConfig.load().ollama;
       // `ollama-ai-provider-v2` builds chat URLs as `${baseURL}/chat`,
@@ -445,7 +456,7 @@ export class AppAssistant {
       return this.factories.ollama(apiBase, modelId);
     }
     const apiProvider = provider as ApiProviderId;
-    const key = AssistantKeyStore.getKey(apiProvider);
+    const key = await AssistantKeyStore.getKey(apiProvider);
     if (!key) {
       throw new MissingKeyError(apiProvider);
     }

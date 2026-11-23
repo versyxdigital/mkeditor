@@ -120,7 +120,7 @@ function countSends(ctx: MockContext, channel: string): number {
  * enough times to drain the longest plausible chain in these tests.
  */
 async function flush(): Promise<void> {
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 30; i++) {
     await Promise.resolve();
   }
 }
@@ -160,11 +160,11 @@ function buildAssistant(ctx: MockContext) {
   return { assistant, factories };
 }
 
-function seedKey(provider: 'anthropic' | 'openai', key: string) {
+async function seedKey(provider: 'anthropic' | 'openai', key: string) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { AssistantKeyStore } = require('../src/app/lib/AssistantKeyStore');
   AssistantKeyStore._resetEncryptionCacheForTests();
-  AssistantKeyStore.setKey(provider, key);
+  await AssistantKeyStore.setKey(provider, key);
 }
 
 const baseRequest = (
@@ -184,7 +184,7 @@ describe('AppAssistant.chat — streaming + callId fan-out', () => {
     async (provider) => {
       const ctx = makeContext();
       const { assistant } = buildAssistant(ctx);
-      if (provider !== 'ollama') seedKey(provider, 'sk-test-history');
+      if (provider !== 'ollama') await seedKey(provider, 'sk-test-history');
       mockStreamText.mockReturnValueOnce(
         makeStreamResult([], { finishReason: 'stop' }),
       );
@@ -309,7 +309,7 @@ describe('AppAssistant.chat — streaming + callId fan-out', () => {
     async (provider, model, thinkingLevel, expected) => {
       const ctx = makeContext();
       const { assistant } = buildAssistant(ctx);
-      seedKey(provider, 'sk-test');
+      await seedKey(provider, 'sk-test');
       mockStreamText.mockReturnValueOnce(makeStreamResult([]));
       assistant.chat({
         ...baseRequest('thinking', 'hello', provider),
@@ -321,13 +321,23 @@ describe('AppAssistant.chat — streaming + callId fan-out', () => {
     },
   );
 
-  it('aborts every upstream call when its owning window is disposed', () => {
+  it('aborts every upstream call when its owning window is disposed', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
-    mockStreamText.mockImplementation(() => makeStreamResult([]));
+    await seedKey('anthropic', 'sk-x');
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    mockStreamText.mockImplementation(() => ({
+      ...makeStreamResult([]),
+      stream: (async function* () {
+        await gate;
+      })(),
+    }));
     assistant.chat(baseRequest('one'));
     assistant.chat(baseRequest('two'));
+    await flush();
     const signals = mockStreamText.mock.calls.map(
       ([options]) => options.abortSignal,
     );
@@ -336,11 +346,13 @@ describe('AppAssistant.chat — streaming + callId fan-out', () => {
     expect(signals.every((signal) => signal.aborted)).toBe(true);
     expect(assistant.cancel('one')).toBe(false);
     expect(assistant.cancel('two')).toBe(false);
+    release();
+    await flush();
   });
   it('forwards text-delta chunks as from:ai:chunk tagged with the callId', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     mockStreamText.mockReturnValueOnce(
       makeStreamResult([
@@ -370,8 +382,8 @@ describe('AppAssistant.chat — streaming + callId fan-out', () => {
   it('keeps concurrent calls isolated by callId', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-a');
-    seedKey('openai', 'sk-b');
+    await seedKey('anthropic', 'sk-a');
+    await seedKey('openai', 'sk-b');
 
     mockStreamText
       .mockReturnValueOnce(
@@ -399,7 +411,7 @@ describe('AppAssistant.chat — streaming + callId fan-out', () => {
   it('emits from:ai:done with usage + finishReason on natural completion', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     mockStreamText.mockReturnValueOnce(
       makeStreamResult([{ type: 'text-delta', text: 'ok' }], {
@@ -421,7 +433,7 @@ describe('AppAssistant.chat — streaming + callId fan-out', () => {
   it('forwards maxOutputTokens to streamText when the request sets it (AI Assistant P3 connection-test path)', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     mockStreamText.mockReturnValueOnce(
       makeStreamResult([{ type: 'text-delta', text: 'pong' }]),
@@ -440,7 +452,7 @@ describe('AppAssistant.chat — streaming + callId fan-out', () => {
   it('omits maxOutputTokens from streamText when the request leaves it unset (chat path)', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     mockStreamText.mockReturnValueOnce(
       makeStreamResult([{ type: 'text-delta', text: 'ok' }]),
@@ -458,7 +470,7 @@ describe('AppAssistant.chat — streaming + callId fan-out', () => {
   it('sends system turns as instructions rather than inside messages', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     mockStreamText.mockReturnValueOnce(
       makeStreamResult([{ type: 'text-delta', text: 'ok' }]),
@@ -486,7 +498,7 @@ describe('AppAssistant.chat — streaming + callId fan-out', () => {
   it('omits instructions when the request has no system turn', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     mockStreamText.mockReturnValueOnce(
       makeStreamResult([{ type: 'text-delta', text: 'ok' }]),
@@ -504,7 +516,7 @@ describe('AppAssistant.cancel', () => {
   it('aborts the AbortController and stops further chunks for that callId', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     let capturedAbort: AbortSignal | undefined;
     mockStreamText.mockImplementationOnce(
@@ -572,7 +584,7 @@ describe('AppAssistant.chat — error mapping', () => {
   it('emits from:ai:error when streamText emits a {type:"error"} chunk', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     mockStreamText.mockReturnValueOnce(
       makeStreamResult([
@@ -594,7 +606,7 @@ describe('AppAssistant.chat — error mapping', () => {
   it('maps network-flavoured errors to "network_error"', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     mockStreamText.mockImplementationOnce(() => {
       throw new Error('ECONNREFUSED 127.0.0.1:443');
@@ -629,8 +641,8 @@ describe('AppAssistant.chat — error mapping', () => {
       const ctx = makeContext();
       const { assistant } = buildAssistant(ctx);
       // For ollama_unreachable, the request needs to target ollama.
-      seedKey('anthropic', 'sk-x');
-      seedKey('openai', 'sk-x');
+      await seedKey('anthropic', 'sk-x');
+      await seedKey('openai', 'sk-x');
 
       mockStreamText.mockImplementationOnce(() => {
         throw new Error(message);
@@ -690,7 +702,7 @@ describe('AppAssistant.chat — error mapping', () => {
     // actually went wrong.
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     const apiErr = Object.assign(new Error('Bad Request'), {
       name: 'AI_APICallError',
@@ -720,7 +732,7 @@ describe('AppAssistant — tool-call → tool-result loop', () => {
   it('forwards tool calls, accepts a tool result, and re-invokes streamText', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     // Turn 1: model emits a tool-call then ends.
     mockStreamText.mockReturnValueOnce(
@@ -827,7 +839,7 @@ describe('AppAssistant — tool-call → tool-result loop', () => {
     // streamText call's `messages` must contain the assistant message.
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     // Turn 1: tool-call. We yield via a hand-rolled async iterator
     // so the test can wedge `submitToolResult` between the tool-call
@@ -934,7 +946,7 @@ describe('AppAssistant — tool-call → tool-result loop', () => {
     // be cleaned out of `calls`.
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
 
     // A stream that emits a tool-call then ends.
     mockStreamText.mockReturnValueOnce(
@@ -1002,12 +1014,12 @@ describe('AppAssistant — tool-call → tool-result loop', () => {
 });
 
 describe('AppAssistant.buildSanitizedConfig', () => {
-  it('reports hasKey:true for stored providers and never includes the key value', () => {
+  it('reports hasKey:true for stored providers and never includes the key value', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-anthropic-secret');
+    await seedKey('anthropic', 'sk-anthropic-secret');
 
-    const payload = assistant.buildSanitizedConfig();
+    const payload = await assistant.buildSanitizedConfig();
     expect(payload.config.anthropic.hasKey).toBe(true);
     expect(payload.config.openai.hasKey).toBe(false);
     expect(payload.config.ollama.hasKey).toBe(false);
@@ -1023,17 +1035,17 @@ describe('AppAssistant.buildSanitizedConfig', () => {
     expect(serialised).not.toMatch(/"secret"\s*:/);
   });
 
-  it('reports hasKey:false on every provider when encryption is unavailable', () => {
+  it('reports hasKey:false on every provider when encryption is unavailable', async () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const electron = require('electron') as {
-      safeStorage: { isEncryptionAvailable: jest.Mock };
+      safeStorage: { isAsyncEncryptionAvailable: jest.Mock };
     };
-    electron.safeStorage.isEncryptionAvailable.mockReturnValue(false);
+    electron.safeStorage.isAsyncEncryptionAvailable.mockReturnValue(false);
 
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
 
-    const payload = assistant.buildSanitizedConfig();
+    const payload = await assistant.buildSanitizedConfig();
     expect(payload.encryptionAvailable).toBe(false);
     expect(payload.config.anthropic.hasKey).toBe(false);
     expect(payload.config.openai.hasKey).toBe(false);
@@ -1145,10 +1157,35 @@ describe('AppAssistant.listOllamaModels', () => {
 });
 
 describe('AppAssistant cancellation race regressions', () => {
+  it('never starts a stream after cancellation while OS decryption is pending', async () => {
+    const context = makeContext();
+    const { assistant } = buildAssistant(context);
+    await seedKey('anthropic', 'sk-test');
+    const { safeStorage } = jest.requireActual('electron');
+    let release!: (value: { result: string; shouldReEncrypt: boolean }) => void;
+    let started!: () => void;
+    const entering = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    safeStorage.decryptStringAsync.mockImplementationOnce(() => {
+      started();
+      return new Promise((resolve) => {
+        release = resolve;
+      });
+    });
+    assistant.chat(baseRequest('decrypt-pending'));
+    await entering;
+    expect(assistant.cancel('decrypt-pending')).toBe(true);
+    release({ result: 'sk-test', shouldReEncrypt: false });
+    await flush();
+    expect(mockStreamText).not.toHaveBeenCalled();
+    expect(countSends(context, 'from:ai:error')).toBe(0);
+    expect(countSends(context, 'from:ai:chunk')).toBe(0);
+  });
   it('does not send completion after cancellation during response-message resolution', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
     let finish!: (messages: unknown[]) => void;
     mockStreamText.mockReturnValueOnce({
       ...makeStreamResult([]),
@@ -1168,7 +1205,7 @@ describe('AppAssistant cancellation race regressions', () => {
   it('does not send completion after cancellation while usage is resolving', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
     let finish!: (usage: unknown) => void;
     mockStreamText.mockReturnValueOnce({
       ...makeStreamResult([]),
@@ -1187,7 +1224,7 @@ describe('AppAssistant cancellation race regressions', () => {
   it('keeps a replacement call registered when the cancelled stream finishes late', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
     let releaseOld!: () => void;
     let releaseNew!: () => void;
     const oldGate = new Promise<void>((resolve) => {
@@ -1212,6 +1249,7 @@ describe('AppAssistant cancellation race regressions', () => {
         })(),
       });
     assistant.chat(baseRequest('reused-id'));
+    await flush();
     assistant.chat(baseRequest('reused-id', 'replacement'));
     releaseOld();
     await flush();
@@ -1226,7 +1264,7 @@ describe('AppAssistant cancellation race regressions', () => {
   it('maps malformed tool metadata to an error instead of leaking an unhandled rejection', async () => {
     const ctx = makeContext();
     const { assistant } = buildAssistant(ctx);
-    seedKey('anthropic', 'sk-x');
+    await seedKey('anthropic', 'sk-x');
     assistant.chat({ ...baseRequest('bad-tools'), tools: [null as never] });
     await flush();
     expect(countSends(ctx, 'from:ai:error')).toBe(1);

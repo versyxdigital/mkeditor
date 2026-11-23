@@ -6,6 +6,8 @@ Contirbutions to MKEditor are welcomed. This document outlines how to build the 
 
 If you would like to build from source, please follow the steps below:
 
+Use Node.js 22 or later; CI runs Node.js 22. Dependency installations should use the checked-in lockfile. Fully quit a running development instance before updating Electron: Windows locks its installed runtime files while the app is open.
+
 1. Clone the repository:
 
    ```sh
@@ -16,7 +18,7 @@ If you would like to build from source, please follow the steps below:
 2. Install dependencies:
 
    ```sh
-   npm install
+   npm ci
    ```
 
    This also wires up the local Git pre-commit hook (via Husky's
@@ -38,6 +40,12 @@ If you would like to build from source, please follow the steps below:
      ```sh
      npm run make-installer
      ```
+
+## Dependency compatibility
+
+TypeScript remains on 6.0.x because the current `ts-jest` and `@typescript-eslint/parser` peer requirements exclude TypeScript 7. The native TypeScript 7 package also changes the compiler API consumed by the test and webpack loaders. Upgrade that toolchain together when support is available; do not force unsupported peers with npm flags.
+
+Jest DOM matchers use version 8 with an explicit `@testing-library/dom` development dependency. MKEditor uses Jest, so the v8 change to Vitest support does not require changing test runners. The i18next 27 migration explicitly retains English fallback and intentional empty translations in `i18n.ts`; locale regression tests cover fallback, interpolation, pluralization and language changes.
 
 ## Project Structure
 

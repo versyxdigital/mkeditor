@@ -91,7 +91,7 @@ export interface AssistantContextChip {
  * surface in P4) should treat null as "loading" rather than rendering
  * provider-specific affordances.
  *
- * `encryptionAvailable` mirrors main's `safeStorage.isEncryptionAvailable()`
+ * `encryptionAvailable` mirrors main's resolved async safeStorage availability
  * (see `AssistantKeyStore.isEncryptionAvailable`). When false the
  * remote providers are effectively disabled — settings UI surfaces a
  * warning and the test-connection / key-set buttons short-circuit.

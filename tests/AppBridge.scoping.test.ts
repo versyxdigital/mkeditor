@@ -103,6 +103,46 @@ beforeEach(() => {
 });
 
 describe('AppBridge — sender-scoped IPC handlers', () => {
+  it('awaits sanitized config and drops stale or disposed-window pushes', async () => {
+    const context = makeContext(),
+      bridge = new AppBridge(context as never, true);
+    let resolveFirst!: (value: unknown) => void;
+    const first = new Promise((resolve) => {
+      resolveFirst = resolve;
+    });
+    const current = {
+      config: { anthropic: { hasKey: true } },
+      encryptionAvailable: true,
+    };
+    const buildSanitizedConfig = jest
+      .fn()
+      .mockReturnValueOnce(first)
+      .mockResolvedValue(current);
+    bridge.provide('assistant', { buildSanitizedConfig });
+    const pending = bridge.pushAssistantConfig();
+    await bridge.pushAssistantConfig();
+    expect(context.webContents.send).toHaveBeenCalledWith(
+      'from:ai:config',
+      current,
+    );
+    resolveFirst({
+      config: { anthropic: { hasKey: false } },
+      encryptionAvailable: true,
+    });
+    await pending;
+    expect(context.webContents.send).toHaveBeenCalledTimes(1);
+    let resolveClosed!: (value: unknown) => void;
+    buildSanitizedConfig.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveClosed = resolve;
+      }),
+    );
+    const afterClose = bridge.pushAssistantConfig();
+    context.fireOnce('closed');
+    resolveClosed(current);
+    await afterClose;
+    expect(context.webContents.send).toHaveBeenCalledTimes(1);
+  });
   it('ignores fire-and-forget channels from a foreign sender', () => {
     const ctx = makeContext();
     new AppBridge(ctx as never, true);

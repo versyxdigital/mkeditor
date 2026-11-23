@@ -24,6 +24,31 @@ afterEach(() => {
 });
 
 describe('locale preference recovery', () => {
+  it('preserves English fallback, intentional empty strings and interpolation across language changes', async () => {
+    const i18n = await import('../src/browser/i18n');
+    const { default: engine } = await import('i18next');
+    await i18n.prepareI18n('de-DE', false);
+    engine.addResourceBundle('en', 'app', {
+      englishOnly: 'English fallback',
+      emptyLabel: 'English label',
+      greeting: 'Hello {{name}}',
+      files_one: '{{count}} file',
+      files_other: '{{count}} files',
+    });
+    engine.addResourceBundle('de', 'app', {
+      emptyLabel: '',
+      greeting: 'Hallo {{name}}',
+    });
+    expect(engine.language).toBe('de');
+    expect(i18n.t('app:englishOnly')).toBe('English fallback');
+    expect(i18n.t('app:emptyLabel')).toBe('');
+    expect(i18n.t('app:greeting', { name: 'Chris' })).toBe('Hallo Chris');
+    expect(i18n.t('app:files', { count: 1 })).toBe('1 file');
+    expect(i18n.t('app:files', { count: 2 })).toBe('2 files');
+    engine.addResourceBundle('fr', 'app', { greeting: 'Bonjour {{name}}' });
+    await engine.changeLanguage('fr');
+    expect(i18n.t('app:greeting', { name: 'Chris' })).toBe('Bonjour Chris');
+  });
   it.each(['{', 'null', '[]', '{"locale":42}', '{"locale":{}}'])(
     'uses the browser language for malformed preferences %s',
     async (stored) => {

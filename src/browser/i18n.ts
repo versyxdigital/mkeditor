@@ -346,6 +346,9 @@ export async function prepareI18n(
   await i18next.init({
     lng,
     fallbackLng: 'en',
+    // Empty translations intentionally hide optional labels; preserve this
+    // behavior explicitly instead of inheriting i18next 27's changed default.
+    returnEmptyString: true,
     ns: namespaces.map((n) => n.ns),
     defaultNS: 'app',
     interpolation: { escapeValue: false },

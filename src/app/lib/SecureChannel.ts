@@ -60,7 +60,7 @@ export class SecureChannel {
    *
    * The plaintext exists in this process's memory only as long as
    * the immediate caller's stack frame; the recommended pattern is
-   * decrypt → safeStorage.encryptString → write → drop the
+   * decrypt → safeStorage.encryptStringAsync → write → drop the
    * reference. (Node can't zero a string in place, but the GC will
    * reclaim it; in-process plaintext is the same risk surface
    * safeStorage already accepts.)

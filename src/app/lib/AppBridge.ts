@@ -74,6 +74,7 @@ export class AppBridge {
   }> = [];
   private invokeChannels: string[] = [];
   private disposed = false;
+  private assistantConfigPush = 0;
   private registered = false;
 
   /**
@@ -632,7 +633,7 @@ export class AppBridge {
       this.pushAssistantConfig();
     });
 
-    this.on('to:ai:key:set', (_e, payload: KeySetRequest) => {
+    this.on('to:ai:key:set', async (_e, payload: KeySetRequest) => {
       // Payload carries RSA-OAEP ciphertext (base64) — never the
       // raw API key. We decrypt with the per-session private key
       // held inside `SecureChannel`, hand the plaintext directly to
@@ -652,12 +653,12 @@ export class AppBridge {
         this.pushAssistantConfig();
         return;
       }
-      AssistantKeyStore.setKey(payload.provider, plaintext);
+      await AssistantKeyStore.setKey(payload.provider, plaintext);
       this.pushAssistantConfig();
     });
 
-    this.on('to:ai:key:clear', (_e, payload: KeyClearRequest) => {
-      AssistantKeyStore.clearKey(payload.provider);
+    this.on('to:ai:key:clear', async (_e, payload: KeyClearRequest) => {
+      await AssistantKeyStore.clearKey(payload.provider);
       this.pushAssistantConfig();
     });
 
@@ -788,14 +789,19 @@ export class AppBridge {
    * every config/key mutation, and by main.ts on `did-finish-load` so
    * the renderer hydrates on first paint.
    */
-  pushAssistantConfig(): void {
+  async pushAssistantConfig(): Promise<void> {
     if (!this.providers.assistant) return;
+    const generation = ++this.assistantConfigPush;
     try {
-      if (this.context.isDestroyed()) return;
-      this.context.webContents.send(
-        'from:ai:config',
-        this.providers.assistant.buildSanitizedConfig(),
-      );
+      if (this.disposed || this.context.isDestroyed()) return;
+      const config = await this.providers.assistant.buildSanitizedConfig();
+      if (
+        this.disposed ||
+        this.context.isDestroyed() ||
+        generation !== this.assistantConfigPush
+      )
+        return;
+      this.context.webContents.send('from:ai:config', config);
     } catch (e) {
       this.providers.logger?.log.error('[from:ai:config]', e);
     }

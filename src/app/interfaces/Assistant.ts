@@ -55,7 +55,7 @@ export interface SanitizedProviderConfig {
 export interface ConfigPushPayload {
   config: SanitizedProviderConfig;
   /**
-   * `safeStorage.isEncryptionAvailable()` result. When false, the
+   * Resolved `safeStorage.isAsyncEncryptionAvailable()` result. When false, the
    * renderer disables remote providers (Anthropic / OpenAI) so the user
    * isn't prompted for a key we can't safely persist.
    */
