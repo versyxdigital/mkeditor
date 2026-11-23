@@ -27,6 +27,7 @@ import type {
 import type { ToolExecutor } from './AssistantTools';
 import { encryptForMain } from './SecureChannelClient';
 import { cancelToolConfirmsForCallId } from '../toolConfirm';
+import { isPathWithinTree } from './FileTreeManager';
 import {
   getThinkingLevels,
   isThinkingLevel,
@@ -1346,6 +1347,59 @@ export class AssistantManager {
     });
     if (!stillUsed) this.mentionContents.delete(path);
     this.rebuildChatSnapshot();
+  }
+
+  /** Existing references follow file and folder moves, including closed files. */
+  public renameMentionPaths(oldPath: string, newPath: string): void {
+    const old = oldPath.replace(/\\/g, '/').replace(/\/+$/, '');
+    const replacement = newPath.replace(/[\\/]+$/, '');
+    const remap = (path: string) =>
+      isPathWithinTree(path, oldPath)
+        ? replacement +
+          path
+            .replace(/\\/g, '/')
+            .slice(old.length)
+            .replace(/\//g, newPath.includes('\\') ? '\\' : '/')
+        : path;
+    let changed = false;
+    for (const provider of PROVIDER_IDS) {
+      for (const conversation of this.conversations[provider].values()) {
+        const mentions = conversation.mentions.map(remap);
+        if (mentions.some((path, i) => path !== conversation.mentions[i])) {
+          conversation.mentions = [...new Set(mentions)];
+          conversation.updatedAt = Date.now();
+          changed = true;
+        }
+      }
+    }
+    for (const [path, content] of [...this.mentionContents]) {
+      const next = remap(path);
+      if (next !== path) {
+        this.mentionContents.delete(path);
+        this.mentionContents.set(next, content);
+      }
+    }
+    if (changed) this.rebuildChatSnapshot();
+  }
+
+  public removeMentionPaths(path: string): void {
+    let changed = false;
+    for (const provider of PROVIDER_IDS) {
+      for (const conversation of this.conversations[provider].values()) {
+        const mentions = conversation.mentions.filter(
+          (mention) => !isPathWithinTree(mention, path),
+        );
+        if (mentions.length !== conversation.mentions.length) {
+          conversation.mentions = mentions;
+          conversation.updatedAt = Date.now();
+          changed = true;
+        }
+      }
+    }
+    for (const mention of this.mentionContents.keys()) {
+      if (isPathWithinTree(mention, path)) this.mentionContents.delete(mention);
+    }
+    if (changed) this.rebuildChatSnapshot();
   }
 
   /**

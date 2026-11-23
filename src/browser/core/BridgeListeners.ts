@@ -194,6 +194,10 @@ export function registerBridgeListeners(
   bridge.receive('from:path:renamed', ({ oldPath, newPath }: RenamedPath) => {
     files.renameTab(oldPath, newPath, basename(newPath));
     files.renameDescendantTabs(oldPath, newPath);
+    manager.assistantManager?.renameMentionPaths(oldPath, newPath);
+  });
+  bridge.receive('from:path:deleted', ({ path }: { path: string }) => {
+    manager.assistantManager?.removeMentionPaths(path);
   });
 
   // Enable access to the monaco editor command palette.

@@ -24,6 +24,7 @@ jest.mock('../src/app/lib/AppStorage', () => ({
   AppStorage: {
     getActiveFilePath: jest.fn(() => '/abs/active.md'),
     setWorkspaceRoot: jest.fn(),
+    listWorkspaceFiles: jest.fn(async () => ['/workspace/poems/one.md']),
   },
 }));
 
@@ -35,6 +36,7 @@ jest.mock('../src/app/lib/assistantStoreFile', () => ({
 import { ipcMain } from 'electron';
 import { AppBridge } from '../src/app/lib/AppBridge';
 import { AppSession } from '../src/app/lib/AppSession';
+import { AppStorage } from '../src/app/lib/AppStorage';
 
 type Listener = (...args: unknown[]) => void;
 
@@ -149,6 +151,20 @@ describe('AppBridge — sender-scoped IPC handlers', () => {
     expect(() =>
       handler({ sender: { id: 999 } } as never, '/abs/foo/bar.md'),
     ).toThrow(/sender mismatch/);
+  });
+
+  it('scopes the independent workspace inventory to its owning sender', async () => {
+    const ctx = makeContext();
+    new AppBridge(ctx as never, true);
+    const handler = findHandleHandler('mked:fs:listworkspacefiles');
+    expect(() => handler(fakeEvent(999), '/workspace')).toThrow(
+      /sender mismatch/,
+    );
+    expect(AppStorage.listWorkspaceFiles).not.toHaveBeenCalled();
+    expect(await handler(fakeEvent(), '/workspace')).toEqual([
+      '/workspace/poems/one.md',
+    ]);
+    expect(AppStorage.listWorkspaceFiles).toHaveBeenCalledWith('/workspace');
   });
 
   it('honours owning-sender invoke calls', () => {

@@ -1276,6 +1276,7 @@ export class WebFileBridge implements ContextBridgeAPI {
 
     try {
       await parent.removeEntry(handle.name, { recursive: true });
+      this.emit('from:path:deleted', { path });
       // Drop the entry and any descendants from the cache.
       for (const key of [...this.handles.keys()]) {
         if (key === path || key.startsWith(`${path}/`)) {

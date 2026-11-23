@@ -34,5 +34,7 @@
   "hide_conversations_aria": "Ocultar lista de conversas",
   "show_conversations_aria": "Mostrar lista de conversas",
   "expand_input": "Expandir caixa de mensagem",
-  "collapse_input": "Recolher caixa de mensagem"
+  "collapse_input": "Recolher caixa de mensagem",
+  "mention_picker_loading": "A carregar os ficheiros do espaço de trabalho…",
+  "mention_picker_error": "Não foi possível carregar os ficheiros do espaço de trabalho."
 }

@@ -40,7 +40,9 @@
     "hide_conversations_aria": "Konuşma listesini gizle",
     "show_conversations_aria": "Konuşma listesini göster",
     "expand_input": "Mesaj kutusunu genişlet",
-    "collapse_input": "Mesaj kutusunu daralt"
+    "collapse_input": "Mesaj kutusunu daralt",
+    "mention_picker_loading": "Çalışma alanı dosyaları yükleniyor…",
+    "mention_picker_error": "Çalışma alanı dosyaları yüklenemedi."
   },
   "assistant-settings": {
     "loading": "Sağlayıcı yapılandırması yükleniyor…",

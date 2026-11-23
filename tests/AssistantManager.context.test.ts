@@ -62,6 +62,44 @@ function makeContextProvider(
 }
 
 describe('AssistantManager — contextFor assembly', () => {
+  it('keeps pinned references aligned with file/folder renames and removes deleted descendants', async () => {
+    const { bridge } = makeBridge();
+    const manager = new AssistantManager(bridge, { disablePacedReveal: true });
+    const provider = makeContextProvider({
+      fileContents: new Map([
+        ['/w/poems/one.md', 'old'],
+        ['/w/poems-other/safe.md', 'safe'],
+      ]),
+    });
+    manager.setContextProvider(provider);
+    const a = manager.createConversation('anthropic');
+    const b = manager.createConversation('openai');
+    await manager.addMention('anthropic', a, '/w/poems/one.md');
+    await manager.addMention('anthropic', a, '/w/poems-other/safe.md');
+    await manager.addMention('openai', b, '/w/poems/one.md');
+    manager.renameMentionPaths('/w/poems', '/w/renamed');
+    expect(
+      manager.contextChips('anthropic', a).map((chip) => chip.path),
+    ).toEqual(['/w/renamed/one.md', '/w/poems-other/safe.md']);
+    expect(manager.contextChips('openai', b).map((chip) => chip.path)).toEqual([
+      '/w/renamed/one.md',
+    ]);
+    provider._state.fileContents.delete('/w/poems/one.md');
+    provider._state.fileContents.set('/w/renamed/one.md', 'renamed content');
+    expect((await manager.contextFor('anthropic', a))?.content).toContain(
+      'renamed content',
+    );
+    manager.renameMentionPaths('/w/renamed/one.md', '/w/elsewhere/moved.md');
+    expect(manager.serialize()!.conversations.openai[0].mentions).toEqual([
+      '/w/elsewhere/moved.md',
+    ]);
+    manager.removeMentionPaths('/w/elsewhere');
+    expect(
+      manager.contextChips('anthropic', a).map((chip) => chip.path),
+    ).toEqual(['/w/poems-other/safe.md']);
+    expect(manager.contextChips('openai', b)).toEqual([]);
+    manager.flushPersist();
+  });
   it('returns null when no context provider is set (early boot)', async () => {
     const { bridge } = makeBridge();
     const mgr = new AssistantManager(bridge as never, {

@@ -76,6 +76,7 @@ const receiverWhitelist = [
   'from:notification:display',
   'from:path:properties',
   'from:path:renamed',
+  'from:path:deleted',
   'from:i18n:set',
   'from:window:state',
   // AI Assistant — streaming chunks / tool calls / done / error / config
@@ -163,6 +164,8 @@ contextBridge.exposeInMainWorld('mked', {
       content: string;
       lineCount: number;
     }>,
+  listWorkspaceFiles: (root: string) =>
+    ipcRenderer.invoke('mked:fs:listworkspacefiles', root) as Promise<string[]>,
   /**
    * Write `content` to an existing or new file at `path`. Resolves
    * with `{ok: true, path}` on success or `{ok: false, error}` on

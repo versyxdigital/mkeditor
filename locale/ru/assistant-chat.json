@@ -34,5 +34,7 @@
   "hide_conversations_aria": "Скрыть список разговоров",
   "show_conversations_aria": "Показать список разговоров",
   "expand_input": "Развернуть поле сообщения",
-  "collapse_input": "Свернуть поле сообщения"
+  "collapse_input": "Свернуть поле сообщения",
+  "mention_picker_loading": "Загрузка файлов рабочей области…",
+  "mention_picker_error": "Не удалось загрузить файлы рабочей области."
 }

@@ -34,5 +34,7 @@
   "hide_conversations_aria": "대화 목록 숨기기",
   "show_conversations_aria": "대화 목록 표시",
   "expand_input": "메시지 입력창 펼치기",
-  "collapse_input": "메시지 입력창 접기"
+  "collapse_input": "메시지 입력창 접기",
+  "mention_picker_loading": "작업 공간 파일을 불러오는 중…",
+  "mention_picker_error": "작업 공간 파일을 불러오지 못했습니다."
 }

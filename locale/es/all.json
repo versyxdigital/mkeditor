@@ -40,7 +40,9 @@
     "hide_conversations_aria": "Ocultar lista de conversaciones",
     "show_conversations_aria": "Mostrar lista de conversaciones",
     "expand_input": "Expandir cuadro de mensaje",
-    "collapse_input": "Contraer cuadro de mensaje"
+    "collapse_input": "Contraer cuadro de mensaje",
+    "mention_picker_loading": "Cargando archivos del espacio de trabajo…",
+    "mention_picker_error": "No se pudieron cargar los archivos del espacio de trabajo."
   },
   "assistant-settings": {
     "loading": "Cargando configuración del proveedor…",

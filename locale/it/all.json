@@ -40,7 +40,9 @@
     "hide_conversations_aria": "Nascondi elenco conversazioni",
     "show_conversations_aria": "Mostra elenco conversazioni",
     "expand_input": "Espandi la casella del messaggio",
-    "collapse_input": "Riduci la casella del messaggio"
+    "collapse_input": "Riduci la casella del messaggio",
+    "mention_picker_loading": "Caricamento dei file dell’area di lavoro…",
+    "mention_picker_error": "Impossibile caricare i file dell’area di lavoro."
   },
   "assistant-settings": {
     "loading": "Caricamento configurazione provider…",

@@ -175,6 +175,8 @@ export function fakeAssistantManager(
     setShareSelection: jest.fn(),
     addMention: jest.fn(async () => {}),
     removeMention: jest.fn(),
+    renameMentionPaths: jest.fn(),
+    removeMentionPaths: jest.fn(),
     contextChips: jest.fn(() => [] as unknown[]),
     contextTokenEstimate: jest.fn(() => 0),
     contextFor: jest.fn(async () => null),

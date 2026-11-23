@@ -34,5 +34,7 @@
   "hide_conversations_aria": "会話リストを隠す",
   "show_conversations_aria": "会話リストを表示",
   "expand_input": "メッセージ入力欄を拡大",
-  "collapse_input": "メッセージ入力欄を縮小"
+  "collapse_input": "メッセージ入力欄を縮小",
+  "mention_picker_loading": "ワークスペースのファイルを読み込み中…",
+  "mention_picker_error": "ワークスペースのファイルを読み込めませんでした。"
 }

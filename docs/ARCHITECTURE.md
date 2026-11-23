@@ -495,6 +495,8 @@ Each `MenuItem` carries `{ id, label, accelerator?, darwinAccelerator?, action }
 
 ### 4.14 AI Assistant
 
+**Workspace references.** The `@` picker uses `FileTreeManager.listWorkspaceFiles`, backed by the sender-scoped `mked:fs:listworkspacefiles` invoke helper and `AppStorage.listWorkspaceFiles`. This metadata-only inventory covers regular files throughout the active workspace, independent of explorer expansion, open tabs and extension filters. Directory walks use bounded concurrency and enforce the canonical workspace boundary; directory symlinks are not followed. Queries rank the cached inventory locally and display at most 20 matches, without limiting which files can be found. Inventories refresh on open/tree mutations/focus, and every two seconds only while the picker is visible. Overlapping scans coalesce, failed scans can retry, and stale replies after a workspace switch are discarded. File contents are read only after selection. Existing pinned references follow `from:path:renamed` events; `from:path:deleted` removes references to deleted files/folder descendants. Both desktop and web file operations emit deletion notifications; the assistant remains desktop-only.
+
 The right-hand sidebar that hosts per-provider chat surfaces (Anthropic / OpenAI / Ollama), gives an agent first-class read/write access to the workspace, and persists conversations across launches. Full design + per-phase notes: [AI_ASSISTANT.md](AI_ASSISTANT.md).
 
 **Desktop-only.** The assistant is hidden in the web build — the Navbar toggle, the sidebar shell, and the Settings → AI Providers tab all return `null` when `mode === 'web'`. API keys never enter the renderer process in any mode; on desktop they live in an Electron `safeStorage`-encrypted blob.

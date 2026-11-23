@@ -40,7 +40,9 @@
     "hide_conversations_aria": "Сховати список розмов",
     "show_conversations_aria": "Показати список розмов",
     "expand_input": "Розгорнути поле повідомлення",
-    "collapse_input": "Згорнути поле повідомлення"
+    "collapse_input": "Згорнути поле повідомлення",
+    "mention_picker_loading": "Завантаження файлів робочої області…",
+    "mention_picker_error": "Не вдалося завантажити файли робочої області."
   },
   "assistant-settings": {
     "loading": "Завантаження конфігурації постачальника…",

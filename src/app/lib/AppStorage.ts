@@ -84,6 +84,62 @@ export class AppStorage {
     return AppStorage.workspaceRoot;
   }
 
+  /** Filename metadata for references, independent of the explorer's lazy/filter state. */
+  static async listWorkspaceFiles(root: string): Promise<string[]> {
+    const workspace = AppStorage.workspaceRoot;
+    // Directory operations may address the root itself. readdir below still
+    // requires it to exist; the canonical containment check remains enforced.
+    const safeRoot = await AppStorage.assertInWorkspace(root, {
+      mustExist: false,
+    });
+    if (!workspace || safeRoot !== workspace)
+      throw new Error('Workspace changed or invalid workspace root.');
+    const displayRoot = resolve(root);
+    const pending = [displayRoot];
+    const files: string[] = [];
+    const checkWorkspace = () => {
+      if (AppStorage.workspaceRoot !== workspace)
+        throw new Error('Workspace changed during file listing.');
+    };
+    while (pending.length > 0) {
+      checkWorkspace();
+      const batch = pending.splice(Math.max(0, pending.length - 8));
+      await Promise.all(
+        batch.map(async (directory) => {
+          try {
+            const safe = await AppStorage.assertInWorkspace(directory, {
+              mustExist: false,
+            });
+            checkWorkspace();
+            const entries = await fs.readdir(safe, { withFileTypes: true });
+            checkWorkspace();
+            for (const entry of entries) {
+              const path = join(directory, entry.name);
+              if (entry.isDirectory()) pending.push(path);
+              else if (entry.isFile()) files.push(path);
+              else if (entry.isSymbolicLink()) {
+                // Include safe file aliases, but never follow directory links
+                // (cycles and paths outside the selected workspace).
+                try {
+                  const target = await AppStorage.assertInWorkspace(path);
+                  if ((await fs.stat(target)).isFile()) files.push(path);
+                } catch {
+                  /* Broken/outside-workspace aliases are not referenceable. */
+                }
+              }
+            }
+          } catch (error) {
+            checkWorkspace();
+            if (directory === displayRoot) throw error;
+            // A subfolder may disappear or become unreadable during the walk.
+          }
+        }),
+      );
+    }
+    checkWorkspace();
+    return files.sort();
+  }
+
   /** Offer only directories selected by a native picker or trusted restore. */
   static offerWorkspaceRoot(root: string, restoring = false): boolean {
     if (typeof root !== 'string' || !root) return false;
@@ -987,6 +1043,7 @@ export class AppStorage {
     const parent = dirname(path);
     try {
       await fs.rm(path, { recursive: true, force: true });
+      context.webContents.send('from:path:deleted', { path });
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
       context.webContents.send('from:notification:display', {

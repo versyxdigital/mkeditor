@@ -34,5 +34,7 @@
   "hide_conversations_aria": "Masquer la liste des conversations",
   "show_conversations_aria": "Afficher la liste des conversations",
   "expand_input": "Agrandir la zone de message",
-  "collapse_input": "Réduire la zone de message"
+  "collapse_input": "Réduire la zone de message",
+  "mention_picker_loading": "Chargement des fichiers de l’espace de travail…",
+  "mention_picker_error": "Impossible de charger les fichiers de l’espace de travail."
 }

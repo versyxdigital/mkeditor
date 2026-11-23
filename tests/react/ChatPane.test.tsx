@@ -694,6 +694,7 @@ describe('<ChatPane> — P6 context chips + token estimate', () => {
       getSnapshot: jest.fn(() => treeSnapshot),
       on: jest.fn(() => () => {}),
       requestDirectoryContents: jest.fn(),
+      listWorkspaceFiles: jest.fn(async () => ['/w/notes.md']),
       treeRoot: '/w',
     };
     const { conv, snapshot } = snapshotWith({ messages: [] });
@@ -709,7 +710,7 @@ describe('<ChatPane> — P6 context chips + token estimate', () => {
     fireEvent.change(input, { target: { value: 'summarise @no' } });
     expect(screen.getByTestId('mention-picker')).toBeInTheDocument();
     // Click the option.
-    fireEvent.click(screen.getByTestId('mention-option-/w/notes.md'));
+    fireEvent.click(await screen.findByTestId('mention-option-/w/notes.md'));
     expect(am.addMention).toHaveBeenCalledWith(
       'anthropic',
       'conv-1',
@@ -732,6 +733,7 @@ describe('<ChatPane> — P6 context chips + token estimate', () => {
       getSnapshot: jest.fn(() => treeSnapshot),
       on: jest.fn(() => () => {}),
       requestDirectoryContents: jest.fn(),
+      listWorkspaceFiles: jest.fn(async () => ['/w/a.md']),
       treeRoot: '/w',
     };
     const { conv, snapshot } = snapshotWith({ messages: [] });
@@ -745,6 +747,7 @@ describe('<ChatPane> — P6 context chips + token estimate', () => {
     const input = screen.getByTestId('chat-input');
     fireEvent.change(input, { target: { value: '@a' } });
     expect(screen.getByTestId('mention-picker')).toBeInTheDocument();
+    await screen.findByTestId('mention-option-/w/a.md');
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
     // Picker handles the Enter; startCall should NOT have been
     // fired from ChatPane's onKeyDown (the picker's window-level

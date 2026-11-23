@@ -40,7 +40,9 @@
     "hide_conversations_aria": "Hide conversation list",
     "show_conversations_aria": "Show conversation list",
     "expand_input": "Expand message box",
-    "collapse_input": "Collapse message box"
+    "collapse_input": "Collapse message box",
+    "mention_picker_loading": "Loading workspace files…",
+    "mention_picker_error": "Could not load workspace files."
   },
   "assistant-settings": {
     "loading": "Loading provider config…",

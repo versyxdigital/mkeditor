@@ -427,6 +427,10 @@ export class AppBridge {
       },
     );
 
+    this.handle('mked:fs:listworkspacefiles', (_e, root: string) =>
+      AppStorage.listWorkspaceFiles(root),
+    );
+
     // Write a file with awaited success/failure — used by the AI
     // assistant's write-class tools (`write_file`, `edit_file`,
     // `replace_selection`, `insert_at_cursor`) so the agent gets

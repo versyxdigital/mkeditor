@@ -34,5 +34,7 @@
   "hide_conversations_aria": "Unterhaltungsliste ausblenden",
   "show_conversations_aria": "Unterhaltungsliste anzeigen",
   "expand_input": "Nachrichtenfeld vergrößern",
-  "collapse_input": "Nachrichtenfeld verkleinern"
+  "collapse_input": "Nachrichtenfeld verkleinern",
+  "mention_picker_loading": "Arbeitsbereichsdateien werden geladen…",
+  "mention_picker_error": "Arbeitsbereichsdateien konnten nicht geladen werden."
 }

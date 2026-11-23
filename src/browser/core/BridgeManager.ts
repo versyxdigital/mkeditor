@@ -74,8 +74,14 @@ export class BridgeManager {
       this.mkeditor,
       this.dispatcher,
     );
-    this.fileTreeManager = new FileTreeManager(this.bridge, (path) =>
-      this.fileManager.openFileFromPath(path),
+    this.fileTreeManager = new FileTreeManager(
+      this.bridge,
+      (path) => this.fileManager.openFileFromPath(path),
+      async (root) => {
+        if (!window.mked?.listWorkspaceFiles)
+          throw new Error('Workspace file listing is unavailable.');
+        return window.mked.listWorkspaceFiles(root);
+      },
     );
     this.assistantManager = new AssistantManager(this.bridge);
     // Hand the tool catalog to the manager. The executor needs the
