@@ -24,6 +24,9 @@ import type {
 } from '../interfaces/Assistant';
 import { AppSession } from './AppSession';
 import { AppStorage } from './AppStorage';
+import { WorkspaceFiles } from './WorkspaceFiles';
+import type { WorkspaceRequest } from '../interfaces/WorkspaceTools';
+import { toolFailure } from '../shared/workspacePaths';
 import { AssistantConfig } from './AssistantConfig';
 import { AssistantKeyStore } from './AssistantKeyStore';
 import { SecureChannel } from './SecureChannel';
@@ -429,6 +432,18 @@ export class AppBridge {
 
     this.handle('mked:fs:listworkspacefiles', (_e, root: string) =>
       AppStorage.listWorkspaceFiles(root),
+    );
+
+    const workspaceFiles = new WorkspaceFiles(this.context);
+    this.handle(
+      'mked:fs:workspace-operation',
+      async (_e, request: WorkspaceRequest) => {
+        try {
+          return { ok: true, value: await workspaceFiles.request(request) };
+        } catch (error) {
+          return toolFailure(error);
+        }
+      },
     );
 
     // Write a file with awaited success/failure — used by the AI

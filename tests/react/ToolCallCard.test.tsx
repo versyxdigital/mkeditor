@@ -237,7 +237,9 @@ describe('<ToolCallCard> inline confirmation', () => {
     callId: string;
     preview: ToolInvocation['arguments'] extends infer A
       ? {
-          kind: 'edit' | 'write' | 'create' | 'replace' | 'insert';
+          kind:
+            'edit' | 'write' | 'create' | 'replace' | 'insert' | 'operation';
+          summary?: string;
           path?: string;
           before?: string;
           after: string;
@@ -284,6 +286,35 @@ describe('<ToolCallCard> inline confirmation', () => {
     // fetch resolves args.content synchronously.
     expect(stub.dataset.hasFetchOriginal).toBe('true');
     expect(stub.dataset.hasFetchModified).toBe('true');
+  });
+
+  it('shows exact operation and unsaved-change counts without an empty diff', () => {
+    const { fakeAssistantManager } = jest.requireActual('../utils/render');
+    const manager = fakeAssistantManager({
+      initialChatSnapshot: pendingChatSnapshot({
+        toolCallId: 'tc-pending',
+        toolName: 'move_path',
+        callId: 'chat-1',
+        preview: {
+          kind: 'operation',
+          after: '',
+          summary:
+            'Move it/ to mkeditor/it/; 5 files. Update 3 links in 2 files.',
+          detail: 'Unsaved edits in 1 tab will be preserved.',
+        },
+      }),
+    });
+    render(
+      <ToolCallCard
+        invocation={pendingInvocation({ toolName: 'move_path' })}
+      />,
+      { managers: { assistantManager: manager } },
+    );
+    expect(
+      screen.getByText(/5 files\. Update 3 links in 2 files/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Unsaved edits in 1 tab/)).toBeInTheDocument();
+    expect(screen.queryByTestId('inline-diff-preview-stub')).toBeNull();
   });
 
   it('renders the InsertPreview for insert/create kinds', () => {

@@ -19,6 +19,7 @@ import type {
   PersistedChatMessage,
   PersistedConversations,
   ToolInvocation,
+  ToolConfirmPreview,
   ToolResultRequest,
   ThinkingLevel,
   UiChatMessage,
@@ -992,14 +993,20 @@ export class AssistantManager {
       });
       return;
     }
-    const toolClass = executor.classify(payload.toolName);
+    const toolClass = executor.classify(payload.toolName, payload.arguments);
     const conv = this.conversations[inflight.provider].get(
       inflight.conversationId,
     );
     const autoAccept = conv?.autoAcceptWrites ?? false;
+    const confirm =
+      toolClass === 'write' &&
+      (!autoAccept ||
+        executor.requiresConfirmation?.(payload.toolName, payload.arguments) ===
+          true);
 
-    const initialStatus: ToolInvocation['status'] =
-      toolClass === 'write' && !autoAccept ? 'pending-confirm' : 'executing';
+    const initialStatus: ToolInvocation['status'] = confirm
+      ? 'pending-confirm'
+      : 'executing';
     this.recordToolCall(inflight, {
       toolCallId: payload.toolCallId,
       toolName: payload.toolName,
@@ -1007,7 +1014,7 @@ export class AssistantManager {
       status: initialStatus,
     });
 
-    if (toolClass === 'write' && !autoAccept) {
+    if (confirm) {
       void this.runWithConfirmation(payload, executor);
     } else {
       void this.runImmediate(payload, executor);
@@ -1044,7 +1051,8 @@ export class AssistantManager {
       }));
       this.shipToolResult(payload.callId, payload.toolCallId, {
         ok: false,
-        error: message,
+        error: (err as { code?: string })?.code ?? message,
+        ...((err as { code?: string })?.code ? { message } : {}),
       });
     }
   }
@@ -1070,7 +1078,30 @@ export class AssistantManager {
     payload: ChatToolCallEvent,
     executor: ToolExecutor,
   ): Promise<void> {
-    const preview = executor.buildPreview(payload.toolName, payload.arguments);
+    let preview: ToolConfirmPreview | null;
+    try {
+      preview = executor.preparePreview
+        ? await executor.preparePreview(payload.toolName, payload.arguments)
+        : executor.buildPreview(payload.toolName, payload.arguments);
+    } catch (error) {
+      const inflight = this.inflightChats.get(payload.callId);
+      if (inflight) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.updateToolCall(inflight, payload.toolCallId, (tc) => ({
+          ...tc,
+          status: 'failed',
+          errorCode: 'execution_failed',
+          errorMessage: message,
+        }));
+        this.shipToolResult(payload.callId, payload.toolCallId, {
+          ok: false,
+          error: (error as { code?: string })?.code ?? 'execution_failed',
+          message,
+        });
+      }
+      return;
+    }
+    if (!this.inflightChats.has(payload.callId)) return;
     const entry: PendingConfirm = {
       toolCallId: payload.toolCallId,
       toolName: payload.toolName,

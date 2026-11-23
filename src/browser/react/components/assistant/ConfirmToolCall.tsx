@@ -100,6 +100,7 @@ const PREVIEW_KIND_LABEL: Record<
   string
 > = {
   create: 'assistant-tools:preview_create',
+  operation: 'assistant-tools:preview_write',
   write: 'assistant-tools:preview_write',
   edit: 'assistant-tools:preview_edit',
   replace: 'assistant-tools:preview_replace',
@@ -119,7 +120,7 @@ const PreviewBlock: React.FC<{
       data-testid="tool-confirm-preview"
     >
       <p className="text-xs font-semibold">
-        {t(headingKey, { path: preview.path ?? '' })}
+        {preview.summary ?? t(headingKey, { path: preview.path ?? '' })}
         {preview.detail ? ` · ${preview.detail}` : ''}
       </p>
       {preview.before !== undefined && (

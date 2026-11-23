@@ -1083,6 +1083,81 @@ describe('AssistantManager.onToolCall — read-class auto-execute', () => {
 });
 
 describe('AssistantManager.onToolCall — write-class confirmation', () => {
+  it('always confirms destructive tools even with auto-accept, including async previews', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge, { disablePacedReveal: true });
+    const conversation = mgr.createConversation('anthropic');
+    mgr.setAutoAcceptWrites('anthropic', conversation, true);
+    const callId = mgr.startCall('anthropic', conversation, 'delete')!;
+    let finish!: (
+      preview: import('../src/app/interfaces/Assistant').ToolConfirmPreview,
+    ) => void;
+    const execute = jest.fn(async () => ({ ok: true }));
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write',
+      requiresConfirmation: () => true,
+      buildPreview: () => null,
+      preparePreview: () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+      execute,
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'trash',
+      toolName: 'delete_path',
+      arguments: { path: 'folder', recursive: true },
+    });
+    expect(execute).not.toHaveBeenCalled();
+    finish({ kind: 'operation', summary: 'Trash folder; 4 files.', after: '' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(
+      mgr.getChatSnapshot().pendingConfirms.trash.preview?.summary,
+    ).toContain('4 files');
+    expect(execute).not.toHaveBeenCalled();
+    mgr.respondToConfirm('trash', true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(sent.some((item) => item.channel === 'to:ai:tool-result')).toBe(
+      true,
+    );
+  });
+  it('does not register a confirmation after cancellation during async preparation', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge, { disablePacedReveal: true });
+    const conversation = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conversation, 'move')!;
+    let finish!: (preview: null) => void;
+    const execute = jest.fn();
+    mgr.setToolExecutor({
+      hasTool: () => true,
+      describe: () => [],
+      classify: () => 'write',
+      buildPreview: () => null,
+      preparePreview: () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+      execute,
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'move',
+      toolName: 'move_path',
+      arguments: {},
+    });
+    mgr.cancelCall(callId);
+    finish(null);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mgr.getChatSnapshot().pendingConfirms.move).toBeUndefined();
+    expect(execute).not.toHaveBeenCalled();
+  });
   // The confirmation surface is the inline `<ToolCallCard>` Accept /
   // Reject row, which calls `mgr.respondToConfirm(toolCallId, ok)`.
   // The legacy `<ConfirmToolCall>` modal is no longer fired — its

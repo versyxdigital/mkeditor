@@ -152,6 +152,18 @@ describe('AppBridge — sender-scoped IPC handlers', () => {
       handler({ sender: { id: 999 } } as never, '/abs/foo/bar.md'),
     ).toThrow(/sender mismatch/);
   });
+  it('scopes workspace operations to the owning window and preserves error codes', async () => {
+    const context = makeContext();
+    new AppBridge(context as never, true);
+    const request = findHandleHandler('mked:fs:workspace-operation');
+    expect(() =>
+      request(fakeEvent(999), { action: 'info', path: 'note.md' }),
+    ).toThrow(/sender mismatch/);
+    expect(await request(fakeEvent(), { action: 'unknown' })).toMatchObject({
+      ok: false,
+      error: 'invalid_arguments',
+    });
+  });
 
   it('scopes the independent workspace inventory to its owning sender', async () => {
     const ctx = makeContext();

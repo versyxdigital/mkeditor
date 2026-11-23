@@ -1,5 +1,7 @@
 # AI Assistant Plan
 
+For the current expanded tool catalog, confirmation policy, completed tiers and implementation limits, see [Workspace agent tools](WORKSPACE_TOOLS.md). The phases below retain the original delivery history.
+
 Phased plan for adding an in-editor AI Assistant to MKEditor — a right-hand sidebar (mirroring the file tree) that hosts per-provider chat surfaces, connects to OpenAI / Anthropic / Ollama, and gives an agent first-class read/write access to the workspace and the active editor. The high-level entry in [ROADMAP.md](ROADMAP.md) links here.
 
 Read first: [../AGENTS.md](../AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md).

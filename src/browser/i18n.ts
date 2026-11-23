@@ -13,7 +13,7 @@ type NodeBinding =
 
 let bindings: NodeBinding[] | null = null;
 
-const supportedLocales = [
+export const supportedLocales = [
   'en',
   'de',
   'es',

@@ -1,4 +1,11 @@
 import type { BridgeManager } from './BridgeManager';
+import { workspaceToolCatalog } from './WorkspaceToolCatalog';
+import { WorkspaceToolFiles } from './WorkspaceToolFiles';
+import {
+  resolveAgentPath,
+  validateWorkspaceName,
+  WorkspaceToolError,
+} from '../../app/shared/workspacePaths';
 import type {
   ToolConfirmPreview,
   ToolDescriptor,
@@ -30,7 +37,12 @@ export interface ToolExecutor {
   /** Returns descriptors ready for shipping to the SDK via `ChatRequest.tools`. */
   describe(): ToolDescriptor[];
   /** Returns 'read' (auto-execute) / 'write' (confirm) / 'unknown'. */
-  classify(name: string): ToolClass;
+  classify(name: string, args?: unknown): ToolClass;
+  requiresConfirmation?(name: string, args: unknown): boolean;
+  preparePreview?(
+    name: string,
+    args: unknown,
+  ): Promise<ToolConfirmPreview | null>;
   /** Build the confirm-dialog preview for write-class tools. */
   buildPreview(name: string, args: unknown): ToolConfirmPreview | null;
   /**
@@ -54,15 +66,26 @@ export interface ToolExecutor {
 /*  Internal tool registry                                                */
 /* -------------------------------------------------------------------- */
 
-interface ToolSpec {
+export interface ToolSpec {
   description: string;
   parameters: {
     type: 'object';
-    properties: Record<string, { type: 'string'; description?: string }>;
+    properties: Record<
+      string,
+      {
+        type?: string;
+        description?: string;
+        items?: unknown;
+        [key: string]: unknown;
+      }
+    >;
     required?: string[];
     additionalProperties: false;
   };
   toolClass: ToolClass;
+  classifyArgs?(args: unknown): ToolClass;
+  alwaysConfirm?: boolean;
+  prepare?(args: unknown, ctx: ToolContext): Promise<ToolConfirmPreview>;
   execute(args: unknown, ctx: ToolContext): Promise<unknown>;
   preview?(args: unknown, ctx: ToolContext): ToolConfirmPreview;
   /**
@@ -84,8 +107,9 @@ interface ToolSpec {
 }
 
 /** Cross-cutting deps each tool needs. */
-interface ToolContext {
+export interface ToolContext {
   bridge: BridgeManager;
+  workspace: WorkspaceToolFiles;
 }
 
 /**
@@ -550,11 +574,12 @@ async function awaitedSaveFile(
  * in the project but only used in P1's main-process AppAssistant).
  */
 const CATALOG: Record<string, ToolSpec> = {
+  ...workspaceToolCatalog,
   // ---- READ-class -------------------------------------------------
 
   read_file: {
     description:
-      'Read the full text content of a file in the workspace. Does NOT open a tab — reads directly from disk (or from the open buffer if you happen to have it open already, so unsaved edits are captured). Use freely for context-gathering. Prefer absolute paths or paths returned verbatim from list_files; relative paths are resolved against the workspace root. NOTE: this is for files only. To enumerate a directory, use `list_files` with a `subpath` argument; passing a directory path here will return an error.',
+      'Read a workspace file without opening a tab; open buffers take precedence so unsaved edits are included. Optional startLine/endLine select a 1-based inclusive range; omitting both returns the full file unchanged. Prefer exact paths returned by list_files. Use list_files or path_info for directories, get_outline for headings, and search_files to locate text.',
     parameters: {
       type: 'object',
       properties: {
@@ -563,25 +588,63 @@ const CATALOG: Record<string, ToolSpec> = {
           description:
             'Absolute path (e.g. C:\\foo\\bar.md or /Users/foo/bar.md) — preferred. Workspace-relative paths are also accepted and resolved via the file tree.',
         },
+        startLine: { type: 'integer', minimum: 1 },
+        endLine: { type: 'integer', minimum: 1 },
       },
       required: ['path'],
       additionalProperties: false,
     },
     toolClass: 'read',
     async execute(args, ctx) {
-      const { path: input } = args as { path: string };
+      const {
+        path: input,
+        startLine,
+        endLine,
+      } = args as { path: string; startLine?: number; endLine?: number };
       const path = resolveWorkspacePath(ctx, input);
+      const ranged = (content: string, lineCount: number) => {
+        if (startLine === undefined && endLine === undefined)
+          return { path, content, lineCount };
+        const lines = content.split(/\r\n|\r|\n/),
+          start = startLine ?? 1,
+          end = endLine ?? lines.length;
+        if (
+          start < 1 ||
+          end < start ||
+          start > lines.length ||
+          end > lines.length
+        )
+          throw new WorkspaceToolError(
+            'invalid_range',
+            `Line range must be within 1–${lines.length}.`,
+          );
+        return {
+          path,
+          content: lines
+            .slice(start - 1, end)
+            .join(
+              content.includes('\r\n')
+                ? '\r\n'
+                : content.includes('\r')
+                  ? '\r'
+                  : '\n',
+            ),
+          lineCount,
+          startLine: start,
+          endLine: end,
+        };
+      };
+      if (window.mked?.workspaceOperation) {
+        const file = await ctx.workspace.read(path);
+        return ranged(file.content, file.content.split(/\r\n|\r|\n/).length);
+      }
       const fm = ctx.bridge.fileManager;
       // Fast path: file is already open as a tab. Read from the live
       // Monaco model so any unsaved edits the user has typed are
       // included — and we avoid an unnecessary disk hit.
       const openModel = fm.models.get(path);
       if (openModel) {
-        return {
-          path,
-          content: openModel.getValue(),
-          lineCount: openModel.getLineCount(),
-        };
+        return ranged(openModel.getValue(), openModel.getLineCount());
       }
       // File not open. Read directly from disk via the mked invoke
       // helper — this is what keeps tab-spam down: every read used to
@@ -595,7 +658,7 @@ const CATALOG: Record<string, ToolSpec> = {
       }
       try {
         const { content, lineCount } = await mked.readFile(path);
-        return { path, content, lineCount };
+        return ranged(content, lineCount);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         throw new Error(`read_file: failed to read ${path}: ${message}`, {
@@ -713,7 +776,10 @@ const CATALOG: Record<string, ToolSpec> = {
         root: scope ?? ftm.getSnapshot().treeRoot,
         paths,
         directories,
-        truncated: paths.length >= MAX_FILES || directories.length >= MAX_DIRS,
+        truncated:
+          paths.length >= MAX_FILES ||
+          directories.length >= MAX_DIRS ||
+          loadCount >= MAX_LOADS,
       };
     },
   },
@@ -1293,7 +1359,7 @@ export class AssistantTools implements ToolExecutor {
   private readonly approvalTargets = new WeakMap<object, () => boolean>();
 
   constructor(bridge: BridgeManager) {
-    this.ctx = { bridge };
+    this.ctx = { bridge, workspace: new WorkspaceToolFiles(bridge, truncate) };
   }
 
   hasTool(name: string): boolean {
@@ -1321,9 +1387,19 @@ export class AssistantTools implements ToolExecutor {
       ) {
         throw new Error(`Unknown tool argument: ${key}`);
       }
-      if (typeof value !== spec.parameters.properties[key].type) {
-        throw new Error(`Invalid tool argument: ${key} must be a string`);
-      }
+      const type = spec.parameters.properties[key].type;
+      const valid =
+        type === 'array'
+          ? Array.isArray(value) && value.every((v) => typeof v === 'string')
+          : type === 'integer'
+            ? Number.isSafeInteger(value)
+            : type === 'object'
+              ? value !== null &&
+                typeof value === 'object' &&
+                !Array.isArray(value)
+              : !type || typeof value === type;
+      if (!valid)
+        throw new Error(`Invalid tool argument: ${key} must be a ${type}`);
     }
   }
 
@@ -1335,8 +1411,30 @@ export class AssistantTools implements ToolExecutor {
     }));
   }
 
-  classify(name: string): ToolClass {
-    return this.getSpec(name)?.toolClass ?? 'unknown';
+  classify(name: string, args?: unknown): ToolClass {
+    const spec = this.getSpec(name);
+    return spec?.classifyArgs && args
+      ? spec.classifyArgs(args)
+      : (spec?.toolClass ?? 'unknown');
+  }
+
+  requiresConfirmation(name: string, args: unknown): boolean {
+    return (
+      this.classify(name, args) === 'write' &&
+      this.getSpec(name)?.alwaysConfirm === true
+    );
+  }
+
+  async preparePreview(
+    name: string,
+    args: unknown,
+  ): Promise<ToolConfirmPreview | null> {
+    const spec = this.getSpec(name);
+    if (!spec) throw new UnknownToolError(name);
+    this.validateArguments(spec, args);
+    return spec.prepare
+      ? spec.prepare(args, this.ctx)
+      : this.buildPreview(name, args);
   }
 
   buildPreview(name: string, args: unknown): ToolConfirmPreview | null {
@@ -1406,6 +1504,42 @@ export class AssistantTools implements ToolExecutor {
     const spec = this.getSpec(name);
     if (!spec) throw new UnknownToolError(name);
     this.validateArguments(spec, args);
+    // Native validation runs even for already-open buffers, which otherwise skip
+    // disk IPC. The original tools retain their established resolution behaviour.
+    if (
+      window.mked?.workspaceOperation &&
+      !Object.prototype.hasOwnProperty.call(workspaceToolCatalog, name)
+    ) {
+      const values = args as Record<string, unknown>;
+      for (const key of ['path', 'subpath'])
+        if (typeof values[key] === 'string') {
+          resolveAgentPath(this.ctx.workspace.root(), values[key]);
+          await this.ctx.workspace.resolve(values[key]);
+        }
+      if (
+        [
+          'get_active_file',
+          'get_selection',
+          'replace_selection',
+          'insert_at_cursor',
+        ].includes(name)
+      ) {
+        const active = this.ctx.bridge.fileManager.getActiveEditablePath();
+        if (active) await this.ctx.workspace.resolve(active);
+      }
+      if (name === 'create_file' || name === 'create_folder') {
+        const path = resolveAgentPath(
+          this.ctx.workspace.root(),
+          values.path as string,
+        );
+        for (const part of path
+          .replace(/\\/g, '/')
+          .slice(this.ctx.workspace.root().replace(/\\/g, '/').length)
+          .split('/')
+          .filter(Boolean))
+          validateWorkspaceName(part);
+      }
+    }
     const approvedTarget = this.approvalTargets.get(args as object);
     this.approvalTargets.delete(args as object);
     if (approvedTarget && !approvedTarget()) {

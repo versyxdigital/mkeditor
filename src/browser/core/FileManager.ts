@@ -502,6 +502,7 @@ export class FileManager {
    */
   public async closeTab(
     path: string,
+    discard = false,
   ): Promise<'closed' | 'aborted' | 'not_found'> {
     const tabInfo = this.tabs.get(path);
     if (tabInfo && (tabInfo.kind ?? 'file') === 'diff') {
@@ -515,6 +516,7 @@ export class FileManager {
     const current = mdl.getValue();
 
     if (
+      !discard &&
       (original !== current ||
         (path.startsWith('untitled-') && current !== '')) &&
       !path.endsWith('.log')
@@ -1116,7 +1118,7 @@ export class FileManager {
   }
 
   /** Save one captured model and wait for the filesystem acknowledgement. */
-  private saveTab(path: string, saveAs = false): Promise<boolean> {
+  public saveTab(path: string, saveAs = false): Promise<boolean> {
     const model = this.models.get(path);
     if (!model) return Promise.resolve(false);
     const current = model.getValue();

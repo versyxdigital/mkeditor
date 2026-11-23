@@ -230,12 +230,32 @@ function makeBridgeManager(
 }
 
 describe('AssistantTools — catalog metadata', () => {
-  it('describe() returns 11 tool descriptors (the documented catalog)', () => {
+  it('describe() registers existing and workspace tool descriptors together', () => {
     const bm = makeBridgeManager();
     const tools = new AssistantTools(bm as never);
     const names = tools.describe().map((d) => d.name);
     expect(names.sort()).toEqual(
       [
+        'move_path',
+        'rename_path',
+        'copy_path',
+        'delete_path',
+        'path_info',
+        'search_files',
+        'find_and_replace',
+        'update_links',
+        'check_links',
+        'get_outline',
+        'get_open_tabs',
+        'save_file',
+        'close_tab',
+        'append_to_file',
+        'edit_lines',
+        'word_count',
+        'create_from_template',
+        'get_settings',
+        'set_setting',
+        'export_html',
         'create_file',
         'create_folder',
         'edit_file',

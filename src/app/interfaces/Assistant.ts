@@ -433,7 +433,9 @@ export interface ToolInvocation {
  * untruncated content via `mked:fs:readfile` on demand.
  */
 export interface ToolConfirmPreview {
-  kind: 'edit' | 'write' | 'create' | 'replace' | 'insert';
+  kind: 'edit' | 'write' | 'create' | 'replace' | 'insert' | 'operation';
+  /** Concrete non-diff operation summary (path changes / bulk edits). */
+  summary?: string;
   path?: string;
   /** Text being replaced (undefined for `create` and `insert`). */
   before?: string;

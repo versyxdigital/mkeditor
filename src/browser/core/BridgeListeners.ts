@@ -200,6 +200,9 @@ export function registerBridgeListeners(
   bridge.receive('from:path:deleted', ({ path }: { path: string }) => {
     manager.assistantManager?.removeMentionPaths(path);
     tree.workspaceFilesChanged(path);
+    for (const tab of files.getSnapshot().tabs) {
+      if (isPathWithinTree(tab.path, path)) void files.closeTab(tab.path);
+    }
   });
 
   // Enable access to the monaco editor command palette.

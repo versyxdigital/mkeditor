@@ -251,9 +251,10 @@ const InlineConfirm: React.FC<{
 
   return (
     <div className="mx-3 flex min-w-0 flex-col gap-3 border-t border-subtle pt-3">
-      {preview && preview.path ? (
+      {preview && (preview.path || preview.summary) ? (
         <p className="break-all text-xs font-medium text-muted-foreground">
-          {t(PREVIEW_KIND_LABEL[preview.kind], { path: preview.path })}
+          {preview.summary ??
+            t(PREVIEW_KIND_LABEL[preview.kind], { path: preview.path })}
           {preview.detail ? ` · ${preview.detail}` : ''}
         </p>
       ) : null}
@@ -296,6 +297,7 @@ const PREVIEW_KIND_LABEL: Record<
   string
 > = {
   create: 'assistant-tools:preview_create',
+  operation: 'assistant-tools:preview_write',
   write: 'assistant-tools:preview_write',
   edit: 'assistant-tools:preview_edit',
   replace: 'assistant-tools:preview_replace',
@@ -321,6 +323,7 @@ const EXPANDABLE_SIDES: Record<
   replace: { before: false, after: true },
   create: { before: false, after: true },
   insert: { before: false, after: true },
+  operation: { before: false, after: false },
 };
 
 /**
@@ -340,7 +343,7 @@ function useInlineConfirmContent(
   blockProps?: React.ComponentProps<typeof InsertPreview>;
 } {
   return React.useMemo(() => {
-    if (!preview) return {};
+    if (!preview || preview.kind === 'operation') return {};
     const expandable = EXPANDABLE_SIDES[preview.kind];
     const buildFetcher = (
       side: 'before' | 'after',

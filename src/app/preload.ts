@@ -166,6 +166,12 @@ contextBridge.exposeInMainWorld('mked', {
     }>,
   listWorkspaceFiles: (root: string) =>
     ipcRenderer.invoke('mked:fs:listworkspacefiles', root) as Promise<string[]>,
+  workspaceOperation: (
+    request: import('./interfaces/WorkspaceTools').WorkspaceRequest,
+  ) =>
+    ipcRenderer.invoke('mked:fs:workspace-operation', request) as Promise<
+      import('./interfaces/WorkspaceTools').WorkspaceResponse
+    >,
   /**
    * Write `content` to an existing or new file at `path`. Resolves
    * with `{ok: true, path}` on success or `{ok: false, error}` on

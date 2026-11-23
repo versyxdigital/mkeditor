@@ -1090,7 +1090,7 @@ export class AppStorage {
    * @param dir - the directory to read
    * @returns - the directory contents
    */
-  private static async readDirectory(dir: string): Promise<any[]> {
+  static async readDirectory(dir: string): Promise<any[]> {
     const entries = await fs.readdir(dir, { withFileTypes: true });
     const filtered = entries.filter((d) => {
       if (d.isDirectory()) return true;
