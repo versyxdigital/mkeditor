@@ -1,0 +1,13 @@
+{
+  "title": "Connecter {{provider}}",
+  "openai_description": "Utilisez votre abonnement ChatGPT ou une clé API pour commencer à discuter.",
+  "api_description": "Ajoutez une clé API pour commencer à discuter avec {{provider}}.",
+  "api_option": "Utiliser une clé API",
+  "api_help": "L’utilisation de l’API est facturée séparément par {{provider}}.",
+  "use_saved_key": "Utiliser la clé API enregistrée",
+  "use_plan": "Utiliser le compte ChatGPT connecté",
+  "save": "Enregistrer et connecter",
+  "saving": "Enregistrement de la connexion…",
+  "save_failed": "Impossible d’enregistrer la clé API de façon sécurisée. Réessayez.",
+  "updating": "Mise à jour de la connexion…"
+}

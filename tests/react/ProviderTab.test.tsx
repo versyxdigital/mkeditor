@@ -45,7 +45,8 @@ jest.mock('react-resizable-panels', () => ({
 }));
 
 import { ProviderTab } from '../../src/browser/react/components/assistant/ProviderTab';
-import { fakeAssistantManager, renderWithProviders } from '../utils/render';
+import { renderWithProviders } from '../utils/render';
+import { connectedAssistant as fakeAssistantManager } from '../fixtures/connectedAssistant';
 
 function snapshotWith(
   provider: 'anthropic' | 'openai' | 'ollama',

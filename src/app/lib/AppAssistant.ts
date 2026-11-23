@@ -609,6 +609,13 @@ export class AppAssistant {
     callId: string,
     payload: Omit<ChatErrorEvent, 'callId'>,
   ): void {
+    if (
+      payload.code === 'chatgpt_auth' &&
+      (payload.message === 'sign_in_required' ||
+        payload.message === 'permission_required')
+    ) {
+      this.chatgpt.requireConnection(payload.message);
+    }
     this.safeSend('from:ai:error', { callId, ...payload });
   }
 

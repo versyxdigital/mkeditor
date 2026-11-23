@@ -638,6 +638,21 @@ export class AppBridge {
     });
 
     this.on('to:ai:key:set', async (_e, payload: KeySetRequest) => {
+      if (!payload || !['openai', 'anthropic'].includes(payload.provider))
+        return;
+      const acknowledge = (ok: boolean) => {
+        if (
+          typeof payload.requestId === 'string' &&
+          !this.disposed &&
+          !this.context.isDestroyed()
+        ) {
+          this.context.webContents.send('from:ai:key:result', {
+            requestId: payload.requestId,
+            provider: payload.provider,
+            ok,
+          });
+        }
+      };
       // Payload carries RSA-OAEP ciphertext (base64) — never the
       // raw API key. We decrypt with the per-session private key
       // held inside `SecureChannel`, hand the plaintext directly to
@@ -654,10 +669,17 @@ export class AppBridge {
         // leave the stored key untouched. Push the current config so
         // the renderer sees the unchanged state.
         this.providers.logger?.log.error('[to:ai:key:set] decrypt failed', err);
+        acknowledge(false);
         this.pushAssistantConfig();
         return;
       }
-      await AssistantKeyStore.setKey(payload.provider, plaintext);
+      let ok = false;
+      try {
+        ok = await AssistantKeyStore.setKey(payload.provider, plaintext);
+      } catch {
+        /* Report a failed OS keychain/write operation without echoing secrets. */
+      }
+      acknowledge(ok);
       this.pushAssistantConfig();
     });
 

@@ -10,6 +10,7 @@ import type {
   ChatErrorEvent,
   ChatToolCallEvent,
   ConfigPushPayload,
+  KeySaveResult,
   OllamaModelsEvent,
   PersistedConversations,
 } from '../../app/interfaces/Assistant';
@@ -327,6 +328,9 @@ export function registerBridgeListeners(
   // diffs the snapshot and notifies React subscribers.
   bridge.receive('from:ai:config', (payload: ConfigPushPayload) => {
     manager.assistantManager.setConfigFromServer(payload);
+  });
+  bridge.receive('from:ai:key:result', (payload: KeySaveResult) => {
+    manager.assistantManager.onKeySaveResult(payload);
   });
 
   // Ollama model-list reply. AssistantManager has the pending Promise

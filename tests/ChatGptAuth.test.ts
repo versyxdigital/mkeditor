@@ -126,6 +126,7 @@ test('retains a stable host and issued client ID across sign-out and reauthoriza
   expect(auth.snapshot()).toMatchObject({
     connected: false,
     activeId: 'oaiapp_one',
+    accounts: [],
   });
   jest.mocked(oauth.startChatGptLogin).mockReturnValue({
     result: Promise.resolve({
@@ -301,6 +302,11 @@ test('a refresh completing after sign-out cannot resurrect credentials', async (
   jest.mocked(oauth.openaiDiscovery).mockRejectedValue(new Error('offline'));
   const signingOut = auth.command({ action: 'sign-out' });
   await drain();
+  expect(auth.snapshot()).toMatchObject({
+    connected: false,
+    accounts: [],
+    busy: true,
+  });
   finish(tokens());
   await refreshing;
   await signingOut;

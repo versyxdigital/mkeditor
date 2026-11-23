@@ -15,6 +15,7 @@ interface ConversationListProps {
   provider: ProviderId;
   conversations: ChatConversation[];
   activeId: string | null;
+  canCreate?: boolean;
 }
 
 /**
@@ -30,6 +31,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   provider,
   conversations,
   activeId,
+  canCreate = true,
 }) => {
   const { manager } = useAssistantChat();
   const { t } = useTranslation();
@@ -91,7 +93,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
           variant="outline"
           className="w-full justify-start"
           onClick={handleNew}
-          disabled={!manager}
+          disabled={!manager || !canCreate}
           data-testid="conversation-new"
         >
           <Icon name="file" />

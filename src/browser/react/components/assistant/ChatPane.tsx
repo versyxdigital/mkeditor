@@ -29,6 +29,8 @@ import { MentionPicker } from './MentionPicker';
 import { ProviderModelSettings } from './ProviderModelSettings';
 import { OllamaChatModelSelect } from './OllamaChatModelSelect';
 import { ChatGptUsage } from './ChatGptSettings';
+import { getAssistantConnection } from '../../../core/assistantConnection';
+import { ProviderConnection } from './ProviderConnection';
 
 interface ChatPaneProps {
   provider: ProviderId;
@@ -37,6 +39,8 @@ interface ChatPaneProps {
   convListCollapsed?: boolean;
   /** Toggle the parent provider tab's conversation rail open/closed. */
   onToggleConvList?: () => void;
+  /** ProviderTab can place reconnect controls across the full sidebar width. */
+  connectionInParent?: boolean;
 }
 
 /**
@@ -59,9 +63,12 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   conversation,
   convListCollapsed,
   onToggleConvList,
+  connectionInParent = false,
 }) => {
   const { chat, manager } = useAssistantChat();
   const { snapshot: configSnapshot } = useAssistantConfig();
+  const connected =
+    getAssistantConnection(provider, configSnapshot) === 'ready';
   const { t, language } = useTranslation();
 
   const [draft, setDraft] = React.useState(
@@ -295,7 +302,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   const preparingSend = React.useRef(false);
   const [isPreparingSend, setIsPreparingSend] = React.useState(false);
   const handleSend = React.useCallback(async () => {
-    if (!manager) return;
+    if (!manager || !connected) return;
     if (inflight || preparingSend.current) return;
     const text = draft.trim();
     if (!text) return;
@@ -303,8 +310,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     // race with another keystroke.
     preparingSend.current = true;
     setIsPreparingSend(true);
-    draftRef.current = '';
-    setDraft('');
     setComposerExpanded(false);
     setPickerOpen(false);
     let systemContext = null;
@@ -315,12 +320,28 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       // mention or transient read failure.
     }
     try {
-      manager.startCall(provider, conversation.id, text, systemContext);
+      if (
+        getAssistantConnection(provider, manager.getConfigSnapshot()) !==
+        'ready'
+      )
+        return;
+      const callId = manager.startCall(
+        provider,
+        conversation.id,
+        text,
+        systemContext,
+      );
+      if (callId) {
+        if (draftRef.current === text || draftRef.current.trim() === text) {
+          draftRef.current = '';
+          setDraft('');
+        }
+      }
     } finally {
       preparingSend.current = false;
       setIsPreparingSend(false);
     }
-  }, [manager, inflight, draft, provider, conversation.id]);
+  }, [manager, inflight, draft, provider, conversation.id, connected]);
 
   const handleStop = React.useCallback(() => {
     if (!manager || !inflight) return;
@@ -454,120 +475,128 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         key={`${provider}:${conversation.id}`}
         messages={conversation.messages}
       />
-      <ContextChipsRow
-        chips={chips}
-        onRemoveActive={handleRemoveActive}
-        onRemoveSelection={handleRemoveSelection}
-        onRemoveMention={handleRemoveMention}
-      />
-      <div
-        className="relative shrink-0 border-t border-border p-2"
-        data-testid="chat-composer"
-      >
-        <MentionPicker
-          query={pickerQuery}
-          open={pickerOpen}
-          onPick={handlePick}
-          onClose={handlePickerClose}
-          fileTreeManager={fileTreeManager}
+      {connected && (
+        <ContextChipsRow
+          chips={chips}
+          onRemoveActive={handleRemoveActive}
+          onRemoveSelection={handleRemoveSelection}
+          onRemoveMention={handleRemoveMention}
         />
-        <div className="flex items-end gap-2">
-          <textarea
-            id={inputId}
-            ref={inputRef}
-            value={draft}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder={t('assistant-chat:input_placeholder')}
-            rows={2}
-            className="min-h-[50px] min-w-0 flex-1 resize-none rounded-md border border-border bg-editor px-2 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            data-testid="chat-input"
-            aria-label={t('assistant-chat:input_aria')}
+      )}
+      {!connected && provider !== 'ollama' ? (
+        connectionInParent ? null : (
+          <ProviderConnection key={provider} provider={provider} compact />
+        )
+      ) : (
+        <div
+          className="relative shrink-0 border-t border-border p-2"
+          data-testid="chat-composer"
+        >
+          <MentionPicker
+            query={pickerQuery}
+            open={pickerOpen}
+            onPick={handlePick}
+            onClose={handlePickerClose}
+            fileTreeManager={fileTreeManager}
           />
-          {inflight ? (
+          <div className="flex items-end gap-2">
+            <textarea
+              id={inputId}
+              ref={inputRef}
+              value={draft}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder={t('assistant-chat:input_placeholder')}
+              rows={2}
+              className="min-h-[50px] min-w-0 flex-1 resize-none rounded-md border border-border bg-editor px-2 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              data-testid="chat-input"
+              aria-label={t('assistant-chat:input_aria')}
+            />
+            {inflight ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="shrink-0 border border-border bg-editor text-foreground hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive/50 focus-visible:bg-destructive/10 focus-visible:text-destructive active:bg-destructive/20"
+                onClick={handleStop}
+                data-testid="chat-stop"
+                aria-label={t('assistant-chat:stop')}
+                title={t('assistant-chat:stop')}
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-3 w-3 rounded-[1px] bg-current"
+                />
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void handleSend()}
+                disabled={!draft.trim() || !manager || isPreparingSend}
+                data-testid="chat-send"
+              >
+                <span>{t('assistant-chat:send')}</span>
+              </Button>
+            )}
+          </div>
+          {provider === 'openai' && <ChatGptUsage />}
+          <div
+            className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1"
+            data-testid="chat-composer-controls"
+          >
+            <ConversationModelControls
+              provider={provider}
+              conversation={conversation}
+              onModelChange={handleModelChange}
+              onThinkingChange={handleThinkingChange}
+            />
             <Button
               type="button"
-              size="icon"
               variant="ghost"
-              className="shrink-0 border border-border bg-editor text-foreground hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive/50 focus-visible:bg-destructive/10 focus-visible:text-destructive active:bg-destructive/20"
-              onClick={handleStop}
-              data-testid="chat-stop"
-              aria-label={t('assistant-chat:stop')}
-              title={t('assistant-chat:stop')}
+              size="icon"
+              className="h-6 w-6 shrink-0 text-muted-foreground"
+              onClick={() => {
+                setComposerExpanded((value) => !value);
+                inputRef.current?.focus();
+              }}
+              aria-label={t(
+                composerExpanded
+                  ? 'assistant-chat:collapse_input'
+                  : 'assistant-chat:expand_input',
+              )}
+              title={t(
+                composerExpanded
+                  ? 'assistant-chat:collapse_input'
+                  : 'assistant-chat:expand_input',
+              )}
+              aria-expanded={composerExpanded}
+              aria-controls={inputId}
+              data-testid="chat-expand-input"
             >
-              <span
-                aria-hidden="true"
-                className="h-3 w-3 rounded-[1px] bg-current"
+              <Icon
+                name={composerExpanded ? 'compress' : 'expand'}
+                className="size-3"
               />
             </Button>
-          ) : (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => void handleSend()}
-              disabled={!draft.trim() || !manager || isPreparingSend}
-              data-testid="chat-send"
+            <div
+              className={cn('ml-auto shrink-0', tokenIndicatorClass)}
+              data-testid="context-token-estimate"
+              aria-live="polite"
             >
-              <span>{t('assistant-chat:send')}</span>
-            </Button>
-          )}
-        </div>
-        {provider === 'openai' && <ChatGptUsage />}
-        <div
-          className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1"
-          data-testid="chat-composer-controls"
-        >
-          <ConversationModelControls
-            provider={provider}
-            conversation={conversation}
-            onModelChange={handleModelChange}
-            onThinkingChange={handleThinkingChange}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 shrink-0 text-muted-foreground"
-            onClick={() => {
-              setComposerExpanded((value) => !value);
-              inputRef.current?.focus();
-            }}
-            aria-label={t(
-              composerExpanded
-                ? 'assistant-chat:collapse_input'
-                : 'assistant-chat:expand_input',
-            )}
-            title={t(
-              composerExpanded
-                ? 'assistant-chat:collapse_input'
-                : 'assistant-chat:expand_input',
-            )}
-            aria-expanded={composerExpanded}
-            aria-controls={inputId}
-            data-testid="chat-expand-input"
-          >
-            <Icon
-              name={composerExpanded ? 'compress' : 'expand'}
-              className="size-3"
-            />
-          </Button>
-          <div
-            className={cn('ml-auto shrink-0', tokenIndicatorClass)}
-            data-testid="context-token-estimate"
-            aria-live="polite"
-          >
-            {t('assistant-chat:token_estimate', {
-              // Use a non-`count` key so i18next's plural magic doesn't
-              // mangle the value (the previous `count` route was
-              // rendering as a literal minus sign in some locales /
-              // browsers — likely an unintended interaction between
-              // i18next's count handling and the locale's
-              // number-formatting rules).
-              tokens: tokenEstimate.toLocaleString(),
-            })}
+              {t('assistant-chat:token_estimate', {
+                // Use a non-`count` key so i18next's plural magic doesn't
+                // mangle the value (the previous `count` route was
+                // rendering as a literal minus sign in some locales /
+                // browsers — likely an unintended interaction between
+                // i18next's count handling and the locale's
+                // number-formatting rules).
+                tokens: tokenEstimate.toLocaleString(),
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -1,0 +1,13 @@
+{
+  "title": "Connetti {{provider}}",
+  "openai_description": "Usa il tuo abbonamento ChatGPT o una chiave API per iniziare a chattare.",
+  "api_description": "Aggiungi una chiave API per iniziare a chattare con {{provider}}.",
+  "api_option": "Usa una chiave API",
+  "api_help": "L’utilizzo dell’API viene fatturato separatamente da {{provider}}.",
+  "use_saved_key": "Usa la chiave API salvata",
+  "use_plan": "Usa l’account ChatGPT connesso",
+  "save": "Salva e connetti",
+  "saving": "Salvataggio della connessione…",
+  "save_failed": "Impossibile salvare la chiave API in modo sicuro. Riprova.",
+  "updating": "Aggiornamento della connessione…"
+}

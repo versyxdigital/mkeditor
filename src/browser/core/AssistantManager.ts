@@ -1,5 +1,6 @@
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import { t } from '../i18n';
+import { getAssistantConnection } from './assistantConnection';
 import type {
   ChatGptCommand,
   ChatGptSnapshot,
@@ -16,6 +17,7 @@ import type {
   ConfigPushPayload,
   ConfigSetRequest,
   InflightChatCall,
+  KeySaveResult,
   OllamaListRequest,
   OllamaModelsEvent,
   PendingConfirm,
@@ -199,6 +201,14 @@ export class AssistantManager {
    */
   private pendingTests = new Map<string, PendingTest>();
   private pendingOllama = new Map<string, PendingOllama>();
+  private pendingKeys = new Map<
+    string,
+    {
+      provider: ApiProviderId;
+      resolve: (ok: boolean) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
 
   /** Test connections shouldn't hang forever — bound the wait. */
   private static readonly TEST_TIMEOUT_MS = 15_000;
@@ -375,6 +385,10 @@ export class AssistantManager {
       config: payload.config,
       encryptionAvailable: payload.encryptionAvailable,
     };
+    for (const [callId, call] of this.inflightChats) {
+      if (getAssistantConnection(call.provider, this.snapshot) !== 'ready')
+        this.cancelCall(callId);
+    }
     this.listeners.forEach((l) => l());
   }
 
@@ -431,6 +445,46 @@ export class AssistantManager {
   public async setKey(provider: ApiProviderId, key: string): Promise<void> {
     const ciphertext = await encryptForMain(key);
     this.bridge.send('to:ai:key:set', { provider, ciphertext });
+  }
+
+  /** Inline onboarding waits for the acknowledged encrypted write. */
+  public async connectWithApiKey(
+    provider: ApiProviderId,
+    key: string,
+  ): Promise<boolean> {
+    if (!key.trim() || !this.snapshot.encryptionAvailable) return false;
+    let ciphertext: string;
+    try {
+      ciphertext = await encryptForMain(key.trim());
+    } catch {
+      return false;
+    }
+    const requestId = AssistantManager.mintCallId('key');
+    const ok = await new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        this.pendingKeys.delete(requestId);
+        resolve(false);
+      }, 15000);
+      this.pendingKeys.set(requestId, { provider, resolve, timer });
+      try {
+        this.bridge.send('to:ai:key:set', { provider, ciphertext, requestId });
+      } catch {
+        clearTimeout(timer);
+        this.pendingKeys.delete(requestId);
+        resolve(false);
+      }
+    });
+    if (ok && provider === 'openai')
+      this.chatGptCommand({ action: 'mode', mode: 'api-key' });
+    return ok;
+  }
+
+  public onKeySaveResult(result: KeySaveResult): void {
+    const pending = this.pendingKeys.get(result.requestId);
+    if (!pending || pending.provider !== result.provider) return;
+    this.pendingKeys.delete(result.requestId);
+    clearTimeout(pending.timer);
+    pending.resolve(result.ok === true);
   }
 
   /** Remove the encrypted key for a provider. */
@@ -742,6 +796,11 @@ export class AssistantManager {
      */
     systemContext?: ChatMessage | null,
   ): string | null {
+    if (
+      this.snapshot.config &&
+      getAssistantConnection(provider, this.snapshot) !== 'ready'
+    )
+      return null;
     const conv = this.conversations[provider].get(conversationId);
     if (!conv) return null;
     const trimmed = userText.trim();
@@ -1906,6 +1965,10 @@ export class AssistantManager {
         code: payload.code,
         message: payload.message,
       });
+      return;
+    }
+    if (payload.code === 'cancelled') {
+      this.cancelCall(payload.callId);
       return;
     }
     const inflight = this.inflightChats.get(payload.callId);

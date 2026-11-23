@@ -1,0 +1,13 @@
+{
+  "title": "连接 {{provider}}",
+  "openai_description": "使用 ChatGPT 订阅或 API 密钥开始聊天。",
+  "api_description": "添加 API 密钥以开始与 {{provider}} 聊天。",
+  "api_option": "使用 API 密钥",
+  "api_help": "API 用量由 {{provider}} 单独计费。",
+  "use_saved_key": "使用已保存的 API 密钥",
+  "use_plan": "使用已连接的 ChatGPT 账户",
+  "save": "保存并连接",
+  "saving": "正在保存连接…",
+  "save_failed": "无法安全保存 API 密钥，请重试。",
+  "updating": "正在更新连接…"
+}

@@ -22,7 +22,16 @@ import { Icon } from '../Icon';
 export const ChatGptUsage: React.FC = () => {
   const { snapshot, manager } = useAssistantConfig();
   const { t } = useTranslation();
-  if (snapshot.chatgpt?.mode !== 'chatgpt') return null;
+  const auth = snapshot.chatgpt;
+  if (
+    auth?.mode !== 'chatgpt' ||
+    !auth.connected ||
+    auth.planEnabled === false ||
+    auth.busy ||
+    auth.error === 'sign_in_required' ||
+    auth.error === 'permission_required'
+  )
+    return null;
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
       <span>{t('chatgpt:using_plan')}</span>
@@ -41,9 +50,8 @@ export const ChatGptSettings: React.FC = () => {
   const { snapshot, manager } = useAssistantConfig();
   const { t } = useTranslation();
   const auth = snapshot.chatgpt;
-  const acknowledgeRef = React.useRef<HTMLButtonElement>(null);
   if (!auth || !manager) return null;
-  const disabled = auth.signingIn || !snapshot.encryptionAvailable;
+  const disabled = auth.signingIn || auth.busy || !snapshot.encryptionAvailable;
   const active = auth.accounts.find((account) => account.id === auth.activeId);
   return (
     <div className="flex flex-col gap-2">
@@ -102,7 +110,7 @@ export const ChatGptSettings: React.FC = () => {
               onClick={() =>
                 manager.chatGptCommand({
                   action: 'sign-in',
-                  accountId: active?.id,
+                  accountId: auth.activeId,
                 })
               }
             >
@@ -144,13 +152,18 @@ export const ChatGptSettings: React.FC = () => {
               {t('chatgpt:waiting')}
             </p>
           )}
+          {auth.busy && (
+            <p role="status" className="text-xs text-muted-foreground">
+              {t('assistant-connect:updating')}
+            </p>
+          )}
           {auth.error && (
             <p role="alert" className="text-xs text-destructive">
               {t(`chatgpt:error_${auth.error}`)}
             </p>
           )}
           <ChatGptUsage />
-          {auth.connected && (
+          {auth.connected && auth.planEnabled !== false && (
             <Button
               variant="outline"
               size="sm"
@@ -162,61 +175,73 @@ export const ChatGptSettings: React.FC = () => {
           )}
         </>
       )}
-      <Dialog
-        open={auth.welcome}
-        onOpenChange={(open) => {
-          if (!open) manager.chatGptCommand({ action: 'welcome' });
+      <ChatGptWelcome />
+    </div>
+  );
+};
+
+export const ChatGptWelcome: React.FC = () => {
+  const { snapshot, manager } = useAssistantConfig();
+  const { t } = useTranslation();
+  const acknowledgeRef = React.useRef<HTMLButtonElement>(null);
+  const auth = snapshot.chatgpt;
+  if (!auth || !manager) return null;
+  const active = auth.accounts.find((account) => account.id === auth.activeId);
+  return (
+    <Dialog
+      open={auth.welcome}
+      onOpenChange={(open) => {
+        if (!open) manager.chatGptCommand({ action: 'welcome' });
+      }}
+    >
+      <DialogContent
+        className="max-w-[440px]"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          acknowledgeRef.current?.focus();
         }}
       >
-        <DialogContent
-          className="max-w-[440px]"
-          onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            acknowledgeRef.current?.focus();
-          }}
-        >
-          <div className="space-y-4 px-6 pb-6 pt-6">
-            <div
-              aria-hidden="true"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-primary"
-            >
-              <ProviderLogo provider="openai" className="h-6 w-6" />
-            </div>
-            <div className="space-y-2">
-              <DialogTitle className="pr-2 text-lg leading-7">
-                {t('chatgpt:welcome')}
-              </DialogTitle>
-              <DialogDescription className="leading-6">
-                {t('chatgpt:description')}
-              </DialogDescription>
-            </div>
-            {active && (
-              <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-editor px-3 py-2 text-sm">
-                <Icon
-                  name="check"
-                  aria-hidden="true"
-                  className="shrink-0 text-success"
-                />
-                <span className="min-w-0 break-words">{active.label}</span>
-              </div>
-            )}
+        <div className="space-y-4 px-6 pb-6 pt-6">
+          <div
+            aria-hidden="true"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-primary"
+          >
+            <ProviderLogo provider="openai" className="h-6 w-6" />
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-6 py-4">
-            <Button
-              variant="ghost"
-              onClick={() => manager.chatGptCommand({ action: 'usage' })}
-            >
-              {t('chatgpt:manage_usage')}
-            </Button>
-            <Button
-              ref={acknowledgeRef}
-              onClick={() => manager.chatGptCommand({ action: 'welcome' })}
-            >
-              {t('chatgpt:got_it')}
-            </Button>
+          <div className="space-y-2">
+            <DialogTitle className="pr-2 text-lg leading-7">
+              {t('chatgpt:welcome')}
+            </DialogTitle>
+            <DialogDescription className="leading-6">
+              {t('chatgpt:description')}
+            </DialogDescription>
           </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+          {active && (
+            <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-editor px-3 py-2 text-sm">
+              <Icon
+                name="check"
+                aria-hidden="true"
+                className="shrink-0 text-success"
+              />
+              <span className="min-w-0 break-words">{active.label}</span>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-6 py-4">
+          <Button
+            variant="ghost"
+            onClick={() => manager.chatGptCommand({ action: 'usage' })}
+          >
+            {t('chatgpt:manage_usage')}
+          </Button>
+          <Button
+            ref={acknowledgeRef}
+            onClick={() => manager.chatGptCommand({ action: 'welcome' })}
+          >
+            {t('chatgpt:got_it')}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };

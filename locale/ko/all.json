@@ -44,6 +44,19 @@
     "mention_picker_loading": "작업 공간 파일을 불러오는 중…",
     "mention_picker_error": "작업 공간 파일을 불러오지 못했습니다."
   },
+  "assistant-connect": {
+    "title": "{{provider}} 연결",
+    "openai_description": "ChatGPT 구독이나 API 키를 사용하여 채팅을 시작하세요.",
+    "api_description": "API 키를 추가하여 {{provider}}와 채팅을 시작하세요.",
+    "api_option": "API 키 사용",
+    "api_help": "API 사용 요금은 {{provider}}에서 별도로 청구합니다.",
+    "use_saved_key": "저장된 API 키 사용",
+    "use_plan": "연결된 ChatGPT 계정 사용",
+    "save": "저장하고 연결",
+    "saving": "연결 저장 중…",
+    "save_failed": "API 키를 안전하게 저장하지 못했습니다. 다시 시도하세요.",
+    "updating": "연결 업데이트 중…"
+  },
   "assistant-settings": {
     "loading": "공급자 구성을 불러오는 중…",
     "web_warning": "여기에 입력한 API 키는 이 브라우저의 localStorage에 저장됩니다. 이 페이지에서 실행되는 모든 스크립트가 읽을 수 있습니다. 더 강력한 키 격리를 위해 데스크톱 빌드를 사용하세요.",

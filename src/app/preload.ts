@@ -86,6 +86,7 @@ const receiverWhitelist = [
   'from:ai:done',
   'from:ai:error',
   'from:ai:config',
+  'from:ai:key:result',
   'from:ai:ollama:models',
   // AI Assistant — conversation persistence
   'from:ai:conversations',

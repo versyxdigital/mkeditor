@@ -44,6 +44,19 @@
     "mention_picker_loading": "Arbeitsbereichsdateien werden geladen…",
     "mention_picker_error": "Arbeitsbereichsdateien konnten nicht geladen werden."
   },
+  "assistant-connect": {
+    "title": "{{provider}} verbinden",
+    "openai_description": "Verwenden Sie Ihren ChatGPT-Tarif oder einen API-Schlüssel, um zu chatten.",
+    "api_description": "Fügen Sie einen API-Schlüssel hinzu, um mit {{provider}} zu chatten.",
+    "api_option": "API-Schlüssel verwenden",
+    "api_help": "Die API-Nutzung wird von {{provider}} separat abgerechnet.",
+    "use_saved_key": "Gespeicherten API-Schlüssel verwenden",
+    "use_plan": "Verbundenes ChatGPT-Konto verwenden",
+    "save": "Speichern und verbinden",
+    "saving": "Verbindung wird gespeichert…",
+    "save_failed": "Der API-Schlüssel konnte nicht sicher gespeichert werden. Versuchen Sie es erneut.",
+    "updating": "Verbindung wird aktualisiert…"
+  },
   "assistant-settings": {
     "loading": "Anbieterkonfiguration wird geladen…",
     "web_warning": "Hier eingegebene API-Schlüssel werden im localStorage dieses Browsers gespeichert. Jedes auf dieser Seite ausgeführte Skript kann sie lesen. Verwenden Sie die Desktop-Version für eine stärkere Schlüsselisolierung.",

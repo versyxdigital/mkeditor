@@ -13,6 +13,7 @@ jest.mock('../src/app/lib/ChatGptAuth', () => ({
       snapshot: () => ({}),
       loadModels: jest.fn(),
       dispose: jest.fn(),
+      requireConnection: jest.fn(),
     };
   }),
 }));

@@ -44,6 +44,19 @@
     "mention_picker_loading": "Chargement des fichiers de l’espace de travail…",
     "mention_picker_error": "Impossible de charger les fichiers de l’espace de travail."
   },
+  "assistant-connect": {
+    "title": "Connecter {{provider}}",
+    "openai_description": "Utilisez votre abonnement ChatGPT ou une clé API pour commencer à discuter.",
+    "api_description": "Ajoutez une clé API pour commencer à discuter avec {{provider}}.",
+    "api_option": "Utiliser une clé API",
+    "api_help": "L’utilisation de l’API est facturée séparément par {{provider}}.",
+    "use_saved_key": "Utiliser la clé API enregistrée",
+    "use_plan": "Utiliser le compte ChatGPT connecté",
+    "save": "Enregistrer et connecter",
+    "saving": "Enregistrement de la connexion…",
+    "save_failed": "Impossible d’enregistrer la clé API de façon sécurisée. Réessayez.",
+    "updating": "Mise à jour de la connexion…"
+  },
   "assistant-settings": {
     "loading": "Chargement de la configuration du fournisseur…",
     "web_warning": "Les clés API saisies ici sont stockées dans le localStorage de ce navigateur. Tout script exécuté sur cette page peut les lire. Utilisez la version bureau pour une meilleure isolation des clés.",

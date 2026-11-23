@@ -115,3 +115,26 @@ test('switching back to API-key mode restores its controls', () => {
   expect(document.getElementById('openai-key')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'chatgpt:continue' })).toBeNull();
 });
+
+test('signed-out settings hide accounts, usage and model controls while retaining the reconnect action', () => {
+  const initial = snapshot();
+  initial.chatgpt!.connected = false;
+  initial.chatgpt!.accounts = [];
+  initial.chatgpt!.models = [];
+  const manager = renderSettings(initial);
+  expect(document.getElementById('chatgpt-account')).toBeNull();
+  expect(screen.queryByText('writer@example.com (1)')).toBeNull();
+  expect(screen.queryByText('chatgpt:using_plan')).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'chatgpt:manage_usage' }),
+  ).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'chatgpt:add_account' }),
+  ).toBeNull();
+  expect(document.getElementById('openai-model')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'chatgpt:continue' }));
+  expect(manager.chatGptCommand).toHaveBeenCalledWith({
+    action: 'sign-in',
+    accountId: 'one',
+  });
+});

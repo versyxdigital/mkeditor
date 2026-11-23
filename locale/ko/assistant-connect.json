@@ -1,0 +1,13 @@
+{
+  "title": "{{provider}} 연결",
+  "openai_description": "ChatGPT 구독이나 API 키를 사용하여 채팅을 시작하세요.",
+  "api_description": "API 키를 추가하여 {{provider}}와 채팅을 시작하세요.",
+  "api_option": "API 키 사용",
+  "api_help": "API 사용 요금은 {{provider}}에서 별도로 청구합니다.",
+  "use_saved_key": "저장된 API 키 사용",
+  "use_plan": "연결된 ChatGPT 계정 사용",
+  "save": "저장하고 연결",
+  "saving": "연결 저장 중…",
+  "save_failed": "API 키를 안전하게 저장하지 못했습니다. 다시 시도하세요.",
+  "updating": "연결 업데이트 중…"
+}

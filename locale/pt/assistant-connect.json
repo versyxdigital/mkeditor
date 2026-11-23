@@ -1,0 +1,13 @@
+{
+  "title": "Ligar {{provider}}",
+  "openai_description": "Use o seu plano ChatGPT ou uma chave API para começar a conversar.",
+  "api_description": "Adicione uma chave API para começar a conversar com {{provider}}.",
+  "api_option": "Usar uma chave API",
+  "api_help": "A utilização da API é faturada separadamente pela {{provider}}.",
+  "use_saved_key": "Usar chave API guardada",
+  "use_plan": "Usar conta ChatGPT ligada",
+  "save": "Guardar e ligar",
+  "saving": "A guardar ligação…",
+  "save_failed": "Não foi possível guardar a chave API em segurança. Tente novamente.",
+  "updating": "A atualizar ligação…"
+}

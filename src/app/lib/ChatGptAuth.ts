@@ -47,6 +47,7 @@ export class ChatGptAuth {
   private refresh?: Promise<string>;
   private busy = false;
   private changingConnection = false;
+  private signingOut = false;
   private disposed = false;
 
   constructor(
@@ -57,19 +58,31 @@ export class ChatGptAuth {
   snapshot(): ChatGptSnapshot {
     const store = loadChatGptStore();
     const active = store.accounts.find((a) => a.id === store.activeId);
+    const connected =
+      !!active?.encryptedTokens &&
+      !this.signingOut &&
+      this.error !== 'sign_in_required';
     return {
       mode: store.mode,
       activeId: store.activeId,
       signingIn: this.signingIn,
-      connected: !!active?.encryptedTokens,
-      accounts: store.accounts.map((a, index) => ({
-        id: a.id,
-        label: `${a.email || 'ChatGPT'} (${index + 1})`,
-      })),
+      connected,
+      planEnabled: active?.planEnabled === true,
+      busy: this.changingConnection,
+      accounts: store.accounts.flatMap((a, index) =>
+        a.encryptedTokens && (a.id !== store.activeId || connected)
+          ? [
+              {
+                id: a.id,
+                label: `${a.email || 'ChatGPT'} (${index + 1})`,
+              },
+            ]
+          : [],
+      ),
       models: this.models,
       error: this.error,
       welcome:
-        !!active?.encryptedTokens &&
+        connected &&
         active.planEnabled === true &&
         !active.welcomed &&
         store.mode === 'chatgpt',
@@ -78,6 +91,12 @@ export class ChatGptAuth {
 
   usesPlan(): boolean {
     return loadChatGptStore().mode === 'chatgpt';
+  }
+
+  requireConnection(reason: 'sign_in_required' | 'permission_required'): void {
+    this.error = reason;
+    this.models = [];
+    this.notify();
   }
 
   dispose(): void {
@@ -118,6 +137,8 @@ export class ChatGptAuth {
       input.action === 'sign-out' ||
       input.action === 'select' ||
       input.action === 'mode';
+    this.signingOut = input.action === 'sign-out';
+    if (this.changingConnection) this.notify();
     try {
       if (
         input.action === 'sign-out' ||
@@ -186,6 +207,7 @@ export class ChatGptAuth {
     } finally {
       this.busy = false;
       this.changingConnection = false;
+      this.signingOut = false;
       this.notify();
     }
   }

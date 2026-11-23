@@ -3,6 +3,8 @@ export interface ChatGptSnapshot {
   mode: 'api-key' | 'chatgpt';
   signingIn: boolean;
   connected: boolean;
+  planEnabled?: boolean;
+  busy?: boolean;
   activeId?: string;
   accounts: Array<{ id: string; label: string }>;
   models: Array<{ id: string; label: string }>;

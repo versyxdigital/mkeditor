@@ -81,17 +81,19 @@ export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
                 )}
               </span>
             </p>
-            {message.errorMessage && (
-              // Upstream detail (e.g. Ollama's "gemma3:4b does not
-              // support tools") — useful for debugging even when the
-              // translated code already names the class of failure.
-              <p
-                className="ml-4 break-words text-muted-foreground"
-                data-testid="chat-message-error-detail"
-              >
-                {message.errorMessage}
-              </p>
-            )}
+            {message.errorMessage &&
+              message.errorCode !== 'missing_key' &&
+              message.errorCode !== 'chatgpt_auth' && (
+                // Upstream detail (e.g. Ollama's "gemma3:4b does not
+                // support tools") — useful for debugging even when the
+                // translated code already names the class of failure.
+                <p
+                  className="ml-4 break-words text-muted-foreground"
+                  data-testid="chat-message-error-detail"
+                >
+                  {message.errorMessage}
+                </p>
+              )}
           </div>
         )}
 

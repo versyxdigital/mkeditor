@@ -150,6 +150,7 @@ export type ConfigSetRequest =
 
 /** Payload of `to:ai:key:set`. */
 export interface KeySetRequest {
+  requestId?: string;
   provider: 'anthropic' | 'openai';
   /**
    * RSA-OAEP (SHA-256) ciphertext of the UTF-8 plaintext API key,
@@ -159,6 +160,12 @@ export interface KeySetRequest {
    * crosses IPC.
    */
   ciphertext: string;
+}
+
+export interface KeySaveResult {
+  requestId: string;
+  provider: ApiProviderId;
+  ok: boolean;
 }
 
 /** Payload of `to:ai:key:clear`. */

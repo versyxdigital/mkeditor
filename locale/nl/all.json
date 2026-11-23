@@ -44,6 +44,19 @@
     "mention_picker_loading": "Werkruimtebestanden laden…",
     "mention_picker_error": "Werkruimtebestanden konden niet worden geladen."
   },
+  "assistant-connect": {
+    "title": "{{provider}} verbinden",
+    "openai_description": "Gebruik je ChatGPT-abonnement of een API-sleutel om te chatten.",
+    "api_description": "Voeg een API-sleutel toe om met {{provider}} te chatten.",
+    "api_option": "Een API-sleutel gebruiken",
+    "api_help": "API-gebruik wordt apart door {{provider}} gefactureerd.",
+    "use_saved_key": "Opgeslagen API-sleutel gebruiken",
+    "use_plan": "Verbonden ChatGPT-account gebruiken",
+    "save": "Opslaan en verbinden",
+    "saving": "Verbinding opslaan…",
+    "save_failed": "De API-sleutel kon niet veilig worden opgeslagen. Probeer het opnieuw.",
+    "updating": "Verbinding bijwerken…"
+  },
   "assistant-settings": {
     "loading": "Providerconfiguratie laden…",
     "web_warning": "API-sleutels die je hier invoert worden opgeslagen in het localStorage van deze browser. Elk script dat op deze pagina draait kan ze lezen. Gebruik de desktop-versie voor sterkere sleutelisolatie.",

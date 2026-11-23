@@ -44,6 +44,19 @@
     "mention_picker_loading": "Cargando archivos del espacio de trabajo…",
     "mention_picker_error": "No se pudieron cargar los archivos del espacio de trabajo."
   },
+  "assistant-connect": {
+    "title": "Conectar {{provider}}",
+    "openai_description": "Usa tu plan de ChatGPT o una clave API para empezar a chatear.",
+    "api_description": "Añade una clave API para empezar a chatear con {{provider}}.",
+    "api_option": "Usar una clave API",
+    "api_help": "{{provider}} factura el uso de la API por separado.",
+    "use_saved_key": "Usar clave API guardada",
+    "use_plan": "Usar cuenta de ChatGPT conectada",
+    "save": "Guardar y conectar",
+    "saving": "Guardando conexión…",
+    "save_failed": "No se pudo guardar la clave API de forma segura. Inténtalo de nuevo.",
+    "updating": "Actualizando conexión…"
+  },
   "assistant-settings": {
     "loading": "Cargando configuración del proveedor…",
     "web_warning": "Las claves de API que introduzca aquí se almacenan en el localStorage de este navegador. Cualquier script que se ejecute en esta página puede leerlas. Use la versión de escritorio para un aislamiento más fuerte de las claves.",

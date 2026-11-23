@@ -133,6 +133,7 @@ export function fakeAssistantManager(
     getConfigSnapshot: jest.fn(() => snapshot),
     setProviderConfig: jest.fn(),
     setKey: jest.fn(),
+    connectWithApiKey: jest.fn(async () => true),
     clearKey: jest.fn(),
     chatGptCommand: jest.fn(),
     refreshOllamaModels: jest.fn(async () => [] as string[]),

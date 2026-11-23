@@ -44,6 +44,19 @@
     "mention_picker_loading": "ワークスペースのファイルを読み込み中…",
     "mention_picker_error": "ワークスペースのファイルを読み込めませんでした。"
   },
+  "assistant-connect": {
+    "title": "{{provider}} に接続",
+    "openai_description": "ChatGPT プランまたは API キーを使用してチャットを始められます。",
+    "api_description": "API キーを追加して {{provider}} とのチャットを始めましょう。",
+    "api_option": "API キーを使用",
+    "api_help": "API の利用料金は {{provider}} から別途請求されます。",
+    "use_saved_key": "保存済みの API キーを使用",
+    "use_plan": "接続済みの ChatGPT アカウントを使用",
+    "save": "保存して接続",
+    "saving": "接続を保存しています…",
+    "save_failed": "API キーを安全に保存できませんでした。もう一度お試しください。",
+    "updating": "接続を更新しています…"
+  },
   "assistant-settings": {
     "loading": "プロバイダー設定を読み込み中…",
     "web_warning": "ここで入力した API キーはこのブラウザの localStorage に保存されます。このページ上で動作するスクリプトはそれを読み取れます。より強力なキー分離にはデスクトップ版をお使いください。",

@@ -181,7 +181,9 @@ const ApiProviderRow: React.FC<{
 
   const usePlan = provider === 'openai' && snapshot.chatgpt?.mode === 'chatgpt';
   const canTest =
-    (usePlan ? snapshot.chatgpt?.connected : cfg.hasKey) &&
+    (usePlan
+      ? snapshot.chatgpt?.connected && snapshot.chatgpt.planEnabled !== false
+      : cfg.hasKey) &&
     !!cfg.defaultModel &&
     !disabledByEncryption;
 
@@ -296,24 +298,33 @@ const ApiProviderRow: React.FC<{
           </div>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-3">
-        <ProviderModelSettings
-          provider={provider}
-          model={cfg.defaultModel}
-          thinkingLevel={cfg.thinkingLevel}
-          onModelChange={handleModelChange}
-          onThinkingChange={(thinkingLevel) =>
-            manager.setProviderConfig({ provider, config: { thinkingLevel } })
-          }
-        />
-      </div>
+      {(!usePlan ||
+        (snapshot.chatgpt?.connected &&
+          snapshot.chatgpt.planEnabled !== false)) && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <ProviderModelSettings
+              provider={provider}
+              model={cfg.defaultModel}
+              thinkingLevel={cfg.thinkingLevel}
+              onModelChange={handleModelChange}
+              onThinkingChange={(thinkingLevel) =>
+                manager.setProviderConfig({
+                  provider,
+                  config: { thinkingLevel },
+                })
+              }
+            />
+          </div>
 
-      <ConnectionFooter
-        provider={provider}
-        connection={connection}
-        onTest={runTest}
-        disabled={!canTest}
-      />
+          <ConnectionFooter
+            provider={provider}
+            connection={connection}
+            onTest={runTest}
+            disabled={!canTest}
+          />
+        </>
+      )}
     </ProviderCard>
   );
 };

@@ -22,7 +22,8 @@ import { useAssistantChat } from '../../src/browser/react/contexts/AssistantCont
 import { DEFAULT_PROVIDER_CONFIG } from '../../src/app/interfaces/Assistant';
 
 import { ChatPane } from '../../src/browser/react/components/assistant/ChatPane';
-import { fakeAssistantManager, renderWithProviders } from '../utils/render';
+import { renderWithProviders } from '../utils/render';
+import { connectedAssistant as fakeAssistantManager } from '../fixtures/connectedAssistant';
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string, vars?: Record<string, unknown>) =>
@@ -320,9 +321,8 @@ describe('<ChatPane> — input + send', () => {
     const input = screen.getByTestId('chat-input');
     fireEvent.change(input, { target: { value: '  hi there  ' } });
     fireEvent.click(screen.getByTestId('chat-send'));
-    // Input clears synchronously (we capture text up-front before the
-    // await) so this assertion can stay sync.
-    expect((input as HTMLTextAreaElement).value).toBe('');
+    // Keep the draft until the manager accepts the send, so losing a
+    // connection during context gathering cannot discard it.
     await waitFor(() =>
       expect(am.startCall).toHaveBeenCalledWith(
         'anthropic',
@@ -331,6 +331,7 @@ describe('<ChatPane> — input + send', () => {
         null,
       ),
     );
+    expect((input as HTMLTextAreaElement).value).toBe('');
   });
 
   it('Enter (without Shift) sends; Shift+Enter does not send', async () => {
