@@ -7,6 +7,9 @@ import { FileTreeManager } from '../src/browser/core/FileTreeManager';
 import { registerBridgeListeners } from '../src/browser/core/BridgeListeners';
 import { EditorDispatcher } from '../src/browser/events/EditorDispatcher';
 import { openPromptExternal } from '../src/browser/react/contexts/PromptsContext';
+import { sonnerToast } from '../src/browser/notify';
+
+jest.mock('../src/browser/notify', () => ({ sonnerToast: jest.fn() }));
 
 jest.mock('../src/browser/react/contexts/PromptsContext', () => ({
   openPromptExternal: jest.fn(() => Promise.resolve({ button: 'deny' })),
@@ -116,6 +119,7 @@ test('remote save acknowledges its captured version and leaves edits made in fli
   );
   model.setValue('snapshot');
   const pending = fm.saveTab(path);
+  expect(sonnerToast).not.toHaveBeenCalled();
   model.setValue('newer edits');
   acknowledge({
     ...document,
@@ -129,13 +133,50 @@ test('remote save acknowledges its captured version and leaves edits made in fli
     true,
   );
   expect(fm.tabs.get(path)?.remote?.item.validator).toBe('"second"');
+  expect(sonnerToast).toHaveBeenCalledTimes(1);
+  expect(sonnerToast).toHaveBeenCalledWith('success', 'cloud:save_saved');
 });
+
+test('repeated save requests share one Drive write and one success toast', async () => {
+  const { fm, model, path, document, save } = remoteEditing();
+  model.setValue('draft');
+  let acknowledge!: (value: typeof document) => void;
+  save.mockReturnValue(
+    new Promise((resolve) => {
+      acknowledge = resolve;
+    }),
+  );
+  const first = fm.saveTab(path);
+  const second = fm.saveTab(path);
+  expect(sonnerToast).not.toHaveBeenCalled();
+  acknowledge({ ...document, content: 'draft' });
+  expect(await first).toBe(true);
+  expect(await second).toBe(true);
+  expect(save).toHaveBeenCalledTimes(1);
+  expect(sonnerToast).toHaveBeenCalledTimes(1);
+});
+
+test.each(['conflict', 'network', 'unconfirmed', 'auth', 'not_applied'])(
+  'a %s Drive save keeps the draft without a success toast',
+  async (error) => {
+    const { fm, model, path, save } = remoteEditing();
+    model.setValue('keep my draft');
+    save.mockRejectedValue(error);
+    expect(await fm.saveTab(path)).toBe(false);
+    expect(model.getValue()).toBe('keep my draft');
+    expect(fm.getSnapshot().tabs.find((tab) => tab.path === path)?.dirty).toBe(
+      true,
+    );
+    expect(sonnerToast).not.toHaveBeenCalled();
+  },
+);
 
 test('unknown remote saves preserve their snapshot, block reload and reconcile without replaying', async () => {
   const { fm, model, path, document, save, reconcile } = remoteEditing();
   save.mockRejectedValue('unconfirmed');
   model.setValue('snapshot');
   expect(await fm.saveTab(path)).toBe(false);
+  expect(sonnerToast).not.toHaveBeenCalled();
   model.setValue('newer edit');
   expect(fm.reloadRemoteDocument(path, document)).toBe(false);
   (openPromptExternal as jest.Mock).mockResolvedValueOnce({ button: 'cancel' });
@@ -146,6 +187,8 @@ test('unknown remote saves preserve their snapshot, block reload and reconcile w
     item: { ...document.item, validator: '"second"' },
   });
   expect(await fm.saveTab(path)).toBe(true);
+  expect(sonnerToast).toHaveBeenCalledTimes(1);
+  expect(sonnerToast).toHaveBeenCalledWith('success', 'cloud:save_saved');
   expect(save).toHaveBeenCalledTimes(1);
   expect(reconcile.mock.calls[0][0]).toMatchObject({ content: 'snapshot' });
   expect(model.getValue()).toBe('newer edit');
@@ -1079,6 +1122,7 @@ test('interrupted saves are reconciled after restoring and newer draft edits sta
   expect(restored.fm.getSnapshot().tabs[0].dirty).toBe(true);
   expect(reconcile).toHaveBeenCalledTimes(1);
   expect(save).not.toHaveBeenCalled();
+  expect(sonnerToast).not.toHaveBeenCalled();
   complete(acknowledged);
   await sourceSave;
 });

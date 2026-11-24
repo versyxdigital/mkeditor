@@ -10,6 +10,7 @@ import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { openPromptExternal } from '../react/contexts/PromptsContext';
 import { debounce } from '../util';
 import { t } from '../i18n';
+import { sonnerToast } from '../notify';
 import {
   isRemotePath,
   remoteDocumentPath,
@@ -1701,6 +1702,7 @@ export class FileManager {
           snapshot.content,
           snapshot.version,
         );
+        if (!checkingRecovery) sonnerToast('success', t('cloud:save_saved'));
         return true;
       } catch (error) {
         if (this.models.get(path) !== snapshot.model) return false;

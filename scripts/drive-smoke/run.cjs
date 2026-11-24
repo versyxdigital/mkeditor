@@ -449,6 +449,10 @@ async function recoveryScenarios(document) {
       await edit(content);
       await save();
       await saved();
+      await page
+        .locator('[data-sonner-toast]')
+        .getByText(labels.save_saved, { exact: true })
+        .waitFor();
       await verify(document.id, content);
       await page.screenshot({ path: path.join(profile, 'saved-document.png') });
     },
