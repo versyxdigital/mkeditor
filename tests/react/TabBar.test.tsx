@@ -12,6 +12,40 @@ jest.mock('../../src/browser/i18n', () => ({
 }));
 
 describe('<TabBar>', () => {
+  it('places a Drive icon before cloud filenames while local and untitled tabs have none', () => {
+    const snapshot = {
+      activeFile: 'cloud-drive://drive/account/math',
+      tabs: [
+        { path: '/Intro.md', name: 'Intro.md' },
+        { path: 'untitled-1', name: 'Untitled 1' },
+        ...['Intro.md', 'math.md'].map((name, index) => ({
+          path: `cloud-drive://drive/account/${index ? 'math' : 'intro'}`,
+          name,
+          remote: {
+            connectionId: 'drive',
+            accountId: 'account',
+            connectionName: 'Personal Drive',
+            item: { id: name, name, kind: 'markdown', parents: [] },
+          },
+        })),
+      ],
+    };
+    const files = { ...fakeFileManager(), getSnapshot: () => snapshot };
+    renderWithProviders(<TabBar />, {
+      managers: { fileManager: files as never },
+    });
+    const rows = screen.getAllByRole('listitem');
+    expect(rows[0].querySelector('img')).toBeNull();
+    expect(rows[1].querySelector('img')).toBeNull();
+    for (const row of rows.slice(2)) {
+      expect(row.querySelector('a')?.firstElementChild?.tagName).toBe('IMG');
+      expect(row.querySelector('img')).toHaveAttribute(
+        'src',
+        './google-drive.png',
+      );
+      expect(row.querySelector('a')?.title).toContain('Personal Drive /');
+    }
+  });
   it('renders one <li> per tab with the active tab marked via data-active', () => {
     const fileManager = fakeFileManager({
       tabs: [

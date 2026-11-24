@@ -80,5 +80,9 @@
   "new_file_name": "Nuovo file.md",
   "location": "Posizione cartella",
   "actions": "Altre azioni",
-  "document_actions": "Azioni documento Google Drive"
+  "document_actions": "Azioni documento Google Drive",
+  "tab_label": "{{name}} in {{connection}} (Google Drive)",
+  "creating_file": "Creazione di {{name}}…",
+  "opening_file": "Apertura di {{name}}…",
+  "save_copy_help": "Salva il contenuto attuale della scheda attiva come nuovo file in questa cartella di Drive, inclusi file locali, bozze senza titolo e modifiche non salvate."
 }

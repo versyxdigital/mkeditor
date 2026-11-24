@@ -3,6 +3,7 @@ import { exportSettings as defaults } from '../config';
 import { markdownStylesheet } from '../markdownStyles';
 import type { ExportSettings } from '../interfaces/Editor';
 import { logger } from '../util';
+import { renderMermaidDiagrams } from '../mermaid';
 
 /**
  * External resources still pulled in via CDN when `withStyles` is on:
@@ -97,6 +98,45 @@ type ProviderKey = keyof typeof cdn;
 const providers: ProviderKey[] = ['highlightjs', 'katex'];
 
 export class HTMLExporter {
+  /** Render diagrams from a snapshot before creating a portable document. */
+  static async prepareHTML(
+    content: string,
+    settings: ExportSettings,
+  ): Promise<string> {
+    const document = new DOMParser().parseFromString(
+      content.trim(),
+      'text/html',
+    );
+    const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(
+      settings.background,
+    );
+    const dark = Boolean(
+      settings.withStyles &&
+      match &&
+      parseInt(match[1], 16) * 0.2126 +
+        parseInt(match[2], 16) * 0.7152 +
+        parseInt(match[3], 16) * 0.0722 <
+        128,
+    );
+    await renderMermaidDiagrams(
+      document.body,
+      dark,
+      new AbortController().signal,
+    );
+    for (const block of document.querySelectorAll('[data-diagram="mermaid"]')) {
+      const svg = block.querySelector('.md-diagram > svg');
+      if (!svg) continue;
+      const figure = document.createElement('figure');
+      figure.className = 'md-diagram';
+      figure.append(svg);
+      block.replaceWith(figure);
+    }
+    return HTMLExporter.generateHTML(
+      document.documentElement.outerHTML,
+      settings,
+    );
+  }
+
   /**
    * Generate HTML export.
    *
@@ -166,10 +206,10 @@ export class HTMLExporter {
       document.body.style.backgroundColor = background;
       document.body.style.color = fontColor;
     } else {
-      // No styles — strip every class so the export is plain HTML.
+      // Strip document classes, retaining the SVG's own vector styling.
       const elems = document.querySelectorAll('*');
       for (const elem of elems) {
-        elem.removeAttribute('class');
+        if (!elem.closest('svg')) elem.removeAttribute('class');
       }
     }
 
@@ -209,15 +249,14 @@ export class HTMLExporter {
    * @param extension - the file extension
    */
   static async webExport(
-    content: string,
+    content: string | Promise<string>,
     mimeType: MIMEType = 'text/plain',
     extension: FileExtension = '.md',
   ): Promise<boolean> {
+    if (typeof content !== 'string') void content.catch(() => {});
     if (extension === '.pdf') {
       return HTMLExporter.pdfWebExport(content);
     }
-
-    const blob = new Blob([content], { type: mimeType });
 
     let writable: FileSystemWritableFileStream | null = null;
     try {
@@ -229,6 +268,8 @@ export class HTMLExporter {
           },
         ],
       });
+      const resolved = typeof content === 'string' ? content : await content;
+      const blob = new Blob([resolved], { type: mimeType });
       writable = await handle.createWritable();
       await writable.write(blob);
       await writable.close();
@@ -253,7 +294,10 @@ export class HTMLExporter {
    *
    * @param content - the editor content
    */
-  static async pdfWebExport(content: string): Promise<boolean> {
+  static async pdfWebExport(
+    content: string | Promise<string>,
+  ): Promise<boolean> {
+    if (typeof content !== 'string') void content.catch(() => {});
     // Open a new window with the generated HTML
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -263,7 +307,9 @@ export class HTMLExporter {
 
     // Write the content and trigger print once loaded
     try {
-      printWindow.document.documentElement.innerHTML = content;
+      const resolved = typeof content === 'string' ? content : await content;
+      if (printWindow.closed) return false;
+      printWindow.document.documentElement.innerHTML = resolved;
       await HTMLExporter.waitForPrintResources(printWindow);
       if (printWindow.closed) return false;
       printWindow.focus();

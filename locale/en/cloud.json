@@ -80,5 +80,9 @@
   "new_file_name": "New file.md",
   "location": "Folder location",
   "actions": "More actions",
-  "document_actions": "Google Drive document actions"
+  "document_actions": "Google Drive document actions",
+  "tab_label": "{{name}} in {{connection}} (Google Drive)",
+  "creating_file": "Creating {{name}}…",
+  "opening_file": "Opening {{name}}…",
+  "save_copy_help": "Save the active tab’s current content as a new file in this Drive folder, including local files, untitled drafts and unsaved edits."
 }

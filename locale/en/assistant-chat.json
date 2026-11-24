@@ -36,5 +36,7 @@
   "expand_input": "Expand message box",
   "collapse_input": "Collapse message box",
   "mention_picker_loading": "Loading workspace files…",
-  "mention_picker_error": "Could not load workspace files."
+  "mention_picker_error": "Could not load workspace files.",
+  "copy_code": "Copy code",
+  "copy_failed": "Could not copy code."
 }

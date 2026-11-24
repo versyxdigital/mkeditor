@@ -42,7 +42,9 @@
     "expand_input": "Expandir cuadro de mensaje",
     "collapse_input": "Contraer cuadro de mensaje",
     "mention_picker_loading": "Cargando archivos del espacio de trabajo…",
-    "mention_picker_error": "No se pudieron cargar los archivos del espacio de trabajo."
+    "mention_picker_error": "No se pudieron cargar los archivos del espacio de trabajo.",
+    "copy_code": "Copiar código",
+    "copy_failed": "No se pudo copiar el código."
   },
   "assistant-connect": {
     "title": "Conectar {{provider}}",
@@ -282,7 +284,11 @@
     "new_file_name": "Nuevo archivo.md",
     "location": "Ubicaci?n de la carpeta",
     "actions": "M?s acciones",
-    "document_actions": "Acciones del documento de Google Drive"
+    "document_actions": "Acciones del documento de Google Drive",
+    "tab_label": "{{name}} en {{connection}} (Google Drive)",
+    "creating_file": "Creando {{name}}…",
+    "opening_file": "Abriendo {{name}}…",
+    "save_copy_help": "Guarda el contenido actual de la pestaña activa como un archivo nuevo en esta carpeta de Drive, incluidos archivos locales, borradores sin título y cambios sin guardar."
   },
   "menus-alerts": {
     "primary": "Primario",

@@ -80,5 +80,9 @@
   "new_file_name": "Nieuw bestand.md",
   "location": "Maplocatie",
   "actions": "Meer acties",
-  "document_actions": "Google Drive-documentacties"
+  "document_actions": "Google Drive-documentacties",
+  "tab_label": "{{name}} in {{connection}} (Google Drive)",
+  "creating_file": "{{name}} maken…",
+  "opening_file": "{{name}} openen…",
+  "save_copy_help": "Bewaar de huidige inhoud van het actieve tabblad als een nieuw bestand in deze Drive-map, ook lokale bestanden, naamloze concepten en niet-opgeslagen wijzigingen."
 }

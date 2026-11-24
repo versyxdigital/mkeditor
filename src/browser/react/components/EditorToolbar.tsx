@@ -7,6 +7,7 @@ import { exportSettings as exportSettingsDefaults } from '../../config';
 import { alertblocks, codeblocks } from '../../core/mappings/editorBlocks';
 import type { ToolbarDropdownKey } from '../../core/providers/CommandProvider';
 import { dom } from '../../dom';
+import { logger } from '../../util';
 import { useManagers } from '../contexts/ManagersContext';
 import { useModals } from '../contexts/ModalsContext';
 import { useTranslation } from '../hooks/useTranslation';
@@ -86,7 +87,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const buildExportHtml = () => {
     const settings =
       providers.exportSettings?.getSettings() ?? exportSettingsDefaults;
-    return HTMLExporter.generateHTML(dom.preview.dom.outerHTML, settings);
+    return HTMLExporter.prepareHTML(dom.preview.dom.outerHTML, settings);
   };
 
   const handleSave = () => {
@@ -103,10 +104,14 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
   const handleExport = (type: 'html' | 'pdf') => () => {
     const content = buildExportHtml();
-    if (bridgeManager) {
-      bridgeManager.exportToDifferentFormat({ content, type });
+    if (bridgeManager && mode === 'desktop') {
+      void content
+        .then((prepared) =>
+          bridgeManager.exportToDifferentFormat({ content: prepared, type }),
+        )
+        .catch((error) => logger.error('EditorToolbar.export', error));
     } else {
-      HTMLExporter.webExport(
+      void HTMLExporter.webExport(
         content,
         'text/html',
         type === 'pdf' ? '.pdf' : '.html',

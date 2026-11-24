@@ -80,5 +80,9 @@
   "new_file_name": "Yeni dosya.md",
   "location": "Klas?r konumu",
   "actions": "Di?er i?lemler",
-  "document_actions": "Google Drive belge i?lemleri"
+  "document_actions": "Google Drive belge i?lemleri",
+  "tab_label": "{{connection}} içindeki {{name}} (Google Drive)",
+  "creating_file": "{{name}} oluşturuluyor…",
+  "opening_file": "{{name}} açılıyor…",
+  "save_copy_help": "Etkin sekmenin güncel içeriğini bu Drive klasöründe yeni bir dosya olarak kaydeder. Yerel dosyalar, adsız taslaklar ve kaydedilmemiş değişiklikler de dahildir."
 }

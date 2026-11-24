@@ -42,7 +42,9 @@
     "expand_input": "Развернуть поле сообщения",
     "collapse_input": "Свернуть поле сообщения",
     "mention_picker_loading": "Загрузка файлов рабочей области…",
-    "mention_picker_error": "Не удалось загрузить файлы рабочей области."
+    "mention_picker_error": "Не удалось загрузить файлы рабочей области.",
+    "copy_code": "Копировать код",
+    "copy_failed": "Не удалось скопировать код."
   },
   "assistant-connect": {
     "title": "Подключить {{provider}}",
@@ -282,7 +284,11 @@
     "new_file_name": "Новый файл.md",
     "location": "???????????? ?????",
     "actions": "?????? ????????",
-    "document_actions": "???????? ? ?????????? Google Drive"
+    "document_actions": "???????? ? ?????????? Google Drive",
+    "tab_label": "{{name}} в {{connection}} (Google Drive)",
+    "creating_file": "Создание {{name}}…",
+    "opening_file": "Открытие {{name}}…",
+    "save_copy_help": "Сохраняет текущее содержимое активной вкладки как новый файл в этой папке Drive, включая локальные файлы, черновики без названия и несохранённые изменения."
   },
   "menus-alerts": {
     "primary": "Основной",

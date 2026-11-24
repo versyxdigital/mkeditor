@@ -5,6 +5,7 @@ import { ChatMessage } from '../../src/browser/react/components/assistant/ChatMe
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => i18next.t(key),
+  normalizeLanguage: (language: string) => language,
 }));
 jest.mock('../../src/browser/core/Markdown', () => ({
   renderAssistantMarkdown: (text: string) => text,

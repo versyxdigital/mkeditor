@@ -317,6 +317,8 @@ Same as above minus:
 8. `useCounts` (in `<Navbar>`) also subscribes to `editor:render` and recomputes word/character counts from the latest editor value.
 9. `LineNumber` extension stamped `class="has-line-data" data-line-start data-line-end` on rendered tokens so ScrollSync can find them.
 
+Mermaid fences retain the code block's source-line attributes and encoded source. `PreviewPane` renders them asynchronously through the shared, lazily loaded `browser/mermaid.ts` renderer, also used by chat. A bounded cache per host reuses unchanged SVGs; source changes, theme changes and unmount abort obsolete work. Scroll mapping is refreshed after diagram layout. The renderer uses strict Mermaid configuration and sanitizes SVG before insertion; invalid definitions remain readable code.
+
 ### 4.4 Scroll sync
 
 When `settings.scrollsync` is true and the editor scrolls:
@@ -359,11 +361,11 @@ Successful `from:file:save-result` acknowledgements also insert the saved path i
 
 ### 4.9 Export to HTML / PDF
 
-Both go through [HTMLExporter.generateHTML](../src/browser/core/HTMLExporter.ts:110) which:
+Both use the HTML export pipeline in [HTMLExporter.ts](../src/browser/core/HTMLExporter.ts):
 
 - Parses the preview's outerHTML via `DOMParser`.
 - Strips internal line-tracking attributes (`data-line-start`, `data-line-end`, `has-line-data`).
-- If `withStyles`, injects CDN `<link>`/`<script>` tags for Bootstrap, FontAwesome, highlight.js, KaTeX, plus inline overrides.
+- If `withStyles`, injects the shared Markdown stylesheet plus highlight.js/KaTeX resources and print overrides.
 - Applies `fontSize`, `lineHeight`, `backgroundColor`, `color` from `ExportSettings`.
 
 Desktop:
@@ -375,6 +377,8 @@ Web:
 
 - HTML: `HTMLExporter.webExport(html, 'text/html', '.html')` → `showSaveFilePicker` (File System Access API).
 - PDF: opens a new window, writes HTML, waits for stylesheets to load, calls `print()`.
+
+`HTMLExporter.prepareHTML` renders diagrams from a detached HTML snapshot before serialization. Exported diagrams are static SVG figures, including their internal vector styles in plain exports; no Mermaid runtime is required. Toolbar and assistant-tool exports await preparation. Browser export opens the picker or print window during the original user action and waits for preparation before writing or printing.
 
 ### 4.10 Settings change
 
@@ -592,6 +596,8 @@ The original tool API remains available (with optional line ranges added to `rea
 Write-class tools render a [ConfirmToolCall](../src/browser/react/components/assistant/ConfirmToolCall.tsx) `AlertDialog` with a diff preview before running, unless the conversation's `autoAcceptWrites` flag is on (default off, per-conversation toggle in the chat header).
 
 ### 4.15 Google Drive connections (experimental)
+
+`CloudManager` publishes per-file opening operations and the current create operation in its renderer snapshot. React renders these as inline progress without blocking document editing. Duplicate opens are suppressed, and account changes discard obsolete opening operations; late responses cannot reopen a cancelled download. Tab icons derive from each tab's remote metadata, independently of the selected Explorer workspace.
 
 `AppBridge` owns a sender-scoped `CloudService`. Public `CloudCommand` requests travel on `to:cloud:request`; correlated results and sanitized connection state return through `from:cloud:result` and `from:cloud:state`. `GoogleDrive` performs OAuth code/PKCE with a timed IPv4 loopback callback, account verification, refresh, paginated listings and reads in main. `CloudStore` atomically persists public configuration and OS-encrypted credentials in `~/.mkeditor/connections.json`. Plaintext-equivalent keyring backends disable sign-in. Generation guards prevent pending authentication/refresh work from restoring credentials after disconnect/remove; monotonically numbered public states prevent stale IPC replies from restoring old UI state.
 

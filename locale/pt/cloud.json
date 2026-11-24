@@ -80,5 +80,9 @@
   "new_file_name": "Novo arquivo.md",
   "location": "Localiza??o da pasta",
   "actions": "Mais a??es",
-  "document_actions": "A??es do documento do Google Drive"
+  "document_actions": "A??es do documento do Google Drive",
+  "tab_label": "{{name}} em {{connection}} (Google Drive)",
+  "creating_file": "Criando {{name}}…",
+  "opening_file": "Abrindo {{name}}…",
+  "save_copy_help": "Salva o conteúdo atual da aba ativa como um novo arquivo nesta pasta do Drive, incluindo arquivos locais, rascunhos sem título e alterações não salvas."
 }

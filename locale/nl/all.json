@@ -42,7 +42,9 @@
     "expand_input": "Berichtveld vergroten",
     "collapse_input": "Berichtveld verkleinen",
     "mention_picker_loading": "Werkruimtebestanden laden…",
-    "mention_picker_error": "Werkruimtebestanden konden niet worden geladen."
+    "mention_picker_error": "Werkruimtebestanden konden niet worden geladen.",
+    "copy_code": "Code kopiëren",
+    "copy_failed": "De code kon niet worden gekopieerd."
   },
   "assistant-connect": {
     "title": "{{provider}} verbinden",
@@ -282,7 +284,11 @@
     "new_file_name": "Nieuw bestand.md",
     "location": "Maplocatie",
     "actions": "Meer acties",
-    "document_actions": "Google Drive-documentacties"
+    "document_actions": "Google Drive-documentacties",
+    "tab_label": "{{name}} in {{connection}} (Google Drive)",
+    "creating_file": "{{name}} maken…",
+    "opening_file": "{{name}} openen…",
+    "save_copy_help": "Bewaar de huidige inhoud van het actieve tabblad als een nieuw bestand in deze Drive-map, ook lokale bestanden, naamloze concepten en niet-opgeslagen wijzigingen."
   },
   "menus-alerts": {
     "primary": "Primair",

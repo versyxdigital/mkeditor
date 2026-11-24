@@ -9,6 +9,13 @@ import { Button } from '../ui/button';
 import { Icon } from '../Icon';
 import { GoogleDriveLogo } from './GoogleBrand';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+  TooltipPortal,
+} from '../ui/tooltip';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -52,7 +59,7 @@ export const WorkspacePicker: React.FC = () => {
             ? `${connection.name}${connection.accountName ? ` · ${connection.accountName}` : ''}`
             : t('cloud:local')
         }
-        className="h-7 w-36 max-w-[28vw] min-w-0 shrink-0 gap-2 rounded-sm border-subtle bg-transparent px-2 text-xs shadow-none hover:bg-hover [&>svg]:ml-0 [&>svg]:shrink-0"
+        className="h-7 w-36 max-w-[28vw] min-w-0 shrink-0 gap-2 rounded-sm border-0 bg-transparent px-2 text-xs shadow-none hover:bg-hover [&>svg]:ml-0 [&>svg]:shrink-0"
       >
         {connection ? (
           <GoogleDriveLogo />
@@ -118,6 +125,11 @@ export const CloudExplorer: React.FC = () => {
     .join(' / ');
   const manage = () => openModal('settings', { tab: 'connections' });
   const canCreate = Boolean(manager?.canCreate());
+  const creating =
+    state.creating?.connectionId === connection?.id &&
+    state.creating?.accountId === connection?.accountId
+      ? state.creating
+      : undefined;
   return (
     <section
       aria-label={t('cloud:files')}
@@ -215,11 +227,18 @@ export const CloudExplorer: React.FC = () => {
               size="icon"
               className={actionClass}
               disabled={!canCreate}
+              aria-busy={Boolean(creating)}
               aria-label={t('cloud:new_file')}
               title={t('cloud:new_file')}
               onClick={() => void manager?.create()}
             >
-              <Icon name="file-circle-plus" className="size-3.5" />
+              <Icon
+                name={creating ? 'circle-notch' : 'file-circle-plus'}
+                className={cn(
+                  'size-3.5',
+                  creating && 'animate-spin motion-reduce:animate-none',
+                )}
+              />
             </Button>
             <Button
               variant="ghost"
@@ -251,20 +270,36 @@ export const CloudExplorer: React.FC = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  className={menuClass}
-                  disabled={
-                    !canCreate ||
-                    !activeFile ||
-                    !tabs.some(
-                      (tab) => tab.path === activeFile && tab.kind !== 'diff',
-                    )
-                  }
-                  onSelect={() => void manager?.create(true)}
-                >
-                  <Icon name="copy" />
-                  {t('cloud:save_copy')}
-                </DropdownMenuItem>
+                <TooltipProvider delayDuration={250}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuItem
+                        className={menuClass}
+                        disabled={
+                          !canCreate ||
+                          !activeFile ||
+                          !tabs.some(
+                            (tab) =>
+                              tab.path === activeFile && tab.kind !== 'diff',
+                          )
+                        }
+                        onSelect={() => void manager?.create(true)}
+                      >
+                        <Icon name="copy" />
+                        {t('cloud:save_copy')}
+                      </DropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipPortal>
+                      <TooltipContent
+                        side="right"
+                        align="start"
+                        className="max-w-72 whitespace-normal leading-relaxed"
+                      >
+                        {t('cloud:save_copy_help')}
+                      </TooltipContent>
+                    </TooltipPortal>
+                  </Tooltip>
+                </TooltipProvider>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className={menuClass} onSelect={manage}>
                   <Icon name="cog" />
@@ -275,9 +310,31 @@ export const CloudExplorer: React.FC = () => {
           </div>
           <div className="thin-scrollbars min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
             {state.loading && (
-              <span className="sr-only" role="status">
-                {t('cloud:loading')}
-              </span>
+              <div
+                className="flex h-8 items-center gap-2 px-2 text-xs text-muted-foreground"
+                role="status"
+              >
+                <Icon
+                  name="circle-notch"
+                  className="size-3.5 text-primary animate-spin motion-reduce:animate-none"
+                />
+                <span className="truncate">{t('cloud:loading')}</span>
+              </div>
+            )}
+            {creating && (
+              <div
+                className="flex h-8 min-w-0 items-center gap-2 px-2 text-xs text-muted-foreground"
+                role="status"
+                title={t('cloud:creating_file', { name: creating.name })}
+              >
+                <Icon
+                  name="circle-notch"
+                  className="size-3.5 text-primary animate-spin motion-reduce:animate-none"
+                />
+                <span className="truncate">
+                  {t('cloud:creating_file', { name: creating.name })}
+                </span>
+              </div>
             )}
             {state.error && (
               <p
@@ -299,17 +356,26 @@ export const CloudExplorer: React.FC = () => {
                 <span className="truncate">{t('cloud:check_create')}</span>
               </Button>
             )}
-            {!state.loading && !state.error && state.items.length === 0 && (
-              <p
-                role="status"
-                className="truncate px-2 py-4 text-muted-foreground"
-                title={t('cloud:empty')}
-              >
-                {t('cloud:empty')}
-              </p>
-            )}
+            {!state.loading &&
+              !state.error &&
+              !creating &&
+              state.items.length === 0 && (
+                <p
+                  role="status"
+                  className="truncate px-2 py-4 text-muted-foreground"
+                  title={t('cloud:empty')}
+                >
+                  {t('cloud:empty')}
+                </p>
+              )}
             <ul aria-label={t('cloud:files')} className="m-0 list-none p-0">
               {state.items.map((item) => {
+                const opening = state.opening.some(
+                  (operation) =>
+                    operation.connectionId === connection.id &&
+                    operation.accountId === connection.accountId &&
+                    operation.itemId === item.id,
+                );
                 const selected =
                   activeRemote?.connectionId === connection.id &&
                   activeRemote.accountId === connection.accountId &&
@@ -328,7 +394,13 @@ export const CloudExplorer: React.FC = () => {
                   <li key={item.id}>
                     <button
                       type="button"
-                      disabled={item.kind === 'unsupported'}
+                      disabled={item.kind === 'unsupported' || opening}
+                      aria-busy={opening}
+                      aria-label={
+                        opening
+                          ? t('cloud:opening_file', { name: item.name })
+                          : undefined
+                      }
                       aria-current={selected ? 'page' : undefined}
                       onClick={() => void manager?.open(item)}
                       title={
@@ -340,11 +412,22 @@ export const CloudExplorer: React.FC = () => {
                         'flex h-[var(--sidebar-row-height)] w-full min-w-0 items-center gap-2 whitespace-nowrap rounded-sm px-2 text-left text-[13px] text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:opacity-45',
                         selected &&
                           'bg-active font-medium text-foreground hover:bg-active',
+                        opening && 'cursor-wait disabled:opacity-100',
                       )}
                     >
                       <Icon
-                        name={item.kind === 'folder' ? 'folder' : 'file'}
-                        className="size-3.5"
+                        name={
+                          opening
+                            ? 'circle-notch'
+                            : item.kind === 'folder'
+                              ? 'folder'
+                              : 'file'
+                        }
+                        className={cn(
+                          'size-3.5',
+                          opening &&
+                            'text-primary animate-spin motion-reduce:animate-none',
+                        )}
                       />
                       <span className="min-w-0 flex-1 truncate">
                         {item.name}
@@ -356,6 +439,11 @@ export const CloudExplorer: React.FC = () => {
                         />
                       )}
                     </button>
+                    {opening && (
+                      <span role="status" className="sr-only">
+                        {t('cloud:opening_file', { name: item.name })}
+                      </span>
+                    )}
                   </li>
                 );
               })}

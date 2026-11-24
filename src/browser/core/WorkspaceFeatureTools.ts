@@ -173,7 +173,7 @@ export const workspaceFeatureTools: Record<string, ToolSpec> = {
       wrapper.id = 'preview-content';
       wrapper.className = settings.container;
       wrapper.innerHTML = Markdown.render(file.content);
-      const content = HTMLExporter.generateHTML(wrapper.outerHTML, {
+      const content = await HTMLExporter.prepareHTML(wrapper.outerHTML, {
         ...settings,
         withStyles: a.withStyles ?? settings.withStyles,
       });

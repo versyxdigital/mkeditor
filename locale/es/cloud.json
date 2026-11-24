@@ -80,5 +80,9 @@
   "new_file_name": "Nuevo archivo.md",
   "location": "Ubicaci?n de la carpeta",
   "actions": "M?s acciones",
-  "document_actions": "Acciones del documento de Google Drive"
+  "document_actions": "Acciones del documento de Google Drive",
+  "tab_label": "{{name}} en {{connection}} (Google Drive)",
+  "creating_file": "Creando {{name}}…",
+  "opening_file": "Abriendo {{name}}…",
+  "save_copy_help": "Guarda el contenido actual de la pestaña activa como un archivo nuevo en esta carpeta de Drive, incluidos archivos locales, borradores sin título y cambios sin guardar."
 }

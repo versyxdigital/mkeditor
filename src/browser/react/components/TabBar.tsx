@@ -4,6 +4,7 @@ import { useFiles } from '../contexts/FilesContext';
 import { useManagers } from '../contexts/ManagersContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
+import { GoogleDriveLogo } from './cloud/GoogleBrand';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -138,12 +139,25 @@ export const TabBar: React.FC = () => {
                       fileManager?.activateFile(tab.path);
                     }}
                     className={cn(
-                      'block px-3 py-1 whitespace-nowrap no-underline cursor-pointer',
+                      'inline-flex items-center gap-1.5 px-3 py-1 whitespace-nowrap no-underline cursor-pointer',
                       'text-current focus:outline-none text-xs',
                     )}
-                    title={tab.path}
+                    title={
+                      tab.remote
+                        ? `${tab.remote.connectionName} / ${tab.name}`
+                        : tab.path
+                    }
+                    aria-label={
+                      tab.remote
+                        ? t('cloud:tab_label', {
+                            name: tab.name,
+                            connection: tab.remote.connectionName,
+                          })
+                        : undefined
+                    }
                   >
-                    {tab.name}
+                    {tab.remote && <GoogleDriveLogo className="h-3.5 w-3.5" />}
+                    <span>{tab.name}</span>
                   </a>
                   <button
                     type="button"

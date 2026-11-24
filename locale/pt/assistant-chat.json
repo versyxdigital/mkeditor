@@ -36,5 +36,7 @@
   "expand_input": "Expandir caixa de mensagem",
   "collapse_input": "Recolher caixa de mensagem",
   "mention_picker_loading": "A carregar os ficheiros do espaço de trabalho…",
-  "mention_picker_error": "Não foi possível carregar os ficheiros do espaço de trabalho."
+  "mention_picker_error": "Não foi possível carregar os ficheiros do espaço de trabalho.",
+  "copy_code": "Copiar código",
+  "copy_failed": "Não foi possível copiar o código."
 }

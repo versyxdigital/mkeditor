@@ -36,5 +36,7 @@
   "expand_input": "展开消息输入框",
   "collapse_input": "收起消息输入框",
   "mention_picker_loading": "正在加载工作区文件…",
-  "mention_picker_error": "无法加载工作区文件。"
+  "mention_picker_error": "无法加载工作区文件。",
+  "copy_code": "复制代码",
+  "copy_failed": "无法复制代码。"
 }

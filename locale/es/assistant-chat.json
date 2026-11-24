@@ -36,5 +36,7 @@
   "expand_input": "Expandir cuadro de mensaje",
   "collapse_input": "Contraer cuadro de mensaje",
   "mention_picker_loading": "Cargando archivos del espacio de trabajo…",
-  "mention_picker_error": "No se pudieron cargar los archivos del espacio de trabajo."
+  "mention_picker_error": "No se pudieron cargar los archivos del espacio de trabajo.",
+  "copy_code": "Copiar código",
+  "copy_failed": "No se pudo copiar el código."
 }

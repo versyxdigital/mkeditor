@@ -80,5 +80,9 @@
   "new_file_name": "新文件.md",
   "location": "?????",
   "actions": "????",
-  "document_actions": "Google Drive ????"
+  "document_actions": "Google Drive ????",
+  "tab_label": "{{connection}} 中的 {{name}}（Google Drive）",
+  "creating_file": "正在创建 {{name}}…",
+  "opening_file": "正在打开 {{name}}…",
+  "save_copy_help": "将当前标签页的内容保存为此云端硬盘文件夹中的新文件，包括本地文件、无标题草稿和未保存的更改。"
 }

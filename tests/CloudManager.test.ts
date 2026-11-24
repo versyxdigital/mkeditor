@@ -4,7 +4,7 @@ import type {
   CloudResponse,
   CloudState,
 } from '../src/app/interfaces/Cloud';
-import { confirmExternal } from '../src/browser/prompts';
+import { confirmExternal, openPromptExternal } from '../src/browser/prompts';
 
 jest.mock('../src/browser/prompts', () => ({
   confirmExternal: jest.fn(async () => false),
@@ -16,6 +16,8 @@ function setup() {
   const requests: CloudRequest[] = [];
   const files = {
     openRemoteDocument: jest.fn(),
+    activeFile: null as string | null,
+    createLocalCopy: jest.fn(),
     setRemoteOperations: jest.fn(),
     refreshRemoteAccess: jest.fn(),
     tabs: new Map(),
@@ -256,5 +258,148 @@ test('missing IPC responses time out with actionable UI state', async () => {
   jest.advanceTimersByTime(65_000);
   expect(await run).toBe(false);
   expect(manager.getSnapshot()).toMatchObject({ error: 'network', busy: [] });
+  manager.dispose();
+});
+
+test('opening tracks individual downloads, prevents duplicate requests and clears each completed operation', async () => {
+  const { manager, files, requests, state, push, respond } = setup();
+  push(state);
+  manager.selectWorkspace('drive');
+  const item = {
+    id: 'first',
+    name: 'intro.md',
+    kind: 'markdown' as const,
+    parents: [],
+  };
+  const first = manager.open(item);
+  const firstRequest = requests.at(-1)!;
+  await manager.open(item);
+  expect(
+    requests.filter((request) => request.command.action === 'open'),
+  ).toHaveLength(1);
+  const second = manager.open({ ...item, id: 'second', name: 'math.md' });
+  const secondRequest = requests.at(-1)!;
+  expect(manager.getSnapshot().opening).toHaveLength(2);
+  respond(firstRequest, {
+    ok: true,
+    state,
+    document: {
+      connectionId: 'drive',
+      accountId: 'account',
+      connectionName: 'Drive',
+      item,
+      content: '# Intro',
+    },
+  });
+  await first;
+  expect(files.openRemoteDocument).toHaveBeenCalledTimes(1);
+  expect(
+    manager.getSnapshot().opening.map((operation) => operation.itemId),
+  ).toEqual(['second']);
+  respond(secondRequest, { ok: true, state });
+  await second;
+  expect(manager.getSnapshot().opening).toEqual([]);
+  manager.dispose();
+});
+
+test('download timeouts clear progress and a signed-out download cannot reopen after reconnecting', async () => {
+  jest.useFakeTimers();
+  const { manager, files, requests, state, push, respond } = setup();
+  push(state);
+  manager.selectWorkspace('drive');
+  const item = {
+    id: 'file',
+    name: 'intro.md',
+    kind: 'markdown' as const,
+    parents: [],
+  };
+  const timed = manager.open(item);
+  expect(manager.getSnapshot().opening).toHaveLength(1);
+  jest.advanceTimersByTime(65_000);
+  await timed;
+  expect(manager.getSnapshot()).toMatchObject({
+    opening: [],
+    error: 'network',
+  });
+  const stale = manager.open(item);
+  const oldRequest = requests.at(-1)!;
+  push({
+    ...state,
+    revision: 2,
+    connections: [{ ...state.connections[0], status: 'disconnected' }],
+  });
+  expect(manager.getSnapshot().opening).toEqual([]);
+  push({ ...state, revision: 3 });
+  respond(oldRequest, {
+    ok: true,
+    state,
+    document: {
+      connectionId: 'drive',
+      accountId: 'account',
+      connectionName: 'Drive',
+      item,
+      content: 'stale',
+    },
+  });
+  await stale;
+  expect(files.openRemoteDocument).not.toHaveBeenCalled();
+  manager.dispose();
+});
+
+test('creation progress begins after confirmation, keeps the copied snapshot and clears on failure', async () => {
+  const { manager, files, requests, state, push } = setup();
+  state.connections[0].writeAccess = true;
+  push(state);
+  manager.selectWorkspace('drive');
+  let content = 'unsaved draft';
+  files.activeFile = 'untitled-1';
+  files.models.set('untitled-1', { getValue: () => content });
+  jest
+    .mocked(openPromptExternal)
+    .mockResolvedValueOnce({ button: 'confirm', value: 'draft.md' });
+  const creating = manager.create(true);
+  expect(manager.getSnapshot().creating).toBeUndefined();
+  content = 'edited later';
+  await Promise.resolve();
+  expect(manager.getSnapshot().creating).toMatchObject({
+    connectionId: 'drive',
+    folderId: 'root',
+    name: 'draft.md',
+  });
+  const request = requests.at(-1)!;
+  expect(request.command).toMatchObject({
+    action: 'create',
+    content: 'unsaved draft',
+  });
+  const count = requests.length;
+  await manager.create();
+  expect(requests).toHaveLength(count);
+  manager.dispose();
+  await creating;
+  expect(manager.getSnapshot()).toMatchObject({
+    busy: [],
+    creating: undefined,
+  });
+  expect(files.createLocalCopy).not.toHaveBeenCalled();
+});
+
+test('cancelled or failed name prompts release creation controls without starting a write', async () => {
+  const { manager, requests, state, push } = setup();
+  state.connections[0].writeAccess = true;
+  push(state);
+  manager.selectWorkspace('drive');
+  jest.mocked(openPromptExternal).mockResolvedValueOnce({ button: null });
+  await manager.create();
+  expect(manager.getSnapshot().busy).toEqual([]);
+  expect(manager.getSnapshot().creating).toBeUndefined();
+  jest
+    .mocked(openPromptExternal)
+    .mockRejectedValueOnce(new Error('prompt failed'));
+  await manager.create();
+  expect(manager.getSnapshot().busy).toEqual([]);
+  expect(manager.getSnapshot().creating).toBeUndefined();
+  expect(requests.some((request) => request.command.action === 'create')).toBe(
+    false,
+  );
   manager.dispose();
 });

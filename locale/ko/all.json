@@ -42,7 +42,9 @@
     "expand_input": "메시지 입력창 펼치기",
     "collapse_input": "메시지 입력창 접기",
     "mention_picker_loading": "작업 공간 파일을 불러오는 중…",
-    "mention_picker_error": "작업 공간 파일을 불러오지 못했습니다."
+    "mention_picker_error": "작업 공간 파일을 불러오지 못했습니다.",
+    "copy_code": "코드 복사",
+    "copy_failed": "코드를 복사하지 못했습니다."
   },
   "assistant-connect": {
     "title": "{{provider}} 연결",
@@ -282,7 +284,11 @@
     "new_file_name": "새 파일.md",
     "location": "?? ??",
     "actions": "?? ??",
-    "document_actions": "Google Drive ?? ??"
+    "document_actions": "Google Drive ?? ??",
+    "tab_label": "{{connection}}의 {{name}}(Google Drive)",
+    "creating_file": "{{name}} 만드는 중…",
+    "opening_file": "{{name}} 여는 중…",
+    "save_copy_help": "활성 탭의 현재 내용을 이 드라이브 폴더에 새 파일로 저장합니다. 로컬 파일, 제목 없는 초안, 저장하지 않은 변경 사항도 저장할 수 있습니다."
   },
   "menus-alerts": {
     "primary": "기본",

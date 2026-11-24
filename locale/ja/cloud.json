@@ -80,5 +80,9 @@
   "new_file_name": "新しいファイル.md",
   "location": "????????",
   "actions": "??????",
-  "document_actions": "Google Drive ?????????"
+  "document_actions": "Google Drive ?????????",
+  "tab_label": "{{connection}} の {{name}}（Google Drive）",
+  "creating_file": "{{name}} を作成中…",
+  "opening_file": "{{name}} を開いています…",
+  "save_copy_help": "アクティブなタブの現在の内容を、このドライブフォルダに新しいファイルとして保存します。ローカルファイル、無題の下書き、未保存の変更も保存できます。"
 }

@@ -18,6 +18,18 @@ interface Location {
   shared?: boolean;
 }
 export interface CloudSnapshot extends CloudState {
+  opening: {
+    id: number;
+    connectionId: string;
+    accountId: string;
+    itemId: string;
+  }[];
+  creating?: {
+    connectionId: string;
+    accountId: string;
+    folderId: string;
+    name: string;
+  };
   workspace: string;
   folders: Location[];
   items: DriveItem[];
@@ -41,6 +53,7 @@ export const EMPTY_CLOUD: CloudSnapshot = {
   items: [],
   loading: false,
   busy: [],
+  opening: [],
 };
 
 /** Renderer orchestration only; tokens and provider HTTP live in main. */
@@ -48,6 +61,7 @@ export class CloudManager {
   private snapshot: CloudSnapshot = { ...EMPTY_CLOUD };
   private listeners = new Set<() => void>();
   private nextRequest = 0;
+  private nextOpen = 0;
   private browseGeneration = 0;
   private initialized = false;
   private pending = new Map<
@@ -134,7 +148,17 @@ export class CloudManager {
         ...(!incoming ? { workspace: 'local' } : {}),
       });
     }
-    this.update(state);
+    this.update({
+      ...state,
+      opening: this.snapshot.opening.filter((operation) =>
+        state.connections.some(
+          (connection) =>
+            connection.id === operation.connectionId &&
+            connection.accountId === operation.accountId &&
+            connection.status === 'connected',
+        ),
+      ),
+    });
     this.files.refreshRemoteAccess?.();
     if (
       incoming?.status === 'connected' &&
@@ -281,10 +305,30 @@ export class CloudManager {
     }
     if (item.kind !== 'markdown') return;
     const connectionId = this.snapshot.workspace;
-    const accountId = this.snapshot.connections.find(
+    const connection = this.snapshot.connections.find(
       (entry) => entry.id === connectionId,
-    )?.accountId;
-    this.update({ error: undefined });
+    );
+    const accountId = connection?.accountId;
+    if (!accountId || connection.status !== 'connected') return;
+    if (
+      this.snapshot.opening.some(
+        (operation) =>
+          operation.connectionId === connectionId &&
+          operation.accountId === accountId &&
+          operation.itemId === item.id,
+      )
+    )
+      return;
+    const opening = {
+      id: ++this.nextOpen,
+      connectionId,
+      accountId,
+      itemId: item.id,
+    };
+    this.update({
+      error: undefined,
+      opening: [...this.snapshot.opening, opening],
+    });
     try {
       const response = await this.request({
         action: 'open',
@@ -296,6 +340,9 @@ export class CloudManager {
         (entry) => entry.id === connectionId,
       );
       if (
+        this.snapshot.opening.some(
+          (operation) => operation.id === opening.id,
+        ) &&
         response.document &&
         current?.status === 'connected' &&
         current.accountId === accountId &&
@@ -303,7 +350,16 @@ export class CloudManager {
       )
         this.files.openRemoteDocument(response.document);
     } catch (error) {
-      this.update({ error: error as CloudWriteError });
+      if (
+        this.snapshot.opening.some((operation) => operation.id === opening.id)
+      )
+        this.update({ error: error as CloudWriteError });
+    } finally {
+      this.update({
+        opening: this.snapshot.opening.filter(
+          (operation) => operation.id !== opening.id,
+        ),
+      });
     }
   }
   canEdit(document: Omit<RemoteDocument, 'content'>): boolean {
@@ -395,14 +451,23 @@ export class CloudManager {
     // Freeze the source and destination before prompting; copying never marks the source saved.
     const content = copy ? source!.getValue() : '';
     this.update({ busy: [...this.snapshot.busy, 'create'], error: undefined });
-    const result = await openPromptExternal({
-      title: t(copy ? 'cloud:save_copy' : 'cloud:new_file'),
-      input: { defaultValue: t('cloud:new_file_name') },
-      buttons: [
-        { id: 'cancel', label: t('cloud:cancel') },
-        { id: 'confirm', label: t('cloud:create'), variant: 'primary' },
-      ],
-    });
+    let result: Awaited<ReturnType<typeof openPromptExternal>>;
+    try {
+      result = await openPromptExternal({
+        title: t(copy ? 'cloud:save_copy' : 'cloud:new_file'),
+        input: { defaultValue: t('cloud:new_file_name') },
+        buttons: [
+          { id: 'cancel', label: t('cloud:cancel') },
+          { id: 'confirm', label: t('cloud:create'), variant: 'primary' },
+        ],
+      });
+    } catch {
+      this.update({
+        error: 'cancelled',
+        busy: this.snapshot.busy.filter((id) => id !== 'create'),
+      });
+      return;
+    }
     if (result.button !== 'confirm') {
       this.update({ busy: this.snapshot.busy.filter((id) => id !== 'create') });
       return;
@@ -413,7 +478,15 @@ export class CloudManager {
       accountId: connection.accountId!,
       operationId: `create-${Date.now()}-${++this.nextRequest}`,
     };
-    this.update({ busy: [...this.snapshot.busy, 'create'], error: undefined });
+    this.update({
+      creating: {
+        connectionId: connection.id,
+        accountId: connection.accountId!,
+        folderId,
+        name,
+      },
+      error: undefined,
+    });
     try {
       const result = await this.request({
         action: 'create',
@@ -434,7 +507,10 @@ export class CloudManager {
       if (error === 'unconfirmed' && content)
         this.files.createLocalCopy(content);
     } finally {
-      this.update({ busy: this.snapshot.busy.filter((id) => id !== 'create') });
+      this.update({
+        busy: this.snapshot.busy.filter((id) => id !== 'create'),
+        creating: undefined,
+      });
     }
   }
   async reconcileCreate(): Promise<void> {

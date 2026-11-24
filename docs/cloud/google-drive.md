@@ -33,6 +33,8 @@ App registration and scope details: [Google Desktop OAuth](https://developers.go
 
 ## Reading and local copies
 
+Drive-backed tabs display the Google Drive icon before the filename. Local files and local copies do not. While a document downloads, its Explorer row shows a spinner and ignores repeat opens. Creating a document shows a compact “Creating…” row after the name is confirmed; completion, cancellation and failures clear progress. Folder loading is also visible. The **Save a copy to Drive** menu tooltip explains that it creates a new Drive file from the active tab's current content, including local files, untitled drafts and unsaved edits.
+
 Opening the same file through the same connection and verified account focuses its existing tab. Identity uses Google's file ID, not the displayed name or folder. File rows remain one line; hover to see the full name, folder, modification time and ID, including when names are duplicated. Shortcuts resolve to their target. A file moving folders does not change its identity.
 
 The Drive icon beside the active filename opens document status and actions. Read-only documents have a quiet read-only label; saving shows a spinner, and successful saves do not add a banner. **Edit a local copy** opens a separate unsaved editable buffer. Use normal Save/Save As to save that copy locally. It never overwrites the Drive original. A cancelled local save retains the copy. Remote **Save As** also creates a local copy; save that new buffer with the normal picker.

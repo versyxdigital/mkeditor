@@ -23,6 +23,7 @@ Download for desktop or use it directly through your [browser](https://versyxdig
   - [Create alerts](#create-alerts)
   - [Format code](#format-code)
   - [Write math](#write-math)
+  - [Draw diagrams](#draw-diagrams)
   - [Preview documents as you type](#preview-documents-as-you-type)
   - [Customize to your preference](#customize-to-your-preference)
   - [Export to HTML & PDF](#export-to-html--pdf)
@@ -56,6 +57,19 @@ document.addEventListener('DOMContentLoaded', () => {
 ```
 
 Syntax highlighting is supported for lots of languages!
+
+## Draw diagrams
+
+Write a fenced `mermaid` block, or choose Mermaid from the code-block menu. Diagrams render in the document preview on desktop and web, and are included in HTML and PDF exports. HTML exports embed the diagrams as SVG.
+
+````markdown
+```mermaid
+flowchart LR
+  Draft --> Review --> Publish
+```
+````
+
+Flowcharts, sequence diagrams and Mermaid's other diagram types use the same renderer as AI responses. Invalid or unfinished diagrams stay visible as code while you edit.
 
 ## Write math
 

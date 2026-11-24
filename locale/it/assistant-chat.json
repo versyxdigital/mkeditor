@@ -36,5 +36,7 @@
   "expand_input": "Espandi la casella del messaggio",
   "collapse_input": "Riduci la casella del messaggio",
   "mention_picker_loading": "Caricamento dei file dell’area di lavoro…",
-  "mention_picker_error": "Impossibile caricare i file dell’area di lavoro."
+  "mention_picker_error": "Impossibile caricare i file dell’area di lavoro.",
+  "copy_code": "Copia codice",
+  "copy_failed": "Impossibile copiare il codice."
 }

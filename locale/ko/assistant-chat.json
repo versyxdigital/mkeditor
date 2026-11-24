@@ -36,5 +36,7 @@
   "expand_input": "메시지 입력창 펼치기",
   "collapse_input": "메시지 입력창 접기",
   "mention_picker_loading": "작업 공간 파일을 불러오는 중…",
-  "mention_picker_error": "작업 공간 파일을 불러오지 못했습니다."
+  "mention_picker_error": "작업 공간 파일을 불러오지 못했습니다.",
+  "copy_code": "코드 복사",
+  "copy_failed": "코드를 복사하지 못했습니다."
 }

@@ -9,6 +9,8 @@ import {
 import { refreshLines } from '../../extensions/editor/ScrollSync';
 import { sonnerToast } from '../../notify';
 import { logger } from '../../util';
+import { renderMermaidDiagrams } from '../../mermaid';
+import { useSettings } from '../contexts/SettingsContext';
 import { useFiles } from '../contexts/FilesContext';
 import { useFileTree } from '../contexts/FileTreeContext';
 import { useManagers } from '../contexts/ManagersContext';
@@ -55,6 +57,10 @@ export const PreviewPane: React.FC = () => {
   const { activeFile } = useFiles();
   const { treeRoot } = useFileTree();
   const { t } = useTranslation();
+  const {
+    settings: { effectiveDarkmode },
+  } = useSettings();
+  const themeRef = React.useRef(effectiveDarkmode);
   const contentRef = React.useRef<HTMLDivElement>(null);
 
   const activeEditablePath = React.useMemo(
@@ -86,23 +92,45 @@ export const PreviewPane: React.FC = () => {
     let lastSource: string | null = null;
     let lastHtml = '';
     let lastContext: typeof baseInfoRef.current | null = null;
+    let lastTheme: boolean | null = null;
+    let diagrams: AbortController | null = null;
 
     const render = () => {
       if (!contentRef.current || !md) return;
       const source = editorManager?.getValue() ?? '';
       const context = baseInfoRef.current;
-      if (source === lastSource && context === lastContext) return;
+      if (
+        source === lastSource &&
+        context === lastContext &&
+        themeRef.current === lastTheme
+      )
+        return;
       try {
         const html =
           source === lastSource && context.remote === lastContext?.remote
             ? lastHtml
             : md.render(source, context.remote);
-        const fragment = buildPreviewFragment(html, context);
-        contentRef.current.replaceChildren(fragment);
+        if (source !== lastSource || context !== lastContext) {
+          const fragment = buildPreviewFragment(html, context);
+          contentRef.current.replaceChildren(fragment);
+        }
+        diagrams?.abort();
+        diagrams = new AbortController();
+        const signal = diagrams.signal;
         lastSource = source;
         lastHtml = html;
         lastContext = context;
+        lastTheme = themeRef.current;
         refreshLines();
+        if (contentRef.current.querySelector('[data-diagram="mermaid"]')) {
+          void renderMermaidDiagrams(
+            contentRef.current,
+            themeRef.current,
+            signal,
+          ).then(() => {
+            if (!signal.aborted) refreshLines();
+          });
+        }
       } catch (error) {
         logger.error('PreviewPane.render', error);
       }
@@ -124,9 +152,15 @@ export const PreviewPane: React.FC = () => {
     dispatcher.addEventListener('editor:render', render);
     return () => {
       cancelled = true;
+      diagrams?.abort();
       dispatcher.removeEventListener('editor:render', render);
     };
   }, [dispatcher, editorManager]);
+
+  React.useEffect(() => {
+    themeRef.current = effectiveDarkmode;
+    dispatcher.render();
+  }, [effectiveDarkmode, dispatcher]);
 
   // Re-render the preview whenever the asset base directory changes
   // (new tab opens, workspace folder swapped). Without this, the

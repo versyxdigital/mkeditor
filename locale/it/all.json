@@ -42,7 +42,9 @@
     "expand_input": "Espandi la casella del messaggio",
     "collapse_input": "Riduci la casella del messaggio",
     "mention_picker_loading": "Caricamento dei file dell’area di lavoro…",
-    "mention_picker_error": "Impossibile caricare i file dell’area di lavoro."
+    "mention_picker_error": "Impossibile caricare i file dell’area di lavoro.",
+    "copy_code": "Copia codice",
+    "copy_failed": "Impossibile copiare il codice."
   },
   "assistant-connect": {
     "title": "Connetti {{provider}}",
@@ -282,7 +284,11 @@
     "new_file_name": "Nuovo file.md",
     "location": "Posizione cartella",
     "actions": "Altre azioni",
-    "document_actions": "Azioni documento Google Drive"
+    "document_actions": "Azioni documento Google Drive",
+    "tab_label": "{{name}} in {{connection}} (Google Drive)",
+    "creating_file": "Creazione di {{name}}…",
+    "opening_file": "Apertura di {{name}}…",
+    "save_copy_help": "Salva il contenuto attuale della scheda attiva come nuovo file in questa cartella di Drive, inclusi file locali, bozze senza titolo e modifiche non salvate."
   },
   "menus-alerts": {
     "primary": "Primario",

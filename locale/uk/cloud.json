@@ -80,5 +80,9 @@
   "new_file_name": "Новий файл.md",
   "location": "???????????? ?????",
   "actions": "???? ???",
-  "document_actions": "??? ? ?????????? Google Drive"
+  "document_actions": "??? ? ?????????? Google Drive",
+  "tab_label": "{{name}} у {{connection}} (Google Drive)",
+  "creating_file": "Створення {{name}}…",
+  "opening_file": "Відкриття {{name}}…",
+  "save_copy_help": "Зберігає поточний вміст активної вкладки як новий файл у цій папці Drive, зокрема локальні файли, чернетки без назви та незбережені зміни."
 }

@@ -36,5 +36,7 @@
   "expand_input": "Mesaj kutusunu genişlet",
   "collapse_input": "Mesaj kutusunu daralt",
   "mention_picker_loading": "Çalışma alanı dosyaları yükleniyor…",
-  "mention_picker_error": "Çalışma alanı dosyaları yüklenemedi."
+  "mention_picker_error": "Çalışma alanı dosyaları yüklenemedi.",
+  "copy_code": "Kodu kopyala",
+  "copy_failed": "Kod kopyalanamadı."
 }

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { act, waitFor } from '@testing-library/react';
 
 import { PreviewPane } from '../../src/browser/react/components/PreviewPane';
+import { renderMermaidDiagrams } from '../../src/browser/mermaid';
 import {
   renderWithProviders,
   fakeDispatcher,
@@ -30,7 +31,39 @@ jest.mock('../../src/browser/extensions/editor/ScrollSync', () => ({
   refreshLines: jest.fn(),
 }));
 
+jest.mock('../../src/browser/mermaid', () => ({
+  renderMermaidDiagrams: jest.fn(async () => {}),
+}));
+
 describe('<PreviewPane>', () => {
+  it('renders document diagrams and aborts obsolete work when text changes or the preview unmounts', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    const renderer = Markdown.render as jest.Mock;
+    renderer.mockReturnValueOnce(
+      '<div data-diagram="mermaid" data-source="QQ=="><pre>A</pre></div>',
+    );
+    const dispatcher = fakeDispatcher();
+    let value = 'first diagram';
+    const view = renderWithProviders(<PreviewPane />, {
+      managers: {
+        dispatcher: dispatcher as never,
+        editorManager: { getValue: () => value } as never,
+      },
+    });
+    await waitFor(() => expect(renderMermaidDiagrams).toHaveBeenCalledTimes(1));
+    const first = jest.mocked(renderMermaidDiagrams).mock.calls[0][2];
+    expect(first.aborted).toBe(false);
+    renderer.mockReturnValueOnce(
+      '<div data-diagram="mermaid" data-source="Qg=="><pre>B</pre></div>',
+    );
+    value = 'next diagram';
+    act(() => dispatcher.render());
+    expect(first.aborted).toBe(true);
+    expect(view.container.querySelector('pre')?.textContent).toBe('B');
+    const second = jest.mocked(renderMermaidDiagrams).mock.calls[1][2];
+    view.unmount();
+    expect(second.aborted).toBe(true);
+  });
   it('remote documents use safe rendering and never resolve relative assets against a local workspace', async () => {
     const {
       renderAssistantMarkdown,

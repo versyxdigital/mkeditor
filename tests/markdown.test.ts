@@ -4,6 +4,50 @@ import {
 } from '../src/browser/core/Markdown';
 
 describe('renderAssistantMarkdown (AI Assistant P4)', () => {
+  it('renders chat tables in a focusable scroll container while preserving alignment and escaping HTML', () => {
+    const source = [
+      '| Quantization | RAM | Notes |',
+      '| :--- | ---: | :---: |',
+      '| **Q4** | ~8 GB | Escaped \\| pipe |',
+      '| Q8 | ~14 GB | <img src=x onerror=alert(1)> |',
+    ].join('\n');
+    const document = new DOMParser().parseFromString(
+      renderAssistantMarkdown(source, { scrollableTables: true }),
+      'text/html',
+    );
+    const container = document.querySelector('.assistant-table-scroll');
+    expect(container?.getAttribute('tabindex')).toBe('0');
+    expect(container?.querySelectorAll('table')).toHaveLength(1);
+    expect(container?.querySelectorAll('thead th')).toHaveLength(3);
+    expect(container?.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect(
+      container?.querySelector('th:nth-child(2)')?.getAttribute('style'),
+    ).toBe('text-align:right');
+    expect(container?.querySelector('strong')?.textContent).toBe('Q4');
+    expect(container?.textContent).toContain('Escaped | pipe');
+    expect(document.querySelector('img')).toBeNull();
+    expect(Markdown.render(source)).not.toContain('assistant-table-scroll');
+    expect(renderAssistantMarkdown(source)).not.toContain(
+      'assistant-table-scroll',
+    );
+    expect(Markdown.options.html).toBe(true);
+  });
+
+  it('keeps table wrappers balanced as partial rows arrive during streaming', () => {
+    const source = '| Model | RAM |\n| --- | --- |\n| Q4 |';
+    for (const content of [source, `${source} ~8 GB |\n| Q8 | ~14 GB |`]) {
+      const document = new DOMParser().parseFromString(
+        renderAssistantMarkdown(content, { scrollableTables: true }),
+        'text/html',
+      );
+      expect(document.querySelectorAll('.assistant-table-scroll')).toHaveLength(
+        1,
+      );
+      expect(document.querySelectorAll('tbody tr')[0].children).toHaveLength(2);
+      expect(document.body.children).toHaveLength(1);
+    }
+  });
+
   it('escapes fenced-code language labels even when raw HTML is disabled', () => {
     const out = renderAssistantMarkdown(
       '```</span><img/src=x/onerror=alert(1)>\ntext\n```',

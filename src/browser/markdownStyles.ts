@@ -281,6 +281,22 @@ export const markdownStylesheet = `
 
 /* ===== Tables ===== */
 
+#preview-content .md-diagram {
+  max-width: 100%;
+  margin: 1em 0;
+  overflow: auto;
+}
+#preview-content .md-codeblock > .md-diagram {
+  margin: 0;
+  padding: 16px;
+}
+#preview-content .md-diagram svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
 #preview-content table {
   display: block;
   width: max-content;
@@ -458,6 +474,10 @@ export const markdownStylesheet = `
 /* ===== Print ===== */
 
 @media print {
+  #preview-content .md-diagram {
+    overflow: visible;
+    break-inside: avoid;
+  }
   #preview-content {
     color: #000;
   }

@@ -42,7 +42,9 @@
     "expand_input": "Розгорнути поле повідомлення",
     "collapse_input": "Згорнути поле повідомлення",
     "mention_picker_loading": "Завантаження файлів робочої області…",
-    "mention_picker_error": "Не вдалося завантажити файли робочої області."
+    "mention_picker_error": "Не вдалося завантажити файли робочої області.",
+    "copy_code": "Копіювати код",
+    "copy_failed": "Не вдалося скопіювати код."
   },
   "assistant-connect": {
     "title": "Підключити {{provider}}",
@@ -282,7 +284,11 @@
     "new_file_name": "Новий файл.md",
     "location": "???????????? ?????",
     "actions": "???? ???",
-    "document_actions": "??? ? ?????????? Google Drive"
+    "document_actions": "??? ? ?????????? Google Drive",
+    "tab_label": "{{name}} у {{connection}} (Google Drive)",
+    "creating_file": "Створення {{name}}…",
+    "opening_file": "Відкриття {{name}}…",
+    "save_copy_help": "Зберігає поточний вміст активної вкладки як новий файл у цій папці Drive, зокрема локальні файли, чернетки без назви та незбережені зміни."
   },
   "menus-alerts": {
     "primary": "Основний",

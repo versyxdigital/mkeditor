@@ -42,7 +42,9 @@
     "expand_input": "Nachrichtenfeld vergrößern",
     "collapse_input": "Nachrichtenfeld verkleinern",
     "mention_picker_loading": "Arbeitsbereichsdateien werden geladen…",
-    "mention_picker_error": "Arbeitsbereichsdateien konnten nicht geladen werden."
+    "mention_picker_error": "Arbeitsbereichsdateien konnten nicht geladen werden.",
+    "copy_code": "Code kopieren",
+    "copy_failed": "Code konnte nicht kopiert werden."
   },
   "assistant-connect": {
     "title": "{{provider}} verbinden",
@@ -282,7 +284,11 @@
     "new_file_name": "Neue Datei.md",
     "location": "Ordner ausw?hlen",
     "actions": "Weitere Aktionen",
-    "document_actions": "Google Drive-Dokumentaktionen"
+    "document_actions": "Google Drive-Dokumentaktionen",
+    "tab_label": "{{name}} in {{connection}} (Google Drive)",
+    "creating_file": "{{name}} wird erstellt…",
+    "opening_file": "{{name}} wird geöffnet…",
+    "save_copy_help": "Speichert den aktuellen Inhalt des aktiven Tabs als neue Datei in diesem Drive-Ordner – auch lokale Dateien, unbenannte Entwürfe und ungespeicherte Änderungen."
   },
   "menus-alerts": {
     "primary": "Primär",

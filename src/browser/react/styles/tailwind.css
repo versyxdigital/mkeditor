@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './assistant-markdown.css';
 
 @custom-variant dark (&:is([data-theme='dark'] *, [data-theme='dark']));
 

@@ -89,6 +89,23 @@ describe('standalone document export', () => {
 });
 
 describe('web export completion', () => {
+  it('opens the picker during the user action and waits for prepared diagrams before opening a write stream', async () => {
+    const prepared = deferred<string>();
+    const writable = { write: jest.fn(), close: jest.fn(), abort: jest.fn() };
+    const createWritable = jest.fn(async () => writable);
+    window.showSaveFilePicker = jest.fn().mockResolvedValue({ createWritable });
+    const pending = HTMLExporter.webExport(
+      prepared.promise,
+      'text/html',
+      '.html',
+    );
+    expect(window.showSaveFilePicker).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+    expect(createWritable).not.toHaveBeenCalled();
+    prepared.resolve('<svg><text>Ready</text></svg>');
+    expect(await pending).toBe(true);
+    expect(writable.close).toHaveBeenCalledTimes(1);
+  });
   it('waits for both write and close before reporting completion', async () => {
     const write = deferred<void>();
     const close = deferred<void>();
@@ -141,6 +158,21 @@ describe('web export completion', () => {
 });
 
 describe('web PDF resource readiness', () => {
+  it('reserves the print window before diagram preparation finishes', async () => {
+    const prepared = deferred<string>();
+    const printWindow = makePrintWindow();
+    jest
+      .spyOn(window, 'open')
+      .mockReturnValue(printWindow as unknown as Window);
+    const printing = HTMLExporter.pdfWebExport(prepared.promise);
+    expect(window.open).toHaveBeenCalledTimes(1);
+    expect(printWindow.print).not.toHaveBeenCalled();
+    prepared.resolve('<body><svg><text>Diagram</text></svg></body>');
+    expect(await printing).toBe(true);
+    expect(printWindow.document.querySelector('svg text')?.textContent).toBe(
+      'Diagram',
+    );
+  });
   function makePrintWindow() {
     const printWindow = {
       document: document.implementation.createHTMLDocument(''),

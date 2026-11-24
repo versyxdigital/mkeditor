@@ -80,5 +80,9 @@
   "new_file_name": "Nouveau fichier.md",
   "location": "Emplacement du dossier",
   "actions": "Autres actions",
-  "document_actions": "Actions du document Google Drive"
+  "document_actions": "Actions du document Google Drive",
+  "tab_label": "{{name}} dans {{connection}} (Google Drive)",
+  "creating_file": "Création de {{name}}…",
+  "opening_file": "Ouverture de {{name}}…",
+  "save_copy_help": "Enregistrez le contenu actuel de l’onglet actif dans un nouveau fichier de ce dossier Drive, y compris les fichiers locaux, les brouillons sans titre et les modifications non enregistrées."
 }

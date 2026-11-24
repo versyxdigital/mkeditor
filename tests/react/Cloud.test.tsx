@@ -144,6 +144,95 @@ test('new-file and copy actions are keyboard accessible without a visible button
   act(() => manager.dispose());
 });
 
+test('opening a Drive file shows row progress and restores the row after a failed download', async () => {
+  const { manager, managers, bridge, listeners, state } = setup();
+  manager.selectWorkspace('drive');
+  renderWithProviders(<CloudExplorer />, { managers });
+  expect(screen.getByRole('status')).toHaveTextContent('cloud:loading');
+  const listing = bridge.send.mock.calls.find(
+    (call) => call[1].command.action === 'list',
+  )![1];
+  const item = { id: 'intro', name: 'Intro.md', kind: 'markdown', parents: [] };
+  await act(async () =>
+    listeners.get('from:cloud:result')!({
+      requestId: listing.requestId,
+      ok: true,
+      state,
+      page: { items: [item] },
+    } as never),
+  );
+  const row = screen.getByRole('button', { name: 'Intro.md' });
+  fireEvent.click(row);
+  expect(row).toHaveAttribute('aria-busy', 'true');
+  expect(row).toBeDisabled();
+  expect(screen.getByRole('status')).toHaveTextContent('cloud:opening_file');
+  const opening = bridge.send.mock.calls.at(-1)![1];
+  await act(async () =>
+    listeners.get('from:cloud:result')!({
+      requestId: opening.requestId,
+      ok: false,
+      error: 'network',
+    } as never),
+  );
+  expect(row).toBeEnabled();
+  expect(row).toHaveAttribute('aria-busy', 'false');
+  expect(screen.queryByText('cloud:opening_file')).not.toBeInTheDocument();
+  act(() => manager.dispose());
+});
+
+test('creating a file shows visible progress until the request settles', async () => {
+  const { manager, managers, bridge, listeners, state, push } = setup();
+  state.connections[0].writeAccess = true;
+  push({ ...state, revision: 2 });
+  manager.selectWorkspace('drive');
+  renderWithProviders(<CloudExplorer />, { managers });
+  registerPromptOpener(async () => ({
+    button: 'confirm',
+    value: 'Created.md',
+  }));
+  await act(async () =>
+    fireEvent.click(screen.getByRole('button', { name: 'cloud:new_file' })),
+  );
+  expect(screen.getByText('cloud:creating_file')).toBeVisible();
+  expect(
+    screen.getByRole('button', { name: 'cloud:new_file' }),
+  ).toHaveAttribute('aria-busy', 'true');
+  expect(screen.getByRole('button', { name: 'cloud:new_file' })).toBeDisabled();
+  const create = bridge.send.mock.calls.at(-1)![1];
+  await act(async () =>
+    listeners.get('from:cloud:result')!({
+      requestId: create.requestId,
+      ok: false,
+      error: 'duplicate',
+    } as never),
+  );
+  expect(screen.queryByText('cloud:creating_file')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'cloud:new_file' })).toBeEnabled();
+  registerPromptOpener(async () => ({ button: null }));
+  act(() => manager.dispose());
+});
+
+test('save-copy help is available on the menu item and is portalled outside the menu', async () => {
+  const { manager, managers } = setup();
+  manager.selectWorkspace('drive');
+  jest.spyOn(manager, 'canCreate').mockReturnValue(true);
+  const files = fakeFileManager({
+    activeFile: 'untitled-1',
+    tabs: [{ path: 'untitled-1', name: 'Untitled 1' }],
+  });
+  renderWithProviders(<CloudExplorer />, {
+    managers: { ...managers, fileManager: files as never },
+  });
+  const user = userEvent.setup();
+  screen.getByRole('button', { name: 'cloud:actions' }).focus();
+  await user.keyboard('{Enter}');
+  await user.hover(screen.getByRole('menuitem', { name: 'cloud:save_copy' }));
+  const tooltip = await screen.findByRole('tooltip');
+  expect(tooltip).toHaveTextContent('cloud:save_copy_help');
+  expect(screen.getByRole('menu')).not.toContainElement(tooltip);
+  act(() => manager.dispose());
+});
+
 test('Drive roots are in the location menu and selecting shared drives requests their listing', async () => {
   const { manager, managers, bridge } = setup();
   manager.selectWorkspace('drive');

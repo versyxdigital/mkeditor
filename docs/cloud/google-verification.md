@@ -14,7 +14,7 @@ See Google's [branding and domain requirements](https://developers.google.com/id
 
 ### Prepared privacy page
 
-[The standalone privacy policy](../privacy.html) is prepared for **versyx Digital**, with **privacy@versyx.digital** as the publisher-provided contact. It covers the current desktop/browser implementation, Google Drive, optional AI context sharing, local storage, update/hosting requests, external resources, support and deletion. The page is self-contained, with no scripts, remote fonts or analytics.
+[The standalone privacy policy](../privacy.html) is prepared for **Versyx Digital**, with **privacy@versyx.digital** as the publisher-provided contact. It covers the current desktop/browser implementation, Google Drive, optional AI context sharing, local storage, update/hosting requests, external resources, support and deletion. The page is self-contained, with no scripts, remote fonts or analytics.
 
 Before publication, review the commitments about support retention and data use, confirm the contact mailbox works, and update the date if necessary. Publish the file as `privacy.html` at the root of MKEditor's actual website output, and add a **Privacy policy** link to that site's homepage. For the existing website, the intended public address is `https://versyxdigital.github.io/mkeditor/privacy.html`. The website source/deployment is not included in this checkout; adding the file here does not publish that address. If the website moves to a custom domain, use the matching policy address instead.
 

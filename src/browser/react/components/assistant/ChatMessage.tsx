@@ -8,6 +8,9 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 import { Icon } from '../Icon';
 import { ToolCallCard } from './ToolCallCard';
+import { useSettings } from '../../contexts/SettingsContext';
+import { renderAssistantDiagrams } from '../../lib/assistantDiagrams';
+import { sonnerToast } from '../../../notify';
 
 /**
  * Single chat bubble. User messages render as a right-aligned solid
@@ -24,8 +27,9 @@ import { ToolCallCard } from './ToolCallCard';
  * acceptable trade for keeping the main bundle small.
  *
  * `renderAssistantMarkdown` flips markdown-it's `html: false` for the
- * duration of the call so raw HTML from the model doesn't reach the
- * DOM (XSS guard). See `core/Markdown.ts`.
+ * duration of the call. Chat adds a small formatting-tag allowlist;
+ * arbitrary HTML and model-supplied attributes stay disabled.
+ * See `core/Markdown.ts`.
  */
 export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
   message,
@@ -121,7 +125,11 @@ export const ChatMessage: React.FC<{ message: UiChatMessage }> = ({
 /*  Lazy markdown loader                                                  */
 /* -------------------------------------------------------------------- */
 
-type MarkdownRenderer = (content: string) => string;
+type MarkdownRenderer = (
+  content: string,
+  documentId: string,
+  copyLabel: string,
+) => string;
 
 let cachedRenderer: MarkdownRenderer | null = null;
 let loaderPromise: Promise<MarkdownRenderer> | null = null;
@@ -131,7 +139,11 @@ function loadAssistantMarkdownRenderer(): Promise<MarkdownRenderer> {
   if (cachedRenderer) return Promise.resolve(cachedRenderer);
   if (!loaderPromise) {
     loaderPromise = import('../../../core/Markdown').then((mod) => {
-      cachedRenderer = mod.renderAssistantMarkdown;
+      cachedRenderer = (content, documentId, copyLabel) =>
+        mod.renderAssistantMarkdown(content, {
+          scrollableTables: true,
+          chat: { documentId, copyLabel },
+        });
       readyListeners.forEach((l) => l());
       return cachedRenderer;
     });
@@ -201,6 +213,7 @@ const AssistantBody: React.FC<{ message: UiChatMessage }> = React.memo(
                   key={`text-${idx}`}
                   text={seg.text}
                   renderer={renderer}
+                  renderDiagrams={message.status !== 'streaming'}
                 />
               );
             }
@@ -217,7 +230,13 @@ const AssistantBody: React.FC<{ message: UiChatMessage }> = React.memo(
     // restored from pre-P6 sessions). Render the concatenated content
     // as one markdown block.
     if (!message.content) return null;
-    return <MarkdownText text={message.content} renderer={renderer} />;
+    return (
+      <MarkdownText
+        text={message.content}
+        renderer={renderer}
+        renderDiagrams={message.status !== 'streaming'}
+      />
+    );
   },
 );
 AssistantBody.displayName = 'AssistantBody';
@@ -225,26 +244,87 @@ AssistantBody.displayName = 'AssistantBody';
 const MarkdownText: React.FC<{
   text: string;
   renderer: MarkdownRenderer | null;
-}> = ({ text, renderer }) => {
+  renderDiagrams: boolean;
+}> = ({ text, renderer, renderDiagrams }) => {
+  const host = React.useRef<HTMLDivElement>(null);
+  const documentId = React.useId();
+  const { t, language } = useTranslation();
+  const { settings } = useSettings();
   const html = React.useMemo(() => {
     if (!text) return '';
     if (!renderer) {
       return `<p style="white-space: pre-wrap">${escapeHtml(text)}</p>`;
     }
-    return renderer(text);
-  }, [text, renderer]);
+    return renderer(
+      text,
+      `assistant-${documentId}`,
+      t('assistant-chat:copy_code'),
+    );
+  }, [text, renderer, documentId, t, language]);
+
+  React.useEffect(() => {
+    const node = host.current;
+    node
+      ?.querySelectorAll<HTMLElement>('pre, .katex-display')
+      .forEach((block) => {
+        block.tabIndex = 0;
+      });
+    if (
+      !node ||
+      !renderDiagrams ||
+      !node.querySelector('[data-diagram="mermaid"]')
+    )
+      return;
+    const controller = new AbortController();
+    void renderAssistantDiagrams(
+      node,
+      settings.effectiveDarkmode,
+      controller.signal,
+    );
+    return () => controller.abort();
+  }, [html, renderDiagrams, settings.effectiveDarkmode]);
+
+  const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!(event.target instanceof Element)) return;
+    const copy = event.target.closest<HTMLButtonElement>('.md-codeblock-copy');
+    if (copy) {
+      const encoded = copy
+        .closest('.md-codeblock')
+        ?.getAttribute('data-source');
+      if (!encoded) return;
+      void (async () => {
+        try {
+          const text = new TextDecoder().decode(
+            Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0)),
+          );
+          await navigator.clipboard.writeText(text);
+          sonnerToast('success', t('navbar:code_copied'));
+        } catch {
+          sonnerToast('error', t('assistant-chat:copy_failed'));
+        }
+      })();
+      return;
+    }
+    const link = event.target.closest<HTMLAnchorElement>('a[href^="#"]');
+    if (!link) return;
+    event.preventDefault();
+    let id = link.getAttribute('href')!.slice(1);
+    try {
+      id = decodeURIComponent(id);
+    } catch {
+      return;
+    }
+    const target = document.getElementById(id);
+    if (!target || !host.current?.contains(target)) return;
+    target.scrollIntoView({ block: 'nearest' });
+    target.tabIndex = -1;
+    target.focus({ preventScroll: true });
+  };
   return (
     <div
-      // Selectors keep markdown content from busting the bubble's
-      // `max-w-[85%]`:
-      //   - `break-words` + `[&_code]:break-words` wrap long URLs /
-      //     inline tokens at character boundaries when needed.
-      //   - `[&_pre]:overflow-x-auto [&_pre]:max-w-full` gives code
-      //     blocks a horizontal scrollbar instead of expanding the
-      //     bubble.
-      //   - `[&_table]:block` + overflow-x-auto does the same for
-      //     wide markdown tables.
-      className="prose prose-sm dark:prose-invert max-w-none break-words [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_p]:my-1 [&_code]:break-words [&_a]:break-words [&_table]:block [&_table]:overflow-x-auto [&_table]:max-w-full"
+      ref={host}
+      onClick={handleClick}
+      className="assistant-markdown min-w-0 max-w-full"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

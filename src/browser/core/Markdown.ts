@@ -3,6 +3,8 @@ import hljs from 'highlight.js/lib/core';
 // Supported languages for markdown codeblocks
 import c from 'highlight.js/lib/languages/c';
 import cpp from 'highlight.js/lib/languages/cpp';
+import css from 'highlight.js/lib/languages/css';
+import diff from 'highlight.js/lib/languages/diff';
 import csharp from 'highlight.js/lib/languages/csharp';
 import javascript from 'highlight.js/lib/languages/javascript';
 import json from 'highlight.js/lib/languages/json';
@@ -22,8 +24,14 @@ import LineNumber from '../extensions/renderer/LineNumber';
 import LinkTarget from '../extensions/renderer/LinkTarget';
 import ImageStyle from '../extensions/renderer/ImageStyle';
 import TableStyle from '../extensions/renderer/TableStyle';
+import AssistantFormatting, {
+  assistantFeatureRules,
+} from '../extensions/renderer/AssistantFormatting';
 
 import { logger } from '../util';
+
+hljs.registerLanguage('css', css);
+hljs.registerLanguage('diff', diff);
 
 hljs.registerLanguage('javascript', javascript);
 hljs.registerAliases('js', { languageName: 'javascript' });
@@ -74,6 +82,9 @@ const languageDisplayNames: Record<string, string> = {
   csharp: 'C#',
   rust: 'Rust',
   cpp: 'C++',
+  css: 'CSS',
+  diff: 'Diff',
+  mermaid: 'Mermaid',
   c: 'C',
 };
 
@@ -183,14 +194,24 @@ const Markdown = new MarkdownIt({
 // `<pre><code>` wrap when the returned string starts with `<pre`,
 // and our `renderCodeblock` wrapper starts with `<div>` so the body
 // would otherwise end up inside an extra outer <pre>.
-Markdown.renderer.rules.fence = (tokens, idx, options, _env, self) => {
+Markdown.renderer.rules.fence = (tokens, idx, options, env, self) => {
   const token = tokens[idx];
   const info = token.info ? Markdown.utils.unescapeAll(token.info).trim() : '';
   const langName = info ? info.split(/\s+/g)[0] : '';
 
   if (options.highlight) {
-    const out = options.highlight(token.content, langName, '');
+    let out = options.highlight(token.content, langName, '');
     if (out) {
+      if (langName.toLowerCase() === 'mermaid')
+        token.attrSet('data-diagram', 'mermaid');
+      if (env?.assistantChat === true) {
+        if (typeof env.copyLabel === 'string') {
+          out = out.replace(
+            'aria-label="Copy code"',
+            `aria-label="${Markdown.utils.escapeHtml(env.copyLabel)}"`,
+          );
+        }
+      }
       // The custom codeblock wrapper replaces markdown-it's fence output,
       // so carry the token's scroll-sync attributes onto that wrapper.
       return (
@@ -218,6 +239,7 @@ Markdown.use(LinkTarget);
 Markdown.use(ImageStyle);
 Markdown.use(TableStyle);
 Markdown.use(MarkdownItKatex);
+Markdown.use(AssistantFormatting);
 
 /**
  * Render untrusted markdown content (currently: AI Assistant
@@ -236,12 +258,28 @@ Markdown.use(MarkdownItKatex);
  * (linkify, breaks, the highlight callback, the loaded plugins) are
  * preserved.
  */
-export function renderAssistantMarkdown(content: string): string {
+export function renderAssistantMarkdown(
+  content: string,
+  {
+    scrollableTables = false,
+    chat,
+  }: {
+    scrollableTables?: boolean;
+    chat?: { documentId: string; copyLabel?: string };
+  } = {},
+): string {
   const previous = Markdown.options.html;
   Markdown.set({ html: false });
   try {
-    return Markdown.render(content);
+    if (chat) Markdown.enable(assistantFeatureRules);
+    return Markdown.render(content, {
+      scrollableTables,
+      assistantChat: Boolean(chat),
+      docId: chat?.documentId.replace(/[^a-zA-Z0-9_-]/g, ''),
+      copyLabel: chat?.copyLabel,
+    });
   } finally {
+    if (chat) Markdown.disable(assistantFeatureRules);
     Markdown.set({ html: previous });
   }
 }

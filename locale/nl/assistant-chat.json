@@ -36,5 +36,7 @@
   "expand_input": "Berichtveld vergroten",
   "collapse_input": "Berichtveld verkleinen",
   "mention_picker_loading": "Werkruimtebestanden laden…",
-  "mention_picker_error": "Werkruimtebestanden konden niet worden geladen."
+  "mention_picker_error": "Werkruimtebestanden konden niet worden geladen.",
+  "copy_code": "Code kopiëren",
+  "copy_failed": "De code kon niet worden gekopieerd."
 }

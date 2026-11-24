@@ -13,6 +13,7 @@ import { faCogs } from '@fortawesome/free-solid-svg-icons/faCogs';
 import { faComments } from '@fortawesome/free-solid-svg-icons/faComments';
 import { faCompress } from '@fortawesome/free-solid-svg-icons/faCompress';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
+import { faCircleNotch } from '@fortawesome/free-solid-svg-icons/faCircleNotch';
 import { faDatabase } from '@fortawesome/free-solid-svg-icons/faDatabase';
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons/faExclamationCircle';
 import { faExpand } from '@fortawesome/free-solid-svg-icons/faExpand';
@@ -60,6 +61,7 @@ library.add(
   faComments,
   faCompress,
   faCopy,
+  faCircleNotch,
   faDatabase,
   faExclamationCircle,
   faExpand,

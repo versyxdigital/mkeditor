@@ -42,7 +42,9 @@
     "expand_input": "メッセージ入力欄を拡大",
     "collapse_input": "メッセージ入力欄を縮小",
     "mention_picker_loading": "ワークスペースのファイルを読み込み中…",
-    "mention_picker_error": "ワークスペースのファイルを読み込めませんでした。"
+    "mention_picker_error": "ワークスペースのファイルを読み込めませんでした。",
+    "copy_code": "コードをコピー",
+    "copy_failed": "コードをコピーできませんでした。"
   },
   "assistant-connect": {
     "title": "{{provider}} に接続",
@@ -282,7 +284,11 @@
     "new_file_name": "新しいファイル.md",
     "location": "????????",
     "actions": "??????",
-    "document_actions": "Google Drive ?????????"
+    "document_actions": "Google Drive ?????????",
+    "tab_label": "{{connection}} の {{name}}（Google Drive）",
+    "creating_file": "{{name}} を作成中…",
+    "opening_file": "{{name}} を開いています…",
+    "save_copy_help": "アクティブなタブの現在の内容を、このドライブフォルダに新しいファイルとして保存します。ローカルファイル、無題の下書き、未保存の変更も保存できます。"
   },
   "menus-alerts": {
     "primary": "プライマリ",
