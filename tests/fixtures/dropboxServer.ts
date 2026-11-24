@@ -64,11 +64,16 @@ export async function dropboxFixture() {
     revoked: false,
     offline: false,
     loseWriteReply: false,
+    loseFolderReply: false,
+    loseMoveReply: false,
+    losePropertyReply: false,
     omitMarker: false,
     writeWait: undefined as Promise<void> | undefined,
     beforeWrite: undefined as (() => void) | undefined,
     writes: 0,
     creates: 0,
+    folderCreates: 0,
+    moves: 0,
     refreshes: 0,
     nextId: 1,
     lastUpload: undefined as Record<string, unknown> | undefined,
@@ -105,6 +110,8 @@ export async function dropboxFixture() {
     name: file.name,
     path_lower: file.path.toLowerCase(),
     path_display: file.path,
+    property_groups: file.groups ?? [],
+    sharing_info: { read_only: Boolean(file.readOnly) },
     ...(!file.folder
       ? {
           rev: file.revision.toString(16).padStart(9, '0'),
@@ -202,8 +209,17 @@ export async function dropboxFixture() {
       return json(response, { template_id: id });
     }
     if (route === 'files/create_folder_v2') {
+      state.beforeWrite?.();
+      state.beforeWrite = undefined;
       const path = String(body.path);
+      if (!path.startsWith('/') || body.autorename !== false)
+        return error(response, 'invalid_path', 400);
       if (resolve(path)) return error(response, 'path/conflict/folder');
+      const parentPath = path.slice(0, path.lastIndexOf('/'));
+      const parent = parentPath ? resolve(parentPath) : undefined;
+      if (parentPath && !parent?.folder)
+        return error(response, 'path/not_found');
+      if (parent?.readOnly) return error(response, 'path/no_write_permission');
       const file = {
         id: `id:folder-${state.nextId++}`,
         name: path.split('/').at(-1)!,
@@ -213,6 +229,51 @@ export async function dropboxFixture() {
         revision: 1,
       };
       files.set(file.id, file);
+      state.folderCreates++;
+      if (state.loseFolderReply) {
+        state.loseFolderReply = false;
+        response.destroy();
+        return;
+      }
+      const { '.tag': _tag, ...folderMetadata } = metadata(file);
+      return json(response, { metadata: folderMetadata });
+    }
+    if (route === 'file_properties/properties/add') {
+      const file = resolve(String(body.path));
+      if (!file) return error(response, 'path/not_found');
+      if (!state.omitMarker)
+        file.groups = body.property_groups as DropboxFile['groups'];
+      if (state.losePropertyReply) {
+        state.losePropertyReply = false;
+        response.destroy();
+        return;
+      }
+      return json(response, {});
+    }
+    if (route === 'files/move_v2') {
+      state.beforeWrite?.();
+      state.beforeWrite = undefined;
+      const file = resolve(String(body.from_path));
+      if (!file) return error(response, 'from_lookup/not_found');
+      if (file.readOnly)
+        return error(response, 'from_write/no_write_permission');
+      const target = String(body.to_path);
+      if (body.autorename !== false || body.allow_ownership_transfer !== false)
+        return error(response, 'invalid_options', 400);
+      if (resolve(target)) return error(response, 'to/conflict/file');
+      const parentName = target.slice(0, target.lastIndexOf('/'));
+      const parent = parentName ? resolve(parentName) : undefined;
+      if (parentName && !parent?.folder) return error(response, 'to/not_found');
+      if (parent?.readOnly) return error(response, 'to/no_write_permission');
+      file.path = `${parent?.path ?? ''}/${target.split('/').at(-1)}`;
+      file.name = file.path.split('/').at(-1)!;
+      state.moves++;
+      await state.writeWait;
+      if (state.loseMoveReply) {
+        state.loseMoveReply = false;
+        response.destroy();
+        return;
+      }
       return json(response, { metadata: metadata(file) });
     }
     if (route === 'files/get_metadata') {

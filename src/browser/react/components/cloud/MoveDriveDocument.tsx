@@ -1,15 +1,18 @@
 import * as React from 'react';
 import { useCloud } from '../../hooks/useCloud';
-import { useTranslation } from '../../hooks/useTranslation';
+import { useCloudTranslation } from '../../hooks/useCloudTranslation';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Icon } from '../Icon';
-import { GoogleDriveLogo } from './GoogleBrand';
+import { CloudLogo } from './CloudBrand';
 
 export const MoveDriveDocument: React.FC = () => {
   const { manager, state } = useCloud();
-  const { t } = useTranslation();
   const picker = state.movePicker;
+  const { t } = useCloudTranslation(picker?.provider);
+  const rootLabel = t(
+    picker?.provider === 'dropbox' ? 'cloud:dropbox_root' : 'cloud:my_drive',
+  );
   const location = picker?.folders.at(-1);
   return (
     <Dialog
@@ -46,18 +49,16 @@ export const MoveDriveDocument: React.FC = () => {
                 >
                   <Icon name="chevron-left" />
                 </Button>
-                <GoogleDriveLogo />
+                <CloudLogo provider={picker.provider} />
                 <span
                   className="min-w-0 flex-1 truncate"
                   title={picker.folders
                     .map((folder) =>
-                      folder.id === 'root' ? t('cloud:my_drive') : folder.name,
+                      folder.id === 'root' ? rootLabel : folder.name,
                     )
                     .join(' / ')}
                 >
-                  {location?.id === 'root'
-                    ? t('cloud:my_drive')
-                    : location?.name}
+                  {location?.id === 'root' ? rootLabel : location?.name}
                 </span>
               </div>
               <div

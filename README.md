@@ -107,7 +107,7 @@ Desktop builds can connect through **Settings → Connections → Connect with G
 
 ## Dropbox
 
-Connect Dropbox in **Settings → Connections**, browse existing folders, edit Markdown, create files and save copies. Conditional saves protect external edits, and encrypted recovery retains unsaved drafts across restart. The core workflow has passed a live Windows test. See [Dropbox setup and scope](docs/cloud/dropbox.md).
+Connect Dropbox in **Settings → Connections**, browse existing folders, edit Markdown, create files and folders, move documents, and save copies. Conditional saves protect external edits, and encrypted recovery retains unsaved drafts across restart. The core workflow has passed a live Windows test. See [Dropbox setup and scope](docs/cloud/dropbox.md).
 
 # Contributing
 

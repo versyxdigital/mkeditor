@@ -616,6 +616,7 @@ export class CloudService {
               tokens.access,
               operation.itemId,
             );
+            operation.itemId = operation.item.id;
             this.assertCurrent(entry.id, generation);
             await this.persistJournal();
           } catch (error) {
@@ -703,6 +704,7 @@ export class CloudService {
                     tokens.access,
                     command.folderId,
                     command.name,
+                    command.operationId,
                   );
             const folderId =
               prepared?.destination ??
@@ -710,6 +712,7 @@ export class CloudService {
                 .id;
             this.assertCurrent(entry.id, generation);
             const operation: ItemOperation = {
+              ...(entry.provider ? { provider: entry.provider } : {}),
               name:
                 command.action === 'createFolder' ? command.name : undefined,
               sourceFolderId: prepared?.source,
@@ -738,8 +741,8 @@ export class CloudService {
                   prepared!.validator,
                   () => this.assertCurrent(entry.id, generation),
                 );
-              else
-                await organization!.createFolder(
+              else {
+                const created = await organization!.createFolder(
                   tokens.access,
                   itemId,
                   folderId,
@@ -747,10 +750,12 @@ export class CloudService {
                   command.operationId,
                   () => this.assertCurrent(entry.id, generation),
                 );
+                if (created) operation.itemId = created.id;
+              }
               try {
                 operation.item = await organization!.inspectItem(
                   tokens.access,
-                  itemId,
+                  operation.itemId,
                 );
                 this.assertCurrent(entry.id, generation);
                 if (!operation.item.parents.includes(folderId))
@@ -782,7 +787,7 @@ export class CloudService {
               ) {
                 operation.notApplied = true;
                 await this.persistJournal();
-              }
+              } else await this.persistJournal().catch(() => {});
               throw error;
             }
           });

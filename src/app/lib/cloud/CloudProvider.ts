@@ -31,6 +31,7 @@ export interface CloudOrganization {
     access: string,
     folderId: string,
     name: string,
+    operationId?: string,
   ): Promise<string>;
   prepareMove(
     access: string,
@@ -53,9 +54,9 @@ export interface CloudOrganization {
     name: string,
     operationId: string,
     authorize: () => void,
-  ): Promise<void>;
+  ): Promise<RemoteItem | void>;
 }
-/** The two adapters share lifecycle and document safety; organization remains explicit. */
+/** Adapters share lifecycle and document safety; organization is an explicit capability. */
 export interface CloudProvider {
   readonly provider: CloudProviderId;
   readonly organization?: CloudOrganization;

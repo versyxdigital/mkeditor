@@ -298,7 +298,7 @@ export const CloudExplorer: React.FC = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {connection?.provider !== 'dropbox' && (
+                {manager?.canOrganize() && (
                   <>
                     <DropdownMenuItem
                       className={menuClass}
@@ -558,7 +558,7 @@ export const CloudExplorer: React.FC = () => {
                     {t('cloud:open')}
                   </ContextMenuItem>
                   {contextItem.kind === 'markdown' &&
-                    connection?.provider !== 'dropbox' && (
+                    manager?.canOrganize() && (
                       <ContextMenuItem
                         className="gap-2 text-xs"
                         disabled={!manager?.canMove(contextItem)}
@@ -581,7 +581,7 @@ export const CloudExplorer: React.FC = () => {
                     <Icon name="file-circle-plus" />
                     {t('cloud:new_file')}
                   </ContextMenuItem>
-                  {connection?.provider !== 'dropbox' && (
+                  {manager?.canOrganize() && (
                     <ContextMenuItem
                       className="gap-2 text-xs"
                       disabled={!canCreate || Boolean(contextItem?.driveId)}

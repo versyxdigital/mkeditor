@@ -24,6 +24,7 @@ interface Location {
 }
 export interface CloudSnapshot extends CloudState {
   movePicker?: {
+    provider?: CloudProviderId;
     connectionId: string;
     accountId: string;
     item: DriveItem;
@@ -36,6 +37,7 @@ export interface CloudSnapshot extends CloudState {
     error?: CloudWriteError;
   };
   pendingItem?: {
+    provider?: CloudProviderId;
     connectionId: string;
     accountId: string;
     operationId: string;
@@ -185,9 +187,8 @@ export class CloudManager {
     };
   }
   canOrganize(): boolean {
-    return (
-      this.snapshot.connections.find((c) => c.id === this.snapshot.workspace)
-        ?.provider !== 'dropbox'
+    return this.snapshot.connections.some(
+      (connection) => connection.id === this.snapshot.workspace,
     );
   }
   subscribe = (listener: () => void) => {
@@ -359,6 +360,7 @@ export class CloudManager {
             {
               connectionId: operation.connectionId,
               accountId: operation.accountId,
+              provider: operation.provider,
               item: response.item,
             },
             async () => ({
@@ -829,6 +831,7 @@ export class CloudManager {
       )
         throw 'configuration';
       const pendingItem = {
+        provider: connection.provider,
         connectionId: connection.id,
         accountId: connection.accountId!,
         operationId: `folder-${Date.now()}-${++this.nextRequest}`,
@@ -897,6 +900,7 @@ export class CloudManager {
     )!;
     this.update({
       movePicker: {
+        provider: connection.provider,
         connectionId: connection.id,
         accountId: connection.accountId!,
         item,
@@ -974,6 +978,7 @@ export class CloudManager {
     )
       return;
     const pendingItem = {
+      provider: picker.provider,
       connectionId: picker.connectionId,
       accountId: picker.accountId,
       operationId: `move-${Date.now()}-${++this.nextRequest}`,
@@ -1021,7 +1026,7 @@ export class CloudManager {
             }),
       });
       if (code === 'unconfirmed')
-        this.reportExplorerError(code, undefined, true);
+        this.reportExplorerError(code, picker.provider, true);
     } finally {
       this.update({
         busy: this.snapshot.busy.filter((id) => id !== 'organize'),
@@ -1072,6 +1077,7 @@ export class CloudManager {
             pending.connectionId,
             pending.accountId,
             pending.item.id,
+            pending.provider,
           );
         this.update({ pendingItem: undefined });
       }

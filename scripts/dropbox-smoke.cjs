@@ -181,7 +181,7 @@ async function fillName(name) {
     .click();
   await dialog.waitFor({ state: 'hidden' });
 }
-async function create(name) {
+async function creationMenu() {
   const explorer = page
     .locator('#sidebar')
     .getByRole('list', { name: labels.files, exact: true })
@@ -192,6 +192,9 @@ async function create(name) {
     button: 'right',
     position: { x: 8, y: bounds.height - 8 },
   });
+}
+async function create(name) {
+  await creationMenu();
   await page
     .getByRole('menuitem', { name: labels.new_file, exact: true })
     .click();
@@ -330,12 +333,13 @@ async function crash() {
     },
   );
   let document;
+  let documentName;
   await step(
     'Create, save, show its toast and independently read back a Dropbox document',
     async () => {
-      const name = resume
+      const name = (documentName = resume
         ? `Dropbox smoke retry ${Date.now()}.md`
-        : 'Dropbox smoke.md';
+        : 'Dropbox smoke.md');
       document = await create(name);
       await edit('# DropboxSmokeSaved\n\nWritten through MKEditor.');
       await save();
@@ -371,6 +375,66 @@ async function crash() {
       );
       await page.screenshot({
         path: path.join(profile, 'dropbox-duplicate-toast.png'),
+      });
+    },
+  );
+  await step(
+    'Create a folder and move a dirty Dropbox document through the context menu',
+    async () => {
+      const folderName = resume
+        ? `Moved documents ${Date.now()}`
+        : 'Moved documents';
+      await edit('# UnsavedDropboxMoveDraft');
+      await creationMenu();
+      await page
+        .getByRole('menuitem', { name: labels.new_folder, exact: true })
+        .click();
+      await fillName(folderName);
+      const folder = page
+        .locator('#sidebar')
+        .getByRole('button', { name: folderName, exact: true });
+      await folder.waitFor();
+      await page
+        .locator('#sidebar')
+        .getByRole('button', { name: documentName, exact: true })
+        .click({ button: 'right' });
+      await page
+        .getByRole('menuitem', { name: labels.move_to, exact: true })
+        .click();
+      const dialog = page.getByRole('dialog', {
+        name: labels.move_to,
+        exact: true,
+      });
+      assert.equal(await dialog.locator('img[src="./dropbox.svg"]').count(), 1);
+      await dialog.getByRole('button', { name: rootName, exact: true }).click();
+      await dialog
+        .getByRole('button', { name: folderName, exact: true })
+        .click();
+      await dialog
+        .getByRole('button', { name: labels.move_here, exact: true })
+        .click();
+      await dialog.waitFor({ state: 'hidden' });
+      assert.equal((await identity()).path, document.path);
+      assert.equal(
+        await page
+          .locator('#editor-tabs li[data-active=true]')
+          .getAttribute('data-dirty'),
+        'true',
+      );
+      await verify(
+        document.id,
+        '# DropboxSmokeSaved\n\nWritten through MKEditor.',
+      );
+      await folder.click();
+      await page
+        .locator('#sidebar')
+        .getByRole('button', { name: documentName, exact: true })
+        .waitFor();
+      await save();
+      await saved();
+      await verify(document.id, '# UnsavedDropboxMoveDraft');
+      await page.screenshot({
+        path: path.join(profile, 'dropbox-moved-document.png'),
       });
     },
   );

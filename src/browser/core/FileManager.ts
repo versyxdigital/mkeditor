@@ -17,6 +17,7 @@ import {
   remoteDocumentPath,
   type RemoteDocument,
   type CloudWriteError,
+  type CloudProviderId,
   type DriveItem,
 } from '../../app/interfaces/Cloud';
 
@@ -1476,6 +1477,7 @@ export class FileManager {
       if (operation.kind === 'move') {
         next.add(
           remoteDocumentPath({
+            provider: operation.provider,
             connectionId: operation.connectionId,
             accountId: operation.accountId,
             item: {
@@ -1496,8 +1498,10 @@ export class FileManager {
     connectionId: string,
     accountId: string,
     itemId: string,
+    provider?: CloudProviderId,
   ): void {
     const path = remoteDocumentPath({
+      provider,
       connectionId,
       accountId,
       item: { id: itemId, name: '', kind: 'markdown', parents: [] },
@@ -1791,7 +1795,10 @@ export class FileManager {
 
   /** Changing a parent preserves the model, undo history and saved baseline. */
   public async moveRemoteDocument(
-    identity: Pick<RemoteDocument, 'connectionId' | 'accountId' | 'item'>,
+    identity: Pick<
+      RemoteDocument,
+      'connectionId' | 'accountId' | 'item' | 'provider'
+    >,
     move: () => Promise<{ item: DriveItem; previousValidator?: string }>,
   ): Promise<void> {
     const path = remoteDocumentPath(identity);

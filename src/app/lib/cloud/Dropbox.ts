@@ -9,6 +9,7 @@ import { WORKSPACE_EXTENSION_GROUPS } from '../../shared/fileExtensions';
 import { beginBrowserAuthorization } from './BrowserAuthorization';
 import type {
   CloudProvider,
+  CloudOrganization,
   CloudRegistration,
   CloudTokens,
   RemoteContents,
@@ -56,6 +57,7 @@ const metadataSchema = z.object({
 });
 type Metadata = z.infer<typeof metadataSchema>;
 const preparedSchema = z.object({
+  kind: z.enum(['file', 'folder']).default('file'),
   path: z.string().min(1).max(1024),
   folderId: z.string().min(1).max(1024),
   templateId: z.string().min(1),
@@ -117,6 +119,38 @@ function prepared(id: string) {
 /** Public-client OAuth and ID-bound, revision-conditional Markdown operations. */
 export class Dropbox implements CloudProvider {
   readonly provider = 'dropbox' as const;
+  readonly organization: CloudOrganization = {
+    metadata: async (access, id) => {
+      const meta = await this.metadata(access, id);
+      return {
+        id: meta.id,
+        parents: meta.id === 'root' ? [] : [await this.parent(access, meta)],
+      };
+    },
+    createdBy: (access, id, operationId) =>
+      this.createdBy(access, id, operationId),
+    contentValidator: async (access, id) => {
+      const meta = await this.metadata(access, id);
+      if (!meta.rev) throw new CloudError('unsupported');
+      return { etag: `"${meta.rev}"` };
+    },
+    inspectItem: async (access, id) => {
+      const meta = await this.metadata(access, id);
+      return this.item(
+        meta,
+        meta.id === 'root' ? 'root' : await this.parent(access, meta),
+        true,
+      );
+    },
+    prepareCreate: (access, folderId, name, operationId) =>
+      this.prepareCreation(access, folderId, name, operationId, 'folder'),
+    prepareMove: (access, id, source, destination) =>
+      this.prepareMove(access, id, source, destination),
+    move: (access, id, source, destination, validator, authorize) =>
+      this.move(access, id, source, destination, validator, authorize),
+    createFolder: (access, id, folderId, name, operationId, authorize) =>
+      this.createFolder(access, id, folderId, name, operationId, authorize),
+  };
   private templates = new Map<string, Promise<string>>();
   constructor(
     private readonly endpoints: DropboxEndpoints = production,
@@ -195,6 +229,7 @@ export class Dropbox implements CloudProvider {
         throw new CloudError('throttled');
       if (/properties_error/.test(detail)) throw new CloudError('unconfirmed'); // Dropbox may have committed the bytes without properties.
       if (/not_found/.test(detail)) throw new CloudError('missing');
+      if (/to\/conflict/.test(detail)) throw new CloudError('duplicate');
       if (/conflict/.test(detail)) throw new CloudError('conflict');
       if (
         response.status === 403 ||
@@ -225,7 +260,11 @@ export class Dropbox implements CloudProvider {
       {
         method: 'POST',
         headers: {
-          ...this.headers(access, route.startsWith('files/')),
+          ...this.headers(
+            access,
+            route.startsWith('files/') ||
+              route.startsWith('file_properties/properties/'),
+          ),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),
@@ -576,7 +615,7 @@ export class Dropbox implements CloudProvider {
       throw new CloudError('unconfirmed');
     }
   }
-  private async template(access: string): Promise<string> {
+  private async template(access: string, allowCreate = true): Promise<string> {
     const existing = this.templates.get(access);
     if (existing) return existing;
     const work = (async () => {
@@ -618,13 +657,14 @@ export class Dropbox implements CloudProvider {
         )
           return id;
       }
+      if (!allowCreate) throw new CloudError('missing');
       const added = await this.rpc(
         access,
         'file_properties/templates/add_for_user',
         {
           name: markerName,
           description:
-            'Identifies a Markdown file created by an MKEditor operation.',
+            'Identifies a file or folder created by an MKEditor operation.',
           fields: [
             {
               name: fieldName,
@@ -654,9 +694,22 @@ export class Dropbox implements CloudProvider {
     name: string,
     operationId?: string,
   ): Promise<string> {
+    return this.prepareCreation(access, folderId, name, operationId, 'file');
+  }
+  private async prepareCreation(
+    access: string,
+    folderId: string,
+    name: string,
+    operationId: string | undefined,
+    kind: 'file' | 'folder',
+  ): Promise<string> {
     if (
       !operationId ||
-      !/^[^/\\]+\.md$/i.test(name) ||
+      !name ||
+      /[/\\]/.test(name) ||
+      name === '.' ||
+      name === '..' ||
+      (kind === 'file' && !/\.md$/i.test(name)) ||
       [...name].some((character) => character.charCodeAt(0) < 32) ||
       name.endsWith(' ') ||
       name.length > 255
@@ -664,6 +717,7 @@ export class Dropbox implements CloudProvider {
       throw new CloudError('configuration');
     const folder = await this.metadata(access, folderId);
     if (folder['.tag'] !== 'folder') throw new CloudError('unsupported');
+    if (folder.sharing_info?.read_only) throw new CloudError('permission');
     // Folder-relative IDs keep creation bound to the selected folder even if it moves.
     const path = folderId === 'root' ? `/${name}` : `${folder.id}/${name}`;
     try {
@@ -674,6 +728,7 @@ export class Dropbox implements CloudProvider {
         throw error;
     }
     const plan = {
+      kind,
       path,
       folderId,
       operationId,
@@ -683,6 +738,162 @@ export class Dropbox implements CloudProvider {
       pendingPrefix + Buffer.from(JSON.stringify(plan)).toString('base64url');
     if (id.length > 1024) throw new CloudError('unsupported');
     return id;
+  }
+  private async createFolder(
+    access: string,
+    id: string,
+    folderId: string,
+    name: string,
+    operationId: string,
+    authorize: () => void,
+  ): Promise<RemoteItem> {
+    const plan = prepared(id);
+    if (
+      !plan ||
+      plan.kind !== 'folder' ||
+      plan.folderId !== folderId ||
+      plan.operationId !== operationId ||
+      plan.path.split('/').at(-1) !== name
+    )
+      throw new CloudError('configuration');
+    const folder = await this.metadata(access, folderId);
+    if (folder['.tag'] !== 'folder') throw new CloudError('unsupported');
+    if (folder.sharing_info?.read_only) throw new CloudError('permission');
+    // create_folder_v2 accepts paths, unlike upload's folder-ID-relative paths.
+    const path =
+      folderId === 'root'
+        ? `/${name}`
+        : `${folder.path_display ?? folder.path_lower}/${name}`;
+    if (!path.startsWith('/')) throw new CloudError('unsupported');
+    authorize();
+    let response: unknown;
+    try {
+      response = await this.rpc(
+        access,
+        'files/create_folder_v2',
+        { path, autorename: false },
+        false,
+      );
+    } catch (error) {
+      if (error instanceof CloudError && error.code === 'conflict')
+        throw new CloudError('duplicate');
+      if (error instanceof CloudError) throw error;
+      throw new CloudError('unconfirmed');
+    }
+    try {
+      const result = z
+        .object({
+          metadata: metadataSchema.extend({
+            '.tag': z.literal('folder').default('folder'),
+          }),
+        })
+        .parse(response).metadata;
+      if (
+        result.name !== name ||
+        (await this.parent(access, result)) !== folderId
+      )
+        throw new CloudError('unconfirmed');
+      authorize();
+      // Mark the acknowledged ID, never a same-name replacement at its old path.
+      await this.rpc(
+        access,
+        'file_properties/properties/add',
+        {
+          path: result.id,
+          property_groups: [
+            {
+              template_id: plan.templateId,
+              fields: [{ name: fieldName, value: operationId }],
+            },
+          ],
+        },
+        false,
+      );
+      return this.item(result, folderId, true);
+    } catch {
+      // The folder may exist even if adding its recovery marker was interrupted.
+      throw new CloudError('unconfirmed');
+    }
+  }
+  private async prepareMove(
+    access: string,
+    id: string,
+    sourceFolderId: string,
+    folderId: string,
+  ) {
+    if (!/^id:[^/\\\s]+$/.test(id)) throw new CloudError('configuration');
+    const meta = await this.metadata(access, id);
+    if (this.item(meta, 'root').kind !== 'markdown' || !meta.rev)
+      throw new CloudError('unsupported');
+    if (meta.sharing_info?.read_only) throw new CloudError('permission');
+    const source = await this.parent(access, meta);
+    const destination = await this.metadata(access, folderId);
+    if (destination['.tag'] !== 'folder') throw new CloudError('unsupported');
+    if (destination.sharing_info?.read_only) throw new CloudError('permission');
+    if (source !== sourceFolderId || source === destination.id)
+      throw new CloudError('conflict');
+    const path =
+      destination.id === 'root'
+        ? `/${meta.name}`
+        : `${destination.id}/${meta.name}`;
+    try {
+      await this.metadata(access, path);
+      throw new CloudError('duplicate');
+    } catch (error) {
+      if (!(error instanceof CloudError) || error.code !== 'missing')
+        throw error;
+    }
+    return { source, destination: destination.id, validator: `"${meta.rev}"` };
+  }
+  private async move(
+    access: string,
+    id: string,
+    source: string,
+    destination: string,
+    validator: string,
+    authorize: () => void,
+  ): Promise<void> {
+    const current = await this.prepareMove(access, id, source, destination);
+    if (current.validator !== validator) throw new CloudError('conflict');
+    const meta = await this.metadata(access, id);
+    if (
+      `"${meta.rev}"` !== validator ||
+      (await this.parent(access, meta)) !== source
+    )
+      throw new CloudError('conflict');
+    authorize();
+    // Dropbox has no conditional move. Moving the stable ID changes location only;
+    // concurrent remote text is retained and must never advance a stale editor baseline.
+    let response: unknown;
+    try {
+      response = await this.rpc(
+        access,
+        'files/move_v2',
+        {
+          from_path: id,
+          to_path:
+            destination === 'root'
+              ? `/${meta.name}`
+              : `${destination}/${meta.name}`,
+          autorename: false,
+          allow_ownership_transfer: false,
+        },
+        false,
+      );
+    } catch (error) {
+      if (error instanceof CloudError) throw error;
+      throw new CloudError('unconfirmed');
+    }
+    try {
+      if (
+        parseMetadata(
+          z.object({ metadata: z.unknown() }).parse(response).metadata,
+        ).id !== id
+      )
+        throw new Error();
+    } catch {
+      throw new CloudError('unconfirmed');
+    }
   }
   async create(
     access: string,
@@ -694,7 +905,12 @@ export class Dropbox implements CloudProvider {
     authorize: () => void,
   ): Promise<RemoteContents> {
     const plan = prepared(id);
-    if (!plan || plan.operationId !== operationId || plan.folderId !== folderId)
+    if (
+      !plan ||
+      plan.kind !== 'file' ||
+      plan.operationId !== operationId ||
+      plan.folderId !== folderId
+    )
       throw new CloudError('configuration');
     let meta: Metadata;
     try {
@@ -726,7 +942,28 @@ export class Dropbox implements CloudProvider {
     operationId: string,
   ): Promise<boolean> {
     const plan = prepared(id);
-    if (!plan || plan.operationId !== operationId) return false;
+    if (!plan) {
+      if (!/^id:[^/\\\s]+$/.test(id)) return false;
+      let templateId: string;
+      try {
+        templateId = await this.template(access, false);
+      } catch (error) {
+        if (error instanceof CloudError && error.code === 'missing')
+          return false;
+        throw error;
+      }
+      const meta = parseMetadata(
+        await this.rpc(access, 'files/get_metadata', {
+          path: id,
+          include_property_groups: {
+            '.tag': 'filter_some',
+            filter_some: [templateId],
+          },
+        }),
+      );
+      return meta.id === id && this.matches(meta, templateId, operationId);
+    }
+    if (plan.operationId !== operationId) return false;
     return this.matches(
       await this.metadata(access, id),
       plan.templateId,
