@@ -77,5 +77,8 @@
   "save_unconfirmed": "保存结果未知。",
   "error_unconfirmed": "Google 可能已保存该文件。再次写入之前请检查其内容；本地内容将保留。",
   "error_duplicate": "已存在同名文件。请选择其他名称；现有文件未更改。",
-  "new_file_name": "新文件.md"
+  "new_file_name": "新文件.md",
+  "location": "?????",
+  "actions": "????",
+  "document_actions": "Google Drive ????"
 }

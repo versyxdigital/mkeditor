@@ -29,6 +29,10 @@ Explorer, assistant and Settings scroll regions, the main Monaco editor and Mona
 
 The explorer starts at 240px and resizes between 180px and 360px, with the existing collapse control retained. The assistant remains independently resizable. Preview padding adapts from 24px in narrow panes to 48px in larger panes. The constrained document container is 760px wide; a saved full-width preference still takes precedence. Settings forms become a single column on smaller windows, and dialogs and menus scroll within the available viewport.
 
+Cloud browsing uses the same 30px file rows as the local explorer. A compact 28px storage selector sits in the application toolbar immediately after the sidebar toggle and before the file path. It shows the connection name; account details and connection management stay in its menu. Explorer shows the selected location's contents, with a 32px folder toolbar and 28px icon actions for creation, refresh and more options. Names truncate on one line, with full names and file details available on hover. The file list scrolls independently beneath the folder toolbar. Do not stack text actions, wrap navigation labels or add metadata beneath every filename.
+
+Remote document status and actions live in the Drive icon menu beside the active filename. Normal saving and saved states add no document banner or editor movement. A fixed 32px recovery bar appears inside the workspace only for connection or save problems. Google and Drive marks use bundled, unmodified official assets; sign-in controls follow Google's neutral button treatment. Asset sources are recorded in the [image attribution notes](../src/browser/assets/img/README.md).
+
 Panel separators remain subtle, with usable pointer targets and keyboard focus. Shared controls have visible focus states; file rows support Tab plus Enter/Space. Hover transitions take approximately 120ms. Reduced-motion preferences suppress decorative transitions and make the startup reveal immediate. No remote interface font or new styling framework is required.
 
 ## Preference compatibility and accessibility

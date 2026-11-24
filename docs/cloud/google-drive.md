@@ -6,7 +6,7 @@ Experimental desktop integration: connect, browse and open Markdown documents, w
 
 1. Open **Settings → Connections** in the desktop app and choose **Connect with Google**.
 2. Choose your Google account in the system browser and approve MKEditor's requested access. Return to MKEditor when prompted.
-3. Select your connection in Explorer to browse My Drive or shared drives. Open Markdown files read-only, or choose **Edit a local copy** to edit and save locally.
+3. Select your connection in the top toolbar, beside the sidebar toggle. Use Explorer's folder location menu to choose **My Drive** or **Shared drives**. Open Markdown files read-only, or choose **Edit a local copy** from the Drive icon menu beside the active filename to edit and save locally.
 
 MKEditor includes its Desktop OAuth app registration. Regular users do not create a Google Cloud project, enable APIs, or enter client credentials. **Add another account** repeats the same sign-in flow. Existing connections, documents and encrypted account credentials are preserved.
 
@@ -27,15 +27,17 @@ This optional path is for development or a custom registration, not ordinary acc
 3. Create an OAuth client with application type **Desktop app**. Copy its client ID and Desktop client secret. Do not create a Web application client. The Desktop secret is a public registration value; it does not grant account access by itself.
 4. Start the desktop build. Open **Settings → Connections → Advanced → Use a custom Google app**. Enter a connection name and the two registration values, then choose **Add connection**.
 5. Choose **Connect with Google**, complete consent in your system browser, and return to MKEditor. The callback page tells you to return; MKEditor confirms the final connection result. The loopback redirect uses a random port: `http://127.0.0.1:<port>/oauth/callback`. Desktop clients support loopback without registering each ephemeral port.
-6. Choose **Test access**. Select the connection in the Explorer's workspace picker, then browse **My Drive** or **Shared drives**. Use Refresh and Load more as needed. Google-native documents and non-Markdown files appear disabled.
+6. Choose **Test access**. Select the connection in the top toolbar's storage selector, then browse **My Drive** or **Shared drives**. Use Refresh and Load more as needed. Google-native documents and non-Markdown files appear disabled.
 
 App registration and scope details: [Google Desktop OAuth](https://developers.google.com/identity/protocols/oauth2/native-app), [Drive scopes and verification](https://developers.google.com/workspace/drive/api/guides/api-specific-auth), and [shared-drive API support](https://developers.google.com/workspace/drive/api/guides/enable-shareddrives).
 
 ## Reading and local copies
 
-Opening the same file through the same connection and verified account focuses its existing tab. Identity uses Google's file ID, not the displayed name or folder. Duplicate names show their modification time and an ID suffix. Shortcuts resolve to their target. A file moving folders does not change its identity.
+Opening the same file through the same connection and verified account focuses its existing tab. Identity uses Google's file ID, not the displayed name or folder. File rows remain one line; hover to see the full name, folder, modification time and ID, including when names are duplicated. Shortcuts resolve to their target. A file moving folders does not change its identity.
 
-The header shows the connection, editing availability and save status. **Edit a local copy** opens a separate unsaved editable buffer. Use normal Save/Save As to save that copy locally. It never overwrites the Drive original. A cancelled local save retains the copy. Remote **Save As** also creates a local copy; save that new buffer with the normal picker.
+The Drive icon beside the active filename opens document status and actions. Read-only documents have a quiet read-only label; saving shows a spinner, and successful saves do not add a banner. **Edit a local copy** opens a separate unsaved editable buffer. Use normal Save/Save As to save that copy locally. It never overwrites the Drive original. A cancelled local save retains the copy. Remote **Save As** also creates a local copy; save that new buffer with the normal picker.
+
+The top toolbar's storage selector keeps account details and **Manage connections** in its menu and remains available when Explorer is collapsed. Explorer's folder toolbar provides location, new-file and refresh controls. Its **More actions** menu contains **Save a copy to Drive** and **Manage connections**. These controls keep their heights when the sidebar is resized; long names truncate instead of wrapping.
 
 Relative images and links are preserved in the Markdown source but are not fetched or resolved against your local workspace. Remote document previews disable raw HTML. Absolute web links/images still follow the existing preview behavior. Downloading remote attachments and resolving Drive-relative links are not supported. UTF-8 Markdown (`.md`, matching the existing explorer rules) up to 4 MiB is supported; Google Docs/Sheets/Slides, binary encodings and conversions are not.
 
@@ -45,7 +47,9 @@ Connections initially request read-only access. Choose **Settings → Connection
 
 Editable My Drive documents use normal **Save / Ctrl+S**. Saves target the file ID and use the exact v2 multipart/strong-ETag protocol verified in Decision B. A server rejection preserves the newer remote file and your buffer. Edits made during a save stay dirty after its snapshot is acknowledged. Shared-drive documents, files without edit permission and files without a usable strong validator remain read-only.
 
-**New Markdown file** creates a `.md` file in the current My Drive folder. **Save a copy to Drive** creates a new remote file from a snapshot of the active document; it does not move or mark the source saved. An existing same-name item found before creation causes refusal, without silently renaming or overwriting anything. Google allows duplicate names: this preflight check cannot reserve a name against another app creating one concurrently.
+The **New Markdown file** icon creates a `.md` file in the current My Drive folder. **More actions → Save a copy to Drive** creates a new remote file from a snapshot of the active document; it does not move or mark the source saved. An existing same-name item found before creation causes refusal, without silently renaming or overwriting anything. Google allows duplicate names: this preflight check cannot reserve a name against another app creating one concurrently.
+
+Connection and save problems show a compact recovery bar above the workspace, without spanning the Explorer or assistant. Hover an action icon for its label; the Drive document menu also provides the recovery actions below.
 
 - **Save conflict:** use **Compare with Drive** to view current remote text on the original side and your buffer on the modified side. Save a local copy to keep your version. **Reload from Drive** asks before replacing a dirty buffer and refuses replacement if you edit during loading or confirmation.
 - **Save failed:** the buffer remains dirty. Resolve connection, quota or permission problems before retrying. A missing/trashed file is never recreated by Save.
@@ -60,7 +64,7 @@ Rename changes only the display name. Reconnect opens a new consent flow; choosi
 
 Configuration lives in `~/.mkeditor/connections.json`, separately from settings, sessions and assistant data. Tokens in that file are encrypted using the OS credential backend. They never reach the renderer, logs or UI. There is no plaintext fallback. If secure storage is unavailable, sign-in is disabled. Disconnect does not revoke the app's Google-side grant; remove that separately through your Google account's connected-app settings if desired.
 
-Drive tabs and the selected remote workspace are not restored after restart. Reopen the connection in Explorer to browse again. Open tabs remain readable if the network disappears or you disconnect, but no offline sync or remote-buffer recovery after restart is promised. Save an editable local copy when you need persistent work.
+Drive tabs and the selected remote workspace are not restored after restart. Select the connection in the top toolbar to browse again. Open tabs remain readable if the network disappears or you disconnect, but no offline sync or remote-buffer recovery after restart is promised. Save an editable local copy when you need persistent work.
 
 ## Troubleshooting
 

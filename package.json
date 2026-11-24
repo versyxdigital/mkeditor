@@ -1,7 +1,7 @@
 {
   "name": "mkeditor",
   "productName": "MKEditor",
-  "version": "4.2.0",
+  "version": "5.0.0",
   "engines": {
     "node": "^22.13.0 || >=24"
   },

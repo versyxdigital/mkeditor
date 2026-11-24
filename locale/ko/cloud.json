@@ -77,5 +77,8 @@
   "save_unconfirmed": "저장 결과를 알 수 없습니다.",
   "error_unconfirmed": "Google에서 파일을 저장했을 수 있습니다. 다시 쓰기 전에 내용을 확인하세요. 로컬 내용은 유지됩니다.",
   "error_duplicate": "이 이름의 파일이 이미 있습니다. 다른 이름을 선택하세요. 기존 파일은 변경되지 않았습니다.",
-  "new_file_name": "새 파일.md"
+  "new_file_name": "새 파일.md",
+  "location": "?? ??",
+  "actions": "?? ??",
+  "document_actions": "Google Drive ?? ??"
 }

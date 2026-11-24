@@ -279,7 +279,10 @@
     "save_unconfirmed": "Save outcome unknown.",
     "error_unconfirmed": "Google may have saved the file. Check its contents before trying another write; your local buffer is retained.",
     "error_duplicate": "A file with this name already exists. Choose another name; the existing file was not changed.",
-    "new_file_name": "New file.md"
+    "new_file_name": "New file.md",
+    "location": "Folder location",
+    "actions": "More actions",
+    "document_actions": "Google Drive document actions"
   },
   "menus-alerts": {
     "primary": "Primary",

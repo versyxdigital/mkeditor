@@ -8,6 +8,8 @@ import { sonnerToast } from '../../notify';
 import { useTranslation } from '../hooks/useTranslation';
 import { Icon } from './Icon';
 import { Button } from './ui/button';
+import { RemoteDocumentMenu } from './cloud/RemoteDocumentMenu';
+import { WorkspacePicker } from './cloud/CloudExplorer';
 import {
   Tooltip,
   TooltipContent,
@@ -70,6 +72,7 @@ export const Navbar: React.FC = () => {
           >
             <Icon name="bars" className="h-3.5 w-3.5" />
           </Button>
+          <WorkspacePicker />
           <span
             id="active-file"
             className="truncate text-xs font-medium text-muted-foreground"
@@ -77,6 +80,7 @@ export const Navbar: React.FC = () => {
           >
             {activeFileLabel ?? t('app:brand_name')}
           </span>
+          <RemoteDocumentMenu />
           {!isUntitled &&
             activeFile &&
             !tabs.find((tab) => tab.path === activeFile)?.remote && (

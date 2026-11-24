@@ -6,6 +6,7 @@ import { confirmExternal } from '../../contexts/PromptsContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { GoogleDriveLogo, GoogleLogo } from './GoogleBrand';
 
 export const CloudConnections: React.FC = () => {
   const { manager, state } = useCloud();
@@ -35,9 +36,14 @@ export const CloudConnections: React.FC = () => {
         className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-subtle bg-card p-4"
         aria-label="Google Drive"
       >
-        <h3 className="font-medium">Google Drive</h3>
+        <h3 className="flex items-center gap-2 font-medium">
+          <GoogleDriveLogo className="h-5 w-5" />
+          Google Drive
+        </h3>
         <Button
           type="button"
+          variant="outline"
+          className="border-[#747775] bg-white text-[#1f1f1f] hover:bg-[#f5f6f8] hover:text-[#1f1f1f]"
           disabled={
             !manager ||
             !state.secureStorage ||
@@ -52,6 +58,7 @@ export const CloudConnections: React.FC = () => {
             })
           }
         >
+          <GoogleLogo />
           {t(state.connections.length ? 'cloud:add_account' : 'cloud:connect')}
         </Button>
         {!state.googleDriveAvailable && (
@@ -157,7 +164,10 @@ const ConnectionCard: React.FC<{ connection: CloudConnection }> = ({
       aria-label={connection.name}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="flex-1 font-medium">Google Drive</h3>
+        <h3 className="flex flex-1 items-center gap-2 font-medium">
+          <GoogleDriveLogo className="h-5 w-5" />
+          Google Drive
+        </h3>
         <span role="status" className="text-xs text-muted-foreground">
           {t(`cloud:status_${connection.status}`)}
         </span>
@@ -219,6 +229,8 @@ const ConnectionCard: React.FC<{ connection: CloudConnection }> = ({
         )}
         <Button
           disabled={busy || !state.secureStorage}
+          variant="outline"
+          className="border-[#747775] bg-white text-[#1f1f1f] hover:bg-[#f5f6f8] hover:text-[#1f1f1f]"
           onClick={() =>
             void manager?.run({
               action: 'connect',
@@ -226,6 +238,7 @@ const ConnectionCard: React.FC<{ connection: CloudConnection }> = ({
             })
           }
         >
+          <GoogleLogo />
           {t(connect ? 'cloud:reconnect' : 'cloud:connect')}
         </Button>
         <Button

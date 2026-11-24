@@ -77,5 +77,8 @@
   "save_unconfirmed": "Resultaat van opslaan onbekend.",
   "error_unconfirmed": "Google heeft het bestand mogelijk opgeslagen. Controleer de inhoud voordat je opnieuw schrijft; je lokale inhoud blijft behouden.",
   "error_duplicate": "Er bestaat al een bestand met deze naam. Kies een andere naam; het bestaande bestand is niet gewijzigd.",
-  "new_file_name": "Nieuw bestand.md"
+  "new_file_name": "Nieuw bestand.md",
+  "location": "Maplocatie",
+  "actions": "Meer acties",
+  "document_actions": "Google Drive-documentacties"
 }

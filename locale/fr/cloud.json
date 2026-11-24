@@ -77,5 +77,8 @@
   "save_unconfirmed": "Résultat de l’enregistrement inconnu.",
   "error_unconfirmed": "Google a peut-être enregistré le fichier. Vérifiez son contenu avant une nouvelle écriture ; votre contenu local est conservé.",
   "error_duplicate": "Un fichier porte déjà ce nom. Choisissez-en un autre ; le fichier existant n’a pas été modifié.",
-  "new_file_name": "Nouveau fichier.md"
+  "new_file_name": "Nouveau fichier.md",
+  "location": "Emplacement du dossier",
+  "actions": "Autres actions",
+  "document_actions": "Actions du document Google Drive"
 }

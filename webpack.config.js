@@ -121,6 +121,11 @@ module.exports = {
           from: './src/browser/assets/icon.png',
           to: './icon.png',
         },
+        {
+          from: './src/browser/assets/img/google-drive.png',
+          to: './google-drive.png',
+        },
+        { from: './src/browser/assets/img/google.png', to: './google.png' },
         { from: './src/browser/views' },
         {
           from: './locale',

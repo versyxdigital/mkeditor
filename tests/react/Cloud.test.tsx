@@ -1,9 +1,12 @@
 import * as React from 'react';
-import { act, fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CloudConnections } from '../../src/browser/react/components/cloud/CloudConnections';
 import { CloudExplorer } from '../../src/browser/react/components/cloud/CloudExplorer';
+import { Navbar } from '../../src/browser/react/components/Navbar';
+import { Sidebar } from '../../src/browser/react/components/Sidebar';
 import { RemoteDocumentNotice } from '../../src/browser/react/components/cloud/RemoteDocumentNotice';
+import { RemoteDocumentMenu } from '../../src/browser/react/components/cloud/RemoteDocumentMenu';
 import { CloudManager } from '../../src/browser/core/CloudManager';
 import type {
   CloudState,
@@ -16,6 +19,12 @@ jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
   normalizeLanguage: () => 'en',
 }));
+beforeAll(() => {
+  Object.defineProperty(Element.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: jest.fn(),
+  });
+});
 function setup(connected = true) {
   const listeners = new Map<string, (value: never) => void>();
   const bridge = {
@@ -56,6 +65,198 @@ function setup(connected = true) {
     },
   };
 }
+
+test('storage selector lives after the toolbar menu, outside Explorer, and switches workspace', async () => {
+  const { manager, managers } = setup();
+  manager.selectWorkspace('drive');
+  renderWithProviders(
+    <>
+      <Navbar />
+      <Sidebar />
+    </>,
+    { managers },
+  );
+  const picker = within(screen.getByRole('navigation')).getByRole('combobox', {
+    name: 'cloud:workspace',
+  });
+  expect(picker).toHaveTextContent('Personal Drive');
+  expect(
+    screen.getByRole('button', { name: 'navbar:toggle_sidebar' })
+      .nextElementSibling,
+  ).toBe(picker);
+  expect(picker.nextElementSibling).toHaveAttribute('id', 'active-file');
+  expect(
+    within(document.getElementById('sidebar')!).queryByRole('combobox'),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText('user@example.test')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'cloud:manage' }),
+  ).not.toBeInTheDocument();
+  expect(
+    document.querySelector('img[src="./google-drive.png"]'),
+  ).toBeInTheDocument();
+  const user = userEvent.setup();
+  picker.focus();
+  await user.keyboard('{ArrowDown}');
+  expect(await screen.findByText('user@example.test')).toBeInTheDocument();
+  expect(
+    screen.getByRole('option', { name: /cloud:manage/ }),
+  ).toBeInTheDocument();
+  await user.click(screen.getByRole('option', { name: /cloud:local/ }));
+  expect(manager.getSnapshot().workspace).toBe('local');
+  expect(picker).toHaveTextContent('cloud:local');
+  act(() => manager.dispose());
+});
+
+test('web toolbar hides the storage selector even with a configured cloud manager', () => {
+  const { manager, managers } = setup();
+  renderWithProviders(<Navbar />, { managers: { ...managers, mode: 'web' } });
+  expect(
+    screen.queryByRole('combobox', { name: 'cloud:workspace' }),
+  ).not.toBeInTheDocument();
+  act(() => manager.dispose());
+});
+
+test('new-file and copy actions are keyboard accessible without a visible button strip', async () => {
+  const { manager, managers } = setup();
+  manager.selectWorkspace('drive');
+  jest.spyOn(manager, 'canCreate').mockReturnValue(true);
+  const create = jest.spyOn(manager, 'create').mockResolvedValue();
+  const files = fakeFileManager({
+    activeFile: '/notes.md',
+    tabs: [{ path: '/notes.md', name: 'notes.md' }],
+  });
+  renderWithProviders(<CloudExplorer />, {
+    managers: { ...managers, fileManager: files as never },
+  });
+  expect(screen.queryByText('cloud:new_file')).not.toBeInTheDocument();
+  expect(screen.queryByText('cloud:save_copy')).not.toBeInTheDocument();
+  const user = userEvent.setup();
+  screen.getByRole('button', { name: 'cloud:new_file' }).focus();
+  await user.keyboard('{Enter}');
+  expect(create).toHaveBeenCalledWith();
+  screen.getByRole('button', { name: 'cloud:actions' }).focus();
+  await user.keyboard('{Enter}');
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'cloud:save_copy' }),
+  );
+  expect(create).toHaveBeenLastCalledWith(true);
+  act(() => manager.dispose());
+});
+
+test('Drive roots are in the location menu and selecting shared drives requests their listing', async () => {
+  const { manager, managers, bridge } = setup();
+  manager.selectWorkspace('drive');
+  renderWithProviders(<CloudExplorer />, { managers });
+  expect(screen.queryByText('cloud:shared_drives')).not.toBeInTheDocument();
+  const user = userEvent.setup();
+  screen.getByRole('button', { name: 'cloud:location' }).focus();
+  await user.keyboard('{Enter}');
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'cloud:shared_drives' }),
+  );
+  expect(bridge.send.mock.calls.at(-1)![1].command).toMatchObject({
+    action: 'drives',
+    connectionId: 'drive',
+  });
+  act(() => manager.dispose());
+});
+
+test.each(['saved', 'saving', undefined] as const)(
+  'normal connected document phase %s does not add a status banner',
+  (phase) => {
+    const { manager, managers } = setup();
+    const snapshot = {
+      activeFile: 'remote',
+      tabs: [
+        {
+          path: 'remote',
+          name: 'notes.md',
+          dirty: false,
+          remote: {
+            connectionId: 'drive',
+            accountId: 'account',
+            connectionName: 'Drive',
+            item: {
+              id: 'file',
+              name: 'notes.md',
+              kind: 'markdown',
+              parents: [],
+            },
+          },
+          remoteSave: phase ? { phase } : undefined,
+        },
+      ],
+    };
+    const files = { ...fakeFileManager(), getSnapshot: () => snapshot };
+    const { container } = renderWithProviders(<RemoteDocumentNotice />, {
+      managers: { ...managers, fileManager: files as never },
+    });
+    expect(container).toBeEmptyDOMElement();
+    act(() => manager.dispose());
+  },
+);
+
+test.each(['saved', 'unconfirmed', 'disconnected'] as const)(
+  'remote file menu preserves safe recovery for %s documents',
+  async (phase) => {
+    const { manager, managers } = setup(phase !== 'disconnected');
+    const snapshot = {
+      activeFile: 'remote',
+      tabs: [
+        {
+          path: 'remote',
+          name: 'notes.md',
+          dirty: false,
+          remote: {
+            connectionId: 'drive',
+            accountId: 'account',
+            connectionName: 'Drive',
+            item: {
+              id: 'file',
+              name: 'notes.md',
+              kind: 'markdown',
+              parents: [],
+            },
+          },
+          remoteSave: {
+            phase: phase === 'unconfirmed' ? 'unconfirmed' : 'saved',
+          },
+        },
+      ],
+    };
+    const copyRemoteToLocal = jest.fn();
+    const files = {
+      ...fakeFileManager(),
+      getSnapshot: () => snapshot,
+      copyRemoteToLocal,
+    };
+    renderWithProviders(<RemoteDocumentMenu />, {
+      managers: { ...managers, fileManager: files as never },
+    });
+    const user = userEvent.setup();
+    screen.getByRole('button', { name: 'cloud:document_actions' }).focus();
+    await user.keyboard('{Enter}');
+    const reload = await screen.findByRole('menuitem', {
+      name: 'cloud:reload',
+    });
+    if (phase === 'saved') expect(reload).toBeEnabled();
+    else expect(reload).toHaveAttribute('aria-disabled', 'true');
+    if (phase === 'unconfirmed')
+      expect(
+        screen.getByRole('menuitem', { name: 'cloud:check_save' }),
+      ).toBeEnabled();
+    if (phase === 'disconnected')
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'cloud:disconnected',
+      );
+    await user.click(
+      screen.getByRole('menuitem', { name: 'cloud:local_copy' }),
+    );
+    expect(copyRemoteToLocal).toHaveBeenCalledWith('remote');
+    act(() => manager.dispose());
+  },
+);
 
 test('connection sign-out removes the account display and disables access testing', () => {
   const { manager, managers, push, state } = setup();
@@ -249,7 +450,7 @@ test('unconfirmed saves expose a keyboard-accessible check action and preserve l
     managers: { ...managers, fileManager: files as never },
   });
   expect(screen.getByRole('status')).toHaveTextContent(
-    'cloud:save_unconfirmed',
+    'cloud:error_unconfirmed',
   );
   expect(
     screen.queryByRole('button', { name: 'cloud:reload' }),

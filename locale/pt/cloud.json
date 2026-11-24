@@ -77,5 +77,8 @@
   "save_unconfirmed": "Resultado do salvamento desconhecido.",
   "error_unconfirmed": "O Google pode ter salvo o arquivo. Verifique o conteúdo antes de gravar novamente; seu conteúdo local é mantido.",
   "error_duplicate": "Já existe um arquivo com esse nome. Escolha outro; o arquivo existente não foi alterado.",
-  "new_file_name": "Novo arquivo.md"
+  "new_file_name": "Novo arquivo.md",
+  "location": "Localiza??o da pasta",
+  "actions": "Mais a??es",
+  "document_actions": "A??es do documento do Google Drive"
 }

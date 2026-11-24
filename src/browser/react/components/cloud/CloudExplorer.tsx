@@ -3,8 +3,11 @@ import { useCloud } from '../../hooks/useCloud';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useModals } from '../../contexts/ModalsContext';
 import { useManagers } from '../../contexts/ManagersContext';
+import { useFiles } from '../../contexts/FilesContext';
+import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Icon } from '../Icon';
+import { GoogleDriveLogo } from './GoogleBrand';
 import {
   Select,
   SelectContent,
@@ -12,221 +15,363 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+
+const actionClass =
+  'h-7 w-6 shrink-0 rounded-sm p-0 text-muted-foreground hover:text-foreground';
+const menuClass = 'whitespace-nowrap text-xs';
 
 export const WorkspacePicker: React.FC = () => {
   const { manager, state } = useCloud();
   const { t } = useTranslation();
   const { openModal } = useModals();
   const { mode } = useManagers();
-  if (mode !== 'desktop') return null;
+  const connection = state.connections.find(
+    (entry) => entry.id === state.workspace,
+  );
+  if (mode !== 'desktop' || state.connections.length === 0) return null;
   return (
-    <div className="my-2 space-y-1">
-      <Select
-        value={
-          state.connections.some((entry) => entry.id === state.workspace)
-            ? state.workspace
-            : 'local'
+    <Select
+      value={connection?.id ?? 'local'}
+      onValueChange={(value) => {
+        if (value === 'manage-connections')
+          openModal('settings', { tab: 'connections' });
+        else manager?.selectWorkspace(value);
+      }}
+    >
+      <SelectTrigger
+        aria-label={t('cloud:workspace')}
+        title={
+          connection
+            ? `${connection.name}${connection.accountName ? ` · ${connection.accountName}` : ''}`
+            : t('cloud:local')
         }
-        onValueChange={(value) => manager?.selectWorkspace(value)}
+        className="h-7 w-36 max-w-[28vw] min-w-0 shrink-0 gap-2 rounded-sm border-subtle bg-transparent px-2 text-xs shadow-none hover:bg-hover [&>svg]:ml-0 [&>svg]:shrink-0"
       >
-        <SelectTrigger
-          aria-label={t('cloud:workspace')}
-          className="h-8 text-xs"
+        {connection ? (
+          <GoogleDriveLogo />
+        ) : (
+          <Icon name="folder" className="h-4 w-4 text-muted-foreground" />
+        )}
+        <span className="min-w-0 flex-1 truncate text-left">
+          <SelectValue>{connection?.name ?? t('cloud:local')}</SelectValue>
+        </span>
+      </SelectTrigger>
+      <SelectContent className="min-w-[220px] max-w-[min(320px,calc(100vw-16px))]">
+        <SelectItem value="local" className="text-xs">
+          <span className="flex items-center gap-2">
+            <Icon name="folder" />
+            {t('cloud:local')}
+          </span>
+        </SelectItem>
+        {state.connections.map((entry) => (
+          <SelectItem
+            key={entry.id}
+            value={entry.id}
+            textValue={`${entry.name} ${entry.accountName ?? ''}`}
+            className="text-xs"
+          >
+            <span className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+              <GoogleDriveLogo />
+              <span className="max-w-32 truncate">{entry.name}</span>
+              <span className="max-w-40 truncate text-muted-foreground">
+                {entry.accountName ?? t(`cloud:status_${entry.status}`)}
+              </span>
+            </span>
+          </SelectItem>
+        ))}
+        <SelectItem
+          value="manage-connections"
+          className="mt-1 border-t border-subtle text-xs"
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="local">{t('cloud:local')}</SelectItem>
-          {state.connections.map((connection) => (
-            <SelectItem key={connection.id} value={connection.id}>
-              {connection.name}
-              {connection.accountName ? ` · ${connection.accountName}` : ''}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 text-xs text-muted-foreground"
-        onClick={() => openModal('settings', { tab: 'connections' })}
-      >
-        {t('cloud:manage')}
-      </Button>
-    </div>
+          <span className="flex items-center gap-2">
+            <Icon name="cog" />
+            {t('cloud:manage')}
+          </span>
+        </SelectItem>
+      </SelectContent>
+    </Select>
   );
 };
 
 export const CloudExplorer: React.FC = () => {
   const { manager, state } = useCloud();
   const { t } = useTranslation();
+  const { tabs, activeFile } = useFiles();
   const { openModal } = useModals();
   const connection = state.connections.find(
     (entry) => entry.id === state.workspace,
   );
+  const activeRemote = tabs.find((tab) => tab.path === activeFile)?.remote;
   const connected = connection?.status === 'connected';
-  const location = state.folders[state.folders.length - 1];
+  const location = state.folders.at(-1);
+  const label = (name: string) =>
+    name === 'my_drive' || name === 'shared_drives' ? t(`cloud:${name}`) : name;
+  const pathLabel = state.folders
+    .map((folder) => label(folder.name))
+    .join(' / ');
+  const manage = () => openModal('settings', { tab: 'connections' });
+  const canCreate = Boolean(manager?.canCreate());
   return (
     <section
-      aria-label={t('cloud:workspace')}
-      className="min-w-0 space-y-2 text-xs"
+      aria-label={t('cloud:files')}
+      className="flex min-h-0 min-w-0 flex-1 flex-col text-xs"
     >
       {!connected ? (
-        <div className="space-y-2 py-3">
-          <p role="status">{t('cloud:disconnected')}</p>
+        <div className="space-y-3 px-2 py-4">
+          <p role="status" className="text-muted-foreground">
+            {t('cloud:disconnected')}
+          </p>
           <Button
             size="sm"
             variant="outline"
-            onClick={() => openModal('settings', { tab: 'connections' })}
+            className="max-w-full"
+            onClick={manage}
           >
-            {t('cloud:manage')}
+            <span className="truncate">{t('cloud:manage')}</span>
           </Button>
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap gap-1">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs"
-              disabled={!manager?.canCreate()}
-              onClick={() => void manager?.create()}
-            >
-              {t('cloud:new_file')}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs"
-              disabled={!manager?.canCreate()}
-              onClick={() => void manager?.create(true)}
-            >
-              {t('cloud:save_copy')}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs"
-              onClick={() =>
-                void manager?.browse([{ id: 'root', name: 'my_drive' }])
-              }
-            >
-              {t('cloud:my_drive')}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs"
-              onClick={() =>
-                void manager?.browse([
-                  { id: 'shared', name: 'shared_drives', shared: true },
-                ])
-              }
-            >
-              {t('cloud:shared_drives')}
-            </Button>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0"
-              disabled={state.folders.length < 2}
-              aria-label={t('cloud:back')}
-              onClick={() => void manager?.browse(state.folders.slice(0, -1))}
-            >
-              <Icon name="chevron-left" />
-            </Button>
-            <span
-              className="min-w-0 flex-1 truncate"
-              title={state.folders
-                .map((folder) =>
-                  folder.name === 'my_drive' || folder.name === 'shared_drives'
-                    ? t(`cloud:${folder.name}`)
-                    : folder.name,
-                )
-                .join(' / ')}
-            >
-              {location?.name === 'my_drive' ||
-              location?.name === 'shared_drives'
-                ? t(`cloud:${location.name}`)
-                : location?.name}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0"
-              aria-label={t('cloud:refresh')}
-              disabled={state.loading}
-              onClick={() => void manager?.browse()}
-            >
-              <Icon name="sync" />
-            </Button>
-          </div>
-          {state.loading && <p role="status">{t('cloud:loading')}</p>}
-          {state.error && (
-            <p role="alert" className="break-words text-destructive">
-              {t(`cloud:error_${state.error}`)}
-            </p>
-          )}
-          {state.pendingCreate && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={state.busy.includes('create')}
-              onClick={() => void manager?.reconcileCreate()}
-            >
-              {t('cloud:check_create')}
-            </Button>
-          )}
-          {!state.loading && !state.error && state.items.length === 0 && (
-            <p role="status" className="py-3 text-muted-foreground">
-              {t('cloud:empty')}
-            </p>
-          )}
-          <ul className="space-y-1" aria-label={t('cloud:files')}>
-            {state.items.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  disabled={item.kind === 'unsupported'}
-                  onClick={() => void manager?.open(item)}
-                  className="flex min-h-[30px] w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                  title={
-                    item.kind === 'unsupported'
-                      ? t('cloud:unsupported')
-                      : `${item.name} · ${item.id}`
-                  }
+          <div className="mb-1 flex h-8 min-w-0 shrink-0 items-center border-b border-subtle">
+            {state.folders.length > 1 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={actionClass}
+                aria-label={t('cloud:back')}
+                title={t('cloud:back')}
+                onClick={() => void manager?.browse(state.folders.slice(0, -1))}
+              >
+                <Icon name="chevron-left" className="h-3 w-3" />
+              </Button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-7 min-w-0 flex-1 justify-start gap-0.5 rounded-sm px-1 text-xs font-medium"
+                  aria-label={t('cloud:location')}
+                  title={pathLabel}
                 >
                   <Icon
-                    name={item.kind === 'folder' ? 'folder' : 'file'}
-                    className="shrink-0 text-muted-foreground"
+                    name="folder"
+                    className="size-3.5 text-muted-foreground"
                   />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate">{item.name}</span>
-                    {item.kind !== 'folder' && (
-                      <span className="block truncate text-[10px] text-muted-foreground">
-                        {item.modifiedTime
-                          ? new Date(item.modifiedTime).toLocaleString()
-                          : item.id}{' '}
-                        · {item.id.slice(-6)}
-                      </span>
-                    )}
+                  <span className="truncate">
+                    {location ? label(location.name) : t('cloud:my_drive')}
                   </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {state.nextPage && (
+                  <Icon
+                    name="chevron-down"
+                    className="size-2.5 text-muted-foreground"
+                  />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-48 max-w-72">
+                <DropdownMenuItem
+                  className={menuClass}
+                  onSelect={() =>
+                    void manager?.browse([{ id: 'root', name: 'my_drive' }])
+                  }
+                >
+                  <GoogleDriveLogo />
+                  {t('cloud:my_drive')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={menuClass}
+                  onSelect={() =>
+                    void manager?.browse([
+                      { id: 'shared', name: 'shared_drives', shared: true },
+                    ])
+                  }
+                >
+                  <Icon name="folder-open" />
+                  {t('cloud:shared_drives')}
+                </DropdownMenuItem>
+                {state.folders.length > 1 && <DropdownMenuSeparator />}
+                {state.folders.slice(1).map((folder, index) => (
+                  <DropdownMenuItem
+                    key={folder.id}
+                    className={menuClass}
+                    title={folder.name}
+                    onSelect={() =>
+                      void manager?.browse(state.folders.slice(0, index + 2))
+                    }
+                  >
+                    <Icon name="folder" />
+                    <span className="truncate">{folder.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
-              size="sm"
-              variant="outline"
-              disabled={state.loading}
-              onClick={() => void manager?.browse(undefined, true)}
+              variant="ghost"
+              size="icon"
+              className={actionClass}
+              disabled={!canCreate}
+              aria-label={t('cloud:new_file')}
+              title={t('cloud:new_file')}
+              onClick={() => void manager?.create()}
             >
-              {t('cloud:load_more')}
+              <Icon name="file-circle-plus" className="size-3.5" />
             </Button>
-          )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={actionClass}
+              disabled={state.loading}
+              aria-label={t('cloud:refresh')}
+              title={t('cloud:refresh')}
+              onClick={() => void manager?.browse()}
+            >
+              <Icon
+                name="refresh"
+                className={cn(
+                  'size-3.5',
+                  state.loading && 'animate-spin motion-reduce:animate-none',
+                )}
+              />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={actionClass}
+                  aria-label={t('cloud:actions')}
+                  title={t('cloud:actions')}
+                >
+                  <Icon name="ellipsis" className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className={menuClass}
+                  disabled={
+                    !canCreate ||
+                    !activeFile ||
+                    !tabs.some(
+                      (tab) => tab.path === activeFile && tab.kind !== 'diff',
+                    )
+                  }
+                  onSelect={() => void manager?.create(true)}
+                >
+                  <Icon name="copy" />
+                  {t('cloud:save_copy')}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className={menuClass} onSelect={manage}>
+                  <Icon name="cog" />
+                  {t('cloud:manage')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="thin-scrollbars min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+            {state.loading && (
+              <span className="sr-only" role="status">
+                {t('cloud:loading')}
+              </span>
+            )}
+            {state.error && (
+              <p
+                role="alert"
+                title={t(`cloud:error_${state.error}`)}
+                className="h-8 truncate px-2 leading-8 text-destructive"
+              >
+                {t(`cloud:error_${state.error}`)}
+              </p>
+            )}
+            {state.pendingCreate && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="my-1 max-w-full truncate"
+                disabled={state.busy.includes('create')}
+                onClick={() => void manager?.reconcileCreate()}
+              >
+                <span className="truncate">{t('cloud:check_create')}</span>
+              </Button>
+            )}
+            {!state.loading && !state.error && state.items.length === 0 && (
+              <p
+                role="status"
+                className="truncate px-2 py-4 text-muted-foreground"
+                title={t('cloud:empty')}
+              >
+                {t('cloud:empty')}
+              </p>
+            )}
+            <ul aria-label={t('cloud:files')} className="m-0 list-none p-0">
+              {state.items.map((item) => {
+                const selected =
+                  activeRemote?.connectionId === connection.id &&
+                  activeRemote.accountId === connection.accountId &&
+                  activeRemote.item.id === item.id;
+                const details = [
+                  item.name,
+                  pathLabel,
+                  item.modifiedTime
+                    ? new Date(item.modifiedTime).toLocaleString()
+                    : undefined,
+                  item.id,
+                ]
+                  .filter(Boolean)
+                  .join('\n');
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      disabled={item.kind === 'unsupported'}
+                      aria-current={selected ? 'page' : undefined}
+                      onClick={() => void manager?.open(item)}
+                      title={
+                        item.kind === 'unsupported'
+                          ? `${item.name}\n${t('cloud:unsupported')}`
+                          : details
+                      }
+                      className={cn(
+                        'flex h-[var(--sidebar-row-height)] w-full min-w-0 items-center gap-2 whitespace-nowrap rounded-sm px-2 text-left text-[13px] text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:opacity-45',
+                        selected &&
+                          'bg-active font-medium text-foreground hover:bg-active',
+                      )}
+                    >
+                      <Icon
+                        name={item.kind === 'folder' ? 'folder' : 'file'}
+                        className="size-3.5"
+                      />
+                      <span className="min-w-0 flex-1 truncate">
+                        {item.name}
+                      </span>
+                      {item.kind === 'folder' && (
+                        <Icon
+                          name="chevron-right"
+                          className="size-2.5 opacity-50"
+                        />
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            {state.nextPage && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="mt-1 h-7 w-full justify-start px-2 text-xs text-muted-foreground"
+                disabled={state.loading}
+                onClick={() => void manager?.browse(undefined, true)}
+              >
+                <span className="truncate">{t('cloud:load_more')}</span>
+              </Button>
+            )}
+          </div>
         </>
       )}
     </section>

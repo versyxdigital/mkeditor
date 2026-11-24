@@ -279,7 +279,10 @@
     "save_unconfirmed": "Speicherergebnis unbekannt.",
     "error_unconfirmed": "Google hat die Datei möglicherweise gespeichert. Prüfen Sie den Inhalt vor einem weiteren Schreibversuch; Ihr lokaler Inhalt bleibt erhalten.",
     "error_duplicate": "Eine Datei mit diesem Namen existiert bereits. Wählen Sie einen anderen Namen; die vorhandene Datei wurde nicht geändert.",
-    "new_file_name": "Neue Datei.md"
+    "new_file_name": "Neue Datei.md",
+    "location": "Ordner ausw?hlen",
+    "actions": "Weitere Aktionen",
+    "document_actions": "Google Drive-Dokumentaktionen"
   },
   "menus-alerts": {
     "primary": "Primär",

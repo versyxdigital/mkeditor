@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { useTranslation } from '../hooks/useTranslation';
 import { FileTreePanel } from './FileTreePanel';
-import { CloudExplorer, WorkspacePicker } from './cloud/CloudExplorer';
+import { CloudExplorer } from './cloud/CloudExplorer';
 import { useCloud } from '../hooks/useCloud';
 
 /**
@@ -15,9 +15,8 @@ export const Sidebar: React.FC = () => {
   const { state } = useCloud();
 
   return (
-    <div id="sidebar" className="flex h-full flex-col px-3 py-4">
+    <div id="sidebar" className="flex h-full min-w-0 flex-col px-2 py-2">
       <div className="explorer-title">{t('sidebar:explorer')}</div>
-      <WorkspacePicker />
       {state.workspace === 'local' ? <FileTreePanel /> : <CloudExplorer />}
     </div>
   );

@@ -5,10 +5,17 @@
   height: 100%;
 
   .explorer-title {
-    font-size: 12px;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: 28px;
+    padding: 0 8px;
+    font-size: 11px;
     line-height: 18px;
     font-weight: 600;
-    margin-bottom: var(--space-4);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: var(--space-1);
     color: var(--text-secondary);
   }
 }

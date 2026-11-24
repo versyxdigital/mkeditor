@@ -279,7 +279,10 @@
     "save_unconfirmed": "保存結果が不明です。",
     "error_unconfirmed": "Googleがファイルを保存した可能性があります。再度書き込む前に内容を確認してください。ローカルの内容は保持されます。",
     "error_duplicate": "同じ名前のファイルが既にあります。別の名前を選んでください。既存のファイルは変更されていません。",
-    "new_file_name": "新しいファイル.md"
+    "new_file_name": "新しいファイル.md",
+    "location": "????????",
+    "actions": "??????",
+    "document_actions": "Google Drive ?????????"
   },
   "menus-alerts": {
     "primary": "プライマリ",

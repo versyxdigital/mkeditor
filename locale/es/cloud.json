@@ -77,5 +77,8 @@
   "save_unconfirmed": "Resultado del guardado desconocido.",
   "error_unconfirmed": "Google puede haber guardado el archivo. Comprueba su contenido antes de volver a escribir; el contenido local se conserva.",
   "error_duplicate": "Ya existe un archivo con este nombre. Elige otro; el archivo existente no se ha modificado.",
-  "new_file_name": "Nuevo archivo.md"
+  "new_file_name": "Nuevo archivo.md",
+  "location": "Ubicaci?n de la carpeta",
+  "actions": "M?s acciones",
+  "document_actions": "Acciones del documento de Google Drive"
 }

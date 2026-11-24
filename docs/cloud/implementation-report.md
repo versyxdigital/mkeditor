@@ -66,6 +66,18 @@ Earlier offscreen Windows checks covered Connections and remote browsing in ligh
 
 The final built-desktop local-HTTP check passed save acknowledgement, preservation of an external edit after a stale save, conflict comparison, Unicode-named creation and a committed write with a lost response followed by **Check save**. Monaco input was supplied through Chromium's input command; menu save events used the production bridge listener. App-chrome conflict notices were visually reviewed in light/dark themes, and the uncertain-save notice in dark mode. These checks found and fixed a timing bug where conflict actions depended on an imperative pending-write map after its notification had already fired; the notice now derives availability from its reactive save phase. The editor theme itself was left unchanged while capturing app-chrome themes. Temporary harness/profile files were removed. No live account was used for these UI checks.
 
+### Cloud UI refinement — 24 November 2026
+
+Storage selection lives in the top application toolbar, immediately after the sidebar toggle and before the file path. Explorer contains the folder toolbar and single-line 30px file rows. Account details live in the storage menu; creation and refresh use labelled icon buttons, and copy/connection actions live in the overflow menu. File metadata is available on hover instead of repeated rows. Official Google and Drive assets are bundled locally. Normal remote status and actions live beside the filename; only connection/save problems add a fixed 32px recovery bar inside the workspace.
+
+The built renderer was exercised in hidden Electron against the production cloud service and adapter with local HTTP fixtures, without live credentials. Measurements passed at 180/240/360px sidebar widths in both themes, with no horizontal overflow or wrapped file rows. Saving did not move the editor. An 80-file listing scrolled while the source selector and toolbar retained their size and position. A genuine fixture stale-save rejection showed the recovery bar inside the workspace, with German text. Default, narrow, menu and conflict screenshots were visually reviewed. Component tests cover keyboard navigation/actions and recovery availability for saved, unconfirmed and disconnected documents.
+
+The toolbar placement was also checked at 1280px and 720px window widths in both themes: the toolbar remained 32px high, the selector 28px, with no overflow. Switching storage with Explorer collapsed retained the active document. Component tests assert the selector's position, absence from Explorer, workspace switching and the web gate.
+
+The refinement passed 100 suites / 1,304 tests, lint, renderer type checking, both builds, formatting and `git diff --check`. The renderer build retains its three size/performance warnings. The locale audit found all 331 statically referenced keys in all 13 locales. Temporary UI harness/profile files were removed; screenshots and geometry measurements remain under `out/` for review.
+
+The existing Google verification recording predates this layout refinement; it has not been recorded again. Provider scopes and write protocols did not change.
+
 ## Remaining limits
 
 - Publish a correct privacy policy, verify the website/branding and submit Google's restricted-scope review using the [submission guide](google-verification.md). No Console publishing or submission was performed by the agent.

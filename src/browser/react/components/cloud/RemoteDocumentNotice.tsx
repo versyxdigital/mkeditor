@@ -1,99 +1,109 @@
 import * as React from 'react';
 import { useFiles } from '../../contexts/FilesContext';
 import { useManagers } from '../../contexts/ManagersContext';
+import { useModals } from '../../contexts/ModalsContext';
 import { useCloud } from '../../hooks/useCloud';
 import { useTranslation } from '../../hooks/useTranslation';
 import { Button } from '../ui/button';
-import { useModals } from '../../contexts/ModalsContext';
+import { Icon } from '../Icon';
 
+/** A fixed-height recovery bar only when a remote document needs attention. */
 export const RemoteDocumentNotice: React.FC = () => {
   const { tabs, activeFile } = useFiles();
   const { fileManager } = useManagers();
   const { state, manager } = useCloud();
   const { openModal } = useModals();
   const { t } = useTranslation();
-  const tab = tabs.find((tab) => tab.path === activeFile);
+  const tab = tabs.find((entry) => entry.path === activeFile);
   const remote = tab?.remote;
-  if (!remote) return null;
+  if (!remote || !activeFile) return null;
   const connection = state.connections.find(
     (entry) => entry.id === remote.connectionId,
   );
   const connected =
     connection?.status === 'connected' &&
     connection.accountId === remote.accountId;
+  const phase = tab.remoteSave?.phase;
+  if (
+    connected &&
+    phase !== 'conflict' &&
+    phase !== 'failed' &&
+    phase !== 'unconfirmed'
+  )
+    return null;
+  const unknown = phase === 'unconfirmed';
+  const message = !connected
+    ? t('cloud:disconnected')
+    : unknown
+      ? t('cloud:error_unconfirmed')
+      : phase === 'conflict'
+        ? t('cloud:error_conflict')
+        : `${t('cloud:save_failed')} ${tab.remoteSave?.error ? t(`cloud:error_${tab.remoteSave.error}`) : ''}`;
+  const iconClass = 'h-7 w-7 shrink-0 rounded-sm p-0 text-muted-foreground';
   return (
     <div
-      className="flex shrink-0 flex-wrap items-center gap-2 border-b border-subtle bg-muted px-3 py-1 text-xs"
+      className="flex h-8 min-w-0 shrink-0 items-center gap-2 whitespace-nowrap border-b border-subtle bg-sidebar px-2 text-xs"
       role="status"
     >
-      <span className="min-w-0 flex-1">
-        {remote.connectionName} ·{' '}
-        {t(manager?.canEdit(remote) ? 'cloud:editable' : 'cloud:read_only')}
-        {!connected && ` · ${t('cloud:disconnected')}`}
-        {connected &&
-          remote.item.readOnlyReason === 'shared-drive' &&
-          ` · ${t('cloud:shared_read_only')}`}
-        {tab?.remoteSave && (
-          <span className="block">
-            {t(`cloud:save_${tab.remoteSave.phase}`)}
-            {tab.remoteSave.error &&
-              ` ${t(`cloud:error_${tab.remoteSave.error}`)}`}
-          </span>
-        )}
+      <Icon name="exclamation-circle" className="size-3.5 text-destructive" />
+      <span className="min-w-0 flex-1 truncate" title={message}>
+        {message}
       </span>
-      {connected && !connection?.writeAccess && (
+      {!connected ? (
         <Button
           variant="ghost"
-          size="sm"
-          className="h-7 text-xs"
+          size="icon"
+          className={iconClass}
+          title={t('cloud:manage')}
+          aria-label={t('cloud:manage')}
           onClick={() => openModal('settings', { tab: 'connections' })}
         >
-          {t('cloud:enable_editing')}
+          <Icon name="cog" className="size-3.5" />
         </Button>
-      )}
-      {connected &&
-        !['saving', 'unconfirmed'].includes(tab?.remoteSave?.phase ?? '') && (
-          <>
-            {tab?.remoteSave?.phase === 'conflict' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => void manager?.reload(activeFile!, true)}
-              >
-                {t('cloud:compare')}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => void manager?.reload(activeFile!)}
-            >
-              {t('cloud:reload')}
-            </Button>
-          </>
-        )}
-      {tab?.remoteSave?.phase === 'unconfirmed' && (
+      ) : unknown ? (
         <Button
           variant="ghost"
-          size="sm"
-          className="h-7 text-xs"
-          disabled={!connected}
-          onClick={() => void fileManager?.saveTab(activeFile!)}
+          size="icon"
+          className={iconClass}
+          title={t('cloud:check_save')}
+          aria-label={t('cloud:check_save')}
+          onClick={() => void fileManager?.saveTab(activeFile)}
         >
-          {t('cloud:check_save')}
+          <Icon name="refresh" className="size-3.5" />
+        </Button>
+      ) : phase === 'conflict' ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={iconClass}
+          title={t('cloud:compare')}
+          aria-label={t('cloud:compare')}
+          onClick={() => void manager?.reload(activeFile, true)}
+        >
+          <Icon name="code" className="size-3.5" />
+        </Button>
+      ) : null}
+      {connected && !unknown && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={iconClass}
+          aria-label={t('cloud:reload')}
+          title={t('cloud:reload')}
+          onClick={() => void manager?.reload(activeFile)}
+        >
+          <Icon name="refresh" className="size-3.5" />
         </Button>
       )}
       <Button
         variant="ghost"
-        size="sm"
-        className="h-7 text-xs"
-        onClick={() => {
-          if (activeFile) fileManager?.copyRemoteToLocal(activeFile);
-        }}
+        size="icon"
+        className={iconClass}
+        aria-label={t('cloud:local_copy')}
+        title={t('cloud:local_copy')}
+        onClick={() => fileManager?.copyRemoteToLocal(activeFile)}
       >
-        {t('cloud:local_copy')}
+        <Icon name="copy" className="size-3.5" />
       </Button>
     </div>
   );

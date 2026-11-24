@@ -18,6 +18,8 @@ import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons/faExclama
 import { faExpand } from '@fortawesome/free-solid-svg-icons/faExpand';
 import { faEye } from '@fortawesome/free-solid-svg-icons/faEye';
 import { faEyeSlash } from '@fortawesome/free-solid-svg-icons/faEyeSlash';
+import { faEllipsis } from '@fortawesome/free-solid-svg-icons/faEllipsis';
+import { faFileCirclePlus } from '@fortawesome/free-solid-svg-icons/faFileCirclePlus';
 import { faFileExport } from '@fortawesome/free-solid-svg-icons/faFileExport';
 import { faFile } from '@fortawesome/free-solid-svg-icons/faFile';
 import { faFilePdf } from '@fortawesome/free-solid-svg-icons/faFilePdf';
@@ -63,6 +65,8 @@ library.add(
   faExpand,
   faEye,
   faEyeSlash,
+  faEllipsis,
+  faFileCirclePlus,
   faFile,
   faFolder,
   faFolderOpen,

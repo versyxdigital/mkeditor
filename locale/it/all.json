@@ -279,7 +279,10 @@
     "save_unconfirmed": "Esito del salvataggio sconosciuto.",
     "error_unconfirmed": "Google potrebbe aver salvato il file. Verifica il contenuto prima di un’altra scrittura; il contenuto locale viene conservato.",
     "error_duplicate": "Esiste già un file con questo nome. Scegline un altro; il file esistente non è stato modificato.",
-    "new_file_name": "Nuovo file.md"
+    "new_file_name": "Nuovo file.md",
+    "location": "Posizione cartella",
+    "actions": "Altre azioni",
+    "document_actions": "Azioni documento Google Drive"
   },
   "menus-alerts": {
     "primary": "Primario",

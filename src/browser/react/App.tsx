@@ -168,7 +168,6 @@ export const App: React.FC<AppProps> = ({
                             <TitleBar />
                             <Navbar />
                             <TabBar />
-                            <RemoteDocumentNotice />
                             <Shell
                               onEditorReady={onEditorReady}
                               workspaceGroupRef={workspaceGroupRef}
@@ -514,7 +513,15 @@ export const Shell: React.FC<{
       </Panel>
       <Separator className="gutter sidebar-gutter-horizontal" />
       <Panel id="workspace-pane">
-        <Workspace groupRef={workspaceGroupRef} onEditorReady={onEditorReady} />
+        <div className="flex h-full min-h-0 min-w-0 flex-col">
+          <RemoteDocumentNotice />
+          <div className="min-h-0 min-w-0 flex-1">
+            <Workspace
+              groupRef={workspaceGroupRef}
+              onEditorReady={onEditorReady}
+            />
+          </div>
+        </div>
       </Panel>
       {showAssistant && (
         <>

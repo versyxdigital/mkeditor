@@ -279,7 +279,10 @@
     "save_unconfirmed": "Kayıt sonucu bilinmiyor.",
     "error_unconfirmed": "Google dosyayı kaydetmiş olabilir. Yeniden yazmadan önce içeriğini kontrol edin; yerel içeriğiniz korunur.",
     "error_duplicate": "Bu adda bir dosya zaten var. Başka bir ad seçin; mevcut dosya değiştirilmedi.",
-    "new_file_name": "Yeni dosya.md"
+    "new_file_name": "Yeni dosya.md",
+    "location": "Klas?r konumu",
+    "actions": "Di?er i?lemler",
+    "document_actions": "Google Drive belge i?lemleri"
   },
   "menus-alerts": {
     "primary": "Birincil",
