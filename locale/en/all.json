@@ -298,7 +298,16 @@
     "no_folders": "No folders here.",
     "check_operation": "Check operation",
     "open": "Open",
-    "operation_unconfirmed": "Google has not confirmed this change. Check the operation before trying again."
+    "operation_unconfirmed": "Google has not confirmed this change. Check the operation before trying again.",
+    "recovery_storage_error": "Could not save or read local Drive recovery data. Your previous recovery copy has been kept.",
+    "recovered_draft": "Recovered local draft. Check Drive before saving.",
+    "checking_recovery": "Checking recovered document with Drive…",
+    "check_recovery": "Check recovered document",
+    "error_not_applied": "Google did not apply this operation. Your draft is retained.",
+    "error_pending_operation": "Check the interrupted operation before making another change to this file.",
+    "recovery_quit_title": "Recovery checkpoint failed",
+    "recovery_quit_message": "Your latest changes could not be saved locally. Quit anyway, or cancel to keep the app open?",
+    "recovery_quit_anyway": "Quit anyway"
   },
   "menus-alerts": {
     "primary": "Primary",

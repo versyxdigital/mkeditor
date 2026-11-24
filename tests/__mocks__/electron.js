@@ -85,6 +85,7 @@ const protocol = {
 // per-suite. The defaults give a working round-trip via base64 + a
 // fixed prefix so jest.requireActual paths still behave sanely.
 const safeStorage = {
+  getSelectedStorageBackend: jest.fn(() => 'gnome_libsecret'),
   isAsyncEncryptionAvailable: jest.fn(async () => true),
   encryptStringAsync: jest.fn(async (s) => Buffer.from('ENC:' + s, 'utf-8')),
   decryptStringAsync: jest.fn(async (buf) => {

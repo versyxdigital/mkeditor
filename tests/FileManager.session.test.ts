@@ -132,7 +132,7 @@ describe('FileManager.serializeSession', () => {
 
     const payload = fm.serializeSession();
     expect(payload).toEqual({
-      version: 2,
+      version: 3,
       tabs: [],
       activeFile: null,
       workspaceRoot: null,
@@ -525,6 +525,22 @@ describe('FileManager.scheduleSessionSave', () => {
 
     jest.advanceTimersByTime(1000);
     expect(sent.filter((s) => s.channel === 'to:session:save')).toHaveLength(0);
+  });
+
+  it('a quit checkpoint during startup leaves the saved session untouched', async () => {
+    const { FileManager, EditorDispatcher } = await loadFileManager();
+    const { bridge, sent } = makeBridge();
+    const fm = new FileManager(
+      bridge as never,
+      makeMkeditor() as never,
+      new EditorDispatcher(),
+    );
+    fm.suspendSessionSaves();
+    fm.seedUntitled('temporary bootstrap content');
+    fm.flushSessionCheckpoint('early-close');
+    expect(
+      sent.find((entry) => entry.channel === 'to:session:save')?.data,
+    ).toMatchObject({ flushId: 'early-close', restoreEnabled: false });
   });
 
   it('re-checks the suspend flag at flush time (slow bootstrap)', async () => {

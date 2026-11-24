@@ -298,7 +298,16 @@
     "no_folders": "此处没有文件夹。",
     "check_operation": "检查操作",
     "open": "打开",
-    "operation_unconfirmed": "Google 尚未确认此更改。请先检查操作，然后再重试。"
+    "operation_unconfirmed": "Google 尚未确认此更改。请先检查操作，然后再重试。",
+    "recovery_storage_error": "无法保存或读取本地 Drive 恢复数据。之前的恢复副本已保留。",
+    "recovered_draft": "已恢复本地草稿。保存前请检查 Drive。",
+    "checking_recovery": "正在与 Drive 核对恢复的文档…",
+    "check_recovery": "检查恢复的文档",
+    "error_not_applied": "Google 未执行此操作。草稿已保留。",
+    "error_pending_operation": "再次修改此文件之前，请先检查中断的操作。",
+    "recovery_quit_title": "恢复检查点保存失败",
+    "recovery_quit_message": "无法在本地保存最新更改。仍然退出，还是取消以保持应用打开？",
+    "recovery_quit_anyway": "仍然退出"
   },
   "menus-alerts": {
     "primary": "主要",

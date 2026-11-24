@@ -24,6 +24,7 @@
     "serve-app": "electron .",
     "verify-drive-writes": "electron scripts/verify-drive-precondition.cjs --authorize-disposable-test",
     "test:drive-smoke": "node scripts/drive-smoke/run.cjs",
+    "test:drive-recovery": "node scripts/drive-smoke/run.cjs --recovery",
     "test:drive-live": "node scripts/drive-smoke/run.cjs --live --authorize-disposable-test",
     "publish": "npm run build-editor && npm run build-app && electron-builder --publish always"
   },

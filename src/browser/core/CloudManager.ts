@@ -96,10 +96,35 @@ export class CloudManager {
     private readonly files: FileManager,
   ) {
     files.setRemoteOperations?.({
+      acknowledge: (operationId) => {
+        void this.request({ action: 'acknowledge', operationId }).catch(
+          () => {},
+        );
+      },
+      canCheck: (document) =>
+        this.snapshot.connections.some(
+          (entry) =>
+            entry.id === document.connectionId &&
+            entry.accountId === document.accountId &&
+            entry.status === 'connected',
+        ),
+      check: async (document) => {
+        const response = await this.request({
+          action: 'open',
+          connectionId: document.connectionId,
+          accountId: document.accountId,
+          itemId: document.item.id,
+        });
+        if (!response.document) throw 'network';
+        return response.document;
+      },
       canEdit: (document) => this.canEdit(document),
-      save: async ({ document, content, operationId }) => {
+      save: async ({ document, content, operationId, epoch, sequence }) => {
         const result = await this.request({
           action: 'save',
+          epoch,
+          sequence,
+          name: document.item.name,
           connectionId: document.connectionId,
           accountId: document.accountId,
           itemId: document.item.id,
@@ -146,6 +171,22 @@ export class CloudManager {
   }
   private onState(state: CloudState) {
     if (state.revision < this.snapshot.revision) return;
+    const shouldCheck =
+      state.connections.some(
+        (incoming) =>
+          incoming.status === 'connected' &&
+          !this.snapshot.connections.some(
+            (previous) =>
+              previous.id === incoming.id &&
+              previous.accountId === incoming.accountId &&
+              previous.status === 'connected' &&
+              previous.writeAccess === incoming.writeAccess,
+          ),
+      ) ||
+      (state.pendingOperations ?? []).map((op) => op.operationId).join() !==
+        (this.snapshot.pendingOperations ?? [])
+          .map((op) => op.operationId)
+          .join();
     const current = this.snapshot.connections.find(
       (entry) => entry.id === this.snapshot.workspace,
     );
@@ -169,6 +210,8 @@ export class CloudManager {
     }
     this.update({
       ...state,
+      pendingOperations: state.pendingOperations ?? [],
+      recoveryError: state.recoveryError ?? false,
       movePicker:
         this.snapshot.movePicker &&
         state.connections.some(
@@ -189,6 +232,8 @@ export class CloudManager {
       ),
     });
     this.files.refreshRemoteAccess?.();
+    this.files.markRecoveredMoves?.(state.pendingOperations ?? []);
+    if (shouldCheck) this.files.checkRecoveredRemoteDocuments?.();
     if (
       incoming?.status === 'connected' &&
       (current?.status !== 'connected' ||
@@ -236,6 +281,56 @@ export class CloudManager {
     if (this.initialized) return;
     this.initialized = true;
     void this.run({ action: 'state' });
+  }
+
+  async checkRestoredOperation(
+    operation: import('../../app/interfaces/Cloud').CloudPendingOperation,
+  ): Promise<void> {
+    if (this.snapshot.busy.includes(operation.operationId)) return;
+    this.update({
+      busy: [...this.snapshot.busy, operation.operationId],
+      error: undefined,
+    });
+    try {
+      const response = await this.request({
+        action:
+          operation.kind === 'save' || operation.kind === 'create'
+            ? 'reconcile'
+            : 'reconcileItem',
+        connectionId: operation.connectionId,
+        accountId: operation.accountId,
+        operationId: operation.operationId,
+      });
+      if (response.document) {
+        this.files.openRemoteDocument(response.document);
+        this.files.checkRecoveredRemoteDocuments?.();
+      } else {
+        if (response.item && operation.kind === 'move')
+          await this.files.moveRemoteDocument(
+            {
+              connectionId: operation.connectionId,
+              accountId: operation.accountId,
+              item: response.item,
+            },
+            async () => ({
+              item: response.item!,
+              previousValidator: response.previousValidator,
+            }),
+          );
+        await this.request({
+          action: 'acknowledge',
+          operationId: operation.operationId,
+        });
+      }
+      if (this.snapshot.workspace === operation.connectionId)
+        void this.browse();
+    } catch (error) {
+      this.update({ error: error as CloudWriteError });
+    } finally {
+      this.update({
+        busy: this.snapshot.busy.filter((id) => id !== operation.operationId),
+      });
+    }
   }
   async run(command: CloudCommand): Promise<boolean> {
     if (
@@ -565,6 +660,7 @@ export class CloudManager {
       this.update({ pendingCreate: undefined });
       if (this.snapshot.workspace === pending.connectionId) void this.browse();
     } catch (error) {
+      if (error === 'not_applied') this.update({ pendingCreate: undefined });
       this.update({ error: error as CloudWriteError });
     } finally {
       this.update({ busy: this.snapshot.busy.filter((id) => id !== 'create') });
@@ -618,6 +714,10 @@ export class CloudManager {
           name,
         });
         if (!result.item) throw 'unconfirmed';
+        void this.request({
+          action: 'acknowledge',
+          operationId: pendingItem.operationId,
+        }).catch(() => {});
         if (this.snapshot.workspace === connection.id) void this.browse();
       } catch (error) {
         if (error === 'unconfirmed') this.update({ pendingItem });
@@ -773,6 +873,10 @@ export class CloudManager {
           };
         },
       );
+      void this.request({
+        action: 'acknowledge',
+        operationId: pendingItem.operationId,
+      }).catch(() => {});
       this.update({ movePicker: undefined });
       if (this.snapshot.workspace === picker.connectionId) void this.browse();
     } catch (error) {
@@ -820,9 +924,22 @@ export class CloudManager {
           check,
         );
       else await check();
+      void this.request({
+        action: 'acknowledge',
+        operationId: pending.operationId,
+      }).catch(() => {});
       this.update({ pendingItem: undefined });
       if (this.snapshot.workspace === pending.connectionId) void this.browse();
     } catch (error) {
+      if (error === 'not_applied') {
+        if (pending.item)
+          this.files.clearUnappliedMove?.(
+            pending.connectionId,
+            pending.accountId,
+            pending.item.id,
+          );
+        this.update({ pendingItem: undefined });
+      }
       this.update({ error: error as CloudWriteError });
     } finally {
       this.update({

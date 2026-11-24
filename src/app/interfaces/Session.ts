@@ -8,14 +8,26 @@
  * `unknown` here so the main process compiles without pulling Monaco
  * into the node-side bundle.
  */
+import type { RemoteTabRecovery } from './Cloud';
+export interface SessionRecoveryCopy {
+  title: string;
+  message: string;
+  quit: string;
+  cancel: string;
+}
 export interface SessionPayload {
   /**
    * Format version. v1 was the original session-restore shape; v2 adds
-   * the optional `assistant` view-state block. The loader accepts either
-   * version (a v1 file loads with `assistant` undefined) and the writer
-   * always stamps the current `AppSession.SCHEMA_VERSION` (2 today).
+   * the optional `assistant` view-state block; v3 adds remote recovery.
+   * The loader accepts all three versions and the writer stamps the
+   * current `AppSession.SCHEMA_VERSION`.
    */
-  version: 1 | 2;
+  version: 1 | 2 | 3;
+  restoreEnabled?: boolean;
+  flushId?: string;
+  failureCopy?: SessionRecoveryCopy;
+  resumeAfterClear?: string;
+  cloudAcknowledgements?: string[];
   /** Insertion order is tab order. */
   tabs: SessionTab[];
   /** Path of the active tab. Must match a `tabs[].path` or be null. */
@@ -48,6 +60,7 @@ export interface AssistantViewState {
 }
 
 export interface SessionTab {
+  remote?: RemoteTabRecovery;
   /** Real file path, or a synthetic `untitled-N` id. */
   path: string;
   /** Display name (tab label). */
@@ -66,6 +79,7 @@ export interface SessionTab {
  * synchronously without a second IPC round-trip per file.
  */
 export interface SessionRestoreEnvelope {
+  recoveryError?: boolean;
   /** Filtered session — missing real-file tabs already removed. */
   session: SessionPayload | null;
   /** Real-file paths that were in the persisted session but no longer exist. */

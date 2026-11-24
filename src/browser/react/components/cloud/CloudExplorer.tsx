@@ -401,6 +401,31 @@ export const CloudExplorer: React.FC = () => {
                     {t('cloud:check_operation')}
                   </Button>
                 )}
+                {state.pendingOperations
+                  ?.filter(
+                    (operation) =>
+                      operation.connectionId === connection.id &&
+                      operation.accountId === connection.accountId,
+                  )
+                  .map((operation) => (
+                    <Button
+                      key={operation.operationId}
+                      size="sm"
+                      variant="ghost"
+                      className="flex h-8 w-full justify-start gap-2 px-2 text-xs"
+                      disabled={state.busy.includes(operation.operationId)}
+                      title={`${t('cloud:check_operation')} · ${operation.name ?? operation.itemId}`}
+                      onClick={() =>
+                        void manager?.checkRestoredOperation(operation)
+                      }
+                    >
+                      <Icon name="refresh" className="size-3.5 shrink-0" />
+                      <span className="truncate">
+                        {t('cloud:check_operation')} ·{' '}
+                        {operation.name ?? operation.itemId}
+                      </span>
+                    </Button>
+                  ))}
                 {!state.loading &&
                   !state.error &&
                   !creating &&

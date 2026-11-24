@@ -13,13 +13,23 @@ import { AppBridge } from '../src/app/lib/AppBridge';
 import { AppSession } from '../src/app/lib/AppSession';
 
 jest.mock('../src/app/lib/AppSession', () => ({
-  AppSession: { save: jest.fn() },
+  AppSession: {
+    save: jest.fn(() => true),
+    isValidPayload: jest.fn(() => true),
+  },
+}));
+jest.mock('../src/app/lib/cloud/CloudRecoveryStore', () => ({
+  cloudRecoveryStore: {
+    load: jest.fn(async () => ({ operations: [], acknowledged: [] })),
+    saveSession: jest.fn(async () => {}),
+  },
 }));
 
 function fakeWindow() {
   return {
     webContents: { id: 41, send: jest.fn() },
     once: jest.fn(),
+    isDestroyed: () => false,
     setTitle: jest.fn(),
   } as unknown as BrowserWindow;
 }
@@ -158,7 +168,7 @@ describe('main-owned workspace authorization', () => {
     expect(AppStorage.adoptWorkspaceRoot(next)).toBe(false);
   });
 
-  it('enforces adoption and session-root clamping on the actual IPC handlers', () => {
+  it('enforces adoption and session-root clamping on the actual IPC handlers', async () => {
     const window = fakeWindow();
     new AppBridge(window, true);
     const handler = (channel: string) =>
@@ -177,21 +187,25 @@ describe('main-owned workspace authorization', () => {
       assistant: { sidebarOpen: true, size: 23 },
     };
     handler('to:session:save')(event, payload);
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(AppSession.save).toHaveBeenLastCalledWith({
       ...payload,
+      version: 3,
       workspaceRoot: realpathSync(previous),
     });
     AppStorage.offerWorkspaceRoot(next);
     handler('to:workspace:set')(event, { root: next });
     expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync(next));
     handler('to:session:save')(event, { ...payload, workspaceRoot: next });
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(AppSession.save).toHaveBeenLastCalledWith({
       ...payload,
+      version: 3,
       workspaceRoot: next,
     });
   });
 
-  it('cannot launder a renderer root through persistence when no workspace has been selected', () => {
+  it('cannot launder a renderer root through persistence when no workspace has been selected', async () => {
     const window = fakeWindow();
     new AppBridge(window, true);
     const handler = (ipcMain.on as jest.Mock).mock.calls.find(
@@ -201,8 +215,9 @@ describe('main-owned workspace authorization', () => {
       { sender: { id: 41 } },
       { version: 2, tabs: [], activeFile: null, workspaceRoot: arbitrary },
     );
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(AppSession.save).toHaveBeenLastCalledWith({
-      version: 2,
+      version: 3,
       tabs: [],
       activeFile: null,
       workspaceRoot: null,

@@ -94,5 +94,14 @@
   "no_folders": "No hay carpetas aquí.",
   "check_operation": "Comprobar operación",
   "open": "Abrir",
-  "operation_unconfirmed": "Google no ha confirmado este cambio. Comprueba la operación antes de volver a intentarlo."
+  "operation_unconfirmed": "Google no ha confirmado este cambio. Comprueba la operación antes de volver a intentarlo.",
+  "recovery_storage_error": "No se pudieron guardar o leer los datos locales de recuperación de Drive. Se ha conservado la copia anterior.",
+  "recovered_draft": "Borrador local recuperado. Comprueba Drive antes de guardar.",
+  "checking_recovery": "Comprobando el documento recuperado con Drive…",
+  "check_recovery": "Comprobar documento recuperado",
+  "error_not_applied": "Google no aplicó esta operación. Tu borrador se conserva.",
+  "error_pending_operation": "Comprueba la operación interrumpida antes de volver a modificar este archivo.",
+  "recovery_quit_title": "Error al guardar la recuperación",
+  "recovery_quit_message": "No se pudieron guardar tus últimos cambios localmente. ¿Salir de todos modos o cancelar para mantener la aplicación abierta?",
+  "recovery_quit_anyway": "Salir de todos modos"
 }

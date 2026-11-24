@@ -20,6 +20,7 @@ function setup() {
     createLocalCopy: jest.fn(),
     setRemoteOperations: jest.fn(),
     refreshRemoteAccess: jest.fn(),
+    checkRecoveredRemoteDocuments: jest.fn(),
     tabs: new Map(),
     models: new Map(),
     getSnapshot: jest.fn(),
@@ -550,5 +551,22 @@ test('a closed or disconnected picker ignores late folder replies and read-only 
   await Promise.resolve();
   expect(manager.getSnapshot().movePicker).toBeUndefined();
   expect(manager.canMove(movable)).toBe(false);
+  manager.dispose();
+});
+
+test('unchanged cloud states do not continuously retry failed recovery reads', () => {
+  const { manager, files, state, push } = setup();
+  push(state);
+  expect(files.checkRecoveredRemoteDocuments).toHaveBeenCalledTimes(1);
+  push(state);
+  push({ ...state, revision: 2 });
+  expect(files.checkRecoveredRemoteDocuments).toHaveBeenCalledTimes(1);
+  push({
+    ...state,
+    revision: 3,
+    connections: [{ ...state.connections[0], status: 'disconnected' }],
+  });
+  push({ ...state, revision: 4 });
+  expect(files.checkRecoveredRemoteDocuments).toHaveBeenCalledTimes(2);
   manager.dispose();
 });

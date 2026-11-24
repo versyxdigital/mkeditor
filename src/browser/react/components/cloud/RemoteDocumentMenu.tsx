@@ -37,11 +37,14 @@ export const RemoteDocumentMenu: React.FC = () => {
   const failure = ['conflict', 'failed', 'unconfirmed'].includes(
     tab.remoteSave?.phase ?? '',
   );
-  const status = !connected
-    ? t('cloud:disconnected')
-    : tab.remoteSave
-      ? t(`cloud:save_${tab.remoteSave.phase}`)
-      : t(manager?.canEdit(remote) ? 'cloud:editable' : 'cloud:read_only');
+  const status =
+    tab.remoteRecovery && !failure
+      ? t('cloud:recovered_draft')
+      : !connected
+        ? t('cloud:disconnected')
+        : tab.remoteSave
+          ? t(`cloud:save_${tab.remoteSave.phase}`)
+          : t(manager?.canEdit(remote) ? 'cloud:editable' : 'cloud:read_only');
   const canReload = connected && !saving && !unknown;
   const menuClass = 'whitespace-nowrap text-xs';
   return (
@@ -83,6 +86,15 @@ export const RemoteDocumentMenu: React.FC = () => {
             {connected ? status : t('cloud:disconnected')}
           </div>
           <DropdownMenuSeparator />
+          {tab.remoteRecovery && (
+            <DropdownMenuItem
+              className={menuClass}
+              disabled={!connected || tab.remoteRecovery.status === 'checking'}
+              onSelect={() => void fileManager?.checkRemoteRecovery(activeFile)}
+            >
+              {t('cloud:check_recovery')}
+            </DropdownMenuItem>
+          )}
           {connected && !connection?.writeAccess && (
             <DropdownMenuItem
               className={menuClass}

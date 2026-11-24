@@ -5,6 +5,12 @@ const path = require('node:path');
 const { CloudService } = require('../../dist/app/lib/cloud/CloudService');
 const { CloudStore } = require('../../dist/app/lib/cloud/CloudStore');
 const { GoogleDrive } = require('../../dist/app/lib/cloud/GoogleDrive');
+const {
+  CloudRecoveryStore,
+} = require('../../dist/app/lib/cloud/CloudRecoveryStore');
+const {
+  CloudSessionRecovery,
+} = require('../../dist/app/lib/cloud/CloudSessionRecovery');
 
 const option = process.argv.find((value) =>
   value.startsWith('--mkeditor-smoke='),
@@ -45,6 +51,40 @@ const persistScope = () =>
   fs.writeFileSync(scopeFile, JSON.stringify(scope, null, 2));
 let win, service;
 const store = new CloudStore(path.join(profile, 'connections.json'));
+const localSessionFile = path.join(profile, 'session.json');
+const recoveryStore = new CloudRecoveryStore(
+  path.join(profile, 'cloud-recovery.bin'),
+);
+const localSessionAdapter = {
+  save(payload) {
+    fs.writeFileSync(localSessionFile + '.tmp', JSON.stringify(payload));
+    fs.renameSync(localSessionFile + '.tmp', localSessionFile);
+    return true;
+  },
+  clear() {
+    if (fs.existsSync(localSessionFile)) fs.unlinkSync(localSessionFile);
+    return true;
+  },
+};
+const recovery = new CloudSessionRecovery(recoveryStore, localSessionAdapter);
+if (recovery.local !== localSessionAdapter)
+  throw Error('Rebuild the app before running isolated session checks.');
+let checkpointSequence = 0;
+const checkpoints = new Map();
+function checkpoint() {
+  return new Promise((resolve) => {
+    const id = `smoke-checkpoint-${++checkpointSequence}`;
+    const timer = setTimeout(() => {
+      checkpoints.delete(id);
+      resolve(false);
+    }, 5000);
+    checkpoints.set(id, (ok) => {
+      clearTimeout(timer);
+      resolve(ok);
+    });
+    win.webContents.send('from:session:flush-request', { id });
+  });
+}
 const drive = options.live
   ? new GoogleDrive()
   : new GoogleDrive(options.endpoints);
@@ -105,6 +145,7 @@ app
             clientId: 'smoke.apps.googleusercontent.com',
             clientValue: 'smoke-public-value',
           },
+      recoveryStore,
     );
     for (const [channel, value] of [
       ['mked:get-locale', 'en'],
@@ -115,6 +156,28 @@ app
         event.returnValue = value;
       });
     ipcMain.handle('mked:path:dirname', (_event, value) => path.dirname(value));
+    ipcMain.on('to:session:save', async (event, payload) => {
+      if (event.sender !== win.webContents) return;
+      let ok = false;
+      try {
+        await recovery.save(payload);
+        ok = true;
+      } catch {}
+      if (ok && !event.sender.isDestroyed())
+        event.sender.send('from:cloud:state', await service.state());
+      if (!event.sender.isDestroyed())
+        event.sender.send('from:session:saved', { ok });
+      if (payload.flushId) {
+        checkpoints.get(payload.flushId)?.(ok);
+        checkpoints.delete(payload.flushId);
+      }
+    });
+    ipcMain.on('to:session:clear', async (event) => {
+      if (event.sender === win.webContents) {
+        const token = await recovery.clear();
+        event.sender.send('from:session:cleared', { token });
+      }
+    });
     ipcMain.on('to:cloud:request', async (event, request) => {
       if (event.sender !== win.webContents) return;
       const command = request.command;
@@ -128,6 +191,22 @@ app
     globalThis.driveSmoke = {
       state: () => service.state(),
       scope: () => ({ ...scope }),
+      checkpoint,
+      recoveryMeta: async () => {
+        const data = await recoveryStore.load(),
+          session = data.session;
+        return session
+          ? {
+              activeFile: session.activeFile,
+              tabs: session.tabs.map((tab) => ({
+                path: tab.path,
+                name: tab.name,
+                dirty: tab.remote?.dirty,
+                viewState: tab.viewState,
+              })),
+            }
+          : null;
+      },
       async prepareRoot() {
         if (scope.rootId) return { ...scope };
         const state = await service.state();
@@ -136,19 +215,21 @@ app
         );
         if (!entry)
           throw Error('Enable editing before preparing a disposable folder.');
+        const operationId = `smoke-root-${Date.now()}`;
         const result = await execute({
           action: 'createFolder',
           connectionId: entry.id,
           accountId: entry.accountId,
           folderId: 'root',
           name: scope.rootName,
-          operationId: `smoke-root-${Date.now()}`,
+          operationId,
         });
         if (!result.ok || !result.item)
           throw Error('Disposable root creation failed.');
         scope.rootId = result.item.id;
         scope.folders.push(result.item.id);
         persistScope();
+        await execute({ action: 'acknowledge', operationId });
         return { ...scope };
       },
       async expireCredentials() {
@@ -196,6 +277,14 @@ app
         preload: path.resolve(__dirname, '../../dist/app/preload.js'),
       },
     });
+    win.webContents.on('did-finish-load', async () => {
+      const local = fs.existsSync(localSessionFile)
+        ? JSON.parse(fs.readFileSync(localSessionFile, 'utf8'))
+        : null;
+      const envelope = await recovery.restore(local);
+      if (!win.isDestroyed())
+        win.webContents.send('from:session:restore', envelope);
+    });
     await win.loadFile(path.resolve(__dirname, '../../dist/index.html'));
   })
   .catch(() => {
@@ -204,3 +293,17 @@ app
   });
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit', () => service?.dispose());
+let checkpointApproved = false;
+app.on('before-quit', (event) => {
+  if (checkpointApproved || !win || win.isDestroyed()) return;
+  event.preventDefault();
+  void checkpoint().then((ok) => {
+    if (ok) {
+      checkpointApproved = true;
+      app.quit();
+    } else {
+      console.error('The smoke session checkpoint failed.');
+      app.exit(1);
+    }
+  });
+});

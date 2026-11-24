@@ -181,10 +181,11 @@
           and AI provider connections described here are desktop features.
         </p>
         <p>
-          Saved API keys and account tokens use operating-system-backed
-          encryption. Documents, conversation history, ordinary settings and
-          session files are not encrypted by MKEditor itself; protection also
-          depends on your device, browser, account permissions and backups.
+          Saved API keys, account tokens and Drive recovery snapshots use
+          operating-system-backed encryption. Ordinary document files,
+          conversation history, settings and local session files are not
+          encrypted by MKEditor itself; protection also depends on your device,
+          browser, account permissions and backups.
         </p>
       </section>
 
@@ -228,11 +229,16 @@
         </p>
         <p>
           Connection names, account labels and encrypted tokens are stored
-          locally in <code>~/.mkeditor/connections.json</code>. Open document
-          contents and unresolved save snapshots are held in application memory.
-          Remote tabs are not restored after restart. Copies you save locally,
-          text you share in AI conversations and operating-system backups can
-          persist separately.
+          locally in <code>~/.mkeditor/connections.json</code>. With session
+          restoration enabled, Drive tab contents, unsaved drafts, saved
+          baselines and cursor positions are checkpointed locally in the
+          OS-encrypted <code>~/.mkeditor/cloud-recovery.bin</code>. The same
+          encrypted store records file/account identifiers and write intentions
+          before saves, creations and moves, so interrupted operations can be
+          checked after restart without automatically repeating them. Restoring
+          a draft does not upload it to Google. Copies you save locally, text
+          you share in AI conversations and operating-system backups can persist
+          separately.
         </p>
         <p>
           MKEditor's use and transfer of information received from Google APIs
@@ -353,9 +359,12 @@
             <strong>Google Drive:</strong> Disconnect removes locally stored
             credentials and the account label; Remove also removes the
             connection configuration. Existing open buffers and local copies
-            remain. Close buffers you no longer need. A storage failure is
-            reported and may leave encrypted credentials on disk. You can
-            separately revoke MKEditor's authorization through your
+            remain. Clear saved session removes cached session drafts;
+            unresolved operation records are retained for checking and cleared
+            after acknowledgement. Later document activity can create new
+            checkpoints. A storage failure is reported and may leave encrypted
+            credentials on disk. You can separately revoke MKEditor's
+            authorization through your
             <a href="https://myaccount.google.com/connections"
               >Google account connections</a
             >. Disconnecting does not delete files stored in Drive or undo a

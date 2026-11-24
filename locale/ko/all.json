@@ -298,7 +298,16 @@
     "no_folders": "폴더가 없습니다.",
     "check_operation": "작업 확인",
     "open": "열기",
-    "operation_unconfirmed": "Google에서 이 변경을 확인하지 않았습니다. 다시 시도하기 전에 작업을 확인하세요."
+    "operation_unconfirmed": "Google에서 이 변경을 확인하지 않았습니다. 다시 시도하기 전에 작업을 확인하세요.",
+    "recovery_storage_error": "로컬 Drive 복구 데이터를 저장하거나 읽을 수 없습니다. 이전 복구 사본은 유지됩니다.",
+    "recovered_draft": "로컬 초안을 복구했습니다. 저장하기 전에 Drive를 확인하세요.",
+    "checking_recovery": "복구된 문서를 Drive와 확인 중…",
+    "check_recovery": "복구된 문서 확인",
+    "error_not_applied": "Google에서 이 작업을 적용하지 않았습니다. 초안은 유지됩니다.",
+    "error_pending_operation": "이 파일을 다시 변경하기 전에 중단된 작업을 확인하세요.",
+    "recovery_quit_title": "복구 데이터 저장 실패",
+    "recovery_quit_message": "최신 변경 사항을 로컬에 저장하지 못했습니다. 그래도 종료하거나 취소하여 앱을 계속 열어 두세요.",
+    "recovery_quit_anyway": "그래도 종료"
   },
   "menus-alerts": {
     "primary": "기본",

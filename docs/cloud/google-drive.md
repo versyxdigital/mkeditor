@@ -62,7 +62,19 @@ Connection and save problems show a compact recovery bar above the workspace, wi
 - **Save outcome unknown:** the response may have been lost after Google committed the write. **Check save** reads and compares the captured snapshot and revision; it never replays the write. Reload is blocked while unresolved. A local copy remains available.
 - **Create outcome unknown:** **Check created file** checks the generated ID and operation marker, without repeating creation. A non-empty copy also gets a local recovery buffer. Keep the app open while resolving the result.
 
-Close, workspace-switch and quit protection includes dirty buffers and pending/unconfirmed saves. Explicit discard can lose unsaved content. Unsaved remote edits and unresolved operations exist only in the running app; there is no restart/crash recovery promise. Keep a local copy for durable recovery. A write already sent to Google may complete after disconnect, but queued writes cannot begin and credentials remain cleared.
+Close, workspace-switch and quit protection includes dirty buffers and pending/unconfirmed saves. Explicitly discarding a tab removes its session draft. A write already sent to Google may complete after disconnect, but queued writes cannot begin and credentials remain cleared.
+
+## Remote session recovery
+
+With **Restore previous session** enabled, Drive tabs reopen with their tab order, active tab, cursor/scroll position and locally checkpointed text. Unsaved drafts remain marked as unsaved. Recovery works before Google is reachable; reconnect to the same account before saving, or use **Edit a local copy**.
+
+MKEditor checks the latest Drive version before enabling a recovered document's Save. A clean tab can refresh automatically. A changed Drive document with local edits opens conflict recovery, preserving both versions. Missing files and removed accounts keep their cached text available; they are not recreated or retargeted to a different account. Restoring never automatically uploads draft text.
+
+Remote text and the last saved baseline live in the OS-encrypted `~/.mkeditor/cloud-recovery.bin`, separately from the plaintext local session. Checkpoints run while typing, and window close/quit waits for an acknowledged disk write. A forced crash recovers the last successfully written snapshot. Checkpoints are bounded to one in flight, with newer edits coalesced; the recovery store has a 64 MiB serialized-data limit. Storage/encryption failures retain the previous snapshot and report an error. If quitting cannot commit a checkpoint, you can cancel or explicitly quit anyway.
+
+Write intentions are journaled before contacting Drive. Interrupted saves, creates and moves are read back after restart, never replayed automatically. Recovery keeps edits made after an in-flight save separate from its frozen write snapshot. Explorer also offers **Check operation** for interrupted operations. A write confirmed not to have happened can be retried explicitly.
+
+**Clear saved session** removes cached session drafts and prevents an old queued/quit checkpoint from immediately restoring them. Later document activity can create a new session checkpoint. Unresolved operation records remain available for checking, even after session drafts are cleared. Turning restoration off stops draft checkpointing and reopening; it does not erase an existing checkpoint. Use Clear saved session to remove that snapshot.
 
 ## Connection lifecycle and storage
 

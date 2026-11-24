@@ -4,6 +4,11 @@ import { GoogleDrive } from '../src/app/lib/cloud/GoogleDrive';
 import type { CloudPersistence } from '../src/app/lib/cloud/CloudStore';
 import type { CloudCommand, CloudState } from '../src/app/interfaces/Cloud';
 import { driveFixture } from './fixtures/driveServer';
+import { CloudRecoveryStore } from '../src/app/lib/cloud/CloudRecoveryStore';
+import { mkdtempSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { safeStorage } from 'electron';
 
 let fixture: Awaited<ReturnType<typeof driveFixture>>;
 let service: CloudService;
@@ -207,7 +212,9 @@ test('shared-drive and deleted files cannot be written; account changes do not r
   });
   fixture.state.shared = false;
   fixture.state.trashed = true;
-  expect(await request(save)).toMatchObject({ ok: false, error: 'missing' });
+  expect(
+    await request({ ...save, operationId: 'deleted-file-attempt' }),
+  ).toMatchObject({ ok: false, error: 'missing' });
   fixture.state.trashed = false;
   expect(await request({ ...save, accountId: 'other' })).toMatchObject({
     ok: false,
@@ -699,7 +706,7 @@ test('lost move response is checked without replaying the move or writing conten
   });
   expect(
     await request({ ...command, operationId: 'move-again' }),
-  ).toMatchObject({ ok: false, error: 'unconfirmed' });
+  ).toMatchObject({ ok: false, error: 'pending_operation' });
   expect(
     await request({
       action: 'reconcileItem',
@@ -792,4 +799,171 @@ test('moves serialize behind saves to the same file and keep the newly saved con
     item: { parents: ['folder'] },
   });
   expect(fixture.state.content).toBe(save.content);
+});
+
+async function journalRun(
+  work: (restart: () => void, store: () => CloudRecoveryStore) => Promise<void>,
+) {
+  const root = mkdtempSync(join(tmpdir(), 'mkeditor-journal-'));
+  const path = join(root, 'journal.bin');
+  const store = () => new CloudRecoveryStore(path);
+  const restart = () => {
+    service.dispose();
+    service = new CloudService(
+      persistence,
+      async (url) => {
+        authorize = new URL(url);
+      },
+      (state) => pushes.push(state),
+      new GoogleDrive(fixture.endpoints),
+      sharedRegistration,
+      store(),
+    );
+  };
+  try {
+    restart();
+    await work(restart, store);
+  } finally {
+    service.dispose();
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+test('a lost save acknowledgement survives a main-process restart without a replay', async () => {
+  const { id, save } = await editingConnection();
+  await journalRun(async (restart) => {
+    fixture.state.loseWrite = true;
+    expect(await request(save)).toMatchObject({
+      ok: false,
+      error: 'unconfirmed',
+    });
+    restart();
+    expect((await service.state()).pendingOperations).toEqual([
+      expect.objectContaining({ operationId: save.operationId, kind: 'save' }),
+    ]);
+    expect(
+      await request({
+        action: 'reconcile',
+        connectionId: id,
+        accountId: 'account-a',
+        operationId: save.operationId,
+      }),
+    ).toMatchObject({ ok: true, document: { content: save.content } });
+    expect(fixture.calls.filter((call) => call.method === 'PUT')).toHaveLength(
+      1,
+    );
+  });
+});
+
+test('a lost creation acknowledgement is reconciled by its durable generated identity after restart', async () => {
+  const { id } = await editingConnection();
+  await journalRun(async (restart) => {
+    fixture.state.loseWrite = true;
+    const command = {
+      action: 'create' as const,
+      connectionId: id,
+      accountId: 'account-a',
+      folderId: 'root',
+      name: 'Recovery.md',
+      content: 'recovered copy',
+      operationId: 'create-crash',
+    };
+    expect(await request(command)).toMatchObject({
+      ok: false,
+      error: 'unconfirmed',
+    });
+    restart();
+    expect(
+      await request({
+        action: 'reconcile',
+        connectionId: id,
+        accountId: 'account-a',
+        operationId: command.operationId,
+      }),
+    ).toMatchObject({ ok: true, document: { content: command.content } });
+    expect(
+      fixture.calls.filter(
+        (call) =>
+          call.method === 'POST' && call.url.pathname.startsWith('/upload/'),
+      ),
+    ).toHaveLength(1);
+  });
+});
+
+test('an interrupted move is read back after restart and never sent twice', async () => {
+  const { id } = await editingConnection();
+  await journalRun(async (restart) => {
+    fixture.state.loseWrite = true;
+    const command = {
+      action: 'move' as const,
+      connectionId: id,
+      accountId: 'account-a',
+      itemId: 'markdown',
+      sourceFolderId: 'root',
+      folderId: 'folder',
+      operationId: 'move-crash',
+    };
+    expect(await request(command)).toMatchObject({
+      ok: false,
+      error: 'unconfirmed',
+    });
+    restart();
+    expect(
+      await request({
+        action: 'reconcileItem',
+        connectionId: id,
+        accountId: 'account-a',
+        operationId: command.operationId,
+      }),
+    ).toMatchObject({ ok: true, item: { parents: ['folder'] } });
+    expect(
+      fixture.calls.filter((call) => call.method === 'PATCH'),
+    ).toHaveLength(1);
+  });
+});
+
+test('failure to persist a write intention prevents the provider write', async () => {
+  const { save } = await editingConnection();
+  await journalRun(async () => {
+    jest
+      .mocked(safeStorage.encryptStringAsync)
+      .mockRejectedValueOnce(new Error('locked'));
+    expect(await request(save)).toMatchObject({ ok: false, error: 'storage' });
+    expect(fixture.calls.filter((call) => call.method === 'PUT')).toHaveLength(
+      0,
+    );
+    expect(fixture.state.content).toBe('# Remote Markdown');
+  });
+});
+
+test('a persisted save that never reached Drive is classified without retrying it', async () => {
+  const { id, save } = await editingConnection();
+  await journalRun(async (restart, store) => {
+    await store().saveOperations([
+      {
+        operationId: save.operationId,
+        connectionId: id,
+        accountId: 'account-a',
+        itemId: 'markdown',
+        kind: 'save',
+        content: save.content,
+        validator: save.validator,
+      },
+    ]);
+    restart();
+    expect(
+      await request({
+        action: 'reconcile',
+        connectionId: id,
+        accountId: 'account-a',
+        operationId: save.operationId,
+      }),
+    ).toMatchObject({ ok: false, error: 'not_applied' });
+    expect(fixture.calls.filter((call) => call.method === 'PUT')).toHaveLength(
+      0,
+    );
+    expect(
+      await request({ ...save, operationId: 'explicit-new-save' }),
+    ).toMatchObject({ ok: true });
+  });
 });

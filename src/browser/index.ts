@@ -250,6 +250,8 @@ function onEditorReadyInner() {
     () =>
       editorManager.providers.settings?.getSetting('sessionRestore') ?? true,
   );
+  if (mode === 'desktop') bridgeManager.fileManager.suspendSessionSaves();
+  bridgeManager.fileManager.setCheckpointAcknowledgements(mode === 'desktop');
 
   // Round-trip the assistant right-sidebar view-state through the
   // existing session payload. UIStateContext keeps a live mirror

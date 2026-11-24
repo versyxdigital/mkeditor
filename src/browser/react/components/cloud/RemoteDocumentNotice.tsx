@@ -24,21 +24,32 @@ export const RemoteDocumentNotice: React.FC = () => {
     connection?.status === 'connected' &&
     connection.accountId === remote.accountId;
   const phase = tab.remoteSave?.phase;
+  const recovery = tab.remoteRecovery;
   if (
     connected &&
     phase !== 'conflict' &&
     phase !== 'failed' &&
-    phase !== 'unconfirmed'
+    phase !== 'unconfirmed' &&
+    !recovery
   )
     return null;
   const unknown = phase === 'unconfirmed';
-  const message = !connected
-    ? t('cloud:disconnected')
-    : unknown
-      ? t('cloud:error_unconfirmed')
-      : phase === 'conflict'
-        ? t('cloud:error_conflict')
-        : `${t('cloud:save_failed')} ${tab.remoteSave?.error ? t(`cloud:error_${tab.remoteSave.error}`) : ''}`;
+  const message =
+    recovery && phase !== 'conflict' && phase !== 'unconfirmed'
+      ? t(
+          recovery.status === 'checking'
+            ? 'cloud:checking_recovery'
+            : recovery.error
+              ? `cloud:error_${recovery.error}`
+              : 'cloud:recovered_draft',
+        )
+      : !connected
+        ? t('cloud:disconnected')
+        : unknown
+          ? t('cloud:error_unconfirmed')
+          : phase === 'conflict'
+            ? t('cloud:error_conflict')
+            : `${t('cloud:save_failed')} ${tab.remoteSave?.error ? t(`cloud:error_${tab.remoteSave.error}`) : ''}`;
   const iconClass = 'h-7 w-7 shrink-0 rounded-sm p-0 text-muted-foreground';
   return (
     <div
@@ -71,6 +82,18 @@ export const RemoteDocumentNotice: React.FC = () => {
         >
           <Icon name="refresh" className="size-3.5" />
         </Button>
+      ) : recovery && phase !== 'conflict' ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={iconClass}
+          disabled={recovery.status === 'checking'}
+          title={t('cloud:check_recovery')}
+          aria-label={t('cloud:check_recovery')}
+          onClick={() => void fileManager?.checkRemoteRecovery(activeFile)}
+        >
+          <Icon name="refresh" className="size-3.5" />
+        </Button>
       ) : phase === 'conflict' ? (
         <Button
           variant="ghost"
@@ -83,7 +106,7 @@ export const RemoteDocumentNotice: React.FC = () => {
           <Icon name="code" className="size-3.5" />
         </Button>
       ) : null}
-      {connected && !unknown && (
+      {connected && !unknown && (!recovery || phase === 'conflict') && (
         <Button
           variant="ghost"
           size="icon"

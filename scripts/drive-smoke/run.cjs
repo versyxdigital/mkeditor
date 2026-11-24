@@ -4,11 +4,17 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { execFileSync } = require('node:child_process');
 const { createFixture } = require('./fixture.cjs');
 const labels = require('../../locale/en/cloud.json');
 const navbar = require('../../locale/en/navbar.json');
 
 const live = process.argv.includes('--live');
+const recoveryRun = process.argv.includes('--recovery');
+if (recoveryRun && live) {
+  console.error('Crash/fault injection runs use the local fixture.');
+  process.exit(1);
+}
 if (live && !process.argv.includes('--authorize-disposable-test')) {
   console.error(
     'Live checks require --authorize-disposable-test. Only newly created disposable files will be changed.',
@@ -206,6 +212,193 @@ async function verify(id, content) {
   );
 }
 
+async function crash() {
+  const child = application.process();
+  const exited = new Promise((resolve) => child.once('exit', resolve));
+  // Windows can leave renderer children holding Playwright's pipes after
+  // only the main process dies. Terminate this isolated application's tree.
+  if (process.platform === 'win32')
+    execFileSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], {
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+  else child.kill('SIGKILL');
+  await exited;
+  await application.close().catch(() => {});
+}
+async function assertDraft(document, marker) {
+  await until(
+    async () => (await activeIdentity()).identity === document.identity,
+  );
+  await until(async () =>
+    (await page.locator('.monaco-editor').first().textContent()).includes(
+      marker,
+    ),
+  );
+  assert.equal(
+    await page
+      .locator('#editor-tabs li[data-active=true]')
+      .getAttribute('data-dirty'),
+    'true',
+  );
+}
+async function checkpoint() {
+  assert.equal(
+    await application.evaluate(() => globalThis.driveSmoke.checkpoint()),
+    true,
+  );
+}
+async function recoveryScenarios(document) {
+  await step(
+    'Unsaved remote drafts, tab identity and cursor survive a normal restart',
+    async () => {
+      await edit('# NormalRestartDraft\n\nUnsaved writing.');
+      await checkpoint();
+      const before = await application.evaluate(() =>
+        globalThis.driveSmoke.recoveryMeta(),
+      );
+      await application.close();
+      await launch();
+      await assertDraft(document, 'NormalRestartDraft');
+      await checkpoint();
+      const after = await application.evaluate(() =>
+        globalThis.driveSmoke.recoveryMeta(),
+      );
+      assert.deepEqual(
+        after.tabs.map((tab) => tab.path),
+        before.tabs.map((tab) => tab.path),
+      );
+      assert.deepEqual(
+        after.tabs.find((tab) => tab.path === document.identity).viewState
+          .cursorState,
+        before.tabs.find((tab) => tab.path === document.identity).viewState
+          .cursorState,
+      );
+      await page.screenshot({
+        path: path.join(profile, 'recovered-draft.png'),
+      });
+    },
+  );
+  await step(
+    'A forced crash preserves the last checkpoint and detects a Drive change during downtime',
+    async () => {
+      await edit('# CrashRecoveryDraft');
+      await checkpoint();
+      assert.equal(
+        fs
+          .readFileSync(path.join(profile, 'session.json'), 'utf8')
+          .includes('CrashRecoveryDraft'),
+        false,
+      );
+      assert.equal(
+        fs
+          .readFileSync(path.join(profile, 'cloud-recovery.bin'))
+          .includes(Buffer.from('CrashRecoveryDraft')),
+        false,
+      );
+      const writes = fixture.state.saveWrites;
+      await crash();
+      fixture.externalEdit(document.id, '# ExternalAfterCrash');
+      await launch();
+      await assertDraft(document, 'CrashRecoveryDraft');
+      await page
+        .getByRole('button', { name: labels.compare, exact: true })
+        .waitFor();
+      assert.equal(fixture.state.saveWrites, writes);
+      await verify(document.id, '# ExternalAfterCrash');
+      await page.screenshot({
+        path: path.join(profile, 'recovered-conflict.png'),
+      });
+      await page
+        .getByRole('button', { name: labels.reload, exact: true })
+        .click();
+      await page
+        .getByRole('dialog', { name: labels.reload, exact: true })
+        .getByRole('button', { name: labels.cancel, exact: true })
+        .click();
+      await assertDraft(document, 'CrashRecoveryDraft');
+      await page
+        .getByRole('button', { name: labels.reload, exact: true })
+        .click();
+      await page
+        .getByRole('dialog', { name: labels.reload, exact: true })
+        .getByRole('button', { name: labels.reload, exact: true })
+        .click();
+      await saved();
+    },
+  );
+  await step(
+    'Recovered drafts remain available offline and reconnect without an automatic upload',
+    async () => {
+      await edit('# OfflineRecoveryDraft');
+      await checkpoint();
+      await crash();
+      fixture.state.offline = true;
+      await launch();
+      await assertDraft(document, 'OfflineRecoveryDraft');
+      const retry = page.getByRole('button', {
+        name: labels.check_recovery,
+        exact: true,
+      });
+      await until(
+        async () => (await retry.isVisible()) && (await retry.isEnabled()),
+      );
+      const writes = fixture.state.saveWrites;
+      fixture.state.offline = false;
+      await retry.click();
+      await until(async () => !(await retry.isVisible()));
+      assert.equal(fixture.state.saveWrites, writes);
+      await save();
+      await saved();
+      await verify(document.id, '# OfflineRecoveryDraft');
+      await selectDrive();
+      await enterRoot();
+      await page
+        .locator('#sidebar')
+        .getByRole('button', { name: 'Moved documents', exact: true })
+        .click();
+    },
+  );
+  await step(
+    'A crash during a provider save reconciles once and retains edits made in flight',
+    async () => {
+      let release;
+      fixture.state.saveWait = new Promise((resolve) => {
+        release = resolve;
+      });
+      const writes = fixture.state.saveWrites;
+      await edit('# PendingWrittenSnapshot');
+      await save();
+      await until(() => fixture.state.saveWrites === writes + 1);
+      await edit('# AfterWriteUnsentDraft');
+      await checkpoint();
+      await crash();
+      release();
+      fixture.state.saveWait = undefined;
+      await launch();
+      await assertDraft(document, 'AfterWriteUnsentDraft');
+      await until(
+        async () =>
+          !(await page
+            .getByRole('button', { name: labels.check_save, exact: true })
+            .isVisible()) &&
+          !(await page
+            .getByRole('button', { name: labels.check_recovery, exact: true })
+            .isVisible()),
+      );
+      assert.equal(fixture.state.saveWrites, writes + 1);
+      await verify(document.id, '# PendingWrittenSnapshot');
+      await checkpoint();
+      await page.screenshot({
+        path: path.join(profile, 'reconciled-draft.png'),
+      });
+      await save();
+      await saved();
+      await verify(document.id, '# AfterWriteUnsentDraft');
+    },
+  );
+}
+
 (async () => {
   if (!live) fixture = await createFixture();
   else
@@ -397,6 +590,7 @@ async function verify(id, content) {
         );
       },
     );
+  if (recoveryRun) await recoveryScenarios(document);
   await step(
     'Encrypted credentials survive restart and expired access is refreshed',
     async () => {

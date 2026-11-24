@@ -19,6 +19,10 @@ import {
 } from '../../app/interfaces/Cloud';
 
 export interface TabInfo {
+  remoteRecovery?: {
+    status: 'waiting' | 'checking' | 'blocked';
+    error?: CloudWriteError;
+  };
   path: string;
   name: string;
   /**
@@ -46,6 +50,8 @@ export interface RemoteSaveStatus {
   error?: CloudWriteError;
 }
 interface RemoteSaveSnapshot {
+  epoch?: string;
+  sequence?: number;
   document: RemoteDocument;
   content: string;
   version: number;
@@ -53,6 +59,9 @@ interface RemoteSaveSnapshot {
   model: editor.ITextModel;
 }
 interface RemoteFileOperations {
+  acknowledge?(operationId: string): void;
+  canCheck?(document: Omit<RemoteDocument, 'content'>): boolean;
+  check?(document: Omit<RemoteDocument, 'content'>): Promise<RemoteDocument>;
   canEdit(document: Omit<RemoteDocument, 'content'>): boolean;
   save(snapshot: RemoteSaveSnapshot): Promise<RemoteDocument>;
   reconcile(snapshot: RemoteSaveSnapshot): Promise<RemoteDocument>;
@@ -139,7 +148,60 @@ export class FileManager {
   private remoteOperations: RemoteFileOperations | null = null;
   private remoteWrites = new Map<string, Promise<boolean>>();
   private remoteUnconfirmed = new Map<string, RemoteSaveSnapshot>();
+  private remoteSaveSnapshots = new Map<string, RemoteSaveSnapshot>();
+  private remoteChecks = new Map<string, Promise<boolean>>();
+  private cloudAcknowledgements = new Set<string>();
+  private readonly recoveryEpoch = `recovery-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  private editSequences = new Map<string, number>();
+  private remoteCheckpointTimer?: ReturnType<typeof setTimeout>;
+  private checkpointAcknowledgements = false;
+  private checkpointInFlight = false;
+  private checkpointQueued = false;
+  private sessionClearToken?: string;
+  private resumeAfterClear = false;
+  public onSessionCleared(token: string): void {
+    this.sessionClearToken = token;
+    this.resumeAfterClear = false;
+    this.checkpointQueued = false;
+    if (this.remoteCheckpointTimer) clearTimeout(this.remoteCheckpointTimer);
+    this.remoteCheckpointTimer = undefined;
+  }
+  private finalCheckpoints: {
+    id?: string;
+    copy?: import('../../app/interfaces/Session').SessionRecoveryCopy;
+  }[] = [];
+
+  public setCheckpointAcknowledgements(enabled: boolean): void {
+    this.checkpointAcknowledgements = enabled;
+  }
+  public onSessionCheckpointSaved(): void {
+    this.checkpointInFlight = false;
+    if (this.finalCheckpoints.length || this.checkpointQueued)
+      this.sendSessionCheckpoint();
+  }
+  public flushSessionCheckpoint(
+    id?: string,
+    copy?: import('../../app/interfaces/Session').SessionRecoveryCopy,
+  ): void {
+    this.finalCheckpoints.push({ id, copy });
+    this.sendSessionCheckpoint();
+  }
+  private sendSessionCheckpoint(): void {
+    if (this.checkpointAcknowledgements && this.checkpointInFlight) {
+      this.checkpointQueued = true;
+      return;
+    }
+    const final = this.finalCheckpoints.shift();
+    this.checkpointQueued = false;
+    this.checkpointInFlight = this.checkpointAcknowledgements;
+    this.bridge.send('to:session:save', {
+      ...this.serializeSession(),
+      ...(final?.id ? { flushId: final.id } : {}),
+      ...(final?.copy ? { failureCopy: final.copy } : {}),
+    });
+  }
   private remoteMoveUnconfirmed = new Set<string>();
+  private restoredMoveMarkers = new Set<string>();
   private static nextRemoteOperation = 1;
 
   /** Flag to determine whether the content has changed */
@@ -387,6 +449,25 @@ export class FileManager {
     const wasDirty = this.dirtyByPath.get(path) ?? false;
     this.dirtyByPath.set(path, false);
     const disposable = model.onDidChangeContent(() => {
+      this.editSequences.set(path, (this.editSequences.get(path) ?? 0) + 1);
+      if (this.tabs.get(path)?.remote) {
+        this.scheduleSessionSave();
+        if (
+          !this.remoteCheckpointTimer &&
+          !this.restoring &&
+          !this.sessionSaveSuspended &&
+          this.isSessionEnabled()
+        )
+          this.remoteCheckpointTimer = setTimeout(() => {
+            this.remoteCheckpointTimer = undefined;
+            if (
+              !this.restoring &&
+              !this.sessionSaveSuspended &&
+              this.isSessionEnabled()
+            )
+              this.sendSessionCheckpoint();
+          }, 1000);
+      }
       const baseline = this.baselineVersions.get(path);
       if (baseline === undefined) return;
       const nextDirty = model.getAlternativeVersionId() !== baseline;
@@ -512,6 +593,10 @@ export class FileManager {
     this.baselineVersions.clear();
     this.dirtyByPath.clear();
     this.remoteUnconfirmed.clear();
+    this.remoteSaveSnapshots.clear();
+    this.remoteChecks.clear();
+    if (this.remoteCheckpointTimer) clearTimeout(this.remoteCheckpointTimer);
+    this.remoteCheckpointTimer = undefined;
     this.remoteMoveUnconfirmed.clear();
     this.modelListeners.clear();
     // Diff tabs are ephemeral preview surfaces; a workspace switch
@@ -620,6 +705,8 @@ export class FileManager {
     this.originals.delete(path);
     this.tabs.delete(path);
     this.remoteUnconfirmed.delete(path);
+    this.remoteSaveSnapshots.delete(path);
+    this.remoteChecks.delete(path);
     this.viewStates.delete(path);
     this.detachTabTracking(path);
     // If we're closing the path we'd been falling back to for the
@@ -934,6 +1021,7 @@ export class FileManager {
       this.activateFile(path);
       return;
     }
+    if (document.operationId) this.noteCloudOperation(document.operationId);
     const { content, ...remote } = document;
     const model = editor.createModel(content, 'markdown');
     this.models.set(path, model);
@@ -1100,8 +1188,10 @@ export class FileManager {
       readOnly: Boolean(
         tabInfo?.remote &&
         !(
-          tabInfo.remote.item.editable &&
-          this.remoteOperations?.canEdit(tabInfo.remote)
+          (tabInfo.remoteRecovery &&
+            (tabInfo.remote.item.editable || this.dirtyByPath.get(path))) ||
+          (tabInfo.remote.item.editable &&
+            this.remoteOperations?.canEdit(tabInfo.remote))
         ),
       ),
     });
@@ -1347,13 +1437,189 @@ export class FileManager {
     this.remoteOperations = operations;
   }
 
+  public noteCloudOperation(operationId: string): void {
+    if (!this.isSessionEnabled()) {
+      this.remoteOperations?.acknowledge?.(operationId);
+      return;
+    }
+    this.cloudAcknowledgements.add(operationId);
+    if (this.cloudAcknowledgements.size > 1000)
+      this.cloudAcknowledgements.delete(
+        this.cloudAcknowledgements.values().next().value!,
+      );
+    this.scheduleSessionSave();
+  }
+
+  public checkRecoveredRemoteDocuments(): void {
+    for (const [path, tab] of this.tabs) {
+      if (
+        tab.remote &&
+        tab.remoteRecovery?.status === 'waiting' &&
+        this.remoteOperations?.canCheck?.(tab.remote)
+      )
+        void this.checkRemoteRecovery(path);
+    }
+  }
+  public markRecoveredMoves(
+    operations: import('../../app/interfaces/Cloud').CloudPendingOperation[],
+  ): void {
+    const next = new Set<string>();
+    for (const operation of operations)
+      if (operation.kind === 'move') {
+        next.add(
+          remoteDocumentPath({
+            connectionId: operation.connectionId,
+            accountId: operation.accountId,
+            item: {
+              id: operation.itemId,
+              name: '',
+              kind: 'markdown',
+              parents: [],
+            },
+          }),
+        );
+      }
+    for (const path of this.restoredMoveMarkers)
+      if (!next.has(path)) this.remoteMoveUnconfirmed.delete(path);
+    for (const path of next) this.remoteMoveUnconfirmed.add(path);
+    this.restoredMoveMarkers = next;
+  }
+  public clearUnappliedMove(
+    connectionId: string,
+    accountId: string,
+    itemId: string,
+  ): void {
+    const path = remoteDocumentPath({
+      connectionId,
+      accountId,
+      item: { id: itemId, name: '', kind: 'markdown', parents: [] },
+    });
+    this.remoteMoveUnconfirmed.delete(path);
+    const tab = this.tabs.get(path);
+    if (tab?.remote) {
+      this.tabs.set(path, { ...tab, remoteRecovery: { status: 'waiting' } });
+      this.emitChange();
+      this.checkRecoveredRemoteDocuments();
+    }
+  }
+
+  public checkRemoteRecovery(path: string): Promise<boolean> {
+    const pending = this.remoteChecks.get(path);
+    if (pending) return pending;
+    const tab = this.tabs.get(path),
+      model = this.models.get(path),
+      operations = this.remoteOperations;
+    if (!tab?.remote || !model || !tab.remoteRecovery)
+      return Promise.resolve(!tab?.remoteRecovery);
+    if (this.remoteMoveUnconfirmed.has(path)) return Promise.resolve(false);
+    if (!operations?.check || !operations.canCheck?.(tab.remote))
+      return Promise.resolve(false);
+    const work = Promise.resolve().then(async () => {
+      this.tabs.set(path, {
+        ...this.tabs.get(path)!,
+        remoteRecovery: { status: 'checking' },
+      });
+      this.emitChange();
+      try {
+        if (this.remoteUnconfirmed.has(path)) {
+          await this.saveRemoteTab(path, true);
+          if (this.remoteUnconfirmed.has(path)) {
+            this.tabs.set(path, {
+              ...this.tabs.get(path)!,
+              remoteRecovery: { status: 'waiting', error: 'unconfirmed' },
+            });
+            this.emitChange();
+            return false;
+          }
+        }
+        const live = this.tabs.get(path);
+        if (!live?.remote || this.models.get(path) !== model) return false;
+        const version = model.getAlternativeVersionId();
+        const baseline = this.originals.get(path) ?? '';
+        const latest = await operations.check!(live.remote);
+        if (
+          this.models.get(path) !== model ||
+          remoteDocumentPath(latest) !== path
+        )
+          return false;
+        const current = this.tabs.get(path)!;
+        const { content: _content, ...remote } = latest;
+        if (latest.content !== baseline) {
+          if (
+            !this.dirtyByPath.get(path) &&
+            model.getAlternativeVersionId() === version
+          ) {
+            model.setValue(latest.content);
+            this.tabs.set(path, {
+              ...current,
+              remote,
+              remoteRecovery: undefined,
+              remoteSave: undefined,
+            });
+            this.recordSavedVersion(
+              path,
+              model,
+              latest.content,
+              model.getAlternativeVersionId(),
+            );
+            if (this.activeFile === path)
+              this.mkeditor.restoreViewState(this.viewStates.get(path) ?? null);
+          } else {
+            this.tabs.set(path, {
+              ...current,
+              remoteRecovery: { status: 'blocked', error: 'conflict' },
+              remoteSave: { phase: 'conflict', error: 'conflict' },
+            });
+            this.emitChange();
+            this.scheduleSessionSave();
+            return false;
+          }
+        } else {
+          this.tabs.set(path, {
+            ...current,
+            remote,
+            remoteRecovery: undefined,
+            remoteSave: undefined,
+          });
+          this.emitChange();
+          this.scheduleSessionSave();
+        }
+        return true;
+      } catch (error) {
+        if (this.models.get(path) !== model || !this.tabs.has(path))
+          return false;
+        this.tabs.set(path, {
+          ...this.tabs.get(path)!,
+          remoteRecovery: {
+            status: 'waiting',
+            error:
+              typeof error === 'string'
+                ? (error as CloudWriteError)
+                : 'network',
+          },
+        });
+        this.emitChange();
+        return false;
+      } finally {
+        this.refreshRemoteAccess();
+      }
+    });
+    this.remoteChecks.set(path, work);
+    void work.finally(() => {
+      if (this.remoteChecks.get(path) === work) this.remoteChecks.delete(path);
+    });
+    return work;
+  }
+
   public refreshRemoteAccess(): void {
     const path = this.getActiveDocumentPath();
     const remote = path ? this.tabs.get(path)?.remote : undefined;
     if (remote)
       this.mkeditor.updateOptions?.({
         readOnly: !(
-          remote.item.editable && this.remoteOperations?.canEdit(remote)
+          (this.tabs.get(path!)?.remoteRecovery &&
+            (remote.item.editable || this.dirtyByPath.get(path!))) ||
+          (remote.item.editable && this.remoteOperations?.canEdit(remote))
         ),
       });
   }
@@ -1363,9 +1629,17 @@ export class FileManager {
     if (!tab?.remote) return;
     this.tabs.set(path, { ...tab, remoteSave: status });
     this.emitChange();
+    this.scheduleSessionSave();
   }
 
-  private saveRemoteTab(path: string): Promise<boolean> {
+  private saveRemoteTab(
+    path: string,
+    checkingRecovery = false,
+  ): Promise<boolean> {
+    if (!checkingRecovery && this.tabs.get(path)?.remoteRecovery)
+      return this.checkRemoteRecovery(path).then((ok) =>
+        ok ? this.saveRemoteTab(path) : false,
+      );
     if (this.remoteMoveUnconfirmed.has(path)) return Promise.resolve(false);
     const pending = this.remoteWrites.get(path);
     if (pending)
@@ -1386,12 +1660,15 @@ export class FileManager {
       return Promise.resolve(false);
     }
     const snapshot = unresolved ?? {
+      epoch: this.recoveryEpoch,
+      sequence: this.editSequences.get(path) ?? 0,
       document: { ...tab.remote, content: model.getValue() },
       model,
       content: model.getValue(),
       version: model.getAlternativeVersionId(),
       operationId: `remote-save-${Date.now()}-${FileManager.nextRemoteOperation++}`,
     };
+    this.remoteSaveSnapshots.set(path, snapshot);
     this.remoteStatus(path, { phase: 'saving' });
     const work = (async () => {
       try {
@@ -1409,12 +1686,15 @@ export class FileManager {
         this.tabs.set(path, {
           ...live,
           remote,
+          remoteRecovery: checkingRecovery ? { status: 'checking' } : undefined,
           remoteSave:
             snapshot.model.getAlternativeVersionId() === snapshot.version
               ? { phase: 'saved' }
               : undefined,
         });
         this.remoteUnconfirmed.delete(path);
+        this.remoteSaveSnapshots.delete(path);
+        this.noteCloudOperation(snapshot.operationId);
         this.recordSavedVersion(
           path,
           snapshot.model,
@@ -1426,6 +1706,13 @@ export class FileManager {
         if (this.models.get(path) !== snapshot.model) return false;
         const code =
           typeof error === 'string' ? (error as CloudWriteError) : 'network';
+        if (code === 'not_applied') {
+          this.remoteUnconfirmed.delete(path);
+          this.remoteSaveSnapshots.delete(path);
+          this.noteCloudOperation(snapshot.operationId);
+          this.remoteStatus(path, { phase: 'failed', error: code });
+          return false;
+        }
         if (code === 'unconfirmed' || unresolved)
           this.remoteUnconfirmed.set(path, snapshot);
         this.remoteStatus(path, {
@@ -1442,6 +1729,8 @@ export class FileManager {
     })();
     this.remoteWrites.set(path, work);
     void work.finally(() => {
+      if (!this.remoteUnconfirmed.has(path))
+        this.remoteSaveSnapshots.delete(path);
       if (this.remoteWrites.get(path) === work) this.remoteWrites.delete(path);
     });
     return work;
@@ -1527,7 +1816,12 @@ export class FileManager {
     if (!model || !tab) return false;
     model.setValue(document.content);
     const { content: _content, ...remote } = document;
-    this.tabs.set(path, { ...tab, remote, remoteSave: undefined });
+    this.tabs.set(path, {
+      ...tab,
+      remote,
+      remoteSave: undefined,
+      remoteRecovery: undefined,
+    });
     this.recordSavedVersion(
       path,
       model,
@@ -1649,8 +1943,7 @@ export class FileManager {
       // Filter them out of the persisted snapshot.
       if (
         (info.kind ?? 'file') === 'diff' ||
-        info.remote ||
-        isRemotePath(info.path)
+        (isRemotePath(info.path) && !info.remote)
       )
         continue;
       const viewState = this.viewStates.get(info.path) ?? null;
@@ -1659,6 +1952,31 @@ export class FileManager {
         name: info.name,
         viewState,
       };
+      if (info.remote) {
+        if (!this.isSessionEnabled()) continue;
+        const pending =
+          this.remoteUnconfirmed.get(info.path) ??
+          this.remoteSaveSnapshots.get(info.path);
+        tab.remote = {
+          epoch: this.recoveryEpoch,
+          sequence: this.editSequences.get(info.path) ?? 0,
+          document: {
+            ...info.remote,
+            content: this.models.get(info.path)?.getValue() ?? '',
+          },
+          baseline: this.originals.get(info.path) ?? '',
+          dirty: this.dirtyByPath.get(info.path) ?? false,
+          ...(pending
+            ? {
+                pendingSave: {
+                  operationId: pending.operationId,
+                  content: pending.content,
+                  validator: pending.document.item.validator ?? '',
+                },
+              }
+            : {}),
+        };
+      }
       if (info.path.startsWith('untitled-')) {
         // Persist scratch content only when non-empty; empty untitled
         // tabs are noise and shouldn't survive a relaunch.
@@ -1673,16 +1991,25 @@ export class FileManager {
     // to focus a tab that's about to be filtered out. Fall back to
     // the first surviving tab, or null when there are none.
     let activeFile = this.activeFile;
-    if (activeIsDiff || isRemotePath(activeFile)) {
+    if (
+      activeIsDiff ||
+      (isRemotePath(activeFile) && !tabs.some((tab) => tab.path === activeFile))
+    ) {
       activeFile = tabs.length > 0 ? tabs[0].path : null;
     }
 
     const payload: SessionPayload = {
-      version: 2,
+      version: 3,
       tabs,
       activeFile,
       workspaceRoot: this.workspaceRootGetter?.() ?? null,
     };
+    if (!this.isSessionEnabled() || this.sessionSaveSuspended)
+      payload.restoreEnabled = false;
+    if (this.cloudAcknowledgements.size)
+      payload.cloudAcknowledgements = [...this.cloudAcknowledgements];
+    if (this.sessionClearToken && this.resumeAfterClear)
+      payload.resumeAfterClear = this.sessionClearToken;
     const assistant = this.assistantStateGetter?.();
     if (assistant) payload.assistant = assistant;
     return payload;
@@ -1712,6 +2039,15 @@ export class FileManager {
 
     const { session, contents } = envelope;
     if (!session || session.tabs.length === 0) return;
+    const protectedPaths = new Set(
+      [...this.tabs.keys()].filter(
+        (path) => this.dirtyByPath.get(path) || this.remoteWrites.has(path),
+      ),
+    );
+    const protectedActive =
+      this.activeFile && protectedPaths.has(this.activeFile)
+        ? this.activeFile
+        : null;
 
     this.restoring = true;
     // Models we evicted during reconciliation. Kept alive until *after*
@@ -1726,7 +2062,10 @@ export class FileManager {
       // otherwise linger and land in the next save. Real-file tabs
       // suffer the same fate if the user manually opened files between
       // the previous save and this restore.
-      const desiredPaths = new Set(session.tabs.map((t) => t.path));
+      const desiredPaths = new Set([
+        ...session.tabs.map((t) => t.path),
+        ...protectedPaths,
+      ]);
       for (const path of [...this.tabs.keys()]) {
         if (desiredPaths.has(path)) continue;
         const mdl = this.models.get(path);
@@ -1768,6 +2107,64 @@ export class FileManager {
       // match the session's saved value rather than skipping. The
       // session is the source of truth.
       for (const tab of session.tabs) {
+        if (protectedPaths.has(tab.path)) {
+          const previousDraft = tab.remote?.dirty
+            ? tab.remote.document.content
+            : tab.untitledContent;
+          if (
+            previousDraft &&
+            previousDraft !== this.models.get(tab.path)?.getValue()
+          )
+            this.createLocalCopy(previousDraft);
+          continue;
+        }
+        if (tab.remote) {
+          const cached = tab.remote;
+          if (cached.document.operationId && !cached.pendingSave)
+            this.noteCloudOperation(cached.document.operationId);
+          const { content, ...remote } = cached.document;
+          const model =
+            this.models.get(tab.path) ??
+            editor.createModel(
+              cached.dirty ? cached.baseline : content,
+              'markdown',
+            );
+          this.models.set(tab.path, model);
+          this.originals.set(tab.path, cached.baseline);
+          this.tabs.set(tab.path, {
+            path: tab.path,
+            name: tab.name,
+            dirty: cached.dirty,
+            remote,
+            remoteRecovery: { status: 'waiting' },
+          });
+          this.trackTab(tab.path, model);
+          if (cached.dirty && model.getValue() !== content)
+            model.setValue(content);
+          if (cached.pendingSave) {
+            const pending = cached.pendingSave;
+            this.remoteUnconfirmed.set(tab.path, {
+              document: {
+                ...cached.document,
+                item: { ...remote.item, validator: pending.validator },
+                content: pending.content,
+              },
+              content: pending.content,
+              model,
+              operationId: pending.operationId,
+              version:
+                model.getValue() === pending.content
+                  ? model.getAlternativeVersionId()
+                  : -1,
+            });
+            this.tabs.set(tab.path, {
+              ...this.tabs.get(tab.path)!,
+              remoteSave: { phase: 'unconfirmed', error: 'unconfirmed' },
+            });
+          }
+          if (tab.viewState) this.viewStates.set(tab.path, tab.viewState);
+          continue;
+        }
         const content = tab.path.startsWith('untitled-')
           ? (tab.untitledContent ?? '')
           : (contents[tab.path] ?? '');
@@ -1814,12 +2211,17 @@ export class FileManager {
       // Existing models may have been seeded in a different tab order.
       // Restore the saved order instead of retaining Map insertion history.
       this.tabs = new Map(
-        session.tabs.map((tab) => [tab.path, this.tabs.get(tab.path)!]),
+        [
+          ...new Set([
+            ...session.tabs.map((tab) => tab.path),
+            ...this.tabs.keys(),
+          ]),
+        ].map((path) => [path, this.tabs.get(path)!]),
       );
 
       // Pick what to activate. Prefer the persisted active file;
       // fall back to the first tab if the persisted active is gone.
-      let toActivate: string | null = session.activeFile;
+      let toActivate: string | null = protectedActive ?? session.activeFile;
       if (!toActivate || !this.tabs.has(toActivate)) {
         toActivate = this.tabs.keys().next().value ?? null;
       }
@@ -1840,6 +2242,7 @@ export class FileManager {
       // handle cleanly.
       for (const mdl of evictedModels) mdl.dispose();
     }
+    this.checkRecoveredRemoteDocuments();
   }
 
   /**
@@ -1853,6 +2256,7 @@ export class FileManager {
     if (this.restoring) return;
     if (this.sessionSaveSuspended) return;
     if (!this.isSessionEnabled()) return;
+    if (this.sessionClearToken) this.resumeAfterClear = true;
     if (!this.debouncedSessionSave) {
       this.debouncedSessionSave = debounce(() => {
         // Re-check on flush: the user may have flipped the setting off
@@ -1862,7 +2266,7 @@ export class FileManager {
         // a later flip back on / restoreSession resumes the prior state.
         if (this.sessionSaveSuspended) return;
         if (!this.isSessionEnabled()) return;
-        this.bridge.send('to:session:save', this.serializeSession());
+        this.sendSessionCheckpoint();
       }, 300);
     }
     this.debouncedSessionSave();

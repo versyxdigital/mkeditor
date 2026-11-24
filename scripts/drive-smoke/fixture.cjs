@@ -6,6 +6,8 @@ async function createFixture() {
   const files = new Map();
   let nextId = 0;
   const state = {
+    offline: false,
+    saveWait: undefined,
     revoked: false,
     refreshes: 0,
     loseNextSave: false,
@@ -43,6 +45,7 @@ async function createFixture() {
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url, 'http://127.0.0.1');
+      if (state.offline) return json(response, {}, 503);
       let body = '';
       for await (const chunk of request) body += chunk;
       if (url.pathname === '/authorize') {
@@ -108,6 +111,7 @@ async function createFixture() {
         state.saveWrites++;
         file.version++;
         file.contentRevision++;
+        await state.saveWait;
         if (state.loseNextSave) {
           state.loseNextSave = false;
           response.destroy();
@@ -160,6 +164,14 @@ async function createFixture() {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   return {
+    externalEdit(id, content) {
+      const file = files.get(id);
+      if (!file || id === 'root')
+        throw Error('Unknown disposable fixture file.');
+      file.content = content;
+      file.version++;
+      file.contentRevision++;
+    },
     state,
     endpoints: {
       authorize: `${base}/authorize`,

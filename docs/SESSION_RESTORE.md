@@ -4,6 +4,18 @@ Phased plan for making MKEditor reopen with the same tabs, the same active tab, 
 
 Read first: [../AGENTS.md](../AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Current desktop remote recovery (v3)
+
+Session v3 adds account-bound remote tab snapshots alongside the existing local/untitled session. `FileManager` captures current text, saved baseline, dirty state, view state, an edit sequence and any in-flight save snapshot. Remote typing uses the usual debounce plus a bounded checkpoint interval; desktop sends at most one checkpoint at a time and coalesces later edits. Existing v1/v2 sessions remain readable, and web continues restoring local tabs without accepting remote content.
+
+`CloudSessionRecovery` coordinates the ordinary `AppSession` file and `CloudRecoveryStore`. The plaintext session writer rejects remote tabs. Remote text and the durable cloud-operation journal share an atomically replaced, OS-encrypted `cloud-recovery.bin`; plaintext fallback is unavailable. The encrypted generation is authoritative while it contains remote tabs. Local-only checkpoints and session clearing preserve ordering across the two files.
+
+Restoration starts with cached text after decryption, then `CloudManager` performs read-only checks against the matching account. Clean documents may refresh; drafts remain dirty and conflicting remote edits never replace them. Removed accounts, unavailable networks and missing remote files retain local text. A durable write intention is recorded before each provider mutation; recovery reconciles it by identity/content/validator without resending it. Saved edit sequences distinguish older checkpoints from edits made after the write snapshot.
+
+Close and quit flushes carry a correlation ID and complete only after the main process commits the checkpoint. Failure offers Cancel or Quit anyway. Clear saved session uses a clear token so stale queued/final checkpoints cannot undo the clear; new activity can resume checkpointing. Unresolved write intentions are retained separately from cleared session drafts.
+
+Run `npm run test:drive-recovery` after building for isolated Playwright normal-restart, forced-crash, offline, conflict and interrupted-save checks. See [the test guide](cloud/drive-smoke-tests.md). The sections below describe the original local-session implementation and its development history.
+
 ## Decisions
 
 | Area             | Decision                                                                                                                                                                                                                                             |

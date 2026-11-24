@@ -7,10 +7,9 @@
  * `to:ai:conversations:flush`) to land. Resolve when both arrive OR
  * after `timeoutMs` (default 250 ms) — whichever comes first.
  *
- * The renderer's debounced saves cover everything except the very
- * last keystroke / message, so a missed ack just costs a few hundred
- * ms of unpersisted activity, not data loss. Worst-case timeout still
- * fires `onDone` so `app.quit()` isn't blocked.
+ * Main maps the logical session signal to its completed disk checkpoint
+ * and supplies its own timeout. `onDone` must check that result before
+ * deciding whether quitting is safe.
  */
 
 export interface QuitFlushDeps {

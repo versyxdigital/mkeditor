@@ -408,7 +408,7 @@ Open tabs, the active tab, and per-tab Monaco view state (cursor, selection, scr
 
 ```ts
 interface SessionPayload {
-  version: 1;
+  version: 1 | 2 | 3;
   tabs: SessionTab[]; // insertion order = tab order
   activeFile: string | null; // must match a tabs[].path or be null
   workspaceRoot: string | null; // desktop only; re-walked on restore
@@ -419,16 +419,17 @@ interface SessionTab {
   name: string;
   viewState: editor.ICodeEditorViewState | null;
   untitledContent?: string; // inlined for untitled only, non-empty
+  remote?: RemoteTabRecovery; // desktop encrypted recovery generation only
 }
 ```
 
-**Save cadence.** Structural-event-driven. [`FileManager.scheduleSessionSave()`](../src/browser/core/FileManager.ts) is a 300 ms debounced trigger called from `addTab`, `closeTab`, `activateFile`, `reorderTabs`, `renameTab`, `replaceUntitled`, and (from [BridgeListeners](../src/browser/core/BridgeListeners.ts)) the first `from:folder:opened` event for a new workspace root. It captures the active tab's current `saveViewState()` at write time (the prior tab's state is already cached on switch-out). No keystroke-level writes — the worst-case crash loss is the active-at-crash tab's cursor position; everything else was captured on the last tab switch.
+**Save cadence.** Local tab/workspace changes use FileManager’s 300 ms debounce. Remote model changes also checkpoint while typing, with a bounded interval. Desktop permits one checkpoint in flight and coalesces newer edits until acknowledgement, preventing a slow disk/keychain from accumulating document snapshots. The active view state is captured at serialization time.
 
 **Workspace root.** `serializeSession` reads `FileTreeManager.treeRoot` through a getter injected by `BridgeManager` (`fileManager.setWorkspaceRootGetter`) — FileManager doesn't take a direct dependency on FileTreeManager. On restore, after `restoreSession` replays tabs, `BridgeListeners` sends `to:file:openpath` for the persisted root; main's `AppStorage.openPath` reads the directory and dispatches the normal `from:folder:opened` which re-populates the tree. A folder that no longer exists is nulled out by `AppSession.buildRestoreEnvelope` before the envelope ships.
 
-**Quit flush.** `app.on('before-quit')` in [main.ts](../src/app/main.ts) sends `from:session:flush-request` to the renderer and waits up to 250 ms for a `to:session:save` ack. The renderer's listener in [BridgeListeners](../src/browser/core/BridgeListeners.ts) calls `serializeSession()` synchronously and ships the result; main hits `AppSession.save()` and lets quit proceed.
+**Quit flush.** Window close and application quit request a correlated FileManager checkpoint. AppBridge acknowledges only after CloudSessionRecovery has committed it. The quit orchestrator maps its logical session ack to this commit signal and waits up to 2.2 seconds alongside assistant flushing. A failed/timed-out checkpoint offers Cancel or explicit Quit anyway; message receipt alone does not prove persistence.
 
-**Restore.** At `did-finish-load`, main calls `AppSession.buildRestoreEnvelope(AppSession.load())` and sends `from:session:restore` with a [`SessionRestoreEnvelope`](../src/app/interfaces/Session.ts):
+**Restore.** At `did-finish-load`, AppBridge asks CloudSessionRecovery to combine the encrypted remote generation with the local AppSession fallback. AppSession filters local filesystem paths; remote identities bypass filesystem reads. The renderer receives the resulting SessionRestoreEnvelope and restores cached models before read-only Drive validation.
 
 ```ts
 interface SessionRestoreEnvelope {
@@ -449,7 +450,7 @@ A legacy `mkeditor-content` localStorage entry (left by pre-session-restore buil
 
 **User opt-out.** `EditorSettings.sessionRestore` (default `true`) gates the whole surface. The composition root injects `FileManager.setSessionEnabledGetter(() => SettingsProvider.getSetting('sessionRestore'))`; when the getter returns `false`, both `scheduleSessionSave` and `restoreSession` short-circuit. The save check runs again at flush time so a toggle-off mid-debounce doesn't sneak a write through. Main process applies the same gate before calling `AppSession.buildRestoreEnvelope` — disabled means an empty envelope, no disk read. The persisted file is intentionally left untouched on disable so a later toggle-on resumes the prior state.
 
-**Clear saved session.** New IPC `to:session:clear` (whitelisted in `preload.ts`) wipes the persisted file. Desktop: `AppSession.clear()` unlinks `session.json` and any leftover `.tmp`. Web: `WebFileBridge.clearSession()` removes the `mkeditor-session` localStorage entry. Both fire `notifications:session_cleared` via the standard `from:notification:display` plumbing. Currently-open tabs are not touched; the next launch starts fresh. Driven by the "Clear saved session" button in the Settings modal, which guards it behind a `confirmExternal` dialog.
+**Clear saved session.** The desktop coordinator clears local session metadata and encrypted draft snapshots while retaining unresolved operation intentions. A clear token prevents stale queued/final checkpoints from repopulating the session; later activity can resume checkpointing. The web bridge removes its localStorage session. Existing open tabs remain available, and the Settings action asks for confirmation.
 
 **IPC channels** (whitelisted in [preload.ts](../src/app/preload.ts)):
 
@@ -607,9 +608,9 @@ Drive Explorer context menus provide folder creation and document moves. `CloudM
 
 Main loads the shared Desktop OAuth registration from `src/app/config/googleDrive.json` through `GoogleDriveRegistration`. The default **Connect with Google** action creates and authorizes a connection in one request, then selects its Explorer workspace. Custom client configuration lives under Advanced. Each persisted connection retains its own registration; older connections remain compatible and are never silently migrated to a new OAuth client. Only public Desktop app values are bundled, while user tokens remain OS-encrypted locally. Public availability still depends on Google's app publishing/verification.
 
-`FileManager.openRemoteDocument` keys models by connection, verified Google account and resolved file ID using `cloud-drive://` identities. Tabs focus existing buffers on repeated opens and stay out of local path accessors, filesystem writes and persisted sessions. Read-only connections can be explicitly upgraded through fresh Google consent. Editing also requires current account identity, My Drive permissions and a strong validator. `FileManager` snapshots model contents/version for saves, advances only the acknowledged baseline, retains newer edits, and includes pending/unconfirmed writes in close/quit protection. Cloud operations are injected through `setRemoteOperations`; React renders snapshots. “Edit a local copy” creates a separate dirty untitled model. Assistant selection writes remain blocked for remote documents. Remote previews disable raw HTML and local/relative asset resolution.
+`FileManager.openRemoteDocument` keys models by connection, verified Google account and resolved file ID using `cloud-drive://` identities. Tabs focus existing buffers on repeated opens and stay out of local path accessors and filesystem writes. Remote session snapshots use the encrypted recovery store. Read-only connections can be explicitly upgraded through fresh Google consent. Editing also requires current account identity, My Drive permissions and a strong validator. `FileManager` snapshots model contents/version for saves, advances only the acknowledged baseline, retains newer edits, and includes pending/unconfirmed writes in close/quit protection. Cloud operations are injected through `setRemoteOperations`; React renders snapshots. “Edit a local copy” creates a separate dirty untitled model. Assistant selection writes remain blocked for remote documents. Remote previews disable raw HTML and local/relative asset resolution.
 
-`CloudService` serializes writes by document/account, updates by ID using the live-verified v2 multipart `If-Match` protocol and deduplicates operation IDs. Creation pre-generates a file ID and refuses a same-name preflight match. Uncertain responses retain their snapshot and reconcile by ID/content/revision (plus a create marker), without replaying writes. Reload confirms before replacing dirty text and rejects intervening edits; comparison uses ephemeral diff tabs. Prompt callbacks live in the neutral `prompts.ts` seam, re-exported by the existing React context for compatibility. Shared-drive writes remain disabled. Unsaved remote buffers and unresolved operations are in-memory only. See [setup and limits](cloud/google-drive.md), [decisions](cloud/drive-decisions.md) and [implementation report](cloud/implementation-report.md).
+`CloudService` serializes writes by document/account, updates by ID using the live-verified v2 multipart `If-Match` protocol and deduplicates operation IDs. Creation pre-generates a file ID and refuses a same-name preflight match. Uncertain responses retain their snapshot and reconcile by ID/content/revision (plus a create marker), without replaying writes. Reload confirms before replacing dirty text and rejects intervening edits; comparison uses ephemeral diff tabs. Prompt callbacks live in the neutral `prompts.ts` seam, re-exported by the existing React context for compatibility. Shared-drive writes remain disabled. Remote drafts and operation intentions are atomically checkpointed in OS-encrypted cloud-recovery.bin. The journal is written before provider mutations and restored without automatic replay. See [setup and limits](cloud/google-drive.md), [decisions](cloud/drive-decisions.md) and [implementation report](cloud/implementation-report.md).
 
 ## 5. Settings Schema
 

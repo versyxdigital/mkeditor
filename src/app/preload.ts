@@ -66,6 +66,8 @@ const receiverWhitelist = [
   'from:theme:set',
   'from:settings:set',
   'from:session:restore',
+  'from:session:saved',
+  'from:session:cleared',
   'from:session:flush-request',
   'from:file:new',
   'from:file:open',

@@ -17,7 +17,6 @@ import { fileURLToPath } from 'url';
 import { AppAssistant } from './lib/AppAssistant';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
-import { AppSession } from './lib/AppSession';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { AppWindow } from './lib/AppWindow';
@@ -49,6 +48,7 @@ log.initialize();
 
 // Define log config to pass to app handlers
 const logconfig: LogConfig = { log, logpath };
+let sessionBridge: AppBridge | null = null;
 
 /** --------------------Auto Updates------------------------------ */
 
@@ -148,6 +148,7 @@ function main(file: string | null = null) {
   // Load the main process "bridge" to handle IPC traffic across
   // execution contexts.
   const bridge = new AppBridge(context);
+  sessionBridge = bridge;
   bridge.provide('settings', settings);
   bridge.provide('logger', logconfig);
 
@@ -230,7 +231,7 @@ function main(file: string | null = null) {
 
   // On finished frotend loading, set the editor theme and settings,
   // and set the active file (untitled new file if no file open).
-  context.webContents.on('did-finish-load', () => {
+  context.webContents.on('did-finish-load', async () => {
     if (context) {
       context.webContents.send(
         'from:theme:set',
@@ -239,9 +240,10 @@ function main(file: string | null = null) {
       context.webContents.send('from:settings:set', settings.loadFile());
 
       const sessionEnabled = settings.applied?.sessionRestore ?? true;
-      const envelope = sessionEnabled
-        ? AppSession.buildRestoreEnvelope(AppSession.load())
-        : { session: null, missing: [], contents: {} };
+      const restoreWindow = context;
+      const envelope = await bridge.restoreSession(sessionEnabled);
+      if (!context || context !== restoreWindow || context.isDestroyed())
+        return;
       const restoreRoot = envelope.session?.workspaceRoot;
       if (restoreRoot && !AppStorage.offerWorkspaceRoot(restoreRoot, true)) {
         envelope.session = { ...envelope.session!, workspaceRoot: null };
@@ -270,8 +272,38 @@ function main(file: string | null = null) {
   };
   nativeTheme.on('updated', handleNativeThemeUpdated);
 
+  let closeCheckpointReady = false;
+  let closeCheckpointPending = false;
+  const closingWindow = context;
   context.on('close', (event) => {
+    if (closeCheckpointReady) return;
+    if (closeCheckpointPending) {
+      event.preventDefault();
+      return;
+    }
     bridge.promptUserBeforeQuit(<Event>event);
+    if (event.defaultPrevented) {
+      isFlushingSession = false;
+      quitCheckpointReady = false;
+      quitAttempt++;
+      return;
+    }
+    if (isFlushingSession && quitCheckpointReady) return;
+    event.preventDefault();
+    if (isFlushingSession) return;
+    closeCheckpointPending = true;
+    void bridge.flushSession().then((ok) => {
+      closeCheckpointPending = false;
+      if (closingWindow.isDestroyed()) return;
+      if (ok || bridge.confirmFailedSession()) {
+        closeCheckpointReady = true;
+        closingWindow.close();
+      } else
+        closingWindow.webContents.send('from:notification:display', {
+          status: 'error',
+          key: 'cloud:recovery_storage_error',
+        });
+    });
   });
 
   context.on('closed', () => {
@@ -351,38 +383,67 @@ app.on('open-file', (event, file) => {
 
 /**
  * Final session flush on quit. Asks the renderer to send one last
- * `to:session:save` (so the at-quit cursor position of the active tab
- * lands on disk), waits up to ~250 ms for it to arrive, and then
- * proceeds with quit either way. The renderer's debounced save covers
- * everything else, so a missed ack just means the very last cursor
- * movement isn't persisted — not data loss.
+ * checkpoint and waits for the disk acknowledgement. A failed or timed
+ * out checkpoint requires an explicit decision before quitting.
  */
 let isFlushingSession = false;
+let quitCheckpointReady = false;
+let quitAttempt = 0;
 app.on('before-quit', (event) => {
-  if (isFlushingSession) return; // second pass after our own app.quit()
+  if (isFlushingSession) {
+    if (!quitCheckpointReady) event.preventDefault();
+    return;
+  }
   if (!context || context.isDestroyed()) return;
 
   event.preventDefault();
   isFlushingSession = true;
+  const attempt = ++quitAttempt;
+  let sessionSaved = false;
 
-  // Two flush requests fan out in parallel — session (FileManager
-  // tabs + cursor) and AI conversations. We resolve when BOTH ack
-  // OR the 250ms safety timeout fires. Missing one ack just costs
-  // a few hundred ms of unpersisted activity, not data loss; the
-  // renderer's debounced saves cover everything else. Logic lives
-  // in `quitFlush.ts` so it can be unit-tested without spinning up
-  // Electron's app lifecycle.
+  // Flush session and AI conversations in parallel. The session signal
+  // here is emitted only after the checkpoint has committed (or failed),
+  // rather than when its IPC payload first arrives.
   runQuitFlush({
-    on: (channel, listener) => ipcMain.on(channel, listener),
-    off: (channel, listener) => ipcMain.removeListener(channel, listener),
+    on: (channel, listener) =>
+      ipcMain.on(
+        channel === 'to:session:save' ? 'mked:session:committed' : channel,
+        listener,
+      ),
+    off: (channel, listener) =>
+      ipcMain.removeListener(
+        channel === 'to:session:save' ? 'mked:session:committed' : channel,
+        listener,
+      ),
     send: (channel, payload) => {
       if (!context || context.isDestroyed()) return;
+      if (channel === 'from:session:flush-request') {
+        void sessionBridge?.flushSession().then((ok) => {
+          sessionSaved = ok;
+          ipcMain.emit('mked:session:committed');
+        });
+        return;
+      }
       // `from:session:flush-request` historically went without a
       // payload; preserve that signature for the renderer.
       if (payload === undefined) context.webContents.send(channel);
       else context.webContents.send(channel, payload);
     },
-    onDone: () => app.quit(),
+    timeoutMs: 2200,
+    onDone: () => {
+      if (attempt !== quitAttempt) return;
+      if (sessionSaved || sessionBridge?.confirmFailedSession()) {
+        quitCheckpointReady = true;
+        app.quit();
+      } else {
+        isFlushingSession = false;
+        if (context && !context.isDestroyed())
+          context.webContents.send('from:notification:display', {
+            status: 'error',
+            key: 'cloud:recovery_storage_error',
+          });
+      }
+    },
   });
 });
 

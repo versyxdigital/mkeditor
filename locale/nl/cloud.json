@@ -94,5 +94,14 @@
   "no_folders": "Geen mappen hier.",
   "check_operation": "Bewerking controleren",
   "open": "Openen",
-  "operation_unconfirmed": "Google heeft deze wijziging niet bevestigd. Controleer de bewerking voordat u het opnieuw probeert."
+  "operation_unconfirmed": "Google heeft deze wijziging niet bevestigd. Controleer de bewerking voordat u het opnieuw probeert.",
+  "recovery_storage_error": "Lokale Drive-herstelgegevens konden niet worden opgeslagen of gelezen. De vorige herstelkopie is behouden.",
+  "recovered_draft": "Lokaal concept hersteld. Controleer Drive voordat u opslaat.",
+  "checking_recovery": "Hersteld document wordt gecontroleerd met Drive…",
+  "check_recovery": "Hersteld document controleren",
+  "error_not_applied": "Google heeft deze bewerking niet uitgevoerd. Uw concept is behouden.",
+  "error_pending_operation": "Controleer de onderbroken bewerking voordat u dit bestand opnieuw wijzigt.",
+  "recovery_quit_title": "Herstelpunt opslaan mislukt",
+  "recovery_quit_message": "Uw laatste wijzigingen konden niet lokaal worden opgeslagen. Toch afsluiten of annuleren om de app open te houden?",
+  "recovery_quit_anyway": "Toch afsluiten"
 }

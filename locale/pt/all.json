@@ -298,7 +298,16 @@
     "no_folders": "Não existem pastas aqui.",
     "check_operation": "Verificar operação",
     "open": "Abrir",
-    "operation_unconfirmed": "O Google não confirmou esta alteração. Verifique a operação antes de tentar novamente."
+    "operation_unconfirmed": "O Google não confirmou esta alteração. Verifique a operação antes de tentar novamente.",
+    "recovery_storage_error": "Não foi possível guardar ou ler os dados locais de recuperação do Drive. A cópia anterior foi mantida.",
+    "recovered_draft": "Rascunho local recuperado. Verifique o Drive antes de guardar.",
+    "checking_recovery": "A verificar o documento recuperado no Drive…",
+    "check_recovery": "Verificar documento recuperado",
+    "error_not_applied": "O Google não aplicou esta operação. O rascunho foi mantido.",
+    "error_pending_operation": "Verifique a operação interrompida antes de voltar a alterar este ficheiro.",
+    "recovery_quit_title": "Falha ao guardar o ponto de recuperação",
+    "recovery_quit_message": "Não foi possível guardar as últimas alterações localmente. Sair na mesma ou cancelar para manter a aplicação aberta?",
+    "recovery_quit_anyway": "Sair na mesma"
   },
   "menus-alerts": {
     "primary": "Primário",

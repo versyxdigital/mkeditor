@@ -298,7 +298,16 @@
     "no_folders": "Keine Ordner vorhanden.",
     "check_operation": "Vorgang prüfen",
     "open": "Öffnen",
-    "operation_unconfirmed": "Google hat diese Änderung nicht bestätigt. Prüfen Sie den Vorgang, bevor Sie es erneut versuchen."
+    "operation_unconfirmed": "Google hat diese Änderung nicht bestätigt. Prüfen Sie den Vorgang, bevor Sie es erneut versuchen.",
+    "recovery_storage_error": "Lokale Drive-Wiederherstellungsdaten konnten nicht gespeichert oder gelesen werden. Die bisherige Kopie bleibt erhalten.",
+    "recovered_draft": "Lokaler Entwurf wiederhergestellt. Vor dem Speichern Drive prüfen.",
+    "checking_recovery": "Wiederhergestelltes Dokument wird mit Drive geprüft…",
+    "check_recovery": "Wiederhergestelltes Dokument prüfen",
+    "error_not_applied": "Google hat den Vorgang nicht ausgeführt. Ihr Entwurf bleibt erhalten.",
+    "error_pending_operation": "Prüfen Sie den unterbrochenen Vorgang, bevor Sie diese Datei erneut ändern.",
+    "recovery_quit_title": "Wiederherstellungspunkt fehlgeschlagen",
+    "recovery_quit_message": "Ihre letzten Änderungen konnten nicht lokal gespeichert werden. Trotzdem beenden oder abbrechen, um die App geöffnet zu lassen?",
+    "recovery_quit_anyway": "Trotzdem beenden"
   },
   "menus-alerts": {
     "primary": "Primär",

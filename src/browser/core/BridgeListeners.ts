@@ -269,6 +269,8 @@ export function registerBridgeListeners(
   // to re-walk the persisted root via `to:file:openpath`, which fires
   // the normal `from:folder:opened` flow.
   bridge.receive('from:session:restore', (envelope: SessionRestoreEnvelope) => {
+    if (envelope?.recoveryError)
+      sonnerToast('error', t('cloud:recovery_storage_error'));
     if (envelope?.missing && envelope.missing.length > 0) {
       sonnerToast(
         'warning',
@@ -304,12 +306,26 @@ export function registerBridgeListeners(
     }
   });
 
-  // Final flush ahead of quit. Main's `before-quit` hook sends this
-  // and waits up to ~250 ms for the `to:session:save` ack — so the
-  // serialisation runs synchronously here and we ship immediately.
-  bridge.receive('from:session:flush-request', () => {
+  // Final flush ahead of quit. Main waits for the correlated checkpoint
+  // to reach disk. Coalesce ordinary saves while that write is in flight.
+  let sessionSaveFailed = false;
+  bridge.receive('from:session:cleared', (message: { token: string }) =>
+    files.onSessionCleared(message.token),
+  );
+  bridge.receive('from:session:saved', (result: { ok: boolean }) => {
+    files.onSessionCheckpointSaved();
+    if (!result.ok && !sessionSaveFailed)
+      sonnerToast('error', t('cloud:recovery_storage_error'));
+    sessionSaveFailed = !result.ok;
+  });
+  bridge.receive('from:session:flush-request', (request?: { id?: string }) => {
     providers.exportSettings?.flushPersist();
-    bridge.send('to:session:save', files.serializeSession());
+    files.flushSessionCheckpoint(request?.id, {
+      title: t('cloud:recovery_quit_title'),
+      message: t('cloud:recovery_quit_message'),
+      quit: t('cloud:recovery_quit_anyway'),
+      cancel: t('cloud:cancel'),
+    });
   });
 
   // BrowserWindow maximize/unmaximize state — `<TitleBar>`'s maximize

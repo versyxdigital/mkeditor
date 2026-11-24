@@ -11,7 +11,12 @@ export type CloudErrorCode =
   | 'unsupported'
   | 'storage'
   | 'cancelled';
-export type CloudWriteError = CloudErrorCode | 'unconfirmed' | 'duplicate';
+export type CloudWriteError =
+  | CloudErrorCode
+  | 'unconfirmed'
+  | 'duplicate'
+  | 'not_applied'
+  | 'pending_operation';
 
 export interface CloudConnection {
   id: string;
@@ -26,6 +31,8 @@ export interface CloudConnection {
   status: 'connected' | 'disconnected' | 'reauthorize' | 'connecting';
 }
 export interface CloudState {
+  pendingOperations?: CloudPendingOperation[];
+  recoveryError?: boolean;
   revision: number;
   connections: CloudConnection[];
   secureStorage: boolean;
@@ -50,11 +57,29 @@ export interface DrivePage {
   nextPage?: string;
 }
 export interface RemoteDocument {
+  operationId?: string;
   connectionId: string;
   accountId: string;
   connectionName: string;
   item: DriveItem;
   content: string;
+}
+
+export interface RemoteTabRecovery {
+  epoch?: string;
+  sequence?: number;
+  dirty: boolean;
+  document: RemoteDocument;
+  baseline: string;
+  pendingSave?: { operationId: string; content: string; validator: string };
+}
+export interface CloudPendingOperation {
+  operationId: string;
+  connectionId: string;
+  accountId: string;
+  kind: 'save' | 'create' | 'move' | 'createFolder';
+  itemId: string;
+  name?: string;
 }
 export interface CloudCallbackCopy {
   title: string;
@@ -65,6 +90,7 @@ export interface CloudCallbackCopy {
 }
 export type CloudCommand =
   | { action: 'state' }
+  | { action: 'acknowledge'; operationId: string }
   | {
       action: 'add';
       name: string;
@@ -92,6 +118,9 @@ export type CloudCommand =
   | { action: 'open'; connectionId: string; itemId: string; accountId?: string }
   | {
       action: 'save';
+      epoch?: string;
+      sequence?: number;
+      name?: string;
       connectionId: string;
       accountId: string;
       itemId: string;
@@ -156,7 +185,9 @@ export type CloudResponse = { requestId: string } & (
 );
 
 export const remoteDocumentPath = (
-  doc: Pick<RemoteDocument, 'connectionId' | 'accountId' | 'item'>,
+  doc: Pick<RemoteDocument, 'connectionId' | 'accountId'> & {
+    item: Pick<DriveItem, 'id'> & Partial<DriveItem>;
+  },
 ): string =>
   `cloud-drive://${encodeURIComponent(doc.connectionId)}/${encodeURIComponent(doc.accountId)}/${encodeURIComponent(doc.item.id)}`;
 export const isRemotePath = (path: string | null | undefined): boolean =>

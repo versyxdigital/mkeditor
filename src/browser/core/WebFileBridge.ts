@@ -276,8 +276,23 @@ export class WebFileBridge implements ContextBridgeAPI {
    * disabled) is logged and swallowed; the renderer keeps running.
    */
   private persistSession(payload: SessionPayload): boolean {
+    if (payload.restoreEnabled === false) return true;
+    const tabs = payload.tabs.filter(
+      (tab) => !tab.remote && !tab.path.startsWith('cloud-drive://'),
+    );
     try {
-      localStorage.setItem(LS_KEY_SESSION, JSON.stringify(payload));
+      localStorage.setItem(
+        LS_KEY_SESSION,
+        JSON.stringify({
+          version: payload.version,
+          tabs,
+          activeFile: tabs.some((tab) => tab.path === payload.activeFile)
+            ? payload.activeFile
+            : (tabs[0]?.path ?? null),
+          workspaceRoot: payload.workspaceRoot,
+          assistant: payload.assistant,
+        }),
+      );
       return true;
     } catch (err) {
       logger?.error('WebFileBridge.persistSession', JSON.stringify(err));
@@ -325,7 +340,9 @@ export class WebFileBridge implements ContextBridgeAPI {
         const parsed = JSON.parse(raw) as Partial<SessionPayload>;
         if (
           parsed &&
-          (parsed.version === 1 || parsed.version === 2) &&
+          (parsed.version === 1 ||
+            parsed.version === 2 ||
+            parsed.version === 3) &&
           Array.isArray(parsed.tabs) &&
           (parsed.activeFile === null || typeof parsed.activeFile === 'string')
         ) {
@@ -337,6 +354,8 @@ export class WebFileBridge implements ContextBridgeAPI {
                 typeof tab === 'object' &&
                 typeof tab.path === 'string' &&
                 typeof tab.name === 'string' &&
+                !tab.remote &&
+                !tab.path.startsWith('cloud-drive://') &&
                 (tab.untitledContent === undefined ||
                   typeof tab.untitledContent === 'string'),
             ),

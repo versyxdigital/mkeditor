@@ -219,7 +219,7 @@ describe('AppSession.save', () => {
     withTempHome((tmpHome) => {
       const AppSession = loadAppSession(tmpHome);
       AppSession.save(validPayload);
-      expect(AppSession.load()).toEqual(validPayload);
+      expect(AppSession.load()).toEqual({ ...validPayload, version: 3 });
     });
   });
 
@@ -313,7 +313,7 @@ describe('AppSession.save', () => {
 
       const file = normalize(tmpHome + '/.mkeditor/session.json');
       const written = JSON.parse(readFileSync(file, { encoding: 'utf-8' }));
-      expect(written.version).toBe(2);
+      expect(written.version).toBe(3);
     });
   });
 

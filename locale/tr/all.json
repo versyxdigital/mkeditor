@@ -298,7 +298,16 @@
     "no_folders": "Burada klasör yok.",
     "check_operation": "İşlemi kontrol et",
     "open": "Aç",
-    "operation_unconfirmed": "Google bu değişikliği onaylamadı. Tekrar denemeden önce işlemi kontrol edin."
+    "operation_unconfirmed": "Google bu değişikliği onaylamadı. Tekrar denemeden önce işlemi kontrol edin.",
+    "recovery_storage_error": "Yerel Drive kurtarma verileri kaydedilemedi veya okunamadı. Önceki kurtarma kopyası korundu.",
+    "recovered_draft": "Yerel taslak kurtarıldı. Kaydetmeden önce Drive’ı kontrol edin.",
+    "checking_recovery": "Kurtarılan belge Drive ile kontrol ediliyor…",
+    "check_recovery": "Kurtarılan belgeyi kontrol et",
+    "error_not_applied": "Google bu işlemi uygulamadı. Taslağınız korundu.",
+    "error_pending_operation": "Bu dosyayı yeniden değiştirmeden önce kesintiye uğrayan işlemi kontrol edin.",
+    "recovery_quit_title": "Kurtarma kaydı başarısız",
+    "recovery_quit_message": "Son değişiklikleriniz yerel olarak kaydedilemedi. Yine de çıkmak mı, uygulamayı açık tutmak için iptal etmek mi istiyorsunuz?",
+    "recovery_quit_anyway": "Yine de çık"
   },
   "menus-alerts": {
     "primary": "Birincil",

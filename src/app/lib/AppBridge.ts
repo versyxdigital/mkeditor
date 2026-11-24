@@ -11,7 +11,10 @@ import { promises as fsPromises } from 'fs';
 import { basename, dirname, join, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
 import type { Logger, LogMessage } from '../interfaces/Logging';
-import type { SessionPayload } from '../interfaces/Session';
+import type {
+  SessionPayload,
+  SessionRestoreEnvelope,
+} from '../interfaces/Session';
 import type {
   CancelRequest,
   ChatRequest,
@@ -37,6 +40,7 @@ import {
 import { normalizeLanguage } from '../util';
 import { CloudService } from './cloud/CloudService';
 import { CloudStore } from './cloud/CloudStore';
+import { CloudSessionRecovery } from './cloud/CloudSessionRecovery';
 /**
  * AppBridge
  */
@@ -79,6 +83,54 @@ export class AppBridge {
   private assistantConfigPush = 0;
   private registered = false;
   private cloud: CloudService | null = null;
+  private readonly recovery = new CloudSessionRecovery();
+  private flushSequence = 0;
+  private sessionFlushes = new Map<string, (ok: boolean) => void>();
+  private recoveryFailureCopy?: import('../interfaces/Session').SessionRecoveryCopy;
+  confirmFailedSession(): boolean {
+    const copy = this.recoveryFailureCopy ?? {
+      title: 'MKEditor',
+      message:
+        'Your latest changes could not be saved locally. Quit anyway, or cancel to keep the app open?',
+      quit: 'Quit anyway',
+      cancel: 'Cancel',
+    };
+    return (
+      dialog.showMessageBoxSync(this.context, {
+        type: 'warning',
+        title: copy.title,
+        message: copy.message,
+        buttons: [copy.cancel, copy.quit],
+        defaultId: 0,
+        cancelId: 0,
+      }) === 1
+    );
+  }
+
+  restoreSession(enabled: boolean): Promise<SessionRestoreEnvelope> {
+    return enabled
+      ? this.recovery.restore(AppSession.load())
+      : Promise.resolve({ session: null, missing: [], contents: {} });
+  }
+  flushSession(): Promise<boolean> {
+    const id = `session-flush-${++this.flushSequence}`;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this.sessionFlushes.delete(id);
+        resolve(false);
+      }, 1800);
+      this.sessionFlushes.set(id, (ok) => {
+        clearTimeout(timer);
+        resolve(ok);
+      });
+      if (this.disposed || this.context.isDestroyed()) {
+        this.sessionFlushes.get(id)?.(false);
+        this.sessionFlushes.delete(id);
+        return;
+      }
+      this.context.webContents.send('from:session:flush-request', { id });
+    });
+  }
 
   /**
    * Create a new AppBridge instance to manage IPC traffic.
@@ -121,6 +173,9 @@ export class AppBridge {
         if (!this.disposed && !this.context.isDestroyed())
           this.context.webContents.send('from:cloud:state', state);
       },
+      undefined,
+      undefined,
+      this.recovery.store,
     );
     this.on('to:cloud:request', async (_event, input: unknown) => {
       const result = await this.cloud!.handle(input);
@@ -165,20 +220,65 @@ export class AppBridge {
     // Persist the renderer's open-tab / cursor / scroll session. Fired
     // by the renderer's debounced session save trigger and by the
     // renderer's flush-request handler during quit.
-    this.on('to:session:save', (_event, payload: SessionPayload) => {
+    this.on('to:session:save', async (_event, payload: SessionPayload) => {
       if (!payload || typeof payload !== 'object') return;
-      AppSession.save({
-        ...payload,
-        workspaceRoot: AppStorage.getSessionWorkspaceRoot(
-          payload.workspaceRoot,
-        ),
-      });
+      let ok = false;
+      if (
+        payload.failureCopy &&
+        ['title', 'message', 'quit', 'cancel'].every(
+          (key) =>
+            typeof (payload.failureCopy as unknown as Record<string, unknown>)[
+              key
+            ] === 'string' &&
+            (payload.failureCopy as unknown as Record<string, string>)[key]
+              .length < 2000,
+        )
+      )
+        this.recoveryFailureCopy = payload.failureCopy;
+      try {
+        await this.recovery.save({
+          ...payload,
+          workspaceRoot: AppStorage.getSessionWorkspaceRoot(
+            payload.workspaceRoot,
+          ),
+        });
+        ok = true;
+      } catch {
+        /* Keep the previous checkpoint and report failure without document text. */
+      }
+      if (
+        ok &&
+        (payload.tabs?.some((tab) => tab.remote) ||
+          payload.cloudAcknowledgements?.length) &&
+        !this.disposed &&
+        !this.context.isDestroyed()
+      )
+        this.context.webContents.send(
+          'from:cloud:state',
+          await this.cloud!.state(),
+        );
+      if (!this.disposed && !this.context.isDestroyed())
+        this.context.webContents.send('from:session:saved', { ok });
+      if (payload.flushId) {
+        this.sessionFlushes.get(payload.flushId)?.(ok);
+        this.sessionFlushes.delete(payload.flushId);
+      }
     });
 
     // Wipe the persisted session file. Fired by the renderer's
     // "Clear saved session" action in the Settings modal.
-    this.on('to:session:clear', () => {
-      AppSession.clear();
+    this.on('to:session:clear', async () => {
+      let token: string;
+      try {
+        token = await this.recovery.clear();
+      } catch {
+        this.context.webContents.send('from:notification:display', {
+          status: 'error',
+          key: 'cloud:recovery_storage_error',
+        });
+        return;
+      }
+      this.context.webContents.send('from:session:cleared', { token });
       this.context.webContents.send('from:notification:display', {
         status: 'success',
         key: 'notifications:session_cleared',
@@ -814,6 +914,8 @@ export class AppBridge {
    * Remove every IPC listener and invoke handler this bridge registered.
    */
   private dispose(): void {
+    this.sessionFlushes.forEach((resolve) => resolve(false));
+    this.sessionFlushes.clear();
     if (this.disposed) return;
     this.disposed = true;
     this.cloud?.dispose();

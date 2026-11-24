@@ -187,7 +187,7 @@ test('remote access changes lock the editor while preserving its unsaved buffer'
   expect(model.getValue()).toBe('unsaved');
 });
 
-test('remote tabs are read-only, account-bound and excluded from local IO and session restore', async () => {
+test('remote tabs are read-only, account-bound and kept separate from local IO', async () => {
   const { fm, mk, bridge, add } = setup();
   const local = add('/workspace/local.md');
   const document = {
@@ -216,8 +216,16 @@ test('remote tabs are read-only, account-bound and excluded from local IO and se
     bridge.send.mock.calls.some(([channel]) => channel === 'to:file:save'),
   ).toBe(false);
   const session = fm.serializeSession();
-  expect(session.tabs.map((tab) => tab.path)).toEqual(['/workspace/local.md']);
-  expect(session.activeFile).toBe('/workspace/local.md');
+  expect(session.tabs.map((tab) => tab.path)).toEqual([
+    '/workspace/local.md',
+    remotePath,
+  ]);
+  expect(session.tabs[1].remote).toMatchObject({
+    document,
+    baseline: document.content,
+    dirty: false,
+  });
+  expect(session.activeFile).toBe(remotePath);
   fm.openRemoteDocument({ ...document, accountId: 'account-b' });
   expect([...fm.tabs.values()].filter((tab) => tab.remote)).toHaveLength(2);
   fm.copyRemoteToLocal(remotePath);
@@ -884,4 +892,273 @@ test('an unconfirmed move blocks saves until its location is checked', async () 
   }));
   expect(fm.hasUnconfirmedRemoteSave(path)).toBe(false);
   expect(model.getValue()).toBe('unsaved');
+});
+
+test('remote session restores a dirty draft offline with its baseline, identity and view state', () => {
+  const source = remoteEditing();
+  source.model.setValue('recovered draft');
+  source.fm.viewStates.set(source.path, { cursorState: [] } as never);
+  const payload = source.fm.serializeSession();
+  const restored = setup();
+  restored.fm.setRemoteOperations({
+    canEdit: () => false,
+    canCheck: () => false,
+    save: jest.fn(),
+    reconcile: jest.fn(),
+  });
+  restored.fm.restoreSession({ session: payload, contents: {}, missing: [] });
+  expect(restored.fm.activeFile).toBe(source.path);
+  expect(restored.mk.getValue()).toBe('recovered draft');
+  expect(restored.fm.originals.get(source.path)).toBe('original');
+  expect(restored.fm.getSnapshot().tabs[0]).toMatchObject({
+    dirty: true,
+    remoteRecovery: { status: 'waiting' },
+  });
+  expect(restored.mk.updateOptions).toHaveBeenLastCalledWith({
+    readOnly: false,
+  });
+});
+
+test('recovered drafts validate the remote baseline before the first save', async () => {
+  const source = remoteEditing();
+  source.model.setValue('draft');
+  const restored = setup();
+  let resolveCheck!: (value: typeof source.document) => void;
+  const check = jest.fn(
+    () =>
+      new Promise<typeof source.document>((resolve) => {
+        resolveCheck = resolve;
+      }),
+  );
+  const save = jest.fn(async () => ({
+    ...source.document,
+    content: 'draft',
+    item: { ...source.document.item, validator: '"saved"' },
+  }));
+  restored.fm.setRemoteOperations({
+    canEdit: () => true,
+    canCheck: () => true,
+    check,
+    save,
+    reconcile: jest.fn(),
+  });
+  restored.fm.restoreSession({
+    session: source.fm.serializeSession(),
+    contents: {},
+    missing: [],
+  });
+  const saving = restored.fm.saveTab(source.path);
+  await Promise.resolve();
+  expect(save).not.toHaveBeenCalled();
+  resolveCheck({
+    ...source.document,
+    item: { ...source.document.item, validator: '"checked"' },
+  });
+  expect(await saving).toBe(true);
+  expect(save).toHaveBeenCalledWith(
+    expect.objectContaining({
+      document: expect.objectContaining({
+        item: expect.objectContaining({ validator: '"checked"' }),
+      }),
+    }),
+  );
+});
+
+test('an external change during downtime preserves the recovered draft and opens conflict recovery', async () => {
+  const source = remoteEditing();
+  source.model.setValue('my draft');
+  const restored = setup();
+  const save = jest.fn();
+  restored.fm.setRemoteOperations({
+    canEdit: () => true,
+    canCheck: () => true,
+    check: async () => ({ ...source.document, content: 'changed in Drive' }),
+    save,
+    reconcile: jest.fn(),
+  });
+  restored.fm.restoreSession({
+    session: source.fm.serializeSession(),
+    contents: {},
+    missing: [],
+  });
+  expect(await restored.fm.checkRemoteRecovery(source.path)).toBe(false);
+  expect(restored.mk.getValue()).toBe('my draft');
+  expect(restored.fm.tabs.get(source.path)?.remoteSave?.phase).toBe('conflict');
+  expect(save).not.toHaveBeenCalled();
+});
+
+test('a restored clean document refreshes from Drive while intervening local edits are retained', async () => {
+  const source = remoteEditing();
+  const restored = setup();
+  let finish!: (document: typeof source.document) => void;
+  const check = jest.fn(
+    () =>
+      new Promise<typeof source.document>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  restored.fm.setRemoteOperations({
+    canEdit: () => true,
+    canCheck: () => true,
+    check,
+    save: jest.fn(),
+    reconcile: jest.fn(),
+  });
+  restored.fm.restoreSession({
+    session: source.fm.serializeSession(),
+    contents: {},
+    missing: [],
+  });
+  const checking = restored.fm.checkRemoteRecovery(source.path);
+  await Promise.resolve();
+  restored.fm.models.get(source.path)!.setValue('typed during the check');
+  finish({ ...source.document, content: 'remote update' });
+  expect(await checking).toBe(false);
+  expect(restored.mk.getValue()).toBe('typed during the check');
+  expect(restored.fm.tabs.get(source.path)?.remoteSave?.phase).toBe('conflict');
+});
+
+test('a missing Drive file leaves its recovered text available and never recreates it', async () => {
+  const source = remoteEditing();
+  source.model.setValue('keep this');
+  const restored = setup();
+  const save = jest.fn();
+  restored.fm.setRemoteOperations({
+    canEdit: () => true,
+    canCheck: () => true,
+    check: async () => {
+      throw 'missing';
+    },
+    save,
+    reconcile: jest.fn(),
+  });
+  restored.fm.restoreSession({
+    session: source.fm.serializeSession(),
+    contents: {},
+    missing: [],
+  });
+  expect(await restored.fm.checkRemoteRecovery(source.path)).toBe(false);
+  expect(restored.mk.getValue()).toBe('keep this');
+  expect(restored.fm.tabs.get(source.path)?.remoteRecovery?.error).toBe(
+    'missing',
+  );
+  expect(save).not.toHaveBeenCalled();
+});
+
+test('interrupted saves are reconciled after restoring and newer draft edits stay dirty', async () => {
+  const source = remoteEditing();
+  source.model.setValue('write snapshot');
+  let complete!: (document: typeof source.document) => void;
+  source.save.mockReturnValue(
+    new Promise((resolve) => {
+      complete = resolve;
+    }),
+  );
+  const sourceSave = source.fm.saveTab(source.path);
+  source.model.setValue('newer draft');
+  const payload = source.fm.serializeSession();
+  const restored = setup();
+  const save = jest.fn();
+  const acknowledged = {
+    ...source.document,
+    content: 'write snapshot',
+    item: { ...source.document.item, validator: '"acknowledged"' },
+  };
+  const reconcile = jest.fn(async () => acknowledged);
+  restored.fm.setRemoteOperations({
+    canEdit: () => true,
+    canCheck: () => true,
+    check: async () => acknowledged,
+    save,
+    reconcile,
+  });
+  restored.fm.restoreSession({ session: payload, contents: {}, missing: [] });
+  expect(await restored.fm.checkRemoteRecovery(source.path)).toBe(true);
+  expect(restored.mk.getValue()).toBe('newer draft');
+  expect(restored.fm.originals.get(source.path)).toBe('write snapshot');
+  expect(restored.fm.getSnapshot().tabs[0].dirty).toBe(true);
+  expect(reconcile).toHaveBeenCalledTimes(1);
+  expect(save).not.toHaveBeenCalled();
+  complete(acknowledged);
+  await sourceSave;
+});
+
+test('remote typing checkpoints are bounded even while the debounce keeps being reset', () => {
+  jest.useFakeTimers();
+  try {
+    const source = remoteEditing();
+    source.bridge.send.mockClear();
+    for (let index = 0; index < 6; index++) {
+      source.model.setValue(`draft ${index}`);
+      jest.advanceTimersByTime(250);
+    }
+    const checkpoints = source.bridge.send.mock.calls.filter(
+      ([channel]) => channel === 'to:session:save',
+    );
+    expect(checkpoints.length).toBeGreaterThan(0);
+    expect(checkpoints[0][1].tabs[0].remote.document.content).toMatch(
+      /^draft /,
+    );
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('checkpoint backpressure sends the latest draft and waits for an acknowledged final flush', () => {
+  jest.useFakeTimers();
+  try {
+    const source = remoteEditing();
+    source.fm.setCheckpointAcknowledgements(true);
+    source.bridge.send.mockClear();
+    source.model.setValue('first checkpoint');
+    jest.advanceTimersByTime(350);
+    for (let i = 0; i < 6; i++) {
+      source.model.setValue(`latest ${i}`);
+      jest.advanceTimersByTime(250);
+    }
+    const sent = () =>
+      source.bridge.send.mock.calls.filter(
+        ([channel]) => channel === 'to:session:save',
+      );
+    expect(sent()).toHaveLength(1);
+    source.fm.flushSessionCheckpoint('final');
+    expect(sent()).toHaveLength(1);
+    source.fm.onSessionCheckpointSaved();
+    expect(sent()).toHaveLength(2);
+    expect(sent()[1][1]).toMatchObject({
+      flushId: 'final',
+      tabs: [
+        expect.objectContaining({
+          remote: expect.objectContaining({
+            document: expect.objectContaining({ content: 'latest 5' }),
+          }),
+        }),
+      ],
+    });
+    source.fm.onSessionCheckpointSaved();
+    expect(sent()).toHaveLength(2);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('a delayed session restore preserves live edits and keeps the older recovered draft separately', () => {
+  const source = remoteEditing();
+  source.model.setValue('older recovered draft');
+  const live = remoteEditing();
+  live.model.setValue('new live edits');
+  live.fm.restoreSession({
+    session: source.fm.serializeSession(),
+    contents: {},
+    missing: [],
+  });
+  expect(live.fm.activeFile).toBe(live.path);
+  expect(live.model.getValue()).toBe('new live edits');
+  expect(
+    [...live.fm.models].some(
+      ([path, model]) =>
+        path.startsWith('untitled-') &&
+        model.getValue() === 'older recovered draft',
+    ),
+  ).toBe(true);
 });

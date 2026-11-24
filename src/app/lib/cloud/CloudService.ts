@@ -21,6 +21,10 @@ import {
   driveRegistrationSchema,
   googleDriveRegistration,
 } from './GoogleDriveRegistration';
+import type {
+  CloudRecoveryStore,
+  RecoveryOperation,
+} from './CloudRecoveryStore';
 
 const id = z.string().min(1).max(1024);
 const connection = { connectionId: id };
@@ -34,6 +38,7 @@ const copySchema = z.object({
 });
 const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('state') }),
+  z.object({ action: z.literal('acknowledge'), operationId: id }),
   z.object({
     action: z.literal('add'),
     name: z.string().trim().min(1).max(100),
@@ -76,6 +81,9 @@ const commandSchema = z.discriminatedUnion('action', [
   }),
   z.object({
     action: z.literal('save'),
+    epoch: z.string().max(128).optional(),
+    sequence: z.number().int().nonnegative().optional(),
+    name: z.string().max(1024).optional(),
     ...connection,
     accountId: id,
     itemId: id,
@@ -146,6 +154,11 @@ const requestSchema = z.object({
 });
 type StoredConnection = CloudConnection & { credential?: string };
 interface WriteOperation {
+  epoch?: string;
+  sequence?: number;
+  name?: string;
+  folderId?: string;
+  notApplied?: boolean;
   connectionId: string;
   accountId: string;
   itemId: string;
@@ -155,6 +168,9 @@ interface WriteOperation {
   document?: RemoteDocument;
 }
 interface ItemOperation {
+  name?: string;
+  sourceFolderId?: string;
+  notApplied?: boolean;
   connectionId: string;
   accountId: string;
   fingerprint: string;
@@ -177,13 +193,65 @@ export class CloudService {
   private operations = new Map<string, WriteOperation>();
   private itemOperations = new Map<string, ItemOperation>();
   private writes = new Map<string, Promise<unknown>>();
+  private journalLoaded = false;
+  private journalLoading?: Promise<void>;
+  private restoredOperations = new Set<string>();
   constructor(
     private readonly store: CloudPersistence,
     private readonly openBrowser: (url: string) => Promise<void>,
     private readonly push: (state: CloudState) => void,
     private readonly drive = new GoogleDrive(),
     private readonly registration: Readonly<DriveRegistration> | null = googleDriveRegistration,
+    private readonly recovery?: CloudRecoveryStore,
   ) {}
+
+  private async loadJournal(): Promise<void> {
+    if (!this.recovery || this.journalLoaded) return;
+    if (this.journalLoading) return this.journalLoading;
+    this.journalLoading = (async () => {
+      const data = await this.recovery!.load();
+      for (const { operationId, ...op } of data.operations) {
+        if (data.acknowledged.includes(operationId)) continue;
+        if (op.kind === 'save' || op.kind === 'create') {
+          if (op.content === undefined) throw new CloudError('storage');
+          this.operations.set(operationId, {
+            ...op,
+            kind: op.kind,
+            content: op.content,
+          });
+        } else {
+          if (!op.folderId || !op.fingerprint) throw new CloudError('storage');
+          this.itemOperations.set(operationId, {
+            ...op,
+            kind: op.kind,
+            folderId: op.folderId,
+            fingerprint: op.fingerprint,
+          });
+        }
+        this.restoredOperations.add(operationId);
+      }
+      this.journalLoaded = true;
+    })();
+    try {
+      await this.journalLoading;
+    } finally {
+      this.journalLoading = undefined;
+    }
+  }
+  private async persistJournal(): Promise<void> {
+    if (!this.recovery) return;
+    const operations: RecoveryOperation[] = [
+      ...[...this.operations].map(([operationId, op]) => ({
+        ...op,
+        operationId,
+      })),
+      ...[...this.itemOperations].map(([operationId, op]) => ({
+        ...op,
+        operationId,
+      })),
+    ];
+    await this.recovery.saveOperations(operations);
+  }
 
   private data(): StoredConnection[] {
     return (this.connections ??= this.store.load());
@@ -209,7 +277,34 @@ export class CloudService {
     this.revision++;
   }
   async state(): Promise<CloudState> {
+    let recoveryError = false;
+    try {
+      await this.loadJournal();
+    } catch {
+      recoveryError = true;
+    }
+    const acknowledged = this.recovery
+      ? (await this.recovery.load().catch(() => ({ acknowledged: [] })))
+          .acknowledged
+      : [];
+    const pendingOperations = [...this.operations, ...this.itemOperations]
+      .filter(
+        ([id, op]) =>
+          this.restoredOperations.has(id) &&
+          !acknowledged.includes(id) &&
+          !op.notApplied,
+      )
+      .map(([operationId, op]) => ({
+        operationId,
+        connectionId: op.connectionId,
+        accountId: op.accountId,
+        itemId: op.itemId,
+        name: op.name,
+        kind: op.kind,
+      }));
     return {
+      ...(recoveryError ? { recoveryError: true } : {}),
+      ...(pendingOperations.length ? { pendingOperations } : {}),
       secureStorage: await this.store.available(),
       googleDriveAvailable: this.registration !== null,
       revision: this.revision,
@@ -273,6 +368,31 @@ export class CloudService {
     connectionId?: string;
   }> {
     if (command.action === 'state') return {};
+    if (command.action === 'acknowledge') {
+      await this.recovery?.acknowledge(command.operationId);
+      this.restoredOperations.delete(command.operationId);
+      this.operations.delete(command.operationId);
+      this.itemOperations.delete(command.operationId);
+      return {};
+    }
+    if (
+      [
+        'save',
+        'create',
+        'move',
+        'createFolder',
+        'reconcile',
+        'reconcileItem',
+      ].includes(command.action)
+    )
+      await this.loadJournal();
+    if (
+      this.recovery &&
+      'operationId' in command &&
+      ['save', 'create', 'move', 'createFolder'].includes(command.action) &&
+      (await this.recovery.load()).acknowledged.includes(command.operationId)
+    )
+      throw new CloudError('duplicate');
     if (command.action === 'add') {
       const custom = command.clientId !== undefined;
       if (!custom && command.clientValue !== undefined)
@@ -417,6 +537,7 @@ export class CloudService {
           operation.accountId !== entry.accountId
         )
           throw new CloudError('missing');
+        if (operation.notApplied) throw new CloudError('not_applied');
         if (!operation.item) {
           try {
             const meta = await this.drive.metadata(
@@ -428,17 +549,43 @@ export class CloudService {
               (operation.kind === 'createFolder' &&
                 meta.appProperties?.mkeditorCreateOperation !==
                   command.operationId)
-            )
+            ) {
+              if (
+                operation.kind === 'move' &&
+                operation.sourceFolderId &&
+                meta.parents?.includes(operation.sourceFolderId) &&
+                (
+                  await this.drive.contentValidator(
+                    tokens.access,
+                    operation.itemId,
+                  )
+                ).etag === operation.previousValidator
+              ) {
+                operation.notApplied = true;
+                await this.persistJournal();
+                throw new CloudError('not_applied');
+              }
               throw new CloudError('unconfirmed');
+            }
             operation.item = await this.drive.inspectItem(
               tokens.access,
               operation.itemId,
             );
             this.assertCurrent(entry.id, generation);
+            await this.persistJournal();
           } catch (error) {
             if (
               error instanceof CloudError &&
-              ['auth', 'cancelled'].includes(error.code)
+              error.code === 'missing' &&
+              operation.kind === 'createFolder'
+            ) {
+              operation.notApplied = true;
+              await this.persistJournal();
+              throw new CloudError('not_applied');
+            }
+            if (
+              error instanceof CloudError &&
+              ['auth', 'cancelled', 'not_applied'].includes(error.code)
             )
               throw error;
             throw new CloudError('unconfirmed');
@@ -460,6 +607,7 @@ export class CloudService {
             this.assertCurrent(entry.id, generation);
             const previous = this.itemOperations.get(command.operationId);
             if (previous) {
+              if (previous.notApplied) throw new CloudError('not_applied');
               if (previous.fingerprint !== fingerprint)
                 throw new CloudError('configuration');
               if (!previous.item) throw new CloudError('unconfirmed');
@@ -469,12 +617,14 @@ export class CloudService {
               };
             }
             if (
-              [...this.itemOperations.values()].filter((op) => !op.item)
-                .length >= 20 ||
+              [...this.itemOperations.values()].filter(
+                (op) => !op.item && !op.notApplied,
+              ).length >= 20 ||
               (command.action === 'move' &&
                 [...this.operations.values()].some(
                   (op) =>
                     !op.document &&
+                    !op.notApplied &&
                     op.connectionId === entry.id &&
                     op.accountId === entry.accountId &&
                     op.itemId === command.itemId,
@@ -482,6 +632,7 @@ export class CloudService {
               [...this.itemOperations.values()].some(
                 (op) =>
                   !op.item &&
+                  !op.notApplied &&
                   op.connectionId === entry.id &&
                   op.accountId === entry.accountId &&
                   (command.action === 'move'
@@ -489,7 +640,7 @@ export class CloudService {
                     : op.folderId === command.folderId),
               )
             )
-              throw new CloudError('unconfirmed');
+              throw new CloudError('pending_operation');
             const prepared =
               command.action === 'move'
                 ? await this.drive.prepareMove(
@@ -512,6 +663,9 @@ export class CloudService {
               (await this.drive.metadata(tokens.access, command.folderId)).id;
             this.assertCurrent(entry.id, generation);
             const operation: ItemOperation = {
+              name:
+                command.action === 'createFolder' ? command.name : undefined,
+              sourceFolderId: prepared?.source,
               connectionId: entry.id,
               accountId: entry.accountId!,
               fingerprint,
@@ -521,6 +675,12 @@ export class CloudService {
               previousValidator: prepared?.validator,
             };
             this.itemOperations.set(command.operationId, operation);
+            try {
+              await this.persistJournal();
+            } catch (error) {
+              this.itemOperations.delete(command.operationId);
+              throw error;
+            }
             try {
               if (command.action === 'move')
                 await this.drive.move(
@@ -559,6 +719,11 @@ export class CloudService {
                     break;
                   }
                 }
+              try {
+                await this.persistJournal();
+              } catch {
+                throw new CloudError('unconfirmed');
+              }
               return {
                 item: operation.item,
                 previousValidator: operation.previousValidator,
@@ -567,8 +732,10 @@ export class CloudService {
               if (
                 !(error instanceof CloudError) ||
                 error.code !== 'unconfirmed'
-              )
-                this.itemOperations.delete(command.operationId);
+              ) {
+                operation.notApplied = true;
+                await this.persistJournal();
+              }
               throw error;
             }
           });
@@ -587,7 +754,14 @@ export class CloudService {
           operation.accountId !== entry.accountId
         )
           throw new CloudError('missing');
-        if (operation.document) return { document: operation.document };
+        if (operation.notApplied) throw new CloudError('not_applied');
+        if (operation.document)
+          return {
+            document: {
+              ...operation.document,
+              operationId: command.operationId,
+            },
+          };
         try {
           const latest = await this.drive.read(
             tokens.access,
@@ -610,14 +784,38 @@ export class CloudService {
             latest.content !== operation.content ||
             (operation.kind === 'save' &&
               latest.item.validator === operation.validator)
-          )
+          ) {
+            if (
+              operation.kind === 'save' &&
+              latest.item.validator === operation.validator
+            ) {
+              operation.notApplied = true;
+              await this.persistJournal();
+              throw new CloudError('not_applied');
+            }
             throw new CloudError('unconfirmed');
-          operation.document = document(latest);
+          }
+          operation.document = {
+            ...document(latest),
+            operationId: command.operationId,
+          };
+          await this.persistJournal();
           return { document: operation.document };
         } catch (error) {
           if (
             error instanceof CloudError &&
-            (error.code === 'auth' || error.code === 'cancelled')
+            error.code === 'missing' &&
+            operation.kind === 'create'
+          ) {
+            operation.notApplied = true;
+            await this.persistJournal();
+            throw new CloudError('not_applied');
+          }
+          if (
+            error instanceof CloudError &&
+            (error.code === 'auth' ||
+              error.code === 'cancelled' ||
+              error.code === 'not_applied')
           )
             throw error;
           throw new CloudError('unconfirmed');
@@ -627,6 +825,7 @@ export class CloudService {
         if (!editing) throw new CloudError('permission');
         const previous = this.operations.get(command.operationId);
         if (previous) {
+          if (previous.notApplied) throw new CloudError('not_applied');
           if (
             previous.connectionId !== entry.id ||
             previous.accountId !== entry.accountId ||
@@ -638,8 +837,9 @@ export class CloudService {
           throw new CloudError('unconfirmed');
         }
         if (
-          [...this.operations.values()].filter((value) => !value.document)
-            .length >= 20
+          [...this.operations.values()].filter(
+            (value) => !value.document && !value.notApplied,
+          ).length >= 20
         )
           throw new CloudError('unconfirmed');
         const key = `${entry.id}:${entry.accountId}:${command.action === 'save' ? command.itemId : command.folderId}`;
@@ -663,6 +863,7 @@ export class CloudService {
                 [...this.operations.values()].some(
                   (op) =>
                     !op.document &&
+                    !op.notApplied &&
                     op.connectionId === entry.id &&
                     op.accountId === entry.accountId &&
                     op.itemId === command.itemId,
@@ -671,12 +872,13 @@ export class CloudService {
                 [...this.itemOperations.values()].some(
                   (op) =>
                     !op.item &&
+                    !op.notApplied &&
                     op.connectionId === entry.id &&
                     op.accountId === entry.accountId &&
                     op.itemId === command.itemId,
                 ))
             )
-              throw new CloudError('unconfirmed');
+              throw new CloudError('pending_operation');
             const itemId =
               command.action === 'save'
                 ? command.itemId
@@ -687,6 +889,12 @@ export class CloudService {
                   );
             this.assertCurrent(entry.id, generation);
             const operation: WriteOperation = {
+              epoch: command.action === 'save' ? command.epoch : undefined,
+              sequence:
+                command.action === 'save' ? command.sequence : undefined,
+              name: command.name,
+              folderId:
+                command.action === 'create' ? command.folderId : undefined,
               connectionId: entry.id,
               accountId: entry.accountId!,
               itemId,
@@ -696,6 +904,12 @@ export class CloudService {
                 command.action === 'save' ? command.validator : undefined,
             };
             this.operations.set(command.operationId, operation);
+            try {
+              await this.persistJournal();
+            } catch (error) {
+              this.operations.delete(command.operationId);
+              throw error;
+            }
             try {
               let result: Awaited<ReturnType<GoogleDrive['read']>>;
               if (command.action === 'save')
@@ -722,7 +936,15 @@ export class CloudService {
                   throw new CloudError('unconfirmed');
                 }
               }
-              operation.document = document(result);
+              operation.document = {
+                ...document(result),
+                operationId: command.operationId,
+              };
+              try {
+                await this.persistJournal();
+              } catch {
+                throw new CloudError('unconfirmed');
+              }
               // Confirmed entries need no buffer snapshots beyond recent request deduplication.
               if (this.operations.size > 100)
                 for (const [id, old] of this.operations) {
@@ -736,8 +958,10 @@ export class CloudService {
               if (
                 !(error instanceof CloudError) ||
                 error.code !== 'unconfirmed'
-              )
-                this.operations.delete(command.operationId);
+              ) {
+                operation.notApplied = true;
+                await this.persistJournal();
+              }
               throw error;
             }
           });

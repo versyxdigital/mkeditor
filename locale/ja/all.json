@@ -298,7 +298,16 @@
     "no_folders": "フォルダーはありません。",
     "check_operation": "操作を確認",
     "open": "開く",
-    "operation_unconfirmed": "Google はこの変更を確認していません。再試行する前に操作を確認してください。"
+    "operation_unconfirmed": "Google はこの変更を確認していません。再試行する前に操作を確認してください。",
+    "recovery_storage_error": "Drive のローカル復元データを保存または読み込みできませんでした。前回の復元コピーは保持されています。",
+    "recovered_draft": "ローカルの下書きを復元しました。保存する前に Drive を確認してください。",
+    "checking_recovery": "復元したドキュメントを Drive と照合中…",
+    "check_recovery": "復元したドキュメントを確認",
+    "error_not_applied": "Google はこの操作を適用していません。下書きは保持されています。",
+    "error_pending_operation": "このファイルを再度変更する前に、中断した操作を確認してください。",
+    "recovery_quit_title": "復元データの保存に失敗しました",
+    "recovery_quit_message": "最新の変更をローカルに保存できませんでした。それでも終了しますか？キャンセルするとアプリを開いたままにします。",
+    "recovery_quit_anyway": "終了する"
   },
   "menus-alerts": {
     "primary": "プライマリ",

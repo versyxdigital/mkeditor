@@ -50,6 +50,15 @@ jest.mock('../src/app/lib/AppBridge', () => ({
   AppBridge: jest.fn().mockImplementation(() => ({
     provide: jest.fn(),
     register: jest.fn(),
+    restoreSession: jest.fn(async (enabled) =>
+      enabled
+        ? require('../src/app/lib/AppSession').AppSession.buildRestoreEnvelope(
+            require('../src/app/lib/AppSession').AppSession.load(),
+          )
+        : { session: null, missing: [], contents: {} },
+    ),
+    flushSession: jest.fn(async () => true),
+    confirmFailedSession: jest.fn(() => false),
     promptUserBeforeQuit: jest.fn(),
     pushAssistantConfig: jest.fn(),
     pushPersistedConversations: jest.fn(),
@@ -98,6 +107,7 @@ jest.mock('../src/app/lib/AppAssistant', () => ({
 
 import { app, BrowserWindow, nativeTheme, shell, protocol } from 'electron';
 import { AppStorage } from '../src/app/lib/AppStorage';
+import { AppBridge } from '../src/app/lib/AppBridge';
 import { AppSession } from '../src/app/lib/AppSession';
 import { promises as fs } from 'fs';
 import { pathToFileURL } from 'url';
@@ -139,7 +149,7 @@ describe('Electron main app', () => {
     );
   });
 
-  it('did-finish-load sends from:theme:set with the OS value (regression for stale-darkmode bug)', () => {
+  it('did-finish-load sends from:theme:set with the OS value (regression for stale-darkmode bug)', async () => {
     // The previous code sent `settings.applied?.darkmode` (the stale
     // stored value) when systemtheme was on/off — combined with the
     // renderer's `if (shouldUseDarkMode)` guard, that meant the OS
@@ -154,7 +164,7 @@ describe('Electron main app', () => {
       (c: unknown[]) => c[0] === 'did-finish-load',
     );
     expect(didFinishLoad).toBeDefined();
-    (didFinishLoad![1] as () => void)();
+    await (didFinishLoad![1] as () => Promise<void>)();
 
     const sendCalls = (winInstance.webContents.send as jest.Mock).mock.calls;
     const themeSet = sendCalls.find(
@@ -179,7 +189,7 @@ describe('Electron main app', () => {
     );
   });
 
-  it('offers a main-generated restored workspace before sending it to the renderer', () => {
+  it('offers a main-generated restored workspace before sending it to the renderer', async () => {
     const win = (BrowserWindow as unknown as jest.Mock).mock.results[0].value;
     const loaded = win.webContents.on.mock.calls.find(
       ([name]: [string]) => name === 'did-finish-load',
@@ -199,7 +209,7 @@ describe('Electron main app', () => {
     );
     (AppStorage.offerWorkspaceRoot as jest.Mock).mockClear();
     win.webContents.send.mockClear();
-    loaded();
+    await loaded();
     expect(AppStorage.offerWorkspaceRoot).toHaveBeenCalledWith(
       '/restored/notes',
       true,
@@ -216,7 +226,7 @@ describe('Electron main app', () => {
     );
   });
 
-  it('drops an unavailable restored root rather than authorising it from renderer input', () => {
+  it('drops an unavailable restored root rather than authorising it from renderer input', async () => {
     const win = (BrowserWindow as unknown as jest.Mock).mock.results[0].value;
     const loaded = win.webContents.on.mock.calls.find(
       ([name]: [string]) => name === 'did-finish-load',
@@ -232,7 +242,7 @@ describe('Electron main app', () => {
       contents: {},
     });
     (AppStorage.offerWorkspaceRoot as jest.Mock).mockReturnValueOnce(false);
-    loaded();
+    await loaded();
     expect(win.webContents.send).toHaveBeenCalledWith('from:session:restore', {
       session: { version: 2, tabs: [], activeFile: null, workspaceRoot: null },
       missing: [],
@@ -372,6 +382,35 @@ describe('Electron main app', () => {
     const winInstance = (BrowserWindow as unknown as jest.Mock).mock.results[0]
       ?.value;
     expect(winInstance?.setMenuBarVisibility).toHaveBeenCalledWith(false);
+  });
+
+  it('waits for one checkpoint when closing, keeps the window after failure and permits a later successful close', async () => {
+    const win = (BrowserWindow as unknown as jest.Mock).mock.results[0].value;
+    win.close = jest.fn();
+    const bridge = (AppBridge as unknown as jest.Mock).mock.results[0].value;
+    let finish!: (ok: boolean) => void;
+    bridge.flushSession.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const close = win.on.mock.calls.find(
+      ([event]: [string]) => event === 'close',
+    )[1];
+    const event = { defaultPrevented: false, preventDefault: jest.fn() };
+    const callsBefore = bridge.flushSession.mock.calls.length;
+    close(event);
+    close(event);
+    expect(bridge.flushSession).toHaveBeenCalledTimes(callsBefore + 1);
+    expect(win.close).not.toHaveBeenCalled();
+    finish(false);
+    await drainLinkOperations();
+    expect(bridge.confirmFailedSession).toHaveBeenCalledTimes(1);
+    expect(win.close).not.toHaveBeenCalled();
+    close(event);
+    await drainLinkOperations();
+    expect(win.close).toHaveBeenCalledTimes(1);
   });
 });
 

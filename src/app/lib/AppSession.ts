@@ -8,6 +8,8 @@ import {
   writeFileSync,
 } from 'fs';
 import { normalize } from 'path';
+import { isRemotePath, remoteDocumentPath } from '../interfaces/Cloud';
+import { remoteTabSchema } from './cloud/CloudRecoveryStore';
 import type {
   SessionPayload,
   SessionRestoreEnvelope,
@@ -48,15 +50,16 @@ export class AppSession {
    * tabs.
    *
    * v1 → v2: added the optional `assistant` right-sidebar
-   * view-state block.
+   * view-state block. v3 adds the encrypted remote recovery envelope,
+   * coordinated separately by CloudSessionRecovery.
    */
-  private static readonly SCHEMA_VERSION = 2;
+  private static readonly SCHEMA_VERSION = 3;
 
   /**
    * Versions the loader is willing to read. Anything outside this set
    * falls back to "no session" (the safer half of forward-compat).
    */
-  private static readonly SUPPORTED_VERSIONS: ReadonlyArray<number> = [1, 2];
+  private static readonly SUPPORTED_VERSIONS: ReadonlyArray<number> = [1, 2, 3];
 
   /**
    * Read and validate the persisted session. Returns null if:
@@ -96,11 +99,16 @@ export class AppSession {
    * atomic enough for our purposes (same volume).
    *
    * Synchronous so the `before-quit` flush can complete before the
-   * process exits. Catches and swallows all errors — a failed session
-   * write must never block app quit.
+   * process exits. Returns false on failure so the quit coordinator can
+   * keep the window open or offer an explicit quit-without-saving choice.
    */
-  static save(payload: SessionPayload): void {
+  static save(payload: SessionPayload): boolean {
     try {
+      if (
+        !Array.isArray(payload.tabs) ||
+        payload.tabs.some((tab) => tab.remote || isRemotePath(tab.path))
+      )
+        return false;
       if (!existsSync(AppSession.appPath)) {
         mkdirSync(AppSession.appPath, { recursive: true });
       }
@@ -109,13 +117,20 @@ export class AppSession {
       // supplied a different value — the canonical file is always at
       // the loader's known version.
       const serialised = JSON.stringify(
-        { ...payload, version: AppSession.SCHEMA_VERSION },
+        {
+          version: AppSession.SCHEMA_VERSION,
+          tabs: payload.tabs,
+          activeFile: payload.activeFile,
+          workspaceRoot: payload.workspaceRoot,
+          assistant: payload.assistant,
+        },
         null,
         2,
       );
 
       writeFileSync(AppSession.tmpPath, serialised, { encoding: 'utf-8' });
       renameSync(AppSession.tmpPath, AppSession.filePath);
+      return true;
     } catch {
       // Best-effort cleanup of a leftover tmp; ignore any failure.
       try {
@@ -123,6 +138,7 @@ export class AppSession {
       } catch {
         // ignore
       }
+      return false;
     }
   }
 
@@ -131,17 +147,19 @@ export class AppSession {
    * crashed write). Used by the renderer's "Clear saved session"
    * action. Never throws — a missing file is a successful no-op.
    */
-  static clear(): void {
+  static clear(): boolean {
+    let cleared = true;
     try {
       if (existsSync(AppSession.filePath)) unlinkSync(AppSession.filePath);
     } catch {
-      // best-effort
+      cleared = false;
     }
     try {
       if (existsSync(AppSession.tmpPath)) unlinkSync(AppSession.tmpPath);
     } catch {
-      // best-effort
+      cleared = false;
     }
+    return cleared;
   }
 
   /**
@@ -165,6 +183,14 @@ export class AppSession {
     const contents: Record<string, string> = {};
 
     for (const tab of payload.tabs) {
+      if (tab.remote) {
+        kept.push(tab);
+        continue;
+      }
+      if (isRemotePath(tab.path)) {
+        missing.push(tab.path);
+        continue;
+      }
       // Untitled tabs carry their content inline; nothing to check on disk.
       if (tab.path.startsWith('untitled-')) {
         kept.push(tab);
@@ -213,7 +239,7 @@ export class AppSession {
    * match exactly falls back to "no session". Better to start fresh
    * than to crash on a forward-incompatible file.
    */
-  private static isValidPayload(value: unknown): value is SessionPayload {
+  static isValidPayload(value: unknown): value is SessionPayload {
     if (typeof value !== 'object' || value === null) return false;
     const candidate = value as Partial<SessionPayload> & {
       workspaceRoot?: unknown;
@@ -225,7 +251,40 @@ export class AppSession {
     ) {
       return false;
     }
-    if (!Array.isArray(candidate.tabs)) return false;
+    if (!Array.isArray(candidate.tabs) || candidate.tabs.length > 512)
+      return false;
+    if (
+      candidate.flushId !== undefined &&
+      (typeof candidate.flushId !== 'string' || candidate.flushId.length > 100)
+    )
+      return false;
+    if (
+      candidate.failureCopy !== undefined &&
+      (!candidate.failureCopy ||
+        !['title', 'message', 'quit', 'cancel'].every((key) => {
+          const value = (
+            candidate.failureCopy as unknown as Record<string, unknown>
+          )[key];
+          return (
+            typeof value === 'string' && value.length > 0 && value.length < 2000
+          );
+        }))
+    )
+      return false;
+    if (
+      candidate.restoreEnabled !== undefined &&
+      typeof candidate.restoreEnabled !== 'boolean'
+    )
+      return false;
+    if (
+      candidate.cloudAcknowledgements !== undefined &&
+      (!Array.isArray(candidate.cloudAcknowledgements) ||
+        candidate.cloudAcknowledgements.length > 2000 ||
+        !candidate.cloudAcknowledgements.every(
+          (id) => typeof id === 'string' && id.length < 1025,
+        ))
+    )
+      return false;
     if (
       candidate.activeFile !== null &&
       typeof candidate.activeFile !== 'string'
@@ -267,6 +326,14 @@ export class AppSession {
     const candidate = value as Partial<SessionTab>;
     if (typeof candidate.path !== 'string') return false;
     if (typeof candidate.name !== 'string') return false;
+    if (candidate.remote !== undefined) {
+      const remote = remoteTabSchema.safeParse(candidate.remote);
+      if (
+        !remote.success ||
+        remoteDocumentPath(remote.data.document) !== candidate.path
+      )
+        return false;
+    } else if (isRemotePath(candidate.path)) return false;
     if (
       'untitledContent' in candidate &&
       typeof candidate.untitledContent !== 'string'

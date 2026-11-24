@@ -298,7 +298,16 @@
     "no_folders": "Aucun dossier ici.",
     "check_operation": "Vérifier l’opération",
     "open": "Ouvrir",
-    "operation_unconfirmed": "Google n’a pas confirmé cette modification. Vérifiez l’opération avant de réessayer."
+    "operation_unconfirmed": "Google n’a pas confirmé cette modification. Vérifiez l’opération avant de réessayer.",
+    "recovery_storage_error": "Impossible d’enregistrer ou de lire les données locales de récupération Drive. La copie précédente est conservée.",
+    "recovered_draft": "Brouillon local récupéré. Vérifiez Drive avant d’enregistrer.",
+    "checking_recovery": "Vérification du document récupéré avec Drive…",
+    "check_recovery": "Vérifier le document récupéré",
+    "error_not_applied": "Google n’a pas appliqué cette opération. Votre brouillon est conservé.",
+    "error_pending_operation": "Vérifiez l’opération interrompue avant de modifier à nouveau ce fichier.",
+    "recovery_quit_title": "Échec de la sauvegarde de récupération",
+    "recovery_quit_message": "Vos dernières modifications n’ont pas pu être enregistrées localement. Quitter quand même ou annuler pour garder l’application ouverte ?",
+    "recovery_quit_anyway": "Quitter quand même"
   },
   "menus-alerts": {
     "primary": "Primaire",

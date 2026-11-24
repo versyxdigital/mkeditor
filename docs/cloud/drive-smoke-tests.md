@@ -23,6 +23,12 @@ The run checks:
 
 OS credential encryption must be available. The shell removes Playwright's mock-keychain switches rather than accepting plaintext credential storage. A Linux runner needs a real supported desktop keyring; a headless CI container without one will fail this check.
 
+## Remote session and crash recovery
+
+After building, run `npm run test:drive-recovery`. It includes the ordinary fixture checks plus dirty-tab/cursor restoration, forced process termination, a Drive change during downtime, offline draft access and an interrupted provider save with newer edits. It verifies that restoring/reconciling does not upload text or repeat a write, and that draft text is absent from the plaintext session file and encrypted file bytes.
+
+The shell uses production `CloudSessionRecovery`, `CloudRecoveryStore`, renderer and provider components with isolated local session-file paths. It verifies that the compiled coordinator accepts the isolated adapter before writing any session file. No ordinary MKEditor session is loaded or modified. Fault injection is available only against the local provider fixture.
+
 ## Run against Google
 
 Build with MKEditor's Desktop OAuth registration, then run:
@@ -37,7 +43,7 @@ The run creates a new folder named `000 MKEditor smoke <run ID>` in My Drive. Ev
 
 Restart testing closes and relaunches Electron with the same isolated disk store, expires only that store's cached access token and verifies that refresh works without another sign-in. The successful run disconnects its test connection at the end.
 
-Lost provider responses and revoked grants are tested only against the local fixture. Google-side revocation and switching real Google accounts remain manual checks. This run does not test installed packages, remote tab/session recovery, or crash recovery. Its shell uses production cloud components but does not launch the normal desktop lifecycle or read the normal app's settings/session files.
+Lost provider responses and revoked grants are tested only against the local fixture. Google-side revocation and switching real Google accounts remain manual checks. This run does not test installed packages or the normal desktop lifecycle. It uses isolated settings/session files; the dedicated recovery command above covers draft and crash recovery through the production persistence components.
 
 ## Results
 
