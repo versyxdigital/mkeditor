@@ -288,7 +288,17 @@
     "tab_label": "{{name}} in {{connection}} (Google Drive)",
     "creating_file": "{{name}} wird erstellt…",
     "opening_file": "{{name}} wird geöffnet…",
-    "save_copy_help": "Speichert den aktuellen Inhalt des aktiven Tabs als neue Datei in diesem Drive-Ordner – auch lokale Dateien, unbenannte Entwürfe und ungespeicherte Änderungen."
+    "save_copy_help": "Speichert den aktuellen Inhalt des aktiven Tabs als neue Datei in diesem Drive-Ordner – auch lokale Dateien, unbenannte Entwürfe und ungespeicherte Änderungen.",
+    "new_folder": "Neuer Ordner",
+    "new_folder_name": "Neuer Ordner",
+    "move_to": "Verschieben nach…",
+    "move_here": "Hierhin verschieben",
+    "moving": "Wird verschoben…",
+    "destination": "Zielordner",
+    "no_folders": "Keine Ordner vorhanden.",
+    "check_operation": "Vorgang prüfen",
+    "open": "Öffnen",
+    "operation_unconfirmed": "Google hat diese Änderung nicht bestätigt. Prüfen Sie den Vorgang, bevor Sie es erneut versuchen."
   },
   "menus-alerts": {
     "primary": "Primär",

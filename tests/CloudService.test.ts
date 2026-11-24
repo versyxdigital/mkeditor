@@ -574,3 +574,222 @@ test('disconnect during the secure-storage probe cannot later start a browser lo
   expect(await pending).toMatchObject({ ok: false, error: 'cancelled' });
   expect(authorize).toBeUndefined();
 });
+
+test('creates a folder once, checks duplicates and binds the operation to the account', async () => {
+  const { id } = await editingConnection();
+  const command = {
+    action: 'createFolder' as const,
+    connectionId: id,
+    accountId: 'account-a',
+    folderId: 'root',
+    name: 'Drafts',
+    operationId: 'folder-1',
+  };
+  expect(await request({ ...command, accountId: 'other' })).toMatchObject({
+    ok: false,
+    error: 'auth',
+  });
+  expect(await request(command)).toMatchObject({
+    ok: true,
+    item: { name: 'Drafts', kind: 'folder', parents: ['root'] },
+  });
+  expect(await request(command)).toMatchObject({ ok: true });
+  const writes = fixture.calls.filter(
+    (call) => call.method === 'POST' && call.url.pathname === '/drive/v3/files',
+  );
+  expect(writes).toHaveLength(1);
+  expect(JSON.parse(writes[0].body)).toMatchObject({
+    mimeType: 'application/vnd.google-apps.folder',
+    name: 'Drafts',
+  });
+  expect(await request({ ...command, name: 'Different' })).toMatchObject({
+    ok: false,
+    error: 'configuration',
+  });
+  fixture.state.duplicate = true;
+  expect(await request({ ...command, operationId: 'folder-2' })).toMatchObject({
+    ok: false,
+    error: 'duplicate',
+  });
+});
+
+test('lost folder acknowledgement is reconciled by generated ID and marker, without replay', async () => {
+  const { id } = await editingConnection();
+  fixture.state.loseWrite = true;
+  const command = {
+    action: 'createFolder' as const,
+    connectionId: id,
+    accountId: 'account-a',
+    folderId: 'root',
+    name: 'Drafts',
+    operationId: 'folder-lost',
+  };
+  expect(await request(command)).toMatchObject({
+    ok: false,
+    error: 'unconfirmed',
+  });
+  expect(await request(command)).toMatchObject({
+    ok: false,
+    error: 'unconfirmed',
+  });
+  expect(
+    await request({
+      action: 'reconcileItem',
+      connectionId: id,
+      accountId: 'account-a',
+      operationId: command.operationId,
+    }),
+  ).toMatchObject({ ok: true, item: { name: 'Drafts', kind: 'folder' } });
+  expect(
+    fixture.calls.filter(
+      (call) =>
+        call.method === 'POST' && call.url.pathname === '/drive/v3/files',
+    ),
+  ).toHaveLength(1);
+});
+
+test('moves only metadata with a conditional request, preserving file identity and content', async () => {
+  const { id, document } = await editingConnection();
+  const command = {
+    action: 'move' as const,
+    connectionId: id,
+    accountId: 'account-a',
+    itemId: 'markdown',
+    sourceFolderId: 'root',
+    folderId: 'folder',
+    operationId: 'move-1',
+  };
+  expect(await request(command)).toMatchObject({
+    ok: true,
+    previousValidator: document.item.validator,
+    item: {
+      id: 'markdown',
+      parents: ['folder'],
+      validator: '"etag-2"',
+      contentRevision: document.item.contentRevision,
+    },
+  });
+  expect(fixture.state.content).toBe(document.content);
+  expect(await request(command)).toMatchObject({ ok: true });
+  const patches = fixture.calls.filter((call) => call.method === 'PATCH');
+  expect(patches).toHaveLength(1);
+  expect(patches[0]).toMatchObject({
+    body: '{}',
+    ifMatch: document.item.validator,
+  });
+  expect(patches[0].url.searchParams.get('addParents')).toBe('folder');
+  expect(patches[0].url.searchParams.get('removeParents')).toBe('root');
+});
+
+test('lost move response is checked without replaying the move or writing contents', async () => {
+  const { id, document } = await editingConnection();
+  fixture.state.loseWrite = true;
+  const command = {
+    action: 'move' as const,
+    connectionId: id,
+    accountId: 'account-a',
+    itemId: 'markdown',
+    sourceFolderId: 'root',
+    folderId: 'folder',
+    operationId: 'move-lost',
+  };
+  expect(await request(command)).toMatchObject({
+    ok: false,
+    error: 'unconfirmed',
+  });
+  expect(
+    await request({ ...command, operationId: 'move-again' }),
+  ).toMatchObject({ ok: false, error: 'unconfirmed' });
+  expect(
+    await request({
+      action: 'reconcileItem',
+      connectionId: id,
+      accountId: 'account-a',
+      operationId: command.operationId,
+    }),
+  ).toMatchObject({ ok: true, item: { id: 'markdown', parents: ['folder'] } });
+  expect(fixture.calls.filter((call) => call.method === 'PATCH')).toHaveLength(
+    1,
+  );
+  expect(fixture.state.content).toBe(document.content);
+});
+
+test('organization refuses read-only grants, shared drives, invalid names and stale source folders', async () => {
+  const id = await add();
+  await authorizeConnection(id);
+  const create = {
+    action: 'createFolder' as const,
+    connectionId: id,
+    accountId: 'account-a',
+    folderId: 'root',
+    name: 'Folder',
+    operationId: 'no-write',
+  };
+  expect(await request(create)).toMatchObject({
+    ok: false,
+    error: 'permission',
+  });
+  fixture.state.scopes += ' https://www.googleapis.com/auth/drive';
+  await authorizeConnection(id, true);
+  for (const name of ['', '..', 'a/b', 'a\\b', 'bad\nname']) {
+    expect(await request({ ...create, name })).toMatchObject({
+      ok: false,
+      error: 'configuration',
+    });
+  }
+  const move = {
+    action: 'move' as const,
+    connectionId: id,
+    accountId: 'account-a',
+    itemId: 'markdown',
+    sourceFolderId: 'folder',
+    folderId: 'root',
+    operationId: 'move',
+  };
+  expect(await request(move)).toMatchObject({ ok: false, error: 'conflict' });
+  fixture.state.shared = true;
+  expect(await request(create)).toMatchObject({
+    ok: false,
+    error: 'unsupported',
+  });
+  expect(
+    await request({ ...move, sourceFolderId: 'root', folderId: 'folder' }),
+  ).toMatchObject({ ok: false, error: 'unsupported' });
+  expect(fixture.calls.filter((call) => call.method === 'PATCH')).toHaveLength(
+    0,
+  );
+});
+
+test('moves serialize behind saves to the same file and keep the newly saved contents', async () => {
+  const { id, save } = await editingConnection();
+  let release!: () => void;
+  fixture.state.writeWait = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const saving = request(save);
+  for (
+    let attempt = 0;
+    attempt < 100 && !fixture.calls.some((call) => call.method === 'PUT');
+    attempt++
+  )
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  expect(fixture.calls.some((call) => call.method === 'PUT')).toBe(true);
+  const moving = request({
+    action: 'move',
+    connectionId: id,
+    accountId: 'account-a',
+    itemId: 'markdown',
+    sourceFolderId: 'root',
+    folderId: 'folder',
+    operationId: 'queued-move',
+  });
+  expect(fixture.calls.some((call) => call.method === 'PATCH')).toBe(false);
+  release();
+  expect(await saving).toMatchObject({ ok: true });
+  expect(await moving).toMatchObject({
+    ok: true,
+    previousValidator: '"etag-2"',
+    item: { parents: ['folder'] },
+  });
+  expect(fixture.state.content).toBe(save.content);
+});

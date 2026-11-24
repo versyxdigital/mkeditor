@@ -78,10 +78,16 @@ The refinement passed 100 suites / 1,304 tests, lint, renderer type checking, bo
 
 The existing Google verification recording predates this layout refinement; it has not been recorded again. Provider scopes and write protocols did not change.
 
+## Drive organization follow-up (24 November 2026)
+
+Writable My Drive connections now support folder creation and Markdown document moves through Explorer context menus. A folder-only destination picker stays within the same connection. Main validates both locations, serializes moves with document saves and updates only parent metadata. Open models, unsaved text, undo history and saved baselines remain intact. Generated IDs, operation markers and outcome checks prevent automatic replay after lost responses. Shared-drive writes remain disabled.
+
+Validation passed 105 suites / 1,360 tests, formatting, lint and both builds. Local HTTP fixtures cover folder creation, conditional moves, account/grant checks, duplicate names, serialization and lost responses. An isolated hidden Electron check exercised the production renderer with synthetic Drive data in both themes, including new-folder progress, the destination picker, tab identity, dirty edits and the next save's validator. These new actions have not been exercised against a live Drive account.
+
 ## Remaining limits
 
 - Publish a correct privacy policy, verify the website/branding and submit Google's restricted-scope review using the [submission guide](google-verification.md). No Console publishing or submission was performed by the agent.
 - Complete the remaining [editing UI live smoke checklist](google-drive.md#opt-in-live-smoke-check), especially failure/recovery and lifecycle cases. The recorded positive Windows flow and narrower protocol spike do not establish the entire production-support matrix.
 - Unsaved remote buffers and uncertain operations are in-memory only. No restart/crash recovery, offline sync or remote session restore is promised. Keep local copies for durable recovery.
-- UTF-8 `.md`, 4 MiB; no native Google format conversion, relative attachment fetching, separate Shared with me root, remote rename/move/delete, folder creation, sync or account-wide search.
+- UTF-8 `.md`, 4 MiB; no native Google format conversion, relative attachment fetching, separate Shared with me root, remote rename/delete, folder moves, sync or account-wide search.
 - Windows development builds were exercised. Targets are Windows NSIS, macOS PKG and Linux DEB; no installer build/install, macOS/Linux runtime, publishing, commit or push was performed. Locale wording has no native-speaker review. Changes remain subject to developer review.

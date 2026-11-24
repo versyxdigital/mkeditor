@@ -39,6 +39,7 @@ export interface DriveItem {
   revision?: string;
   parents: string[];
   driveId?: string;
+  shortcut?: boolean;
   validator?: string;
   contentRevision?: string;
   editable?: boolean;
@@ -108,6 +109,29 @@ export type CloudCommand =
       operationId: string;
     }
   | {
+      action: 'createFolder';
+      connectionId: string;
+      accountId: string;
+      folderId: string;
+      name: string;
+      operationId: string;
+    }
+  | {
+      action: 'move';
+      connectionId: string;
+      accountId: string;
+      itemId: string;
+      sourceFolderId: string;
+      folderId: string;
+      operationId: string;
+    }
+  | {
+      action: 'reconcileItem';
+      connectionId: string;
+      accountId: string;
+      operationId: string;
+    }
+  | {
       action: 'reconcile';
       connectionId: string;
       accountId: string;
@@ -124,12 +148,16 @@ export type CloudResponse = { requestId: string } & (
       state: CloudState;
       page?: DrivePage;
       document?: RemoteDocument;
+      item?: DriveItem;
+      previousValidator?: string;
       connectionId?: string;
     }
   | { ok: false; error: CloudWriteError }
 );
 
-export const remoteDocumentPath = (doc: RemoteDocument): string =>
+export const remoteDocumentPath = (
+  doc: Pick<RemoteDocument, 'connectionId' | 'accountId' | 'item'>,
+): string =>
   `cloud-drive://${encodeURIComponent(doc.connectionId)}/${encodeURIComponent(doc.accountId)}/${encodeURIComponent(doc.item.id)}`;
 export const isRemotePath = (path: string | null | undefined): boolean =>
   path?.startsWith('cloud-drive://') ?? false;

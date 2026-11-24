@@ -6,6 +6,7 @@ import type {
   CloudResponse,
   CloudState,
   RemoteDocument,
+  DriveItem,
 } from '../../interfaces/Cloud';
 import { CloudError } from './CloudError';
 import type { CloudPersistence } from './CloudStore';
@@ -99,6 +100,40 @@ const commandSchema = z.discriminatedUnion('action', [
     operationId: id,
   }),
   z.object({
+    action: z.literal('createFolder'),
+    ...connection,
+    accountId: id,
+    folderId: id,
+    name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(255)
+      .regex(/^[^/\\]+$/)
+      .refine(
+        (name) =>
+          name !== '.' &&
+          name !== '..' &&
+          [...name].every((character) => character.charCodeAt(0) >= 32),
+      ),
+    operationId: id,
+  }),
+  z.object({
+    action: z.literal('move'),
+    ...connection,
+    accountId: id,
+    itemId: id,
+    sourceFolderId: id,
+    folderId: id,
+    operationId: id,
+  }),
+  z.object({
+    action: z.literal('reconcileItem'),
+    ...connection,
+    accountId: id,
+    operationId: id,
+  }),
+  z.object({
     action: z.literal('reconcile'),
     ...connection,
     accountId: id,
@@ -119,6 +154,16 @@ interface WriteOperation {
   validator?: string;
   document?: RemoteDocument;
 }
+interface ItemOperation {
+  connectionId: string;
+  accountId: string;
+  fingerprint: string;
+  itemId: string;
+  folderId: string;
+  kind: 'move' | 'createFolder';
+  previousValidator?: string;
+  item?: DriveItem;
+}
 
 /** Main owns auth, account binding, conditional writes and outcome reconciliation. */
 export class CloudService {
@@ -130,6 +175,7 @@ export class CloudService {
   private disposed = false;
   private revision = 0;
   private operations = new Map<string, WriteOperation>();
+  private itemOperations = new Map<string, ItemOperation>();
   private writes = new Map<string, Promise<unknown>>();
   constructor(
     private readonly store: CloudPersistence,
@@ -222,6 +268,8 @@ export class CloudService {
   private async execute(command: CloudCommand): Promise<{
     page?: import('../../interfaces/Cloud').DrivePage;
     document?: import('../../interfaces/Cloud').RemoteDocument;
+    item?: DriveItem;
+    previousValidator?: string;
     connectionId?: string;
   }> {
     if (command.action === 'state') return {};
@@ -361,6 +409,176 @@ export class CloudService {
         connectionName: entry.name,
         accountId: entry.accountId!,
       });
+      if (command.action === 'reconcileItem') {
+        const operation = this.itemOperations.get(command.operationId);
+        if (
+          !operation ||
+          operation.connectionId !== entry.id ||
+          operation.accountId !== entry.accountId
+        )
+          throw new CloudError('missing');
+        if (!operation.item) {
+          try {
+            const meta = await this.drive.metadata(
+              tokens.access,
+              operation.itemId,
+            );
+            if (
+              !meta.parents?.includes(operation.folderId) ||
+              (operation.kind === 'createFolder' &&
+                meta.appProperties?.mkeditorCreateOperation !==
+                  command.operationId)
+            )
+              throw new CloudError('unconfirmed');
+            operation.item = await this.drive.inspectItem(
+              tokens.access,
+              operation.itemId,
+            );
+            this.assertCurrent(entry.id, generation);
+          } catch (error) {
+            if (
+              error instanceof CloudError &&
+              ['auth', 'cancelled'].includes(error.code)
+            )
+              throw error;
+            throw new CloudError('unconfirmed');
+          }
+        }
+        return {
+          item: operation.item,
+          previousValidator: operation.previousValidator,
+        };
+      }
+      if (command.action === 'createFolder' || command.action === 'move') {
+        if (!editing) throw new CloudError('permission');
+        const fingerprint = JSON.stringify(command);
+        const key = `${entry.id}:${entry.accountId}:${command.action === 'move' ? command.itemId : command.folderId}`;
+        const pending = this.writes.get(key) ?? Promise.resolve();
+        const run = pending
+          .catch(() => {})
+          .then(async () => {
+            this.assertCurrent(entry.id, generation);
+            const previous = this.itemOperations.get(command.operationId);
+            if (previous) {
+              if (previous.fingerprint !== fingerprint)
+                throw new CloudError('configuration');
+              if (!previous.item) throw new CloudError('unconfirmed');
+              return {
+                item: previous.item,
+                previousValidator: previous.previousValidator,
+              };
+            }
+            if (
+              [...this.itemOperations.values()].filter((op) => !op.item)
+                .length >= 20 ||
+              (command.action === 'move' &&
+                [...this.operations.values()].some(
+                  (op) =>
+                    !op.document &&
+                    op.connectionId === entry.id &&
+                    op.accountId === entry.accountId &&
+                    op.itemId === command.itemId,
+                )) ||
+              [...this.itemOperations.values()].some(
+                (op) =>
+                  !op.item &&
+                  op.connectionId === entry.id &&
+                  op.accountId === entry.accountId &&
+                  (command.action === 'move'
+                    ? op.itemId === command.itemId
+                    : op.folderId === command.folderId),
+              )
+            )
+              throw new CloudError('unconfirmed');
+            const prepared =
+              command.action === 'move'
+                ? await this.drive.prepareMove(
+                    tokens.access,
+                    command.itemId,
+                    command.sourceFolderId,
+                    command.folderId,
+                  )
+                : undefined;
+            const itemId =
+              command.action === 'move'
+                ? command.itemId
+                : await this.drive.prepareCreate(
+                    tokens.access,
+                    command.folderId,
+                    command.name,
+                  );
+            const folderId =
+              prepared?.destination ??
+              (await this.drive.metadata(tokens.access, command.folderId)).id;
+            this.assertCurrent(entry.id, generation);
+            const operation: ItemOperation = {
+              connectionId: entry.id,
+              accountId: entry.accountId!,
+              fingerprint,
+              itemId,
+              folderId,
+              kind: command.action,
+              previousValidator: prepared?.validator,
+            };
+            this.itemOperations.set(command.operationId, operation);
+            try {
+              if (command.action === 'move')
+                await this.drive.move(
+                  tokens.access,
+                  itemId,
+                  prepared!.source,
+                  folderId,
+                  prepared!.validator,
+                  () => this.assertCurrent(entry.id, generation),
+                );
+              else
+                await this.drive.createFolder(
+                  tokens.access,
+                  itemId,
+                  folderId,
+                  command.name,
+                  command.operationId,
+                  () => this.assertCurrent(entry.id, generation),
+                );
+              try {
+                operation.item = await this.drive.inspectItem(
+                  tokens.access,
+                  itemId,
+                );
+                this.assertCurrent(entry.id, generation);
+                if (!operation.item.parents.includes(folderId))
+                  throw new CloudError('unconfirmed');
+              } catch {
+                operation.item = undefined;
+                throw new CloudError('unconfirmed');
+              }
+              if (this.itemOperations.size > 100)
+                for (const [id, old] of this.itemOperations) {
+                  if (id !== command.operationId && old.item) {
+                    this.itemOperations.delete(id);
+                    break;
+                  }
+                }
+              return {
+                item: operation.item,
+                previousValidator: operation.previousValidator,
+              };
+            } catch (error) {
+              if (
+                !(error instanceof CloudError) ||
+                error.code !== 'unconfirmed'
+              )
+                this.itemOperations.delete(command.operationId);
+              throw error;
+            }
+          });
+        this.writes.set(key, run);
+        try {
+          return await run;
+        } finally {
+          if (this.writes.get(key) === run) this.writes.delete(key);
+        }
+      }
       if (command.action === 'reconcile') {
         const operation = this.operations.get(command.operationId);
         if (
@@ -441,14 +659,22 @@ export class CloudService {
               throw new CloudError('unconfirmed');
             }
             if (
-              command.action === 'save' &&
-              [...this.operations.values()].some(
-                (op) =>
-                  !op.document &&
-                  op.connectionId === entry.id &&
-                  op.accountId === entry.accountId &&
-                  op.itemId === command.itemId,
-              )
+              (command.action === 'save' &&
+                [...this.operations.values()].some(
+                  (op) =>
+                    !op.document &&
+                    op.connectionId === entry.id &&
+                    op.accountId === entry.accountId &&
+                    op.itemId === command.itemId,
+                )) ||
+              (command.action === 'save' &&
+                [...this.itemOperations.values()].some(
+                  (op) =>
+                    !op.item &&
+                    op.connectionId === entry.id &&
+                    op.accountId === entry.accountId &&
+                    op.itemId === command.itemId,
+                ))
             )
               throw new CloudError('unconfirmed');
             const itemId =

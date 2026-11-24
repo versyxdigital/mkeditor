@@ -82,6 +82,7 @@ function item(meta: z.infer<typeof metadataSchema>): DriveItem {
     revision: meta.version,
     parents: meta.parents ?? [],
     driveId: meta.driveId,
+    ...(meta.shortcutDetails ? { shortcut: true } : {}),
   };
 }
 
@@ -545,6 +546,22 @@ export class GoogleDrive {
   }
 
   async prepareCreate(access: string, folderId: string, name: string) {
+    await this.checkDestination(access, folderId, name);
+    const response = await this.get(access, 'files/generateIds', {
+      count: '1',
+      space: 'drive',
+      type: 'files',
+    });
+    return z
+      .object({ ids: z.array(z.string()).length(1) })
+      .parse(await response.json()).ids[0];
+  }
+
+  private async checkDestination(
+    access: string,
+    folderId: string,
+    name: string,
+  ) {
     const folder = await this.metadata(access, folderId);
     if (folder.mimeType !== FOLDER || folder.driveId)
       throw new CloudError('unsupported');
@@ -563,14 +580,131 @@ export class GoogleDrive {
       .object({ files: z.array(z.object({ id: z.string() })) })
       .parse(await existing.json());
     if (duplicates.files.length) throw new CloudError('duplicate');
-    const response = await this.get(access, 'files/generateIds', {
-      count: '1',
-      space: 'drive',
-      type: 'files',
-    });
-    return z
-      .object({ ids: z.array(z.string()).length(1) })
-      .parse(await response.json()).ids[0];
+  }
+
+  async inspectItem(access: string, id: string): Promise<DriveItem> {
+    const meta = await this.metadata(access, id);
+    const result = item(meta);
+    if (result.kind === 'markdown' && !meta.driveId && !meta.shortcutDetails) {
+      const validator = await this.contentValidator(access, id);
+      const current = await this.metadata(access, id);
+      const after = await this.contentValidator(access, id);
+      if (meta.version !== current.version || validator.etag !== after.etag)
+        throw new CloudError('conflict');
+      result.validator = validator.etag;
+      result.contentRevision = meta.headRevisionId;
+      result.editable =
+        meta.capabilities?.canEdit === true &&
+        meta.capabilities.canModifyContent !== false &&
+        Boolean(meta.headRevisionId && meta.md5Checksum);
+    }
+    return result;
+  }
+
+  async createFolder(
+    access: string,
+    id: string,
+    folderId: string,
+    name: string,
+    operationId: string,
+    authorize: () => void,
+  ) {
+    authorize();
+    try {
+      const response = await this.request(
+        new URL('files', this.endpoints.api).toString(),
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${access}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id,
+            name,
+            parents: [folderId],
+            mimeType: FOLDER,
+            appProperties: { mkeditorCreateOperation: operationId },
+          }),
+        },
+        false,
+      );
+      if (z.object({ id: z.string() }).parse(await response.json()).id !== id)
+        throw new CloudError('unconfirmed');
+    } catch (error) {
+      if (error instanceof CloudError && error.code !== 'network') throw error;
+      throw new CloudError('unconfirmed');
+    }
+  }
+
+  async prepareMove(
+    access: string,
+    id: string,
+    sourceFolderId: string,
+    folderId: string,
+  ) {
+    const meta = await this.metadata(access, id);
+    if (item(meta).kind !== 'markdown' || meta.shortcutDetails || meta.driveId)
+      throw new CloudError('unsupported');
+    const source =
+      sourceFolderId === 'root'
+        ? (await this.metadata(access, 'root')).id
+        : sourceFolderId;
+    const destination = await this.metadata(access, folderId);
+    if (destination.id === source || !meta.parents?.includes(source))
+      throw new CloudError('conflict');
+    if (meta.capabilities?.canEdit !== true) throw new CloudError('permission');
+    await this.checkDestination(access, destination.id, meta.name);
+    const validator = await this.contentValidator(access, id);
+    // Couple the parent check to the validator used by the conditional PATCH.
+    const current = await this.metadata(access, id);
+    if (
+      current.version !== meta.version ||
+      current.parents?.join() !== meta.parents.join()
+    )
+      throw new CloudError('conflict');
+    return { source, destination: destination.id, validator: validator.etag };
+  }
+
+  async move(
+    access: string,
+    id: string,
+    source: string,
+    destination: string,
+    validator: string,
+    authorize: () => void,
+  ) {
+    const url = new URL(
+      `../v2/files/${encodeURIComponent(id)}`,
+      this.endpoints.api,
+    );
+    url.search = new URLSearchParams({
+      addParents: destination,
+      removeParents: source,
+      supportsAllDrives: 'true',
+      fields: 'id',
+    }).toString();
+    authorize();
+    try {
+      const response = await this.request(
+        url.toString(),
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${access}`,
+            'Content-Type': 'application/json',
+            'If-Match': validator,
+          },
+          body: '{}',
+        },
+        false,
+      );
+      if (z.object({ id: z.string() }).parse(await response.json()).id !== id)
+        throw new CloudError('unconfirmed');
+    } catch (error) {
+      if (error instanceof CloudError && error.code !== 'network') throw error;
+      throw new CloudError('unconfirmed');
+    }
   }
 
   async create(

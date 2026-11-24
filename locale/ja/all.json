@@ -288,7 +288,17 @@
     "tab_label": "{{connection}} の {{name}}（Google Drive）",
     "creating_file": "{{name}} を作成中…",
     "opening_file": "{{name}} を開いています…",
-    "save_copy_help": "アクティブなタブの現在の内容を、このドライブフォルダに新しいファイルとして保存します。ローカルファイル、無題の下書き、未保存の変更も保存できます。"
+    "save_copy_help": "アクティブなタブの現在の内容を、このドライブフォルダに新しいファイルとして保存します。ローカルファイル、無題の下書き、未保存の変更も保存できます。",
+    "new_folder": "新しいフォルダー",
+    "new_folder_name": "新しいフォルダー",
+    "move_to": "移動先…",
+    "move_here": "ここに移動",
+    "moving": "移動中…",
+    "destination": "移動先フォルダー",
+    "no_folders": "フォルダーはありません。",
+    "check_operation": "操作を確認",
+    "open": "開く",
+    "operation_unconfirmed": "Google はこの変更を確認していません。再試行する前に操作を確認してください。"
   },
   "menus-alerts": {
     "primary": "プライマリ",

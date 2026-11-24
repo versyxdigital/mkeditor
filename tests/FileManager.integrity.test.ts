@@ -758,3 +758,130 @@ it('also detaches a closing active file when its next tab is a diff overlay', as
   expect(mk.getModel()).not.toBe(model);
   expect(fm.activeFile).toBe('diff://one');
 });
+
+test('moving a dirty remote document keeps its identity, model and saved baseline', async () => {
+  const { fm, document, model, path } = remoteEditing();
+  model.setValue('unsaved draft');
+  const baseline = fm.originals.get(path);
+  await fm.moveRemoteDocument(document, async () => ({
+    item: { ...document.item, parents: ['drafts'], validator: '"moved"' },
+    previousValidator: '"first"',
+  }));
+  expect(fm.models.get(path)).toBe(model);
+  expect(model.getValue()).toBe('unsaved draft');
+  expect(fm.originals.get(path)).toBe(baseline);
+  expect(fm.getSnapshot().tabs.find((tab) => tab.path === path)?.dirty).toBe(
+    true,
+  );
+  expect(fm.tabs.get(path)?.remote?.item).toMatchObject({
+    id: 'markdown',
+    parents: ['drafts'],
+    validator: '"moved"',
+  });
+});
+
+test('moving never advances a validator across an external content change', async () => {
+  const { fm, document, path, model } = remoteEditing();
+  await fm.moveRemoteDocument(document, async () => ({
+    item: {
+      ...document.item,
+      parents: ['drafts'],
+      contentRevision: 'external',
+      validator: '"external"',
+    },
+    previousValidator: '"first"',
+  }));
+  expect(fm.tabs.get(path)?.remote?.item.validator).toBe('"first"');
+  expect(model.getValue()).toBe('original');
+});
+
+test('save waits for an active move and uses its acknowledged validator', async () => {
+  const { fm, document, model, path, save } = remoteEditing();
+  let complete!: (value: {
+    item: typeof document.item;
+    previousValidator: string;
+  }) => void;
+  const moving = fm.moveRemoteDocument(
+    document,
+    () =>
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+  );
+  await Promise.resolve();
+  model.setValue('draft');
+  const saving = fm.saveTab(path);
+  expect(save).not.toHaveBeenCalled();
+  expect(fm.hasUnconfirmedRemoteSave(path)).toBe(true);
+  save.mockResolvedValue({
+    ...document,
+    content: 'draft',
+    item: { ...document.item, parents: ['drafts'], validator: '"saved"' },
+  });
+  complete({
+    item: { ...document.item, parents: ['drafts'], validator: '"moved"' },
+    previousValidator: '"first"',
+  });
+  await moving;
+  expect(await saving).toBe(true);
+  expect(save).toHaveBeenCalledWith(
+    expect.objectContaining({
+      document: expect.objectContaining({
+        item: expect.objectContaining({ validator: '"moved"' }),
+      }),
+    }),
+  );
+});
+
+test('a failed move releases its lock and retains the original document', async () => {
+  const { fm, document, model, path } = remoteEditing();
+  await expect(
+    fm.moveRemoteDocument(document, async () => {
+      throw 'permission';
+    }),
+  ).rejects.toBe('permission');
+  expect(fm.hasUnconfirmedRemoteSave(path)).toBe(false);
+  expect(fm.tabs.get(path)?.remote?.item.parents).toEqual(['root']);
+  expect(model.getValue()).toBe('original');
+  expect(fm.tabs.get(path)?.remoteSave).toBeUndefined();
+});
+
+test('an uncertain move blocks content saves until its location is checked', async () => {
+  const { fm, document, path, model, save } = remoteEditing();
+  model.setValue('unsaved draft');
+  await expect(
+    fm.moveRemoteDocument(document, async () => {
+      throw 'unconfirmed';
+    }),
+  ).rejects.toBe('unconfirmed');
+  expect(await fm.saveTab(path)).toBe(false);
+  expect(save).not.toHaveBeenCalled();
+  await fm.moveRemoteDocument(document, async () => ({
+    item: { ...document.item, parents: ['drafts'], validator: '"moved"' },
+    previousValidator: '"first"',
+  }));
+  save.mockResolvedValue({
+    ...document,
+    content: 'unsaved draft',
+    item: { ...document.item, validator: '"saved"' },
+  });
+  expect(await fm.saveTab(path)).toBe(true);
+});
+
+test('an unconfirmed move blocks saves until its location is checked', async () => {
+  const { fm, document, model, path, save } = remoteEditing();
+  model.setValue('unsaved');
+  await expect(
+    fm.moveRemoteDocument(document, async () => {
+      throw 'unconfirmed';
+    }),
+  ).rejects.toBe('unconfirmed');
+  expect(await fm.saveTab(path)).toBe(false);
+  expect(save).not.toHaveBeenCalled();
+  await fm.moveRemoteDocument(document, async () => ({
+    item: { ...document.item, parents: ['drafts'], validator: '"moved"' },
+    previousValidator: '"first"',
+  }));
+  expect(fm.hasUnconfirmedRemoteSave(path)).toBe(false);
+  expect(model.getValue()).toBe('unsaved');
+});

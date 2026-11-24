@@ -84,5 +84,15 @@
   "tab_label": "{{name}} in {{connection}} (Google Drive)",
   "creating_file": "{{name}} maken…",
   "opening_file": "{{name}} openen…",
-  "save_copy_help": "Bewaar de huidige inhoud van het actieve tabblad als een nieuw bestand in deze Drive-map, ook lokale bestanden, naamloze concepten en niet-opgeslagen wijzigingen."
+  "save_copy_help": "Bewaar de huidige inhoud van het actieve tabblad als een nieuw bestand in deze Drive-map, ook lokale bestanden, naamloze concepten en niet-opgeslagen wijzigingen.",
+  "new_folder": "Nieuwe map",
+  "new_folder_name": "Nieuwe map",
+  "move_to": "Verplaatsen naar…",
+  "move_here": "Hierheen verplaatsen",
+  "moving": "Verplaatsen…",
+  "destination": "Doelmap",
+  "no_folders": "Geen mappen hier.",
+  "check_operation": "Bewerking controleren",
+  "open": "Openen",
+  "operation_unconfirmed": "Google heeft deze wijziging niet bevestigd. Controleer de bewerking voordat u het opnieuw probeert."
 }

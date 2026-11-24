@@ -288,7 +288,17 @@
     "tab_label": "{{name}} en {{connection}} (Google Drive)",
     "creating_file": "Creando {{name}}…",
     "opening_file": "Abriendo {{name}}…",
-    "save_copy_help": "Guarda el contenido actual de la pestaña activa como un archivo nuevo en esta carpeta de Drive, incluidos archivos locales, borradores sin título y cambios sin guardar."
+    "save_copy_help": "Guarda el contenido actual de la pestaña activa como un archivo nuevo en esta carpeta de Drive, incluidos archivos locales, borradores sin título y cambios sin guardar.",
+    "new_folder": "Nueva carpeta",
+    "new_folder_name": "Nueva carpeta",
+    "move_to": "Mover a…",
+    "move_here": "Mover aquí",
+    "moving": "Moviendo…",
+    "destination": "Carpeta de destino",
+    "no_folders": "No hay carpetas aquí.",
+    "check_operation": "Comprobar operación",
+    "open": "Abrir",
+    "operation_unconfirmed": "Google no ha confirmado este cambio. Comprueba la operación antes de volver a intentarlo."
   },
   "menus-alerts": {
     "primary": "Primario",

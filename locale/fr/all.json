@@ -288,7 +288,17 @@
     "tab_label": "{{name}} dans {{connection}} (Google Drive)",
     "creating_file": "Création de {{name}}…",
     "opening_file": "Ouverture de {{name}}…",
-    "save_copy_help": "Enregistrez le contenu actuel de l’onglet actif dans un nouveau fichier de ce dossier Drive, y compris les fichiers locaux, les brouillons sans titre et les modifications non enregistrées."
+    "save_copy_help": "Enregistrez le contenu actuel de l’onglet actif dans un nouveau fichier de ce dossier Drive, y compris les fichiers locaux, les brouillons sans titre et les modifications non enregistrées.",
+    "new_folder": "Nouveau dossier",
+    "new_folder_name": "Nouveau dossier",
+    "move_to": "Déplacer vers…",
+    "move_here": "Déplacer ici",
+    "moving": "Déplacement…",
+    "destination": "Dossier de destination",
+    "no_folders": "Aucun dossier ici.",
+    "check_operation": "Vérifier l’opération",
+    "open": "Ouvrir",
+    "operation_unconfirmed": "Google n’a pas confirmé cette modification. Vérifiez l’opération avant de réessayer."
   },
   "menus-alerts": {
     "primary": "Primaire",

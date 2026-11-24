@@ -288,7 +288,17 @@
     "tab_label": "{{name}} in {{connection}} (Google Drive)",
     "creating_file": "Creazione di {{name}}…",
     "opening_file": "Apertura di {{name}}…",
-    "save_copy_help": "Salva il contenuto attuale della scheda attiva come nuovo file in questa cartella di Drive, inclusi file locali, bozze senza titolo e modifiche non salvate."
+    "save_copy_help": "Salva il contenuto attuale della scheda attiva come nuovo file in questa cartella di Drive, inclusi file locali, bozze senza titolo e modifiche non salvate.",
+    "new_folder": "Nuova cartella",
+    "new_folder_name": "Nuova cartella",
+    "move_to": "Sposta in…",
+    "move_here": "Sposta qui",
+    "moving": "Spostamento…",
+    "destination": "Cartella di destinazione",
+    "no_folders": "Nessuna cartella qui.",
+    "check_operation": "Verifica operazione",
+    "open": "Apri",
+    "operation_unconfirmed": "Google non ha confermato questa modifica. Verifica l’operazione prima di riprovare."
   },
   "menus-alerts": {
     "primary": "Primario",

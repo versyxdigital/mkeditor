@@ -84,5 +84,15 @@
   "tab_label": "{{name}} em {{connection}} (Google Drive)",
   "creating_file": "Criando {{name}}…",
   "opening_file": "Abrindo {{name}}…",
-  "save_copy_help": "Salva o conteúdo atual da aba ativa como um novo arquivo nesta pasta do Drive, incluindo arquivos locais, rascunhos sem título e alterações não salvas."
+  "save_copy_help": "Salva o conteúdo atual da aba ativa como um novo arquivo nesta pasta do Drive, incluindo arquivos locais, rascunhos sem título e alterações não salvas.",
+  "new_folder": "Nova pasta",
+  "new_folder_name": "Nova pasta",
+  "move_to": "Mover para…",
+  "move_here": "Mover para aqui",
+  "moving": "A mover…",
+  "destination": "Pasta de destino",
+  "no_folders": "Não existem pastas aqui.",
+  "check_operation": "Verificar operação",
+  "open": "Abrir",
+  "operation_unconfirmed": "O Google não confirmou esta alteração. Verifique a operação antes de tentar novamente."
 }

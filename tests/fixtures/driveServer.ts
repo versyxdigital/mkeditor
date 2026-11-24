@@ -10,10 +10,13 @@ export async function driveFixture() {
     url: URL;
     authorization?: string;
     body: string;
+    ifMatch?: string;
   }[] = [];
   const state = {
     revoked: false,
     revision: '1',
+    contentRevision: undefined as string | undefined,
+    parents: ['root'],
     content: '# Remote Markdown',
     trashed: false,
     accountId: 'account-a',
@@ -25,7 +28,13 @@ export async function driveFixture() {
     loseWrite: false,
     writeWait: undefined as Promise<void> | undefined,
     created: undefined as
-      | { id: string; name: string; appProperties: Record<string, string> }
+      | {
+          id: string;
+          name: string;
+          appProperties: Record<string, string>;
+          mimeType?: string;
+          parents?: string[];
+        }
       | undefined,
     refreshWait: undefined as Promise<void> | undefined,
     override: undefined as
@@ -45,7 +54,7 @@ export async function driveFixture() {
     name,
     mimeType,
     version: state.revision,
-    headRevisionId: `content-${state.revision}`,
+    headRevisionId: state.contentRevision ?? `content-${state.revision}`,
     md5Checksum: createHash('md5').update(state.content).digest('hex'),
     capabilities: {
       canEdit: state.editable,
@@ -54,7 +63,7 @@ export async function driveFixture() {
     },
     ...(state.shared ? { driveId: 'team' } : {}),
     modifiedTime: '2026-01-01T00:00:00Z',
-    parents: ['root'],
+    parents: id === 'markdown' ? state.parents : ['root'],
     size: String(Buffer.byteLength(state.content)),
     trashed: state.trashed,
   });
@@ -68,6 +77,7 @@ export async function driveFixture() {
         url,
         body,
         authorization: request.headers.authorization,
+        ifMatch: request.headers['if-match'] as string | undefined,
       });
       if (state.override?.(url, response)) return;
       if (url.pathname === '/token') {
@@ -92,6 +102,35 @@ export async function driveFixture() {
         send(response, { error: {} }, 401);
         return;
       }
+      if (request.method === 'POST' && url.pathname === '/drive/v3/files') {
+        state.created = JSON.parse(body);
+        await state.writeWait;
+        if (state.loseWrite) {
+          response.destroy();
+          return;
+        }
+        send(response, { id: state.created!.id });
+        return;
+      }
+      if (request.method === 'PATCH') {
+        if (request.headers['if-match'] !== `"etag-${state.revision}"`) {
+          send(response, { error: {} }, 412);
+          return;
+        }
+        await state.writeWait;
+        state.contentRevision ??= `content-${state.revision}`;
+        state.parents = state.parents.filter(
+          (id) => id !== url.searchParams.get('removeParents'),
+        );
+        state.parents.push(url.searchParams.get('addParents')!);
+        state.revision = String(Number(state.revision) + 1);
+        if (state.loseWrite) {
+          response.destroy();
+          return;
+        }
+        send(response, { id: url.pathname.split('/').pop() });
+        return;
+      }
       if (request.method === 'PUT' || request.method === 'POST') {
         const segments = body.split('\r\n\r\n');
         const metadata = JSON.parse(segments[1].split('\r\n--')[0]);
@@ -109,6 +148,7 @@ export async function driveFixture() {
         await state.writeWait;
         state.content = content;
         state.revision = String(Number(state.revision) + 1);
+        state.contentRevision = `content-${state.revision}`;
         if (request.method === 'POST') state.created = metadata;
         if (state.loseWrite) {
           response.destroy();
@@ -118,7 +158,7 @@ export async function driveFixture() {
           id: state.created?.id ?? 'markdown',
           etag: `"etag-${state.revision}"`,
           version: state.revision,
-          headRevisionId: `content-${state.revision}`,
+          headRevisionId: state.contentRevision ?? `content-${state.revision}`,
         });
         return;
       }
@@ -127,7 +167,7 @@ export async function driveFixture() {
           id: url.pathname.split('/').pop(),
           etag: `"etag-${state.revision}"`,
           version: state.revision,
-          headRevisionId: `content-${state.revision}`,
+          headRevisionId: state.contentRevision ?? `content-${state.revision}`,
         });
         return;
       }
@@ -196,7 +236,12 @@ export async function driveFixture() {
       }
       if (id === state.created?.id) {
         send(response, {
-          ...meta(id, state.created.name),
+          ...meta(
+            id,
+            state.created.name,
+            state.created.mimeType ?? 'text/markdown',
+          ),
+          parents: state.created.parents ?? ['root'],
           appProperties: state.created.appProperties,
         });
         return;

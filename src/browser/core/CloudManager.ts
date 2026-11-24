@@ -18,6 +18,24 @@ interface Location {
   shared?: boolean;
 }
 export interface CloudSnapshot extends CloudState {
+  movePicker?: {
+    connectionId: string;
+    accountId: string;
+    item: DriveItem;
+    sourceFolderId: string;
+    folders: Location[];
+    items: DriveItem[];
+    nextPage?: string;
+    loading: boolean;
+    moving: boolean;
+    error?: CloudWriteError;
+  };
+  pendingItem?: {
+    connectionId: string;
+    accountId: string;
+    operationId: string;
+    item?: DriveItem;
+  };
   opening: {
     id: number;
     connectionId: string;
@@ -63,6 +81,7 @@ export class CloudManager {
   private nextRequest = 0;
   private nextOpen = 0;
   private browseGeneration = 0;
+  private pickerGeneration = 0;
   private initialized = false;
   private pending = new Map<
     string,
@@ -150,6 +169,16 @@ export class CloudManager {
     }
     this.update({
       ...state,
+      movePicker:
+        this.snapshot.movePicker &&
+        state.connections.some(
+          (entry) =>
+            entry.id === this.snapshot.movePicker!.connectionId &&
+            entry.accountId === this.snapshot.movePicker!.accountId &&
+            entry.status === 'connected',
+        )
+          ? this.snapshot.movePicker
+          : undefined,
       opening: this.snapshot.opening.filter((operation) =>
         state.connections.some(
           (connection) =>
@@ -176,7 +205,14 @@ export class CloudManager {
         () => {
           this.pending.delete(requestId);
           reject(
-            ['save', 'create', 'reconcile'].includes(command.action)
+            [
+              'save',
+              'create',
+              'reconcile',
+              'createFolder',
+              'move',
+              'reconcileItem',
+            ].includes(command.action)
               ? 'unconfirmed'
               : 'network',
           );
@@ -435,15 +471,20 @@ export class CloudManager {
       !folder.driveId &&
       !folder.shared &&
       !this.snapshot.pendingCreate &&
+      !this.snapshot.pendingItem &&
+      !this.snapshot.busy.includes('organize') &&
       !this.snapshot.busy.includes('create'),
     );
   }
-  async create(copy = false): Promise<void> {
+  async create(copy = false, destination?: DriveItem): Promise<void> {
     if (!this.canCreate()) return;
     const connection = this.snapshot.connections.find(
       (entry) => entry.id === this.snapshot.workspace,
     )!;
-    const folderId = this.snapshot.folders.at(-1)!.id;
+    const folderId =
+      destination?.kind === 'folder'
+        ? destination.id
+        : this.snapshot.folders.at(-1)!.id;
     const source = this.files.activeFile
       ? this.files.models.get(this.files.activeFile)
       : undefined;
@@ -527,6 +568,266 @@ export class CloudManager {
       this.update({ error: error as CloudWriteError });
     } finally {
       this.update({ busy: this.snapshot.busy.filter((id) => id !== 'create') });
+    }
+  }
+
+  async createFolder(destination?: DriveItem): Promise<void> {
+    if (!this.canCreate()) return;
+    const connection = this.snapshot.connections.find(
+      (entry) => entry.id === this.snapshot.workspace,
+    )!;
+    const folderId =
+      destination?.kind === 'folder'
+        ? destination.id
+        : this.snapshot.folders.at(-1)!.id;
+    this.update({
+      busy: [...this.snapshot.busy, 'organize'],
+      error: undefined,
+    });
+    try {
+      const prompt = await openPromptExternal({
+        title: t('cloud:new_folder'),
+        input: { defaultValue: t('cloud:new_folder_name') },
+        buttons: [
+          { id: 'cancel', label: t('cloud:cancel') },
+          { id: 'confirm', label: t('cloud:create'), variant: 'primary' },
+        ],
+      });
+      if (prompt.button !== 'confirm') return;
+      const name = prompt.value?.trim() ?? '';
+      if (
+        !name ||
+        /[/\\]/.test(name) ||
+        [...name].some((character) => character.charCodeAt(0) < 32) ||
+        name === '.' ||
+        name === '..' ||
+        name.length > 255
+      )
+        throw 'configuration';
+      const pendingItem = {
+        connectionId: connection.id,
+        accountId: connection.accountId!,
+        operationId: `folder-${Date.now()}-${++this.nextRequest}`,
+      };
+      this.update({ creating: { ...pendingItem, folderId, name } });
+      try {
+        const result = await this.request({
+          action: 'createFolder',
+          ...pendingItem,
+          folderId,
+          name,
+        });
+        if (!result.item) throw 'unconfirmed';
+        if (this.snapshot.workspace === connection.id) void this.browse();
+      } catch (error) {
+        if (error === 'unconfirmed') this.update({ pendingItem });
+        throw error;
+      }
+    } catch (error) {
+      this.update({
+        error:
+          typeof error === 'string' ? (error as CloudWriteError) : 'cancelled',
+      });
+    } finally {
+      this.update({
+        creating: undefined,
+        busy: this.snapshot.busy.filter((id) => id !== 'organize'),
+      });
+    }
+  }
+
+  canMove(item: DriveItem): boolean {
+    if (
+      !this.canCreate() ||
+      item.kind !== 'markdown' ||
+      item.driveId ||
+      item.shortcut ||
+      this.snapshot.opening.some(
+        (op) =>
+          op.itemId === item.id && op.connectionId === this.snapshot.workspace,
+      )
+    )
+      return false;
+    const connection = this.snapshot.connections.find(
+      (entry) => entry.id === this.snapshot.workspace,
+    )!;
+    const tab = [...this.files.tabs.values()].find(
+      (tab) =>
+        tab.remote?.connectionId === connection.id &&
+        tab.remote.accountId === connection.accountId &&
+        tab.remote.item.id === item.id,
+    );
+    return !tab || !this.files.hasUnconfirmedRemoteSave(tab.path);
+  }
+
+  startMove(item: DriveItem) {
+    if (!this.canMove(item)) return;
+    const connection = this.snapshot.connections.find(
+      (entry) => entry.id === this.snapshot.workspace,
+    )!;
+    this.update({
+      movePicker: {
+        connectionId: connection.id,
+        accountId: connection.accountId!,
+        item,
+        sourceFolderId: this.snapshot.folders.at(-1)!.id,
+        folders: [],
+        items: [],
+        loading: false,
+        moving: false,
+      },
+    });
+    void this.browseMove([{ id: 'root', name: 'my_drive' }]);
+  }
+
+  closeMove() {
+    if (this.snapshot.movePicker?.moving) return;
+    this.pickerGeneration++;
+    this.update({ movePicker: undefined });
+  }
+
+  async browseMove(folders: Location[], append = false) {
+    const picker = this.snapshot.movePicker;
+    if (!picker || picker.moving) return;
+    const generation = ++this.pickerGeneration;
+    this.update({
+      movePicker: {
+        ...picker,
+        folders,
+        loading: true,
+        error: undefined,
+        ...(append ? {} : { items: [], nextPage: undefined }),
+      },
+    });
+    try {
+      const result = await this.request({
+        action: 'list',
+        connectionId: picker.connectionId,
+        folderId: folders.at(-1)!.id,
+        page: append ? picker.nextPage : undefined,
+      });
+      if (generation !== this.pickerGeneration || !this.snapshot.movePicker)
+        return;
+      this.update({
+        movePicker: {
+          ...this.snapshot.movePicker,
+          loading: false,
+          items: [
+            ...(append ? picker.items : []),
+            ...(result.page?.items ?? []),
+          ].filter((item) => item.kind === 'folder' && !item.driveId),
+          nextPage: result.page?.nextPage,
+        },
+      });
+    } catch (error) {
+      if (generation === this.pickerGeneration && this.snapshot.movePicker)
+        this.update({
+          movePicker: {
+            ...this.snapshot.movePicker,
+            loading: false,
+            error: error as CloudWriteError,
+          },
+        });
+    }
+  }
+
+  async confirmMove(): Promise<void> {
+    const picker = this.snapshot.movePicker;
+    const destination = picker?.folders.at(-1);
+    if (
+      !picker ||
+      picker.loading ||
+      picker.moving ||
+      !destination ||
+      destination.id === picker.sourceFolderId ||
+      this.snapshot.pendingItem
+    )
+      return;
+    const pendingItem = {
+      connectionId: picker.connectionId,
+      accountId: picker.accountId,
+      operationId: `move-${Date.now()}-${++this.nextRequest}`,
+      item: picker.item,
+    };
+    this.update({
+      movePicker: { ...picker, moving: true, error: undefined },
+      busy: [...this.snapshot.busy, 'organize'],
+    });
+    try {
+      await this.files.moveRemoteDocument(
+        { ...pendingItem, item: picker.item },
+        async () => {
+          const result = await this.request({
+            action: 'move',
+            connectionId: picker.connectionId,
+            accountId: picker.accountId,
+            itemId: picker.item.id,
+            sourceFolderId: picker.sourceFolderId,
+            folderId: destination.id,
+            operationId: pendingItem.operationId,
+          });
+          if (!result.item) throw 'unconfirmed';
+          return {
+            item: result.item,
+            previousValidator: result.previousValidator,
+          };
+        },
+      );
+      this.update({ movePicker: undefined });
+      if (this.snapshot.workspace === picker.connectionId) void this.browse();
+    } catch (error) {
+      const code = error as CloudWriteError;
+      this.update({
+        ...(code === 'unconfirmed'
+          ? { pendingItem, movePicker: undefined, error: code }
+          : {
+              movePicker: this.snapshot.movePicker
+                ? { ...this.snapshot.movePicker, moving: false, error: code }
+                : undefined,
+            }),
+      });
+    } finally {
+      this.update({
+        busy: this.snapshot.busy.filter((id) => id !== 'organize'),
+      });
+    }
+  }
+
+  async reconcileItem(): Promise<void> {
+    const pending = this.snapshot.pendingItem;
+    if (!pending || this.snapshot.busy.includes('organize')) return;
+    this.update({
+      busy: [...this.snapshot.busy, 'organize'],
+      error: undefined,
+    });
+    try {
+      const check = async () => {
+        const result = await this.request({
+          action: 'reconcileItem',
+          connectionId: pending.connectionId,
+          accountId: pending.accountId,
+          operationId: pending.operationId,
+        });
+        if (!result.item) throw 'unconfirmed';
+        return {
+          item: result.item,
+          previousValidator: result.previousValidator,
+        };
+      };
+      if (pending.item)
+        await this.files.moveRemoteDocument(
+          { ...pending, item: pending.item },
+          check,
+        );
+      else await check();
+      this.update({ pendingItem: undefined });
+      if (this.snapshot.workspace === pending.connectionId) void this.browse();
+    } catch (error) {
+      this.update({ error: error as CloudWriteError });
+    } finally {
+      this.update({
+        busy: this.snapshot.busy.filter((id) => id !== 'organize'),
+      });
     }
   }
   dispose() {

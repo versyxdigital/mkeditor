@@ -288,7 +288,17 @@
     "tab_label": "{{connection}} 中的 {{name}}（Google Drive）",
     "creating_file": "正在创建 {{name}}…",
     "opening_file": "正在打开 {{name}}…",
-    "save_copy_help": "将当前标签页的内容保存为此云端硬盘文件夹中的新文件，包括本地文件、无标题草稿和未保存的更改。"
+    "save_copy_help": "将当前标签页的内容保存为此云端硬盘文件夹中的新文件，包括本地文件、无标题草稿和未保存的更改。",
+    "new_folder": "新建文件夹",
+    "new_folder_name": "新建文件夹",
+    "move_to": "移动到…",
+    "move_here": "移动到此处",
+    "moving": "正在移动…",
+    "destination": "目标文件夹",
+    "no_folders": "此处没有文件夹。",
+    "check_operation": "检查操作",
+    "open": "打开",
+    "operation_unconfirmed": "Google 尚未确认此更改。请先检查操作，然后再重试。"
   },
   "menus-alerts": {
     "primary": "主要",

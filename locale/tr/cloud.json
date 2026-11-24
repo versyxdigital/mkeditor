@@ -84,5 +84,15 @@
   "tab_label": "{{connection}} içindeki {{name}} (Google Drive)",
   "creating_file": "{{name}} oluşturuluyor…",
   "opening_file": "{{name}} açılıyor…",
-  "save_copy_help": "Etkin sekmenin güncel içeriğini bu Drive klasöründe yeni bir dosya olarak kaydeder. Yerel dosyalar, adsız taslaklar ve kaydedilmemiş değişiklikler de dahildir."
+  "save_copy_help": "Etkin sekmenin güncel içeriğini bu Drive klasöründe yeni bir dosya olarak kaydeder. Yerel dosyalar, adsız taslaklar ve kaydedilmemiş değişiklikler de dahildir.",
+  "new_folder": "Yeni klasör",
+  "new_folder_name": "Yeni klasör",
+  "move_to": "Şuraya taşı…",
+  "move_here": "Buraya taşı",
+  "moving": "Taşınıyor…",
+  "destination": "Hedef klasör",
+  "no_folders": "Burada klasör yok.",
+  "check_operation": "İşlemi kontrol et",
+  "open": "Aç",
+  "operation_unconfirmed": "Google bu değişikliği onaylamadı. Tekrar denemeden önce işlemi kontrol edin."
 }

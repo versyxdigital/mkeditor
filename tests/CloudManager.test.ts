@@ -24,6 +24,11 @@ function setup() {
     models: new Map(),
     getSnapshot: jest.fn(),
     hasUnconfirmedRemoteSave: jest.fn(() => false),
+    moveRemoteDocument: jest.fn(
+      async (_identity: unknown, move: () => Promise<unknown>) => {
+        await move();
+      },
+    ),
     reloadRemoteDocument: jest.fn(),
     openDiffTab: jest.fn(),
   };
@@ -401,5 +406,149 @@ test('cancelled or failed name prompts release creation controls without startin
   expect(requests.some((request) => request.command.action === 'create')).toBe(
     false,
   );
+  manager.dispose();
+});
+
+function organizing() {
+  const context = setup();
+  context.state.connections[0].writeAccess = true;
+  context.push(context.state);
+  context.manager.selectWorkspace('drive');
+  context.respond(context.requests.at(-1)!, {
+    ok: true,
+    state: context.state,
+    page: { items: [] },
+  });
+  return context;
+}
+const movable = {
+  id: 'notes',
+  name: 'notes.md',
+  kind: 'markdown' as const,
+  parents: ['root'],
+};
+const destination = {
+  id: 'folder',
+  name: 'Drafts',
+  kind: 'folder' as const,
+  parents: ['root'],
+};
+
+test('folder creation shows progress after confirmation and cancellation performs no write', async () => {
+  const { manager, requests, respond, state } = organizing();
+  (openPromptExternal as jest.Mock).mockResolvedValueOnce({ button: null });
+  await manager.createFolder();
+  expect(requests.some((req) => req.command.action === 'createFolder')).toBe(
+    false,
+  );
+  (openPromptExternal as jest.Mock).mockResolvedValueOnce({
+    button: 'confirm',
+    value: 'Drafts',
+  });
+  const pending = manager.createFolder();
+  await Promise.resolve();
+  expect(manager.getSnapshot().creating).toMatchObject({
+    name: 'Drafts',
+    folderId: 'root',
+  });
+  const command = requests.at(-1)!;
+  expect(command.command).toMatchObject({
+    action: 'createFolder',
+    name: 'Drafts',
+    accountId: 'account',
+  });
+  respond(command, { ok: true, state, item: destination });
+  await pending;
+  expect(manager.getSnapshot().creating).toBeUndefined();
+  expect(manager.getSnapshot().busy).not.toContain('organize');
+  manager.dispose();
+});
+
+test('move picker filters documents, paginates folders and leaves Explorer in place', async () => {
+  const { manager, requests, respond, state } = organizing();
+  manager.startMove(movable);
+  respond(requests.at(-1)!, {
+    ok: true,
+    state,
+    page: { items: [movable, destination], nextPage: 'more' },
+  });
+  await Promise.resolve();
+  expect(manager.getSnapshot().movePicker?.items).toEqual([destination]);
+  const root = [{ id: 'root', name: 'my_drive' }];
+  const next = manager.browseMove(root, true);
+  expect(requests.at(-1)!.command).toMatchObject({
+    action: 'list',
+    page: 'more',
+  });
+  respond(requests.at(-1)!, {
+    ok: true,
+    state,
+    page: { items: [{ ...destination, id: 'second' }] },
+  });
+  await next;
+  expect(manager.getSnapshot().movePicker?.items).toHaveLength(2);
+  expect(manager.getSnapshot().folders).toEqual(root);
+  manager.closeMove();
+  expect(requests.some((req) => req.command.action === 'move')).toBe(false);
+  manager.dispose();
+});
+
+test('move uses the captured item and destination, and finishes through FileManager', async () => {
+  const { manager, files, requests, respond, state } = organizing();
+  manager.startMove(movable);
+  respond(requests.at(-1)!, {
+    ok: true,
+    state,
+    page: { items: [destination] },
+  });
+  await Promise.resolve();
+  const navigate = manager.browseMove([
+    { id: 'root', name: 'my_drive' },
+    { id: 'folder', name: 'Drafts' },
+  ]);
+  respond(requests.at(-1)!, { ok: true, state, page: { items: [] } });
+  await navigate;
+  const move = manager.confirmMove();
+  const req = requests.at(-1)!;
+  expect(req.command).toMatchObject({
+    action: 'move',
+    itemId: 'notes',
+    sourceFolderId: 'root',
+    folderId: 'folder',
+    accountId: 'account',
+  });
+  expect(manager.getSnapshot().movePicker?.moving).toBe(true);
+  manager.closeMove();
+  expect(manager.getSnapshot().movePicker).toBeDefined();
+  respond(req, {
+    ok: true,
+    state,
+    item: { ...movable, parents: ['folder'] },
+    previousValidator: '"old"',
+  });
+  await move;
+  expect(files.moveRemoteDocument).toHaveBeenCalledWith(
+    expect.objectContaining({ item: movable }),
+    expect.any(Function),
+  );
+  expect(manager.getSnapshot().movePicker).toBeUndefined();
+  manager.dispose();
+});
+
+test('a closed or disconnected picker ignores late folder replies and read-only items cannot move', async () => {
+  const { manager, requests, respond, state, push } = organizing();
+  expect(manager.canMove({ ...movable, shortcut: true })).toBe(false);
+  expect(manager.canMove({ ...movable, driveId: 'shared' })).toBe(false);
+  manager.startMove(movable);
+  const req = requests.at(-1)!;
+  push({
+    ...state,
+    revision: 2,
+    connections: [{ ...state.connections[0], status: 'disconnected' }],
+  });
+  respond(req, { ok: true, state, page: { items: [destination] } });
+  await Promise.resolve();
+  expect(manager.getSnapshot().movePicker).toBeUndefined();
+  expect(manager.canMove(movable)).toBe(false);
   manager.dispose();
 });

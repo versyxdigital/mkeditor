@@ -15,6 +15,7 @@ import {
   remoteDocumentPath,
   type RemoteDocument,
   type CloudWriteError,
+  type DriveItem,
 } from '../../app/interfaces/Cloud';
 
 export interface TabInfo {
@@ -138,6 +139,7 @@ export class FileManager {
   private remoteOperations: RemoteFileOperations | null = null;
   private remoteWrites = new Map<string, Promise<boolean>>();
   private remoteUnconfirmed = new Map<string, RemoteSaveSnapshot>();
+  private remoteMoveUnconfirmed = new Set<string>();
   private static nextRemoteOperation = 1;
 
   /** Flag to determine whether the content has changed */
@@ -510,6 +512,7 @@ export class FileManager {
     this.baselineVersions.clear();
     this.dirtyByPath.clear();
     this.remoteUnconfirmed.clear();
+    this.remoteMoveUnconfirmed.clear();
     this.modelListeners.clear();
     // Diff tabs are ephemeral preview surfaces; a workspace switch
     // invalidates them along with everything else.
@@ -1363,6 +1366,7 @@ export class FileManager {
   }
 
   private saveRemoteTab(path: string): Promise<boolean> {
+    if (this.remoteMoveUnconfirmed.has(path)) return Promise.resolve(false);
     const pending = this.remoteWrites.get(path);
     if (pending)
       return pending.then((ok) =>
@@ -1444,7 +1448,72 @@ export class FileManager {
   }
 
   public hasUnconfirmedRemoteSave(path: string): boolean {
-    return this.remoteUnconfirmed.has(path) || this.remoteWrites.has(path);
+    return (
+      this.remoteUnconfirmed.has(path) ||
+      this.remoteWrites.has(path) ||
+      this.remoteMoveUnconfirmed.has(path)
+    );
+  }
+
+  /** Changing a parent preserves the model, undo history and saved baseline. */
+  public async moveRemoteDocument(
+    identity: Pick<RemoteDocument, 'connectionId' | 'accountId' | 'item'>,
+    move: () => Promise<{ item: DriveItem; previousValidator?: string }>,
+  ): Promise<void> {
+    const path = remoteDocumentPath(identity);
+    if (this.remoteUnconfirmed.has(path) || this.remoteWrites.has(path))
+      throw 'unconfirmed';
+    const tab = this.tabs.get(path);
+    const previousStatus = tab?.remoteSave;
+    if (tab) this.remoteStatus(path, { phase: 'saving' });
+    const work = Promise.resolve().then(async () => {
+      const result = await move();
+      this.remoteMoveUnconfirmed.delete(path);
+      const current = this.tabs.get(path);
+      if (!current?.remote || result.item.id !== current.remote.item.id) return;
+      const old = current.remote.item;
+      // Metadata may advance the validator only when the content baseline matches.
+      const sameContent =
+        old.validator === result.previousValidator &&
+        old.contentRevision === result.item.contentRevision;
+      this.tabs.set(path, {
+        ...current,
+        remoteSave: previousStatus,
+        remote: {
+          ...current.remote,
+          item: {
+            ...old,
+            parents: result.item.parents,
+            ...(sameContent
+              ? {
+                  validator: result.item.validator,
+                  revision: result.item.revision,
+                }
+              : {}),
+          },
+        },
+      });
+      this.emitChange();
+    });
+    const pending = work.then(
+      () => true,
+      () => false,
+    );
+    if (tab) this.remoteWrites.set(path, pending);
+    try {
+      await work;
+    } catch (error) {
+      if (error === 'unconfirmed') this.remoteMoveUnconfirmed.add(path);
+      throw error;
+    } finally {
+      if (this.remoteWrites.get(path) === pending)
+        this.remoteWrites.delete(path);
+      const current = this.tabs.get(path);
+      if (current?.remoteSave?.phase === 'saving') {
+        this.tabs.set(path, { ...current, remoteSave: previousStatus });
+        this.emitChange();
+      }
+    }
   }
 
   public reloadRemoteDocument(path: string, document: RemoteDocument): boolean {

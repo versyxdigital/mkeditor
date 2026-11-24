@@ -33,7 +33,10 @@ function setup(connected = true) {
       listeners.set(channel, fn);
     },
   };
-  const manager = new CloudManager(bridge, {} as never);
+  const manager = new CloudManager(bridge, {
+    tabs: new Map(),
+    hasUnconfirmedRemoteSave: () => false,
+  } as never);
   const state: CloudState = {
     revision: 1,
     secureStorage: true,
@@ -550,5 +553,161 @@ test('unconfirmed saves expose a keyboard-accessible check action and preserve l
   expect(
     screen.getByRole('button', { name: 'cloud:local_copy' }),
   ).toBeEnabled();
+  act(() => manager.dispose());
+});
+
+async function explorerContext() {
+  const context = setup();
+  context.state.connections[0].writeAccess = true;
+  context.push(context.state);
+  context.manager.selectWorkspace('drive');
+  renderWithProviders(<CloudExplorer />, { managers: context.managers });
+  const request = context.bridge.send.mock.calls.find(
+    (call) => call[1].command.action === 'list',
+  )![1];
+  const item = {
+    id: 'notes',
+    name: 'notes.md',
+    kind: 'markdown',
+    parents: ['root'],
+  };
+  const folder = {
+    id: 'drafts',
+    name: 'Drafts',
+    kind: 'folder',
+    parents: ['root'],
+  };
+  await act(async () =>
+    context.listeners.get('from:cloud:result')!({
+      requestId: request.requestId,
+      ok: true,
+      state: context.state,
+      page: { items: [item, folder] },
+    } as never),
+  );
+  return { ...context, item, folder };
+}
+
+test('Drive context menus distinguish documents, folders and empty space', async () => {
+  const { manager } = await explorerContext();
+  const create = jest.spyOn(manager, 'createFolder').mockResolvedValue();
+  const user = userEvent.setup();
+  fireEvent.contextMenu(screen.getByRole('button', { name: 'notes.md' }), {
+    clientX: 50,
+    clientY: 100,
+  });
+  expect(
+    await screen.findByRole('menuitem', { name: 'cloud:open' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('menuitem', { name: 'cloud:move_to' }),
+  ).not.toHaveAttribute('data-disabled');
+  expect(
+    screen.queryByRole('menuitem', { name: 'cloud:new_folder' }),
+  ).not.toBeInTheDocument();
+  await user.keyboard('{Escape}');
+  fireEvent.contextMenu(screen.getByRole('button', { name: 'Drafts' }), {
+    clientX: 50,
+    clientY: 100,
+  });
+  expect(
+    await screen.findByRole('menuitem', { name: 'cloud:new_file' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('menuitem', { name: 'cloud:move_to' }),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole('menuitem', { name: 'cloud:new_folder' }));
+  expect(create).toHaveBeenCalledWith(
+    expect.objectContaining({ id: 'drafts' }),
+  );
+  fireEvent.contextMenu(
+    screen.getByRole('list', { name: 'cloud:files' }).parentElement!,
+    { clientX: 50, clientY: 350 },
+  );
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'cloud:new_folder' }),
+  );
+  expect(create).toHaveBeenLastCalledWith(undefined);
+  act(() => manager.dispose());
+});
+
+test('Move to picker browses folders without changing Explorer and cancellation does not move', async () => {
+  const { manager, bridge, state, listeners } = await explorerContext();
+  const user = userEvent.setup();
+  fireEvent.contextMenu(screen.getByRole('button', { name: 'notes.md' }), {
+    clientX: 50,
+    clientY: 100,
+  });
+  await user.click(
+    await screen.findByRole('menuitem', { name: 'cloud:move_to' }),
+  );
+  const dialog = await screen.findByRole('dialog');
+  expect(within(dialog).getByText('notes.md')).toBeInTheDocument();
+  expect(
+    within(dialog).getByRole('button', { name: 'cloud:move_here' }),
+  ).toBeDisabled();
+  const listing = bridge.send.mock.calls.at(-1)![1];
+  await act(async () =>
+    listeners.get('from:cloud:result')!({
+      requestId: listing.requestId,
+      ok: true,
+      state,
+      page: {
+        items: [
+          { id: 'folder', name: 'Drafts', kind: 'folder', parents: ['root'] },
+          {
+            id: 'hidden',
+            name: 'Hidden.md',
+            kind: 'markdown',
+            parents: ['root'],
+          },
+        ],
+      },
+    } as never),
+  );
+  expect(within(dialog).queryByText('Hidden.md')).not.toBeInTheDocument();
+  await user.click(within(dialog).getByRole('button', { name: 'Drafts' }));
+  const nested = bridge.send.mock.calls.at(-1)![1];
+  await act(async () =>
+    listeners.get('from:cloud:result')!({
+      requestId: nested.requestId,
+      ok: true,
+      state,
+      page: { items: [] },
+    } as never),
+  );
+  expect(
+    within(dialog).getByRole('button', { name: 'cloud:move_here' }),
+  ).toBeEnabled();
+  expect(manager.getSnapshot().folders.at(-1)?.id).toBe('root');
+  await user.click(
+    within(dialog).getByRole('button', { name: 'cloud:cancel' }),
+  );
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(
+    bridge.send.mock.calls.some((call) => call[1].command.action === 'move'),
+  ).toBe(false);
+  act(() => manager.dispose());
+});
+
+test('read-only Drive accounts disable creation and moves in the context menu', async () => {
+  const { manager, push, state } = await explorerContext();
+  state.connections[0].writeAccess = false;
+  push({ ...state, revision: 2 });
+  fireEvent.contextMenu(screen.getByRole('button', { name: 'notes.md' }), {
+    clientX: 50,
+    clientY: 100,
+  });
+  expect(
+    await screen.findByRole('menuitem', { name: 'cloud:move_to' }),
+  ).toHaveAttribute('data-disabled');
+  await userEvent.setup().keyboard('{Escape}');
+  fireEvent.contextMenu(
+    screen.getByRole('list', { name: 'cloud:files' }).parentElement!,
+    { clientX: 50, clientY: 350 },
+  );
+  expect(
+    await screen.findByRole('menuitem', { name: 'cloud:new_folder' }),
+  ).toHaveAttribute('data-disabled');
   act(() => manager.dispose());
 });

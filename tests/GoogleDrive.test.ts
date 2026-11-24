@@ -246,3 +246,39 @@ test('the verifier cannot request arbitrary scopes or skip the normal read scope
   ).rejects.toMatchObject({ code: 'configuration' });
   expect(browser).not.toHaveBeenCalled();
 });
+
+test('metadata move rejects a stale validator without changing location or text', async () => {
+  const original = fixture.state.content;
+  const prepared = await drive.prepareMove(
+    'fixture-access',
+    'markdown',
+    'root',
+    'folder',
+  );
+  fixture.state.revision = '2';
+  await expect(
+    drive.move(
+      'fixture-access',
+      'markdown',
+      prepared.source,
+      prepared.destination,
+      prepared.validator,
+      () => {},
+    ),
+  ).rejects.toMatchObject({ code: 'conflict' });
+  expect(fixture.state.parents).toEqual(['root']);
+  expect(fixture.state.content).toBe(original);
+});
+
+test('move preflight refuses duplicate destinations and shared-drive sources', async () => {
+  fixture.state.duplicate = true;
+  await expect(
+    drive.prepareMove('fixture-access', 'markdown', 'root', 'folder'),
+  ).rejects.toMatchObject({ code: 'duplicate' });
+  fixture.state.duplicate = false;
+  fixture.state.shared = true;
+  await expect(
+    drive.prepareMove('fixture-access', 'markdown', 'root', 'folder'),
+  ).rejects.toMatchObject({ code: 'unsupported' });
+  expect(fixture.calls.some((call) => call.method === 'PATCH')).toBe(false);
+});
