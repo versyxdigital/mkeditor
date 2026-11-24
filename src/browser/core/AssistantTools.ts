@@ -1,4 +1,6 @@
 import type { BridgeManager } from './BridgeManager';
+import { isRemotePath } from '../../app/interfaces/Cloud';
+import { t } from '../i18n';
 import { workspaceToolCatalog } from './WorkspaceToolCatalog';
 import { WorkspaceToolFiles } from './WorkspaceToolFiles';
 import {
@@ -110,6 +112,12 @@ export interface ToolSpec {
 export interface ToolContext {
   bridge: BridgeManager;
   workspace: WorkspaceToolFiles;
+}
+
+function assertLocalSelection(ctx: ToolContext): void {
+  if (isRemotePath(ctx.bridge.fileManager.getActiveDocumentPath?.())) {
+    throw new Error(t('cloud:read_only_reason'));
+  }
 }
 
 /**
@@ -1266,6 +1274,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const editor = ctx.bridge.mkeditor;
       const selection = editor.getSelection();
       if (!selection) throw new Error('No selection to replace');
+      assertLocalSelection(ctx);
       editor.executeEdits('assistant-tool-replace_selection', [
         {
           range: selection,
@@ -1315,6 +1324,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const editor = ctx.bridge.mkeditor;
       const position = editor.getPosition();
       if (!position) throw new Error('No cursor position');
+      assertLocalSelection(ctx);
       editor.executeEdits('assistant-tool-insert_at_cursor', [
         {
           range: {
@@ -1431,6 +1441,8 @@ export class AssistantTools implements ToolExecutor {
   ): Promise<ToolConfirmPreview | null> {
     const spec = this.getSpec(name);
     if (!spec) throw new UnknownToolError(name);
+    if (['replace_selection', 'insert_at_cursor'].includes(name))
+      assertLocalSelection(this.ctx);
     this.validateArguments(spec, args);
     return spec.prepare
       ? spec.prepare(args, this.ctx)
@@ -1503,6 +1515,8 @@ export class AssistantTools implements ToolExecutor {
   async execute(name: string, args: unknown): Promise<unknown> {
     const spec = this.getSpec(name);
     if (!spec) throw new UnknownToolError(name);
+    if (['replace_selection', 'insert_at_cursor'].includes(name))
+      assertLocalSelection(this.ctx);
     this.validateArguments(spec, args);
     // Native validation runs even for already-open buffers, which otherwise skip
     // disk IPC. The original tools retain their established resolution behaviour.

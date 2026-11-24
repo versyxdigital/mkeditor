@@ -55,6 +55,7 @@ function setup() {
     saveViewState: jest.fn(() => ({ cursorState: [] })),
     restoreViewState: jest.fn(),
     focus: jest.fn(),
+    updateOptions: jest.fn(),
   };
   const fm = new FileManager(bridge, mk as never, new EditorDispatcher());
   const add = (path: string, content = 'saved') => {
@@ -78,6 +79,158 @@ function setup() {
   };
   return { fm, mk, bridge, add, lastSave };
 }
+
+function remoteEditing() {
+  const setupResult = setup();
+  const document = {
+    connectionId: 'drive',
+    accountId: 'account',
+    connectionName: 'Drive',
+    item: {
+      id: 'markdown',
+      name: 'notes.md',
+      kind: 'markdown' as const,
+      parents: ['root'],
+      validator: '"first"',
+      editable: true,
+    },
+    content: 'original',
+  };
+  const save = jest.fn<Promise<typeof document>, [unknown]>();
+  const reconcile = jest.fn<Promise<typeof document>, [unknown]>();
+  setupResult.fm.setRemoteOperations({ canEdit: () => true, save, reconcile });
+  setupResult.fm.openRemoteDocument(document);
+  const path = setupResult.fm.activeFile!;
+  const model = setupResult.fm.models.get(path)!;
+  return { ...setupResult, document, path, model, save, reconcile };
+}
+
+test('remote save acknowledges its captured version and leaves edits made in flight dirty', async () => {
+  const { fm, mk, model, path, document, save } = remoteEditing();
+  expect(mk.updateOptions).toHaveBeenLastCalledWith({ readOnly: false });
+  let acknowledge!: (value: typeof document) => void;
+  save.mockReturnValue(
+    new Promise((resolve) => {
+      acknowledge = resolve;
+    }),
+  );
+  model.setValue('snapshot');
+  const pending = fm.saveTab(path);
+  model.setValue('newer edits');
+  acknowledge({
+    ...document,
+    content: 'snapshot',
+    item: { ...document.item, validator: '"second"' },
+  });
+  expect(await pending).toBe(true);
+  expect(fm.originals.get(path)).toBe('snapshot');
+  expect(model.getValue()).toBe('newer edits');
+  expect(fm.getSnapshot().tabs.find((tab) => tab.path === path)?.dirty).toBe(
+    true,
+  );
+  expect(fm.tabs.get(path)?.remote?.item.validator).toBe('"second"');
+});
+
+test('unknown remote saves preserve their snapshot, block reload and reconcile without replaying', async () => {
+  const { fm, model, path, document, save, reconcile } = remoteEditing();
+  save.mockRejectedValue('unconfirmed');
+  model.setValue('snapshot');
+  expect(await fm.saveTab(path)).toBe(false);
+  model.setValue('newer edit');
+  expect(fm.reloadRemoteDocument(path, document)).toBe(false);
+  (openPromptExternal as jest.Mock).mockResolvedValueOnce({ button: 'cancel' });
+  expect(await fm.closeTab(path)).toBe('aborted');
+  reconcile.mockResolvedValue({
+    ...document,
+    content: 'snapshot',
+    item: { ...document.item, validator: '"second"' },
+  });
+  expect(await fm.saveTab(path)).toBe(true);
+  expect(save).toHaveBeenCalledTimes(1);
+  expect(reconcile.mock.calls[0][0]).toMatchObject({ content: 'snapshot' });
+  expect(model.getValue()).toBe('newer edit');
+  expect(fm.getSnapshot().tabs.find((tab) => tab.path === path)?.dirty).toBe(
+    true,
+  );
+});
+
+test('conflicts never overwrite the buffer and require explicit reload before another save', async () => {
+  const { fm, model, path, document, save } = remoteEditing();
+  model.setValue('my edits');
+  save.mockRejectedValue('conflict');
+  expect(await fm.saveTab(path)).toBe(false);
+  expect(await fm.saveTab(path)).toBe(false);
+  expect(save).toHaveBeenCalledTimes(1);
+  expect(model.getValue()).toBe('my edits');
+  expect(fm.getSnapshot().tabs.find((tab) => tab.path === path)?.dirty).toBe(
+    true,
+  );
+  expect(
+    fm.reloadRemoteDocument(path, { ...document, content: 'latest remote' }),
+  ).toBe(true);
+  expect(model.getValue()).toBe('latest remote');
+  expect(fm.getSnapshot().tabs.find((tab) => tab.path === path)?.dirty).toBe(
+    false,
+  );
+});
+
+test('remote access changes lock the editor while preserving its unsaved buffer', () => {
+  const { fm, mk, model } = remoteEditing();
+  model.setValue('unsaved');
+  fm.setRemoteOperations({
+    canEdit: () => false,
+    save: jest.fn(),
+    reconcile: jest.fn(),
+  });
+  fm.refreshRemoteAccess();
+  expect(mk.updateOptions).toHaveBeenLastCalledWith({ readOnly: true });
+  expect(model.getValue()).toBe('unsaved');
+});
+
+test('remote tabs are read-only, account-bound and excluded from local IO and session restore', async () => {
+  const { fm, mk, bridge, add } = setup();
+  const local = add('/workspace/local.md');
+  const document = {
+    connectionId: 'drive',
+    accountId: 'account-a',
+    connectionName: 'My Drive',
+    item: {
+      id: 'item',
+      name: 'notes.md',
+      kind: 'markdown' as const,
+      parents: ['root'],
+      revision: '1',
+    },
+    content: '# Remote',
+  };
+  fm.openRemoteDocument(document);
+  const remotePath = fm.activeFile!;
+  expect(mk.updateOptions).toHaveBeenLastCalledWith({ readOnly: true });
+  expect(fm.getActiveEditablePath()).toBeNull();
+  expect(fm.getActiveDocumentPath()).toBe(remotePath);
+  fm.openRemoteDocument({ ...document, content: 'changed remotely' });
+  expect(fm.models.get(remotePath)?.getValue()).toBe('# Remote');
+  expect([...fm.tabs.values()].filter((tab) => tab.remote)).toHaveLength(1);
+  expect(await fm.saveTab(remotePath)).toBe(false);
+  expect(
+    bridge.send.mock.calls.some(([channel]) => channel === 'to:file:save'),
+  ).toBe(false);
+  const session = fm.serializeSession();
+  expect(session.tabs.map((tab) => tab.path)).toEqual(['/workspace/local.md']);
+  expect(session.activeFile).toBe('/workspace/local.md');
+  fm.openRemoteDocument({ ...document, accountId: 'account-b' });
+  expect([...fm.tabs.values()].filter((tab) => tab.remote)).toHaveLength(2);
+  fm.copyRemoteToLocal(remotePath);
+  expect(fm.activeFile).toMatch(/^untitled-/);
+  expect(mk.getValue()).toBe('# Remote');
+  expect(
+    fm.getSnapshot().tabs.find((tab) => tab.path === fm.activeFile)?.dirty,
+  ).toBe(true);
+  expect(mk.updateOptions).toHaveBeenLastCalledWith({ readOnly: false });
+  fm.activateFile('/workspace/local.md');
+  expect(mk.getModel()).toBe(local);
+  expect(mk.updateOptions).toHaveBeenLastCalledWith({ readOnly: false });
+});
 
 beforeEach(() => {
   jest.useFakeTimers();

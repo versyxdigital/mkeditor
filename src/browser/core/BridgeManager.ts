@@ -9,6 +9,7 @@ import { AssistantContextSource } from './AssistantContextSource';
 import { registerBridgeListeners } from './BridgeListeners';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
+import { CloudManager } from './CloudManager';
 
 /**
  * Bridge handler.
@@ -48,6 +49,7 @@ export class BridgeManager {
    * `onConfigPush` handler.
    */
   public assistantManager: AssistantManager;
+  public cloudManager: CloudManager;
 
   /** Window-control state. Mutated by `BridgeListeners.from:window:state`
    *  on every main-process maximize / unmaximize event. React's
@@ -84,6 +86,7 @@ export class BridgeManager {
       },
     );
     this.assistantManager = new AssistantManager(this.bridge);
+    this.cloudManager = new CloudManager(this.bridge, this.fileManager);
     // Hand the tool catalog to the manager. The executor needs the
     // BridgeManager instance (it reaches into FileManager /
     // FileTreeManager / EditorManager through there), so it's

@@ -67,6 +67,10 @@ jobs:
       - run: npm ci
       - name: Build installer
         run: npm run make-installer
+        env:
+          MKEDITOR_GOOGLE_CLIENT_ID: ${{ secrets.MKEDITOR_GOOGLE_CLIENT_ID }}
+          MKEDITOR_GOOGLE_CLIENT_SECRET: ${{ secrets.MKEDITOR_GOOGLE_CLIENT_SECRET }}
+          MKEDITOR_REQUIRE_GOOGLE_DRIVE: 'true'
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

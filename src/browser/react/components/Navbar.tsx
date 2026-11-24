@@ -36,6 +36,8 @@ export const Navbar: React.FC = () => {
   const isUntitled = !activeFile || activeFile.startsWith('untitled');
   const activeFileLabel = React.useMemo(() => {
     if (!activeFile) return null;
+    const remote = tabs.find((tab) => tab.path === activeFile)?.remote;
+    if (remote) return `${remote.connectionName} / ${remote.item.name}`;
     if (isUntitled) {
       return tabs.find((tab) => tab.path === activeFile)?.name ?? null;
     }
@@ -75,23 +77,25 @@ export const Navbar: React.FC = () => {
           >
             {activeFileLabel ?? t('app:brand_name')}
           </span>
-          {!isUntitled && activeFile && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  onClick={handleCopyPath}
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground text-xs"
-                  aria-label={t('navbar:copy_path_tooltip')}
-                >
-                  <Icon name="copy" className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t('navbar:copy_path_tooltip')}</TooltipContent>
-            </Tooltip>
-          )}
+          {!isUntitled &&
+            activeFile &&
+            !tabs.find((tab) => tab.path === activeFile)?.remote && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={handleCopyPath}
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground text-xs"
+                    aria-label={t('navbar:copy_path_tooltip')}
+                  >
+                    <Icon name="copy" className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('navbar:copy_path_tooltip')}</TooltipContent>
+              </Tooltip>
+            )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Tooltip>

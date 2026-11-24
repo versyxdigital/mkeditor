@@ -1836,6 +1836,20 @@ describe('AssistantTools execution boundary regressions', () => {
 
 describe('AssistantTools confirmation target regressions', () => {
   it.each(['replace_selection', 'insert_at_cursor'])(
+    'does not let %s modify a remote document programmatically',
+    async (name) => {
+      const bm = makeBridgeManager();
+      Object.assign(bm.fileManager, {
+        getActiveDocumentPath: () => 'cloud-drive://connection/account/file',
+      });
+      const tools = new AssistantTools(bm as never);
+      await expect(
+        tools.execute(name, { content: 'replacement' }),
+      ).rejects.toThrow();
+      expect(bm.mkeditor.executeEdits).not.toHaveBeenCalled();
+    },
+  );
+  it.each(['replace_selection', 'insert_at_cursor'])(
     'rejects %s when another tab becomes active before confirmation',
     async (name) => {
       const bm = makeBridgeManager({

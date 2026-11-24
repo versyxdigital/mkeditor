@@ -16,6 +16,10 @@ import {
 // mock is hooked under the same module path that the dynamic import
 // resolves to.
 jest.mock('../../src/browser/core/Markdown', () => ({
+  renderAssistantMarkdown: jest.fn(
+    () =>
+      '<img src="relative.png"><a href="other.md">Other</a><a href="https://example.test">External</a>',
+  ),
   Markdown: {
     render: jest.fn((src: string) => `<rendered>${src}</rendered>`),
   },
@@ -27,6 +31,33 @@ jest.mock('../../src/browser/extensions/editor/ScrollSync', () => ({
 }));
 
 describe('<PreviewPane>', () => {
+  it('remote documents use safe rendering and never resolve relative assets against a local workspace', async () => {
+    const {
+      renderAssistantMarkdown,
+    } = require('../../src/browser/core/Markdown');
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        fileManager: fakeFileManager({
+          activeFile: 'cloud-drive://connection/account/id',
+        }) as never,
+        fileTreeManager: fakeFileTreeManager({
+          treeRoot: 'C:/private',
+        }) as never,
+        editorManager: { getValue: () => '![image](relative.png)' } as never,
+      },
+    });
+    await waitFor(() =>
+      expect(container.querySelector('img')).toBeInTheDocument(),
+    );
+    expect(renderAssistantMarkdown).toHaveBeenCalled();
+    expect(container.querySelector('img')).not.toHaveAttribute('src');
+    expect(container.querySelector('a')).not.toHaveAttribute('href');
+    expect(container.querySelectorAll('a')[1]).toHaveAttribute(
+      'href',
+      'https://example.test',
+    );
+  });
   it('reuses unchanged Markdown and DOM across duplicate render events', async () => {
     const { Markdown } = require('../../src/browser/core/Markdown');
     const renderer = Markdown.render as jest.Mock;

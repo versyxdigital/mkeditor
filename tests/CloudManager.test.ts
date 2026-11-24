@@ -1,0 +1,260 @@
+import { CloudManager } from '../src/browser/core/CloudManager';
+import type {
+  CloudRequest,
+  CloudResponse,
+  CloudState,
+} from '../src/app/interfaces/Cloud';
+import { confirmExternal } from '../src/browser/prompts';
+
+jest.mock('../src/browser/prompts', () => ({
+  confirmExternal: jest.fn(async () => false),
+  openPromptExternal: jest.fn(async () => ({ button: null })),
+}));
+
+function setup() {
+  const handlers = new Map<string, (value: never) => void>();
+  const requests: CloudRequest[] = [];
+  const files = {
+    openRemoteDocument: jest.fn(),
+    setRemoteOperations: jest.fn(),
+    refreshRemoteAccess: jest.fn(),
+    tabs: new Map(),
+    models: new Map(),
+    getSnapshot: jest.fn(),
+    hasUnconfirmedRemoteSave: jest.fn(() => false),
+    reloadRemoteDocument: jest.fn(),
+    openDiffTab: jest.fn(),
+  };
+  const bridge = {
+    receive: (channel: string, fn: (value: never) => void) => {
+      handlers.set(channel, fn);
+    },
+    send: (_channel: string, value: CloudRequest) => {
+      requests.push(value);
+    },
+  };
+  const manager = new CloudManager(bridge, files as never);
+  const state: CloudState = {
+    revision: 1,
+    secureStorage: true,
+    googleDriveAvailable: true,
+    connections: [
+      {
+        id: 'drive',
+        name: 'Drive',
+        clientId: 'client',
+        clientValue: '',
+        accountId: 'account',
+        status: 'connected',
+      },
+    ],
+  };
+  const push = (value: CloudState) =>
+    handlers.get('from:cloud:state')!(value as never);
+  const respond = (
+    request: CloudRequest,
+    value: Omit<Extract<CloudResponse, { ok: true }>, 'requestId'>,
+  ) =>
+    handlers.get('from:cloud:result')!({
+      requestId: request.requestId,
+      ...value,
+    } as never);
+  return { manager, files, requests, state, push, respond };
+}
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+test('reload asks before discarding a dirty remote buffer and refuses edits made during the fetch', async () => {
+  const { manager, files, requests, respond, state, push } = setup();
+  push(state);
+  let version = 2;
+  const model = {
+    getAlternativeVersionId: () => version,
+    getValue: () => 'my edits',
+  };
+  const remote = {
+    connectionId: 'drive',
+    accountId: 'account',
+    connectionName: 'Drive',
+    item: {
+      id: 'markdown',
+      name: 'notes.md',
+      kind: 'markdown' as const,
+      parents: [],
+    },
+  };
+  files.tabs.set('path', { remote });
+  files.models.set('path', model);
+  files.getSnapshot.mockReturnValue({ tabs: [{ path: 'path', dirty: true }] });
+  const reload = manager.reload('path');
+  respond(requests.at(-1)!, {
+    ok: true,
+    state,
+    document: { ...remote, content: 'latest' },
+  });
+  await reload;
+  expect(confirmExternal).toHaveBeenCalled();
+  expect(files.reloadRemoteDocument).not.toHaveBeenCalled();
+  (confirmExternal as jest.Mock).mockResolvedValueOnce(true);
+  const retry = manager.reload('path');
+  version++;
+  respond(requests.at(-1)!, {
+    ok: true,
+    state,
+    document: { ...remote, content: 'latest' },
+  });
+  await retry;
+  expect(files.reloadRemoteDocument).not.toHaveBeenCalled();
+  expect(manager.getSnapshot().error).toBe('conflict');
+  manager.dispose();
+});
+
+test('write timeout becomes unconfirmed rather than an invitation to replay', async () => {
+  jest.useFakeTimers();
+  const { manager, files, state, push } = setup();
+  push(state);
+  const operations = files.setRemoteOperations.mock.calls[0][0];
+  const save = operations.save({
+    document: {
+      connectionId: 'drive',
+      accountId: 'account',
+      item: { id: 'markdown', validator: '"etag"' },
+    },
+    content: 'snapshot',
+    operationId: 'write-1',
+  });
+  const rejection = expect(save).rejects.toBe('unconfirmed');
+  jest.advanceTimersByTime(65_000);
+  await rejection;
+  manager.dispose();
+});
+
+test('one-click sign-in allows the browser flow time and selects the authorized workspace', async () => {
+  jest.useFakeTimers();
+  const { manager, state, requests, respond } = setup();
+  const running = manager.run({
+    action: 'add',
+    name: 'Google Drive',
+    authorize: true,
+  });
+  const pending = requests.at(-1)!;
+  jest.advanceTimersByTime(65_000);
+  expect(manager.getSnapshot().busy).toEqual(['settings']);
+  respond(pending, { ok: true, state, connectionId: 'drive' });
+  expect(await running).toBe(true);
+  expect(manager.getSnapshot()).toMatchObject({ workspace: 'drive', busy: [] });
+  expect(requests.at(-1)!.command).toMatchObject({
+    action: 'list',
+    connectionId: 'drive',
+    folderId: 'root',
+  });
+  manager.dispose();
+});
+
+test('snapshot is stable; late browsing results cannot populate another workspace', async () => {
+  const { manager, state, push, requests, respond } = setup();
+  const initial = manager.getSnapshot();
+  expect(manager.getSnapshot()).toBe(initial);
+  const changed = jest.fn();
+  const unsubscribe = manager.subscribe(changed);
+  push(state);
+  manager.selectWorkspace('drive');
+  const pending = requests.at(-1)!;
+  expect(manager.getSnapshot().loading).toBe(true);
+  manager.selectWorkspace('local');
+  respond(pending, {
+    ok: true,
+    state,
+    page: {
+      items: [{ id: 'file', name: 'notes.md', kind: 'markdown', parents: [] }],
+    },
+  });
+  await Promise.resolve();
+  expect(manager.getSnapshot()).toMatchObject({
+    workspace: 'local',
+    items: [],
+    loading: false,
+  });
+  expect(changed).toHaveBeenCalled();
+  unsubscribe();
+  manager.dispose();
+});
+
+test('disconnect clears listing, ignores stale state, and keeps open documents intact', async () => {
+  const { manager, state, push, requests, respond, files } = setup();
+  push(state);
+  manager.selectWorkspace('drive');
+  respond(requests.at(-1)!, {
+    ok: true,
+    state,
+    page: {
+      items: [{ id: 'file', name: 'notes.md', kind: 'markdown', parents: [] }],
+      nextPage: 'more',
+    },
+  });
+  await Promise.resolve();
+  expect(manager.getSnapshot().items).toHaveLength(1);
+  push({
+    ...state,
+    revision: 2,
+    connections: [
+      { ...state.connections[0], accountId: undefined, status: 'disconnected' },
+    ],
+  });
+  push(state);
+  expect(manager.getSnapshot()).toMatchObject({
+    items: [],
+    nextPage: undefined,
+    connections: [{ status: 'disconnected' }],
+  });
+  expect(files.openRemoteDocument).not.toHaveBeenCalled();
+  push({ ...state, revision: 3, connections: [] });
+  expect(manager.getSnapshot().workspace).toBe('local');
+  manager.dispose();
+});
+
+test('a download completing after sign-out/account change never opens as the new account', async () => {
+  const { manager, state, push, requests, respond, files } = setup();
+  push(state);
+  manager.selectWorkspace('drive');
+  respond(requests.at(-1)!, { ok: true, state, page: { items: [] } });
+  await Promise.resolve();
+  const open = manager.open({
+    id: 'file',
+    name: 'notes.md',
+    kind: 'markdown',
+    parents: [],
+  });
+  const pending = requests.at(-1)!;
+  push({
+    ...state,
+    revision: 2,
+    connections: [{ ...state.connections[0], accountId: 'different' }],
+  });
+  respond(pending, {
+    ok: true,
+    state,
+    document: {
+      connectionId: 'drive',
+      accountId: 'account',
+      connectionName: 'Drive',
+      item: { id: 'file', name: 'notes.md', kind: 'markdown', parents: [] },
+      content: 'content',
+    },
+  });
+  await open;
+  expect(files.openRemoteDocument).not.toHaveBeenCalled();
+  manager.dispose();
+});
+
+test('missing IPC responses time out with actionable UI state', async () => {
+  jest.useFakeTimers();
+  const { manager } = setup();
+  const run = manager.run({ action: 'test', connectionId: 'drive' });
+  jest.advanceTimersByTime(65_000);
+  expect(await run).toBe(false);
+  expect(manager.getSnapshot()).toMatchObject({ error: 'network', busy: [] });
+  manager.dispose();
+});

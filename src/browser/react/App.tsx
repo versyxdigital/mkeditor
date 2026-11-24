@@ -104,6 +104,7 @@ const MoveItemModal = React.lazy(() =>
 );
 
 import './styles/tailwind.css';
+import { RemoteDocumentNotice } from './components/cloud/RemoteDocumentNotice';
 
 export interface AppProps {
   initialManagers: Managers;
@@ -167,6 +168,7 @@ export const App: React.FC<AppProps> = ({
                             <TitleBar />
                             <Navbar />
                             <TabBar />
+                            <RemoteDocumentNotice />
                             <Shell
                               onEditorReady={onEditorReady}
                               workspaceGroupRef={workspaceGroupRef}

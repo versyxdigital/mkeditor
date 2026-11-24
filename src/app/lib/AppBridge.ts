@@ -35,6 +35,8 @@ import {
   writePersistedConversations,
 } from './assistantStoreFile';
 import { normalizeLanguage } from '../util';
+import { CloudService } from './cloud/CloudService';
+import { CloudStore } from './cloud/CloudStore';
 /**
  * AppBridge
  */
@@ -76,6 +78,7 @@ export class AppBridge {
   private disposed = false;
   private assistantConfigPush = 0;
   private registered = false;
+  private cloud: CloudService | null = null;
 
   /**
    * Create a new AppBridge instance to manage IPC traffic.
@@ -110,6 +113,20 @@ export class AppBridge {
   register() {
     if (this.registered || this.disposed) return;
     this.registered = true;
+
+    this.cloud = new CloudService(
+      new CloudStore(),
+      (url) => shell.openExternal(url),
+      (state) => {
+        if (!this.disposed && !this.context.isDestroyed())
+          this.context.webContents.send('from:cloud:state', state);
+      },
+    );
+    this.on('to:cloud:request', async (_event, input: unknown) => {
+      const result = await this.cloud!.handle(input);
+      if (!this.disposed && !this.context.isDestroyed())
+        this.context.webContents.send('from:cloud:result', result);
+    });
 
     // Enable logging from the renderer context
     this.on('log', (_e, { level, msg, meta }: LogMessage) => {
@@ -799,6 +816,7 @@ export class AppBridge {
   private dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.cloud?.dispose();
     for (const { channel, handler } of this.listeners) {
       ipcMain.removeListener(channel, handler);
     }

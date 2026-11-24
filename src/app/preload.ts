@@ -13,6 +13,7 @@ import type { LogLevel } from './interfaces/Logging';
 // Can be sent from the renderer process and
 // received by the main process
 const senderWhitelist = [
+  'to:cloud:request',
   'to:title:set',
   'to:editor:state',
   'to:settings:save',
@@ -60,6 +61,8 @@ const senderWhitelist = [
 // Can be sent from the main process and received
 // by the renderer process
 const receiverWhitelist = [
+  'from:cloud:result',
+  'from:cloud:state',
   'from:theme:set',
   'from:settings:set',
   'from:session:restore',

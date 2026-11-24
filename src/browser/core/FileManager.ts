@@ -10,6 +10,12 @@ import type { EditorDispatcher } from '../events/EditorDispatcher';
 import { openPromptExternal } from '../react/contexts/PromptsContext';
 import { debounce } from '../util';
 import { t } from '../i18n';
+import {
+  isRemotePath,
+  remoteDocumentPath,
+  type RemoteDocument,
+  type CloudWriteError,
+} from '../../app/interfaces/Cloud';
 
 export interface TabInfo {
   path: string;
@@ -30,6 +36,25 @@ export interface TabInfo {
    * to the session file.
    */
   kind?: 'file' | 'diff';
+  remote?: Omit<RemoteDocument, 'content'>;
+  remoteSave?: RemoteSaveStatus;
+}
+
+export interface RemoteSaveStatus {
+  phase: 'saving' | 'saved' | 'conflict' | 'failed' | 'unconfirmed';
+  error?: CloudWriteError;
+}
+interface RemoteSaveSnapshot {
+  document: RemoteDocument;
+  content: string;
+  version: number;
+  operationId: string;
+  model: editor.ITextModel;
+}
+interface RemoteFileOperations {
+  canEdit(document: Omit<RemoteDocument, 'content'>): boolean;
+  save(snapshot: RemoteSaveSnapshot): Promise<RemoteDocument>;
+  reconcile(snapshot: RemoteSaveSnapshot): Promise<RemoteDocument>;
 }
 
 /**
@@ -110,6 +135,10 @@ export class FileManager {
   private static nextSaveRequest = 1;
   private pendingSaves = new Map<string, PendingSave>();
   private modelSaves = new Map<editor.ITextModel, PendingSave>();
+  private remoteOperations: RemoteFileOperations | null = null;
+  private remoteWrites = new Map<string, Promise<boolean>>();
+  private remoteUnconfirmed = new Map<string, RemoteSaveSnapshot>();
+  private static nextRemoteOperation = 1;
 
   /** Flag to determine whether the content has changed */
   public contentHasChanged = false;
@@ -280,10 +309,10 @@ export class FileManager {
    * and any code about to send `to:file:save` with a path.
    *
    * Returns:
-   *   - the active tab path when it's a normal file tab (and not untitled)
+   *   - the active tab path when it backs a local file (not remote/untitled)
    *   - the most recent editable tab path when the active tab is a
    *     diff tab (Monaco's model is still pointing there)
-   *   - `null` for untitled-only sessions or when no editable tab
+   *   - `null` for a remote/untitled tab, or when no local editable tab
    *     has ever been active
    */
   public getActiveEditablePath(): string | null {
@@ -292,12 +321,15 @@ export class FileManager {
       const tab = this.tabs.get(active);
       const kind = tab?.kind ?? 'file';
       if (kind === 'file') {
-        return active.startsWith('untitled-') ? null : active;
+        return active.startsWith('untitled-') || isRemotePath(active)
+          ? null
+          : active;
       }
     }
     if (
       this.lastEditableFile &&
       this.tabs.has(this.lastEditableFile) &&
+      !isRemotePath(this.lastEditableFile) &&
       (this.tabs.get(this.lastEditableFile)?.kind ?? 'file') === 'file'
     ) {
       return this.lastEditableFile;
@@ -305,12 +337,24 @@ export class FileManager {
     return null;
   }
 
+  /** Includes remote identities; never pass this value to local filesystem APIs. */
+  public getActiveDocumentPath(): string | null {
+    return (
+      [...this.models].find(
+        ([, model]) => model === this.mkeditor.getModel(),
+      )?.[0] ?? null
+    );
+  }
+
   /** Rebuild the snapshot and notify all subscribed listeners. */
   private emitChange() {
     this.snapshot = {
       tabs: Array.from(this.tabs.values()).map((info) => ({
         ...info,
-        dirty: this.dirtyByPath.get(info.path) ?? false,
+        dirty:
+          (this.dirtyByPath.get(info.path) ?? false) ||
+          info.remoteSave?.phase === 'saving' ||
+          info.remoteSave?.phase === 'unconfirmed',
       })),
       activeFile: this.activeFile,
     };
@@ -347,6 +391,10 @@ export class FileManager {
       const prevDirty = this.dirtyByPath.get(path) ?? false;
       if (prevDirty !== nextDirty) {
         this.dirtyByPath.set(path, nextDirty);
+        const tab = this.tabs.get(path);
+        if (nextDirty && tab?.remoteSave?.phase === 'saved') {
+          this.tabs.set(path, { ...tab, remoteSave: undefined });
+        }
         this.emitChange();
       }
     });
@@ -402,6 +450,8 @@ export class FileManager {
     const dirtyPaths = paths.filter(
       (p) =>
         this.dirtyByPath.get(p) === true ||
+        this.tabs.get(p)?.remoteSave?.phase === 'saving' ||
+        this.tabs.get(p)?.remoteSave?.phase === 'unconfirmed' ||
         (p.startsWith('untitled-') && !!this.models.get(p)?.getValue()),
     );
 
@@ -459,6 +509,7 @@ export class FileManager {
     this.viewStates.clear();
     this.baselineVersions.clear();
     this.dirtyByPath.clear();
+    this.remoteUnconfirmed.clear();
     this.modelListeners.clear();
     // Diff tabs are ephemeral preview surfaces; a workspace switch
     // invalidates them along with everything else.
@@ -518,6 +569,8 @@ export class FileManager {
     if (
       !discard &&
       (original !== current ||
+        this.tabs.get(path)?.remoteSave?.phase === 'saving' ||
+        this.tabs.get(path)?.remoteSave?.phase === 'unconfirmed' ||
         (path.startsWith('untitled-') && current !== '')) &&
       !path.endsWith('.log')
     ) {
@@ -563,6 +616,7 @@ export class FileManager {
     this.models.delete(path);
     this.originals.delete(path);
     this.tabs.delete(path);
+    this.remoteUnconfirmed.delete(path);
     this.viewStates.delete(path);
     this.detachTabTracking(path);
     // If we're closing the path we'd been falling back to for the
@@ -870,6 +924,40 @@ export class FileManager {
     this.seedUntitled('');
   }
 
+  /** Remote tabs never enter local filesystem, session restore or save paths. */
+  public openRemoteDocument(document: RemoteDocument): void {
+    const path = remoteDocumentPath(document);
+    if (this.models.has(path)) {
+      this.activateFile(path);
+      return;
+    }
+    const { content, ...remote } = document;
+    const model = editor.createModel(content, 'markdown');
+    this.models.set(path, model);
+    this.originals.set(path, content);
+    this.trackTab(path, model);
+    this.tabs.set(path, {
+      path,
+      name: document.item.name,
+      dirty: false,
+      remote,
+    });
+    this.activateFile(path, document.item.name);
+  }
+
+  public copyRemoteToLocal(path: string): void {
+    if (!this.tabs.get(path)?.remote) return;
+    const content = this.models.get(path)?.getValue();
+    if (content !== undefined) {
+      this.createLocalCopy(content);
+    }
+  }
+
+  public createLocalCopy(content: string): void {
+    this.seedUntitled('');
+    this.mkeditor.getModel()?.setValue(content);
+  }
+
   /**
    * Open (or focus an existing) read-only diff tab. Created by the
    * "pop out" button on the inline tool-call confirmation card so
@@ -1005,6 +1093,16 @@ export class FileManager {
     const mdl = this.models.get(path);
     if (!mdl) return;
 
+    this.mkeditor.updateOptions?.({
+      readOnly: Boolean(
+        tabInfo?.remote &&
+        !(
+          tabInfo.remote.item.editable &&
+          this.remoteOperations?.canEdit(tabInfo.remote)
+        ),
+      ),
+    });
+
     const previousPath = this.activeFile;
     const switching = previousPath !== path;
 
@@ -1119,6 +1217,10 @@ export class FileManager {
 
   /** Save one captured model and wait for the filesystem acknowledgement. */
   public saveTab(path: string, saveAs = false): Promise<boolean> {
+    if (isRemotePath(path)) {
+      if (saveAs) this.copyRemoteToLocal(path);
+      return saveAs ? Promise.resolve(false) : this.saveRemoteTab(path);
+    }
     const model = this.models.get(path);
     if (!model) return Promise.resolve(false);
     const current = model.getValue();
@@ -1238,6 +1340,135 @@ export class FileManager {
     this.scheduleSessionSave();
   }
 
+  public setRemoteOperations(operations: RemoteFileOperations): void {
+    this.remoteOperations = operations;
+  }
+
+  public refreshRemoteAccess(): void {
+    const path = this.getActiveDocumentPath();
+    const remote = path ? this.tabs.get(path)?.remote : undefined;
+    if (remote)
+      this.mkeditor.updateOptions?.({
+        readOnly: !(
+          remote.item.editable && this.remoteOperations?.canEdit(remote)
+        ),
+      });
+  }
+
+  private remoteStatus(path: string, status: RemoteSaveStatus): void {
+    const tab = this.tabs.get(path);
+    if (!tab?.remote) return;
+    this.tabs.set(path, { ...tab, remoteSave: status });
+    this.emitChange();
+  }
+
+  private saveRemoteTab(path: string): Promise<boolean> {
+    const pending = this.remoteWrites.get(path);
+    if (pending)
+      return pending.then((ok) =>
+        ok && this.dirtyByPath.get(path) ? this.saveRemoteTab(path) : ok,
+      );
+    const tab = this.tabs.get(path);
+    const model = this.models.get(path);
+    const operations = this.remoteOperations;
+    if (!tab?.remote || !model || !operations) return Promise.resolve(false);
+    if (tab.remoteSave?.phase === 'conflict') return Promise.resolve(false);
+    const unresolved = this.remoteUnconfirmed.get(path);
+    if (
+      !unresolved &&
+      (!tab.remote.item.editable || !operations.canEdit(tab.remote))
+    ) {
+      this.remoteStatus(path, { phase: 'failed', error: 'auth' });
+      return Promise.resolve(false);
+    }
+    const snapshot = unresolved ?? {
+      document: { ...tab.remote, content: model.getValue() },
+      model,
+      content: model.getValue(),
+      version: model.getAlternativeVersionId(),
+      operationId: `remote-save-${Date.now()}-${FileManager.nextRemoteOperation++}`,
+    };
+    this.remoteStatus(path, { phase: 'saving' });
+    const work = (async () => {
+      try {
+        const document = await (unresolved
+          ? operations.reconcile(snapshot)
+          : operations.save(snapshot));
+        if (
+          this.models.get(path) !== snapshot.model ||
+          remoteDocumentPath(document) !== path
+        )
+          return false;
+        if (document.content !== snapshot.content) throw 'unconfirmed';
+        const live = this.tabs.get(path)!;
+        const { content: _content, ...remote } = document;
+        this.tabs.set(path, {
+          ...live,
+          remote,
+          remoteSave:
+            snapshot.model.getAlternativeVersionId() === snapshot.version
+              ? { phase: 'saved' }
+              : undefined,
+        });
+        this.remoteUnconfirmed.delete(path);
+        this.recordSavedVersion(
+          path,
+          snapshot.model,
+          snapshot.content,
+          snapshot.version,
+        );
+        return true;
+      } catch (error) {
+        if (this.models.get(path) !== snapshot.model) return false;
+        const code =
+          typeof error === 'string' ? (error as CloudWriteError) : 'network';
+        if (code === 'unconfirmed' || unresolved)
+          this.remoteUnconfirmed.set(path, snapshot);
+        this.remoteStatus(path, {
+          phase:
+            code === 'conflict'
+              ? 'conflict'
+              : code === 'unconfirmed' || unresolved
+                ? 'unconfirmed'
+                : 'failed',
+          error: code,
+        });
+        return false;
+      }
+    })();
+    this.remoteWrites.set(path, work);
+    void work.finally(() => {
+      if (this.remoteWrites.get(path) === work) this.remoteWrites.delete(path);
+    });
+    return work;
+  }
+
+  public hasUnconfirmedRemoteSave(path: string): boolean {
+    return this.remoteUnconfirmed.has(path) || this.remoteWrites.has(path);
+  }
+
+  public reloadRemoteDocument(path: string, document: RemoteDocument): boolean {
+    if (
+      remoteDocumentPath(document) !== path ||
+      this.hasUnconfirmedRemoteSave(path)
+    )
+      return false;
+    const model = this.models.get(path),
+      tab = this.tabs.get(path);
+    if (!model || !tab) return false;
+    model.setValue(document.content);
+    const { content: _content, ...remote } = document;
+    this.tabs.set(path, { ...tab, remote, remoteSave: undefined });
+    this.recordSavedVersion(
+      path,
+      model,
+      document.content,
+      model.getAlternativeVersionId(),
+    );
+    this.refreshRemoteAccess();
+    return true;
+  }
+
   /**
    * Export an active file to HTML
    *
@@ -1347,7 +1578,12 @@ export class FileManager {
       // confirmations — relaunching after the tool already accepted
       // / rejected would leave a stale tab with no way to interact.
       // Filter them out of the persisted snapshot.
-      if ((info.kind ?? 'file') === 'diff') continue;
+      if (
+        (info.kind ?? 'file') === 'diff' ||
+        info.remote ||
+        isRemotePath(info.path)
+      )
+        continue;
       const viewState = this.viewStates.get(info.path) ?? null;
       const tab: SessionTab = {
         path: info.path,
@@ -1368,7 +1604,7 @@ export class FileManager {
     // to focus a tab that's about to be filtered out. Fall back to
     // the first surviving tab, or null when there are none.
     let activeFile = this.activeFile;
-    if (activeIsDiff) {
+    if (activeIsDiff || isRemotePath(activeFile)) {
       activeFile = tabs.length > 0 ? tabs[0].path : null;
     }
 

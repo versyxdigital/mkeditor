@@ -41,6 +41,14 @@ Use Node.js 22.13 or later in the 22.x line, or Node.js 24 or later; CI runs Nod
      npm run make-installer
      ```
 
+### Google Drive build configuration
+
+Contributor builds work without a shared Google registration; the default Google sign-in button is disabled and the custom app option remains available. To include your own Desktop registration, copy `src/app/config/googleDrive.json` to `src/app/config/googleDrive.local.json` and enter the client ID and client secret in the `clientId` and `clientValue` fields. The local file is ignored by Git and excluded from installers.
+
+Builds can instead use `MKEDITOR_GOOGLE_CLIENT_ID` and `MKEDITOR_GOOGLE_CLIENT_SECRET` environment variables. They take precedence over the local file and must be provided together. `build-app`, `build-all`, `make-installer` and `publish` inject these values into `dist/app/config/googleDrive.json`; source files remain empty. The registration is still readable from a distributed desktop app, as expected for Google's public Desktop clients.
+
+The release workflow reads repository Actions secrets with those same two names. Maintainers must configure both before releasing. It sets `MKEDITOR_REQUIRE_GOOGLE_DRIVE=true` so a missing registration fails the release build. Pull-request CI requires no credentials.
+
 ## Dependency compatibility
 
 TypeScript remains on 6.0.x because the current `ts-jest` and `@typescript-eslint/parser` peer requirements exclude TypeScript 7. The native TypeScript 7 package also changes the compiler API consumed by the test and webpack loaders. Upgrade that toolchain together when support is available; do not force unsupported peers with npm flags.

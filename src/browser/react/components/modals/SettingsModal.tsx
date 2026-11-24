@@ -26,6 +26,7 @@ import {
 import { Switch } from '../ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { AssistantSettings } from '../assistant/AssistantSettings';
+import { CloudConnections } from '../cloud/CloudConnections';
 
 /**
  * Editor settings dialog. Drives SettingsContext directly — every input
@@ -36,7 +37,13 @@ import { AssistantSettings } from '../assistant/AssistantSettings';
  * process); under web mode the per-change persist already handled it.
  */
 type SettingsTab =
-  'general' | 'assistant' | 'editor' | 'appearance' | 'preview' | 'workspace';
+  | 'general'
+  | 'assistant'
+  | 'connections'
+  | 'editor'
+  | 'appearance'
+  | 'preview'
+  | 'workspace';
 
 export const SettingsModal: React.FC = () => {
   const { mode, bridgeManager, providers } = useManagers();
@@ -58,7 +65,10 @@ export const SettingsModal: React.FC = () => {
     if (open === 'settings') {
       const requested = payload && 'tab' in payload ? payload.tab : undefined;
       setActiveTab(
-        requested === 'assistant' && showAssistantTab ? 'assistant' : 'general',
+        (requested === 'assistant' || requested === 'connections') &&
+          showAssistantTab
+          ? requested
+          : 'general',
       );
     }
   }, [open, payload, showAssistantTab]);
@@ -121,6 +131,11 @@ export const SettingsModal: React.FC = () => {
             icon: 'comments',
             label: t('modals-settings:tab_assistant'),
           },
+          {
+            id: 'connections' as const,
+            icon: 'link',
+            label: t('cloud:connections'),
+          },
         ]
       : []),
     { id: 'editor', icon: 'file', label: t('modals-settings:nav_editor') },
@@ -135,7 +150,9 @@ export const SettingsModal: React.FC = () => {
   const configurationPath =
     activeTab === 'assistant'
       ? '~/.mkeditor/assistant.json'
-      : '~/.mkeditor/settings.json';
+      : activeTab === 'connections'
+        ? '~/.mkeditor/connections.json'
+        : '~/.mkeditor/settings.json';
   return (
     <Dialog
       open={open === 'settings'}
@@ -153,7 +170,9 @@ export const SettingsModal: React.FC = () => {
             />
             {activeTab === 'assistant'
               ? t('modals-settings:title_assistant')
-              : t('modals-settings:title')}
+              : activeTab === 'connections'
+                ? t('cloud:connections')
+                : t('modals-settings:title')}
           </DialogTitle>
         </DialogHeader>
         <Tabs
@@ -189,11 +208,13 @@ export const SettingsModal: React.FC = () => {
           </div>
           <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-5 sm:p-6">
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-              <p className="max-w-xl text-sm text-muted-foreground">
-                {activeTab === 'assistant'
-                  ? t('modals-settings:intro_assistant')
-                  : t('modals-settings:intro')}
-              </p>
+              {activeTab !== 'connections' && (
+                <p className="max-w-xl text-sm text-muted-foreground">
+                  {activeTab === 'assistant'
+                    ? t('modals-settings:intro_assistant')
+                    : t('modals-settings:intro')}
+                </p>
+              )}
               {mode === 'desktop' && (
                 <div className="flex min-w-0 items-center gap-2 rounded-lg border border-subtle bg-sidebar px-3 py-2 text-xs text-muted-foreground">
                   <Icon name="folder" />
@@ -231,6 +252,11 @@ export const SettingsModal: React.FC = () => {
                 </p>
               </Section>
             </TabsContent>
+            {showAssistantTab && (
+              <TabsContent value="connections" className="mt-0">
+                <CloudConnections />
+              </TabsContent>
+            )}
             <TabsContent value="editor" className="mt-0">
               <Section label={t('modals-settings:editing')} separator={false}>
                 {(

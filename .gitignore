@@ -5,3 +5,4 @@ out/
 releases/
 .DS_Store
 coverage/
+src/app/config/googleDrive.local.json

@@ -1,0 +1,630 @@
+import { randomUUID } from 'crypto';
+import { z } from 'zod';
+import type {
+  CloudCommand,
+  CloudConnection,
+  CloudResponse,
+  CloudState,
+  RemoteDocument,
+} from '../../interfaces/Cloud';
+import { CloudError } from './CloudError';
+import type { CloudPersistence } from './CloudStore';
+import {
+  GoogleDrive,
+  type DriveTokens,
+  type DriveRegistration,
+  DRIVE_SCOPE,
+  DRIVE_WRITE_SCOPE,
+} from './GoogleDrive';
+import {
+  driveRegistrationSchema,
+  googleDriveRegistration,
+} from './GoogleDriveRegistration';
+
+const id = z.string().min(1).max(1024);
+const connection = { connectionId: id };
+const copyString = z.string().min(1).max(1500);
+const copySchema = z.object({
+  title: copyString,
+  accepted: copyString,
+  cancelled: copyString,
+  close: copyString,
+  invalid: copyString,
+});
+const commandSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('state') }),
+  z.object({
+    action: z.literal('add'),
+    name: z.string().trim().min(1).max(100),
+    clientId: driveRegistrationSchema.shape.clientId.optional(),
+    clientValue: driveRegistrationSchema.shape.clientValue.optional(),
+    authorize: z.boolean().optional(),
+    copy: copySchema.optional(),
+  }),
+  z.object({
+    action: z.literal('rename'),
+    ...connection,
+    name: z.string().trim().min(1).max(100),
+  }),
+  z.object({
+    action: z.literal('connect'),
+    ...connection,
+    copy: copySchema.optional(),
+    writeAccess: z.boolean().optional(),
+  }),
+  ...(['disconnect', 'remove', 'test'] as const).map((action) =>
+    z.object({ action: z.literal(action), ...connection }),
+  ),
+  z.object({
+    action: z.literal('list'),
+    ...connection,
+    folderId: id,
+    driveId: id.optional(),
+    page: z.string().max(8192).optional(),
+  }),
+  z.object({
+    action: z.literal('drives'),
+    ...connection,
+    page: z.string().max(8192).optional(),
+  }),
+  z.object({
+    action: z.literal('open'),
+    ...connection,
+    itemId: id,
+    accountId: id.optional(),
+  }),
+  z.object({
+    action: z.literal('save'),
+    ...connection,
+    accountId: id,
+    itemId: id,
+    validator: z.string().regex(/^"[^"\r\n]{1,1024}"$/),
+    content: z.string().max(4 * 1024 * 1024),
+    operationId: id,
+  }),
+  z.object({
+    action: z.literal('create'),
+    ...connection,
+    accountId: id,
+    folderId: id,
+    name: z
+      .string()
+      .min(1)
+      .max(255)
+      .regex(/^[^/\\]+\.md$/i)
+      .refine((name) =>
+        [...name].every((character) => character.charCodeAt(0) >= 32),
+      ),
+    content: z.string().max(4 * 1024 * 1024),
+    operationId: id,
+  }),
+  z.object({
+    action: z.literal('reconcile'),
+    ...connection,
+    accountId: id,
+    operationId: id,
+  }),
+]);
+const requestSchema = z.object({
+  requestId: z.string().min(1).max(100),
+  command: commandSchema,
+});
+type StoredConnection = CloudConnection & { credential?: string };
+interface WriteOperation {
+  connectionId: string;
+  accountId: string;
+  itemId: string;
+  content: string;
+  kind: 'save' | 'create';
+  validator?: string;
+  document?: RemoteDocument;
+}
+
+/** Main owns auth, account binding, conditional writes and outcome reconciliation. */
+export class CloudService {
+  private connections: StoredConnection[] | null = null;
+  private generations = new Map<string, number>();
+  private refreshes = new Map<string, Promise<DriveTokens>>();
+  private cancellations = new Map<string, () => void>();
+  private tokens = new Map<string, DriveTokens>();
+  private disposed = false;
+  private revision = 0;
+  private operations = new Map<string, WriteOperation>();
+  private writes = new Map<string, Promise<unknown>>();
+  constructor(
+    private readonly store: CloudPersistence,
+    private readonly openBrowser: (url: string) => Promise<void>,
+    private readonly push: (state: CloudState) => void,
+    private readonly drive = new GoogleDrive(),
+    private readonly registration: Readonly<DriveRegistration> | null = googleDriveRegistration,
+  ) {}
+
+  private data(): StoredConnection[] {
+    return (this.connections ??= this.store.load());
+  }
+  private find(id: string): StoredConnection {
+    const found = this.data().find((entry) => entry.id === id);
+    if (!found) throw new CloudError('missing');
+    return found;
+  }
+  private generation(id: string) {
+    return this.generations.get(id) ?? 0;
+  }
+  private assertCurrent(id: string, generation: number) {
+    if (this.disposed || this.generation(id) !== generation)
+      throw new CloudError('cancelled');
+  }
+  private replace(value: StoredConnection) {
+    const next = this.data().map((entry) =>
+      entry.id === value.id ? value : entry,
+    );
+    this.store.save(next);
+    this.connections = next;
+    this.revision++;
+  }
+  async state(): Promise<CloudState> {
+    return {
+      secureStorage: await this.store.available(),
+      googleDriveAvailable: this.registration !== null,
+      revision: this.revision,
+      connections: this.data().map(({ credential, ...entry }) => ({
+        ...entry,
+        status:
+          !credential && entry.status === 'connected'
+            ? 'disconnected'
+            : entry.status,
+      })),
+    };
+  }
+  private async changed() {
+    if (!this.disposed) this.push(await this.state());
+  }
+
+  private invalidate(id: string) {
+    this.generations.set(id, this.generation(id) + 1);
+    this.cancellations.get(id)?.();
+    this.cancellations.delete(id);
+    this.tokens.delete(id);
+    this.refreshes.delete(id);
+  }
+
+  async handle(input: unknown): Promise<CloudResponse> {
+    const parsed = requestSchema.safeParse(input);
+    if (!parsed.success)
+      return {
+        requestId:
+          typeof input === 'object' &&
+          input &&
+          'requestId' in input &&
+          typeof input.requestId === 'string'
+            ? input.requestId.slice(0, 100)
+            : '',
+        ok: false,
+        error: 'configuration',
+      };
+    const { requestId, command } = parsed.data;
+    try {
+      if (this.disposed) throw new CloudError('cancelled');
+      const result = await this.execute(command);
+      return { requestId, ok: true, state: await this.state(), ...result };
+    } catch (error) {
+      // Never forward raw fetch/OAuth/provider exceptions or their URLs.
+      return {
+        requestId,
+        ok: false,
+        error: error instanceof CloudError ? error.code : 'network',
+      };
+    } finally {
+      await this.changed().catch(() => {});
+    }
+  }
+
+  private async execute(command: CloudCommand): Promise<{
+    page?: import('../../interfaces/Cloud').DrivePage;
+    document?: import('../../interfaces/Cloud').RemoteDocument;
+    connectionId?: string;
+  }> {
+    if (command.action === 'state') return {};
+    if (command.action === 'add') {
+      const custom = command.clientId !== undefined;
+      if (!custom && command.clientValue !== undefined)
+        throw new CloudError('configuration');
+      const registration = custom
+        ? {
+            clientId: command.clientId!,
+            clientValue: command.clientValue ?? '',
+          }
+        : this.registration;
+      if (!registration) throw new CloudError('configuration');
+      if (command.authorize && !(await this.store.available()))
+        throw new CloudError('storage');
+      if (this.disposed) throw new CloudError('cancelled');
+      let name = command.name;
+      if (!custom && name === 'Google Drive') {
+        let number = 2;
+        const names = new Set(this.data().map((entry) => entry.name));
+        while (names.has(name)) name = `Google Drive (${number++})`;
+      }
+      const next: StoredConnection = {
+        id: randomUUID(),
+        name,
+        ...registration,
+        registration: custom ? 'custom' : 'mkeditor',
+        status: 'disconnected',
+      };
+      const updated = [...this.data(), next];
+      this.store.save(updated);
+      this.connections = updated;
+      this.revision++;
+      if (command.authorize)
+        await this.execute({
+          action: 'connect',
+          connectionId: next.id,
+          copy: command.copy,
+        });
+      return { connectionId: next.id };
+    }
+    const entry = this.find(command.connectionId);
+    if (command.action === 'disconnect' || command.action === 'remove') {
+      this.invalidate(entry.id);
+      // In-memory access is blocked even if the disk write fails. Keep the
+      // error visible so the user knows persisted credentials were not cleared.
+      const next = this.data().filter((value) => value.id !== entry.id);
+      if (command.action === 'disconnect')
+        next.push({
+          ...entry,
+          credential: undefined,
+          accountId: undefined,
+          accountName: undefined,
+          status: 'disconnected',
+        });
+      this.connections = next;
+      this.revision++;
+      this.store.save(next);
+      return {};
+    }
+    if (command.action === 'rename') {
+      this.replace({ ...entry, name: command.name });
+      return {};
+    }
+    if (command.action === 'connect') {
+      this.invalidate(entry.id);
+      const generation = this.generation(entry.id);
+      if (!(await this.store.available())) throw new CloudError('storage');
+      this.assertCurrent(entry.id, generation);
+      this.replace({ ...entry, status: 'connecting' });
+      await this.changed();
+      try {
+        const flow = await this.drive.beginAuthorization(
+          entry,
+          this.openBrowser,
+          180_000,
+          command.copy,
+          (command.writeAccess ?? entry.writeAccess)
+            ? [DRIVE_SCOPE, DRIVE_WRITE_SCOPE]
+            : [DRIVE_SCOPE],
+        );
+        if (this.disposed || this.generation(entry.id) !== generation)
+          flow.cancel();
+        this.assertCurrent(entry.id, generation);
+        this.cancellations.set(entry.id, flow.cancel);
+        const tokens = await flow.result;
+        this.assertCurrent(entry.id, generation);
+        const writeAccess = Boolean(command.writeAccess ?? entry.writeAccess);
+        if (writeAccess && !tokens.scopes?.includes(DRIVE_WRITE_SCOPE))
+          throw new CloudError('permission');
+        const account = await this.drive.account(tokens.access);
+        this.assertCurrent(entry.id, generation);
+        const credential = await this.store.encrypt(tokens);
+        this.assertCurrent(entry.id, generation);
+        this.replace({
+          ...this.find(entry.id),
+          credential,
+          accountId: account.id,
+          accountName: account.name,
+          status: 'connected',
+          writeAccess,
+        });
+        this.tokens.set(entry.id, tokens);
+      } catch (error) {
+        if (this.generation(entry.id) === generation && !this.disposed)
+          this.replace({
+            ...this.find(entry.id),
+            credential: entry.credential,
+            status: entry.credential ? 'connected' : 'disconnected',
+          });
+        throw error;
+      } finally {
+        if (this.generation(entry.id) === generation)
+          this.cancellations.delete(entry.id);
+      }
+      return {};
+    }
+    const generation = this.generation(entry.id);
+    const tokens = await this.access(entry.id);
+    this.assertCurrent(entry.id, generation);
+    if (
+      'accountId' in command &&
+      command.accountId !== undefined &&
+      command.accountId !== entry.accountId
+    )
+      throw new CloudError('auth');
+    try {
+      const editing =
+        entry.writeAccess === true &&
+        tokens.scopes?.includes(DRIVE_WRITE_SCOPE) === true;
+      const document = (
+        value: Awaited<ReturnType<GoogleDrive['read']>>,
+      ): RemoteDocument => ({
+        ...value,
+        connectionId: entry.id,
+        connectionName: entry.name,
+        accountId: entry.accountId!,
+      });
+      if (command.action === 'reconcile') {
+        const operation = this.operations.get(command.operationId);
+        if (
+          !operation ||
+          operation.connectionId !== entry.id ||
+          operation.accountId !== entry.accountId
+        )
+          throw new CloudError('missing');
+        if (operation.document) return { document: operation.document };
+        try {
+          const latest = await this.drive.read(
+            tokens.access,
+            operation.itemId,
+            editing,
+          );
+          this.assertCurrent(entry.id, generation);
+          if (operation.kind === 'create') {
+            const meta = await this.drive.metadata(
+              tokens.access,
+              operation.itemId,
+            );
+            if (
+              meta.appProperties?.mkeditorCreateOperation !==
+              command.operationId
+            )
+              throw new CloudError('unconfirmed');
+          }
+          if (
+            latest.content !== operation.content ||
+            (operation.kind === 'save' &&
+              latest.item.validator === operation.validator)
+          )
+            throw new CloudError('unconfirmed');
+          operation.document = document(latest);
+          return { document: operation.document };
+        } catch (error) {
+          if (
+            error instanceof CloudError &&
+            (error.code === 'auth' || error.code === 'cancelled')
+          )
+            throw error;
+          throw new CloudError('unconfirmed');
+        }
+      }
+      if (command.action === 'save' || command.action === 'create') {
+        if (!editing) throw new CloudError('permission');
+        const previous = this.operations.get(command.operationId);
+        if (previous) {
+          if (
+            previous.connectionId !== entry.id ||
+            previous.accountId !== entry.accountId ||
+            previous.content !== command.content ||
+            (command.action === 'save' && previous.itemId !== command.itemId)
+          )
+            throw new CloudError('configuration');
+          if (previous.document) return { document: previous.document };
+          throw new CloudError('unconfirmed');
+        }
+        if (
+          [...this.operations.values()].filter((value) => !value.document)
+            .length >= 20
+        )
+          throw new CloudError('unconfirmed');
+        const key = `${entry.id}:${entry.accountId}:${command.action === 'save' ? command.itemId : command.folderId}`;
+        const pending = this.writes.get(key) ?? Promise.resolve();
+        const run = pending
+          .catch(() => {})
+          .then(async () => {
+            this.assertCurrent(entry.id, generation);
+            const completed = this.operations.get(command.operationId);
+            if (completed) {
+              if (
+                completed.content !== command.content ||
+                completed.kind !== command.action
+              )
+                throw new CloudError('configuration');
+              if (completed.document) return { document: completed.document };
+              throw new CloudError('unconfirmed');
+            }
+            if (
+              command.action === 'save' &&
+              [...this.operations.values()].some(
+                (op) =>
+                  !op.document &&
+                  op.connectionId === entry.id &&
+                  op.accountId === entry.accountId &&
+                  op.itemId === command.itemId,
+              )
+            )
+              throw new CloudError('unconfirmed');
+            const itemId =
+              command.action === 'save'
+                ? command.itemId
+                : await this.drive.prepareCreate(
+                    tokens.access,
+                    command.folderId,
+                    command.name,
+                  );
+            this.assertCurrent(entry.id, generation);
+            const operation: WriteOperation = {
+              connectionId: entry.id,
+              accountId: entry.accountId!,
+              itemId,
+              content: command.content,
+              kind: command.action,
+              validator:
+                command.action === 'save' ? command.validator : undefined,
+            };
+            this.operations.set(command.operationId, operation);
+            try {
+              let result: Awaited<ReturnType<GoogleDrive['read']>>;
+              if (command.action === 'save')
+                result = await this.drive.update(
+                  tokens.access,
+                  itemId,
+                  command.validator,
+                  command.content,
+                  () => this.assertCurrent(entry.id, generation),
+                );
+              else {
+                await this.drive.create(
+                  tokens.access,
+                  itemId,
+                  command.folderId,
+                  command.name,
+                  command.content,
+                  command.operationId,
+                  () => this.assertCurrent(entry.id, generation),
+                );
+                try {
+                  result = await this.drive.read(tokens.access, itemId, true);
+                } catch {
+                  throw new CloudError('unconfirmed');
+                }
+              }
+              operation.document = document(result);
+              // Confirmed entries need no buffer snapshots beyond recent request deduplication.
+              if (this.operations.size > 100)
+                for (const [id, old] of this.operations) {
+                  if (id !== command.operationId && old.document) {
+                    this.operations.delete(id);
+                    break;
+                  }
+                }
+              return { document: operation.document };
+            } catch (error) {
+              if (
+                !(error instanceof CloudError) ||
+                error.code !== 'unconfirmed'
+              )
+                this.operations.delete(command.operationId);
+              throw error;
+            }
+          });
+        this.writes.set(key, run);
+        try {
+          return await run;
+        } finally {
+          if (this.writes.get(key) === run) this.writes.delete(key);
+        }
+      }
+      if (command.action === 'test') {
+        const account = await this.drive.account(tokens.access);
+        this.assertCurrent(entry.id, generation);
+        if (account.id !== entry.accountId) throw new CloudError('auth');
+        return {};
+      }
+      if (command.action === 'list' || command.action === 'drives') {
+        const page =
+          command.action === 'list'
+            ? await this.drive.list(
+                tokens.access,
+                command.folderId,
+                command.driveId,
+                command.page,
+              )
+            : await this.drive.drives(tokens.access, command.page);
+        this.assertCurrent(entry.id, generation);
+        return { page };
+      }
+      if (command.action !== 'open') throw new CloudError('unsupported');
+      const opened = await this.drive.read(
+        tokens.access,
+        command.itemId,
+        editing,
+      );
+      this.assertCurrent(entry.id, generation);
+      return {
+        document: {
+          ...opened,
+          connectionId: entry.id,
+          connectionName: entry.name,
+          accountId: entry.accountId!,
+        },
+      };
+    } catch (error) {
+      if (error instanceof CloudError && error.code === 'auth') {
+        this.assertCurrent(entry.id, generation);
+        this.tokens.delete(entry.id);
+        this.replace({
+          ...this.find(entry.id),
+          credential: undefined,
+          status: 'reauthorize',
+        });
+      }
+      throw error;
+    }
+  }
+
+  private async access(id: string): Promise<DriveTokens> {
+    const entry = this.find(id);
+    if (!entry.credential || entry.status !== 'connected' || !entry.accountId)
+      throw new CloudError('auth');
+    const current = this.refreshes.get(id);
+    if (current) return current;
+    const generation = this.generation(id);
+    const operation = (async () => {
+      try {
+        let tokens =
+          this.tokens.get(id) ?? (await this.store.decrypt(entry.credential!));
+        this.assertCurrent(id, generation);
+        if (tokens.expires < Date.now() + 60_000) {
+          tokens = await this.drive.refresh(
+            entry,
+            tokens.refresh,
+            tokens.scopes,
+          );
+          this.assertCurrent(id, generation);
+          const account = await this.drive.account(tokens.access);
+          this.assertCurrent(id, generation);
+          if (account.id !== entry.accountId) throw new CloudError('auth');
+          const credential = await this.store.encrypt(tokens);
+          this.assertCurrent(id, generation);
+          this.replace({ ...this.find(id), credential });
+        }
+        this.tokens.set(id, tokens);
+        return tokens;
+      } catch (error) {
+        if (
+          error instanceof CloudError &&
+          error.code === 'auth' &&
+          this.generation(id) === generation &&
+          !this.disposed
+        )
+          this.replace({
+            ...this.find(id),
+            credential: undefined,
+            status: 'reauthorize',
+          });
+        throw error;
+      }
+    })();
+    this.refreshes.set(id, operation);
+    try {
+      return await operation;
+    } finally {
+      if (this.refreshes.get(id) === operation) this.refreshes.delete(id);
+    }
+  }
+
+  dispose() {
+    this.disposed = true;
+    this.cancellations.forEach((cancel) => cancel());
+    this.cancellations.clear();
+    this.tokens.clear();
+  }
+}

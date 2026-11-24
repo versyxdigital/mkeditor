@@ -87,9 +87,17 @@ On desktop, OpenAI also supports your ChatGPT subscription: open **Settings → 
 > [!IMPORTANT]
 > API keys are encrypted with Electron's `safeStorage` and are never transmitted through the app in plaintext.
 
+## Google Drive (experimental)
+
+Desktop builds can connect through **Settings → Connections → Connect with Google**, browse My Drive/shared drives and open Markdown files. Connections start read-only; **Enable editing** separately authorizes conditional saves and new Markdown files in My Drive. Conflict comparison, explicit reload, unknown-result checks and local-copy recovery protect open buffers. Shared-drive writes remain disabled. The write protocol passed a live disposable-file check; the positive Windows consent/browse/save/create flow was recorded, while remaining live smoke checks and Google's public-app verification are pending. See the [setup guide](docs/cloud/google-drive.md) and [maintainer consent guide](docs/cloud/google-verification.md). Dropbox and other adapters remain planned.
+
 # Contributing
 
 Developer documentation can be found [here](./CONTRIBUTING.md).
+
+# Privacy
+
+The [privacy policy draft](docs/privacy.html) describes local storage and optional Google Drive and AI connections. It is prepared for publication on MKEditor's website; the [maintainer guide](docs/cloud/google-verification.md#prepared-privacy-page) explains deployment and Google consent configuration.
 
 # License
 

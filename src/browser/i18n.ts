@@ -36,6 +36,7 @@ export const supportedLocales = [
  * the combined bundle failed to build.
  */
 const namespaces: { ns: string; path: string }[] = [
+  { ns: 'cloud', path: 'locale/{{lng}}/cloud.json' },
   { ns: 'app', path: 'locale/{{lng}}/app.json' },
   { ns: 'navbar', path: 'locale/{{lng}}/navbar.json' },
   { ns: 'sidebar', path: 'locale/{{lng}}/sidebar.json' },

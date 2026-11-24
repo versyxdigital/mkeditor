@@ -591,6 +591,18 @@ The original tool API remains available (with optional line ranges added to `rea
 
 Write-class tools render a [ConfirmToolCall](../src/browser/react/components/assistant/ConfirmToolCall.tsx) `AlertDialog` with a diff preview before running, unless the conversation's `autoAcceptWrites` flag is on (default off, per-conversation toggle in the chat header).
 
+### 4.15 Google Drive connections (experimental)
+
+`AppBridge` owns a sender-scoped `CloudService`. Public `CloudCommand` requests travel on `to:cloud:request`; correlated results and sanitized connection state return through `from:cloud:result` and `from:cloud:state`. `GoogleDrive` performs OAuth code/PKCE with a timed IPv4 loopback callback, account verification, refresh, paginated listings and reads in main. `CloudStore` atomically persists public configuration and OS-encrypted credentials in `~/.mkeditor/connections.json`. Plaintext-equivalent keyring backends disable sign-in. Generation guards prevent pending authentication/refresh work from restoring credentials after disconnect/remove; monotonically numbered public states prevent stale IPC replies from restoring old UI state.
+
+`BridgeManager.cloudManager` owns the renderer snapshot, request correlation and remote browsing. `useCloud` subscribes to it; Settings → Connections and the Explorer workspace picker render it. The web runtime exposes no connection UI or authenticated provider path. Local workspace data stays in the existing file-tree manager when the remote browser is selected.
+
+Main loads the shared Desktop OAuth registration from `src/app/config/googleDrive.json` through `GoogleDriveRegistration`. The default **Connect with Google** action creates and authorizes a connection in one request, then selects its Explorer workspace. Custom client configuration lives under Advanced. Each persisted connection retains its own registration; older connections remain compatible and are never silently migrated to a new OAuth client. Only public Desktop app values are bundled, while user tokens remain OS-encrypted locally. Public availability still depends on Google's app publishing/verification.
+
+`FileManager.openRemoteDocument` keys models by connection, verified Google account and resolved file ID using `cloud-drive://` identities. Tabs focus existing buffers on repeated opens and stay out of local path accessors, filesystem writes and persisted sessions. Read-only connections can be explicitly upgraded through fresh Google consent. Editing also requires current account identity, My Drive permissions and a strong validator. `FileManager` snapshots model contents/version for saves, advances only the acknowledged baseline, retains newer edits, and includes pending/unconfirmed writes in close/quit protection. Cloud operations are injected through `setRemoteOperations`; React renders snapshots. “Edit a local copy” creates a separate dirty untitled model. Assistant selection writes remain blocked for remote documents. Remote previews disable raw HTML and local/relative asset resolution.
+
+`CloudService` serializes writes by document/account, updates by ID using the live-verified v2 multipart `If-Match` protocol and deduplicates operation IDs. Creation pre-generates a file ID and refuses a same-name preflight match. Uncertain responses retain their snapshot and reconcile by ID/content/revision (plus a create marker), without replaying writes. Reload confirms before replacing dirty text and rejects intervening edits; comparison uses ephemeral diff tabs. Prompt callbacks live in the neutral `prompts.ts` seam, re-exported by the existing React context for compatibility. Shared-drive writes remain disabled. Unsaved remote buffers and unresolved operations are in-memory only. See [setup and limits](cloud/google-drive.md), [decisions](cloud/drive-decisions.md) and [implementation report](cloud/implementation-report.md).
+
 ## 5. Settings Schema
 
 [`SettingsFile`](../src/app/interfaces/Settings.ts) (and the renderer mirror in [src/browser/interfaces/Editor.ts](../src/browser/interfaces/Editor.ts)):
@@ -650,7 +662,7 @@ package.json scripts
 ├── build-editor  → prebuild → combine-locales.mjs → webpack
 │                   produces dist/{index.html, mkeditor.bundle.js, mkeditor.bundle.css,
 │                                  favicon.ico, icon.png, locale/, fonts/}
-├── build-app     → compile-app.mjs → tsc src/app/*.ts → dist/app/
+├── build-app     → compile-app.mjs → tsc src/app/*.ts → dist/app/ + injected Google registration
 ├── make-installer→ clean dist + releases → build-editor → build-app → electron-builder
 ├── serve-web     → http-server dist
 ├── serve-app     → electron .   (uses dist/app/main.js as main)

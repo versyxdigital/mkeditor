@@ -22,6 +22,7 @@
     "make-installer": "node ./scripts/make-installer.mjs",
     "serve-web": "http-server dist",
     "serve-app": "electron .",
+    "verify-drive-writes": "electron scripts/verify-drive-precondition.cjs --authorize-disposable-test",
     "publish": "npm run build-editor && npm run build-app && electron-builder --publish always"
   },
   "repository": {
@@ -111,6 +112,11 @@
   },
   "build": {
     "appId": "com.mkeditor.app",
+    "files": [
+      "**/*",
+      "!src/app/config/*.local.json",
+      "!out/**/*"
+    ],
     "artifactName": "mkeditor-setup-${version}.${ext}",
     "directories": {
       "output": "releases/${platform}/${arch}"

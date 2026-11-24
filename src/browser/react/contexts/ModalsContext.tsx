@@ -11,7 +11,10 @@ export type ModalKey =
  * call site.
  */
 export type ModalPayload =
-  { tab?: 'general' | 'assistant' } | { sourcePath: string } | null | undefined;
+  | { tab?: 'general' | 'assistant' | 'connections' }
+  | { sourcePath: string }
+  | null
+  | undefined;
 
 export interface ModalsState {
   open: ModalKey | null;
