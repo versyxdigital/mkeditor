@@ -4,7 +4,8 @@ import { useFiles } from '../contexts/FilesContext';
 import { useManagers } from '../contexts/ManagersContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
-import { GoogleDriveLogo } from './cloud/GoogleBrand';
+import { CloudLogo } from './cloud/CloudBrand';
+import { cloudMessageKey } from '../../cloudLabels';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -149,14 +150,19 @@ export const TabBar: React.FC = () => {
                     }
                     aria-label={
                       tab.remote
-                        ? t('cloud:tab_label', {
+                        ? t(cloudMessageKey('tab_label', tab.remote.provider), {
                             name: tab.name,
                             connection: tab.remote.connectionName,
                           })
                         : undefined
                     }
                   >
-                    {tab.remote && <GoogleDriveLogo className="h-3.5 w-3.5" />}
+                    {tab.remote && (
+                      <CloudLogo
+                        provider={tab.remote.provider}
+                        className="h-3.5 w-3.5"
+                      />
+                    )}
                     <span>{tab.name}</span>
                   </a>
                   <button

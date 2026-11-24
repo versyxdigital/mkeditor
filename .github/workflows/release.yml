@@ -71,6 +71,8 @@ jobs:
           MKEDITOR_GOOGLE_CLIENT_ID: ${{ secrets.MKEDITOR_GOOGLE_CLIENT_ID }}
           MKEDITOR_GOOGLE_CLIENT_SECRET: ${{ secrets.MKEDITOR_GOOGLE_CLIENT_SECRET }}
           MKEDITOR_REQUIRE_GOOGLE_DRIVE: 'true'
+          MKEDITOR_DROPBOX_APP_KEY: ${{ secrets.MKEDITOR_DROPBOX_APP_KEY }}
+          MKEDITOR_REQUIRE_DROPBOX: 'true'
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

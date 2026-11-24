@@ -28,6 +28,8 @@ export const recoveryItemSchema = z.object({
     .optional(),
 });
 const documentSchema = z.object({
+  provider: z.enum(['google-drive', 'dropbox']).optional(),
+  pendingCreate: z.boolean().optional(),
   connectionId: id,
   accountId: id,
   connectionName: z.string().max(1024),
@@ -47,6 +49,7 @@ export const remoteTabSchema = z.object({
 });
 
 export interface RecoveryOperation {
+  provider?: import('../../interfaces/Cloud').CloudProviderId;
   epoch?: string;
   sequence?: number;
   operationId: string;
@@ -67,6 +70,7 @@ export interface RecoveryOperation {
 }
 const operationSchema = z
   .object({
+    provider: z.enum(['google-drive', 'dropbox']).optional(),
     epoch: z.string().max(128).optional(),
     sequence: z.number().int().nonnegative().optional(),
     operationId: id,

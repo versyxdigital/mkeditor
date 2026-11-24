@@ -26,6 +26,8 @@
     "test:drive-smoke": "node scripts/drive-smoke/run.cjs",
     "test:drive-recovery": "node scripts/drive-smoke/run.cjs --recovery",
     "test:drive-live": "node scripts/drive-smoke/run.cjs --live --authorize-disposable-test",
+    "test:dropbox-smoke": "node scripts/dropbox-smoke.cjs",
+    "test:dropbox-live": "node scripts/dropbox-smoke.cjs --live --authorize-disposable-test",
     "publish": "npm run build-editor && npm run build-app && electron-builder --publish always"
   },
   "repository": {

@@ -181,7 +181,7 @@
           and AI provider connections described here are desktop features.
         </p>
         <p>
-          Saved API keys, account tokens and Drive recovery snapshots use
+          Saved API keys, account tokens and cloud recovery snapshots use
           operating-system-backed encryption. Ordinary document files,
           conversation history, settings and local session files are not
           encrypted by MKEditor itself; protection also depends on your device,
@@ -251,6 +251,36 @@
           it, use it for advertising or use it to train generalized AI models.
           Any sharing with an AI service occurs through the optional,
           user-controlled actions described below.
+        </p>
+      </section>
+
+      <section aria-labelledby="dropbox">
+        <h2 id="dropbox">Optional Dropbox connection</h2>
+        <p>
+          If you connect Dropbox, MKEditor uses browser authorization with PKCE
+          and reads your account identifier and label, folder listings, file
+          metadata and the Markdown documents you choose to open. Connections
+          start read-only. Enable editing requests additional access to save
+          chosen documents and create files or copies in your selected folder.
+          Requests travel directly between the desktop app and Dropbox.
+        </p>
+        <p>
+          Created files include an app-owned operation property, backed by a
+          Dropbox property template, so MKEditor can check an interrupted
+          creation without uploading it again. Account tokens use OS encryption
+          in <code>~/.mkeditor/connections.json</code>. With session restoration
+          enabled, document snapshots and drafts use the same encrypted
+          <code>~/.mkeditor/cloud-recovery.bin</code> store as Drive. The
+          operation journal also retains unresolved write intentions. Restoring
+          a draft does not upload it to Dropbox.
+        </p>
+        <p>
+          Disconnect clears local credentials and the account label; Remove also
+          clears connection configuration. Open buffers remain available. Clear
+          saved session removes cached session drafts while unresolved operation
+          records remain available for checking. These actions do not delete
+          Dropbox files or undo requests already sent. You can also revoke
+          MKEditor's access in Dropbox's connected-app settings.
         </p>
       </section>
 

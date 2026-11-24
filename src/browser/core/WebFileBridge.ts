@@ -1,6 +1,7 @@
 import { HTMLExporter } from './HTMLExporter';
 import { WORKSPACE_EXTENSIONS_DOTTED } from '../../app/shared/fileExtensions';
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
+import { isRemotePath } from '../../app/interfaces/Cloud';
 import type {
   SessionPayload,
   SessionRestoreEnvelope,
@@ -278,7 +279,7 @@ export class WebFileBridge implements ContextBridgeAPI {
   private persistSession(payload: SessionPayload): boolean {
     if (payload.restoreEnabled === false) return true;
     const tabs = payload.tabs.filter(
-      (tab) => !tab.remote && !tab.path.startsWith('cloud-drive://'),
+      (tab) => !tab.remote && !isRemotePath(tab.path),
     );
     try {
       localStorage.setItem(
@@ -355,7 +356,7 @@ export class WebFileBridge implements ContextBridgeAPI {
                 typeof tab.path === 'string' &&
                 typeof tab.name === 'string' &&
                 !tab.remote &&
-                !tab.path.startsWith('cloud-drive://') &&
+                !isRemotePath(tab.path) &&
                 (tab.untitledContent === undefined ||
                   typeof tab.untitledContent === 'string'),
             ),

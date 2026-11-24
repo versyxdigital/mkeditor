@@ -8,6 +8,7 @@ import { registerBridgeListeners } from '../src/browser/core/BridgeListeners';
 import { EditorDispatcher } from '../src/browser/events/EditorDispatcher';
 import { openPromptExternal } from '../src/browser/react/contexts/PromptsContext';
 import { sonnerToast } from '../src/browser/notify';
+import { remoteDocumentPath } from '../src/app/interfaces/Cloud';
 
 jest.mock('../src/browser/notify', () => ({ sonnerToast: jest.fn() }));
 
@@ -1125,6 +1126,84 @@ test('interrupted saves are reconciled after restoring and newer draft edits sta
   expect(sonnerToast).not.toHaveBeenCalled();
   complete(acknowledged);
   await sourceSave;
+});
+
+test('a recovered Dropbox creation adopts its confirmed file ID without losing newer edits', async () => {
+  const restored = setup();
+  const pending = {
+    provider: 'dropbox' as const,
+    pendingCreate: true,
+    connectionId: 'dropbox',
+    accountId: 'account',
+    connectionName: 'Dropbox',
+    item: {
+      id: 'pending:creation',
+      name: 'created.md',
+      kind: 'markdown' as const,
+      parents: ['root'],
+      editable: true,
+    },
+    content: 'newer writing',
+  };
+  const originalPath = remoteDocumentPath(pending);
+  const confirmed = {
+    ...pending,
+    pendingCreate: undefined,
+    operationId: 'creation',
+    item: { ...pending.item, id: 'id:permanent', validator: '"000000001"' },
+    content: 'write snapshot',
+  };
+  const permanentPath = remoteDocumentPath(confirmed);
+  const save = jest.fn();
+  restored.fm.setRemoteOperations({
+    canEdit: () => true,
+    canCheck: () => true,
+    save,
+    reconcile: async () => confirmed,
+    check: async () => confirmed,
+  });
+  restored.fm.restoreSession({
+    session: {
+      version: 3,
+      workspaceRoot: null,
+      activeFile: originalPath,
+      tabs: [
+        {
+          path: originalPath,
+          name: 'created.md',
+          viewState: null,
+          remote: {
+            document: pending,
+            baseline: '',
+            dirty: true,
+            pendingSave: {
+              operationId: 'creation',
+              content: 'write snapshot',
+              validator: '',
+            },
+          },
+        },
+      ],
+    },
+    contents: {},
+    missing: [],
+  });
+  const model = restored.fm.models.get(originalPath);
+  expect(await restored.fm.checkRemoteRecovery(originalPath)).toBe(true);
+  expect(restored.fm.models.get(permanentPath)).toBe(model);
+  expect(restored.fm.activeFile).toBe(permanentPath);
+  expect(model?.getValue()).toBe('newer writing');
+  expect(restored.fm.originals.get(permanentPath)).toBe('write snapshot');
+  expect(restored.fm.getSnapshot().tabs[0]).toMatchObject({
+    path: permanentPath,
+    dirty: true,
+    remote: { provider: 'dropbox' },
+  });
+  expect(restored.fm.serializeSession().tabs[0].remote?.document.item.id).toBe(
+    'id:permanent',
+  );
+  expect(save).not.toHaveBeenCalled();
+  expect(sonnerToast).not.toHaveBeenCalled();
 });
 
 test('remote typing checkpoints are bounded even while the debounce keeps being reset', () => {

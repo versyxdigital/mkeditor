@@ -10,10 +10,16 @@ import { RemoteDocumentMenu } from '../../src/browser/react/components/cloud/Rem
 import { CloudManager } from '../../src/browser/core/CloudManager';
 import type {
   CloudState,
+  CloudProviderId,
   RemoteDocument,
 } from '../../src/app/interfaces/Cloud';
 import { renderWithProviders, fakeFileManager } from '../utils/render';
 import { registerPromptOpener } from '../../src/browser/prompts';
+import { usePrompts } from '../../src/browser/react/contexts/PromptsContext';
+import { sonnerToast } from '../../src/browser/notify';
+
+jest.mock('../../src/browser/notify', () => ({ sonnerToast: jest.fn() }));
+beforeEach(() => jest.mocked(sonnerToast).mockClear());
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
@@ -25,7 +31,7 @@ beforeAll(() => {
     value: jest.fn(),
   });
 });
-function setup(connected = true) {
+function setup(connected = true, provider?: CloudProviderId) {
   const listeners = new Map<string, (value: never) => void>();
   const bridge = {
     send: jest.fn(),
@@ -35,6 +41,7 @@ function setup(connected = true) {
   };
   const manager = new CloudManager(bridge, {
     tabs: new Map(),
+    openRemoteDocument: jest.fn(),
     hasUnconfirmedRemoteSave: () => false,
   } as never);
   const state: CloudState = {
@@ -44,6 +51,7 @@ function setup(connected = true) {
     connections: [
       {
         id: 'drive',
+        provider,
         name: 'Personal Drive',
         clientId: 'example.apps.googleusercontent.com',
         clientValue: '',
@@ -109,6 +117,179 @@ test('storage selector lives after the toolbar menu, outside Explorer, and switc
   expect(manager.getSnapshot().workspace).toBe('local');
   expect(picker).toHaveTextContent('cloud:local');
   act(() => manager.dispose());
+});
+
+test('Dropbox sign-in uses its provider and public registration', async () => {
+  const { manager, managers, push, state } = setup();
+  push({ ...state, revision: 2, dropboxAvailable: true });
+  const run = jest.spyOn(manager, 'run').mockResolvedValue(true);
+  renderWithProviders(<CloudConnections />, { managers });
+  await userEvent
+    .setup()
+    .click(screen.getByRole('button', { name: 'cloud:dropbox.connect' }));
+  expect(run).toHaveBeenCalledWith({
+    action: 'add',
+    provider: 'dropbox',
+    name: 'Dropbox',
+    authorize: true,
+  });
+});
+
+const PromptRegistration: React.FC = () => {
+  const { open } = usePrompts();
+  React.useEffect(() => registerPromptOpener(open), [open]);
+  return null;
+};
+
+describe.each<CloudProviderId>(['google-drive', 'dropbox'])(
+  '%s first connection dialog',
+  (provider) => {
+    test.each(['now', 'later'])(
+      'explains read-only access and handles %s',
+      async (choice) => {
+        const { manager, managers, bridge, listeners, state, push } = setup(
+          false,
+          provider,
+        );
+        push({ ...state, revision: 2, dropboxAvailable: true });
+        renderWithProviders(
+          <>
+            <PromptRegistration />
+            <CloudConnections />
+          </>,
+          { managers },
+        );
+        const initial = bridge.send.mock.calls.at(-1)![1];
+        await act(async () =>
+          listeners.get('from:cloud:result')!({
+            requestId: initial.requestId,
+            ok: true,
+            state: { ...state, revision: 2, dropboxAvailable: true },
+          } as never),
+        );
+        const user = userEvent.setup();
+        await user.click(
+          within(
+            screen.getByRole('region', {
+              name: provider === 'dropbox' ? 'Dropbox' : 'Google Drive',
+            }),
+          ).getByRole('button', {
+            name:
+              provider === 'dropbox'
+                ? 'cloud:dropbox.connect'
+                : 'cloud:add_account',
+          }),
+        );
+        const signIn = bridge.send.mock.calls.at(-1)![1];
+        const connected = {
+          ...state,
+          revision: 3,
+          connections: [
+            {
+              ...state.connections[0],
+              status: 'connected' as const,
+              hasConnected: true,
+              accountId: 'account',
+            },
+          ],
+        };
+        await act(async () =>
+          listeners.get('from:cloud:result')!({
+            requestId: signIn.requestId,
+            ok: true,
+            state: connected,
+            connectionId: 'drive',
+          } as never),
+        );
+        const dialog = await screen.findByRole('dialog', {
+          name: 'cloud:editing_intro_title',
+        });
+        expect(
+          within(dialog).getByText(
+            `cloud:${provider === 'dropbox' ? 'dropbox.' : ''}editing_intro_description`,
+          ),
+        ).toBeVisible();
+        expect(screen.getByRole('status', { hidden: true })).toHaveTextContent(
+          'cloud:read_only',
+        );
+        if (choice === 'now') {
+          await user.click(
+            within(dialog).getByRole('button', {
+              name: 'cloud:enable_editing_now',
+            }),
+          );
+          expect(bridge.send.mock.calls.at(-1)![1].command).toMatchObject({
+            action: 'connect',
+            connectionId: 'drive',
+            writeAccess: true,
+          });
+          push({
+            ...connected,
+            revision: 4,
+            connections: [{ ...connected.connections[0], writeAccess: true }],
+          });
+          expect(screen.getByRole('status')).toHaveTextContent(
+            'cloud:editable',
+          );
+        } else {
+          await user.click(
+            within(dialog).getByRole('button', { name: 'cloud:later' }),
+          );
+          expect(
+            bridge.send.mock.calls.some(
+              ([, request]) => request.command.action === 'connect',
+            ),
+          ).toBe(false);
+          expect(
+            screen.getByRole('button', { name: 'cloud:enable_editing' }),
+          ).toBeEnabled();
+          expect(screen.getByRole('status')).toHaveTextContent(
+            'cloud:read_only',
+          );
+        }
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        registerPromptOpener(async () => ({ button: null }));
+        act(() => manager.dispose());
+      },
+    );
+  },
+);
+
+test('Dropbox Explorer uses its own root and hides Drive-only organization actions', async () => {
+  const { manager, managers, push, state } = setup();
+  push({
+    ...state,
+    revision: 2,
+    dropboxAvailable: true,
+    connections: [
+      {
+        ...state.connections[0],
+        provider: 'dropbox',
+        name: 'Personal Dropbox',
+        writeAccess: true,
+      },
+    ],
+  });
+  manager.selectWorkspace('drive');
+  renderWithProviders(<CloudExplorer />, { managers });
+  expect(manager.getSnapshot().workspace).toBe('drive');
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'cloud:location' }));
+  expect(
+    document.querySelector('img[src="./dropbox.svg"]'),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('menuitem', { name: 'cloud:shared_drives' }),
+  ).not.toBeInTheDocument();
+  await user.keyboard('{Escape}');
+  await user.click(screen.getByRole('button', { name: 'cloud:actions' }));
+  expect(
+    screen.queryByRole('menuitem', { name: 'cloud:new_folder' }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('menuitem', { name: 'cloud:dropbox.save_copy' }),
+  ).toBeInTheDocument();
+  manager.dispose();
 });
 
 test('web toolbar hides the storage selector even with a configured cloud manager', () => {
@@ -211,6 +392,10 @@ test('creating a file shows visible progress until the request settles', async (
   );
   expect(screen.queryByText('cloud:creating_file')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'cloud:new_file' })).toBeEnabled();
+  expect(sonnerToast).toHaveBeenCalledTimes(1);
+  expect(sonnerToast).toHaveBeenCalledWith('error', 'cloud:error_duplicate');
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(screen.queryByText('cloud:error_duplicate')).not.toBeInTheDocument();
   registerPromptOpener(async () => ({ button: null }));
   act(() => manager.dispose());
 });
@@ -452,7 +637,8 @@ test('browser offers pagination/refresh, shows errors and disables unsupported f
     } as never),
   );
   await act(async () => {});
-  expect(screen.getByRole('alert')).toHaveTextContent('cloud:error_permission');
+  expect(sonnerToast).toHaveBeenCalledWith('error', 'cloud:error_permission');
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'cloud:refresh' })).toBeEnabled();
   act(() => manager.dispose());
 });
@@ -556,8 +742,8 @@ test('unconfirmed saves expose a keyboard-accessible check action and preserve l
   act(() => manager.dispose());
 });
 
-async function explorerContext() {
-  const context = setup();
+async function explorerContext(provider?: CloudProviderId) {
+  const context = setup(true, provider);
   context.state.connections[0].writeAccess = true;
   context.push(context.state);
   context.manager.selectWorkspace('drive');
@@ -587,6 +773,77 @@ async function explorerContext() {
   );
   return { ...context, item, folder };
 }
+
+describe.each<CloudProviderId>(['google-drive', 'dropbox'])(
+  '%s context-menu creation',
+  (provider) => {
+    test.each(['success', 'duplicate', 'unconfirmed'] as const)(
+      'reports %s through Sonner and retains recovery controls',
+      async (outcome) => {
+        const { manager, bridge, listeners, state, folder } =
+          await explorerContext(provider);
+        registerPromptOpener(async () => ({
+          button: 'confirm',
+          value: 'New.md',
+        }));
+        fireEvent.contextMenu(screen.getByRole('button', { name: 'Drafts' }), {
+          clientX: 50,
+          clientY: 100,
+        });
+        await userEvent
+          .setup()
+          .click(
+            await screen.findByRole('menuitem', { name: 'cloud:new_file' }),
+          );
+        const create = bridge.send.mock.calls.at(-1)![1];
+        expect(create.command).toMatchObject({
+          action: 'create',
+          folderId: folder.id,
+          name: 'New.md',
+        });
+        expect(sonnerToast).not.toHaveBeenCalled();
+        await act(async () =>
+          listeners.get('from:cloud:result')!({
+            requestId: create.requestId,
+            ...(outcome === 'success'
+              ? {
+                  ok: true,
+                  state,
+                  document: {
+                    connectionId: 'drive',
+                    accountId: 'account',
+                    connectionName: 'Drive',
+                    provider,
+                    item: {
+                      id: 'new',
+                      name: 'New.md',
+                      kind: 'markdown',
+                      parents: [folder.id],
+                    },
+                    content: '',
+                  },
+                }
+              : { ok: false, error: outcome }),
+          } as never),
+        );
+        expect(sonnerToast).toHaveBeenCalledTimes(1);
+        expect(sonnerToast).toHaveBeenCalledWith(
+          outcome === 'success' ? 'success' : 'error',
+          outcome === 'success'
+            ? 'cloud:created_file'
+            : `cloud:${provider === 'dropbox' && outcome === 'unconfirmed' ? 'dropbox.' : ''}error_${outcome}`,
+        );
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        if (outcome === 'unconfirmed')
+          expect(
+            screen.getByRole('button', { name: 'cloud:check_create' }),
+          ).toBeEnabled();
+        registerPromptOpener(async () => ({ button: null }));
+        act(() => manager.dispose());
+      },
+    );
+  },
+);
 
 test('Drive context menus distinguish documents, folders and empty space', async () => {
   const { manager } = await explorerContext();

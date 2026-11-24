@@ -9,14 +9,14 @@ import {
   ContextMenuSeparator,
 } from '../ui/context-menu';
 import { useCloud } from '../../hooks/useCloud';
-import { useTranslation } from '../../hooks/useTranslation';
+import { useCloudTranslation } from '../../hooks/useCloudTranslation';
 import { useModals } from '../../contexts/ModalsContext';
 import { useManagers } from '../../contexts/ManagersContext';
 import { useFiles } from '../../contexts/FilesContext';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Icon } from '../Icon';
-import { GoogleDriveLogo } from './GoogleBrand';
+import { CloudLogo } from './CloudBrand';
 import {
   Tooltip,
   TooltipContent,
@@ -45,12 +45,12 @@ const menuClass = 'whitespace-nowrap text-xs';
 
 export const WorkspacePicker: React.FC = () => {
   const { manager, state } = useCloud();
-  const { t } = useTranslation();
   const { openModal } = useModals();
   const { mode } = useManagers();
   const connection = state.connections.find(
     (entry) => entry.id === state.workspace,
   );
+  const { t } = useCloudTranslation(connection?.provider);
   if (mode !== 'desktop' || state.connections.length === 0) return null;
   return (
     <Select
@@ -71,7 +71,7 @@ export const WorkspacePicker: React.FC = () => {
         className="h-7 w-36 max-w-[28vw] min-w-0 shrink-0 gap-2 rounded-sm border-0 bg-transparent px-2 text-xs shadow-none hover:bg-hover [&>svg]:ml-0 [&>svg]:shrink-0"
       >
         {connection ? (
-          <GoogleDriveLogo />
+          <CloudLogo provider={connection?.provider} />
         ) : (
           <Icon name="folder" className="h-4 w-4 text-muted-foreground" />
         )}
@@ -94,7 +94,7 @@ export const WorkspacePicker: React.FC = () => {
             className="text-xs"
           >
             <span className="flex min-w-0 items-center gap-2 whitespace-nowrap">
-              <GoogleDriveLogo />
+              <CloudLogo provider={entry.provider} />
               <span className="max-w-32 truncate">{entry.name}</span>
               <span className="max-w-40 truncate text-muted-foreground">
                 {entry.accountName ?? t(`cloud:status_${entry.status}`)}
@@ -119,26 +119,24 @@ export const WorkspacePicker: React.FC = () => {
 export const CloudExplorer: React.FC = () => {
   const [contextItem, setContextItem] = React.useState<DriveItem>();
   const { manager, state } = useCloud();
-  const { t } = useTranslation();
   const { tabs, activeFile } = useFiles();
   const { openModal } = useModals();
   const connection = state.connections.find(
     (entry) => entry.id === state.workspace,
   );
+  const { t } = useCloudTranslation(connection?.provider);
   const activeRemote = tabs.find((tab) => tab.path === activeFile)?.remote;
   const connected = connection?.status === 'connected';
   const location = state.folders.at(-1);
   const label = (name: string) =>
-    name === 'my_drive' || name === 'shared_drives' ? t(`cloud:${name}`) : name;
+    name === 'my_drive' || name === 'shared_drives' || name === 'dropbox_root'
+      ? t(`cloud:${name}`)
+      : name;
   const pathLabel = state.folders
     .map((folder) => label(folder.name))
     .join(' / ');
   const manage = () => openModal('settings', { tab: 'connections' });
   const canCreate = Boolean(manager?.canCreate());
-  const errorLabel =
-    state.error === 'unconfirmed' && state.pendingItem
-      ? t('cloud:operation_unconfirmed')
-      : t(`cloud:error_${state.error}`);
   const creating =
     state.creating?.connectionId === connection?.id &&
     state.creating?.accountId === connection?.accountId
@@ -191,7 +189,11 @@ export const CloudExplorer: React.FC = () => {
                     className="size-3.5 text-muted-foreground"
                   />
                   <span className="truncate">
-                    {location ? label(location.name) : t('cloud:my_drive')}
+                    {location
+                      ? label(location.name)
+                      : connection?.provider === 'dropbox'
+                        ? 'Dropbox'
+                        : t('cloud:my_drive')}
                   </span>
                   <Icon
                     name="chevron-down"
@@ -203,23 +205,35 @@ export const CloudExplorer: React.FC = () => {
                 <DropdownMenuItem
                   className={menuClass}
                   onSelect={() =>
-                    void manager?.browse([{ id: 'root', name: 'my_drive' }])
-                  }
-                >
-                  <GoogleDriveLogo />
-                  {t('cloud:my_drive')}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={menuClass}
-                  onSelect={() =>
                     void manager?.browse([
-                      { id: 'shared', name: 'shared_drives', shared: true },
+                      {
+                        id: 'root',
+                        name:
+                          connection?.provider === 'dropbox'
+                            ? 'dropbox_root'
+                            : 'my_drive',
+                      },
                     ])
                   }
                 >
-                  <Icon name="folder-open" />
-                  {t('cloud:shared_drives')}
+                  <CloudLogo provider={connection?.provider} />
+                  {connection?.provider === 'dropbox'
+                    ? 'Dropbox'
+                    : t('cloud:my_drive')}
                 </DropdownMenuItem>
+                {connection?.provider !== 'dropbox' && (
+                  <DropdownMenuItem
+                    className={menuClass}
+                    onSelect={() =>
+                      void manager?.browse([
+                        { id: 'shared', name: 'shared_drives', shared: true },
+                      ])
+                    }
+                  >
+                    <Icon name="folder-open" />
+                    {t('cloud:shared_drives')}
+                  </DropdownMenuItem>
+                )}
                 {state.folders.length > 1 && <DropdownMenuSeparator />}
                 {state.folders.slice(1).map((folder, index) => (
                   <DropdownMenuItem
@@ -284,15 +298,19 @@ export const CloudExplorer: React.FC = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  className={menuClass}
-                  disabled={!canCreate}
-                  onSelect={() => void manager?.createFolder()}
-                >
-                  <Icon name="folder" />
-                  {t('cloud:new_folder')}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                {connection?.provider !== 'dropbox' && (
+                  <>
+                    <DropdownMenuItem
+                      className={menuClass}
+                      disabled={!canCreate}
+                      onSelect={() => void manager?.createFolder()}
+                    >
+                      <Icon name="folder" />
+                      {t('cloud:new_folder')}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <TooltipProvider delayDuration={250}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -369,15 +387,6 @@ export const CloudExplorer: React.FC = () => {
                       {t('cloud:creating_file', { name: creating.name })}
                     </span>
                   </div>
-                )}
-                {state.error && (
-                  <p
-                    role="alert"
-                    title={errorLabel}
-                    className="h-8 truncate px-2 leading-8 text-destructive"
-                  >
-                    {errorLabel}
-                  </p>
                 )}
                 {state.pendingCreate && (
                   <Button
@@ -548,16 +557,17 @@ export const CloudExplorer: React.FC = () => {
                     />
                     {t('cloud:open')}
                   </ContextMenuItem>
-                  {contextItem.kind === 'markdown' && (
-                    <ContextMenuItem
-                      className="gap-2 text-xs"
-                      disabled={!manager?.canMove(contextItem)}
-                      onSelect={() => manager?.startMove(contextItem)}
-                    >
-                      <Icon name="folder-open" />
-                      {t('cloud:move_to')}
-                    </ContextMenuItem>
-                  )}
+                  {contextItem.kind === 'markdown' &&
+                    connection?.provider !== 'dropbox' && (
+                      <ContextMenuItem
+                        className="gap-2 text-xs"
+                        disabled={!manager?.canMove(contextItem)}
+                        onSelect={() => manager?.startMove(contextItem)}
+                      >
+                        <Icon name="folder-open" />
+                        {t('cloud:move_to')}
+                      </ContextMenuItem>
+                    )}
                   <ContextMenuSeparator />
                 </>
               )}
@@ -571,14 +581,16 @@ export const CloudExplorer: React.FC = () => {
                     <Icon name="file-circle-plus" />
                     {t('cloud:new_file')}
                   </ContextMenuItem>
-                  <ContextMenuItem
-                    className="gap-2 text-xs"
-                    disabled={!canCreate || Boolean(contextItem?.driveId)}
-                    onSelect={() => void manager?.createFolder(contextItem)}
-                  >
-                    <Icon name="folder" />
-                    {t('cloud:new_folder')}
-                  </ContextMenuItem>
+                  {connection?.provider !== 'dropbox' && (
+                    <ContextMenuItem
+                      className="gap-2 text-xs"
+                      disabled={!canCreate || Boolean(contextItem?.driveId)}
+                      onSelect={() => void manager?.createFolder(contextItem)}
+                    >
+                      <Icon name="folder" />
+                      {t('cloud:new_folder')}
+                    </ContextMenuItem>
+                  )}
                   <ContextMenuSeparator />
                 </>
               )}

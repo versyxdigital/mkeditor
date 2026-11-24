@@ -126,6 +126,7 @@ module.exports = {
           to: './google-drive.png',
         },
         { from: './src/browser/assets/img/google.png', to: './google.png' },
+        { from: './src/browser/assets/img/dropbox.svg', to: './dropbox.svg' },
         { from: './src/browser/views' },
         {
           from: './locale',

@@ -46,6 +46,8 @@ export class CloudSessionRecovery {
         )
           continue;
         const document = operation.document ?? {
+          ...(operation.provider ? { provider: operation.provider } : {}),
+          ...(operation.kind === 'create' ? { pendingCreate: true } : {}),
           connectionId: operation.connectionId,
           accountId: operation.accountId,
           connectionName: operation.connectionId,

@@ -15,6 +15,7 @@ test('an explicit cloud store location isolates persisted connections across ins
       clientId: 'client',
       clientValue: '',
       status: 'disconnected' as const,
+      hasConnected: true,
     };
     new CloudStore(file).save([connection]);
     expect(new CloudStore(file).load()).toEqual([connection]);

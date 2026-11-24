@@ -1,4 +1,7 @@
 /** Public cloud contracts. Credentials never cross this boundary. */
+export type CloudProviderId = 'google-drive' | 'dropbox';
+export const providerName = (provider?: CloudProviderId): string =>
+  provider === 'dropbox' ? 'Dropbox' : 'Google Drive';
 export type CloudErrorCode =
   | 'auth'
   | 'permission'
@@ -19,6 +22,8 @@ export type CloudWriteError =
   | 'pending_operation';
 
 export interface CloudConnection {
+  /** Absent in existing Drive connections. */
+  provider?: CloudProviderId;
   id: string;
   name: string;
   clientId: string;
@@ -26,11 +31,14 @@ export interface CloudConnection {
   clientValue: string;
   registration?: 'mkeditor' | 'custom';
   writeAccess?: boolean;
+  /** Remember successful sign-in so the editing introduction is offered only once. */
+  hasConnected?: boolean;
   accountId?: string;
   accountName?: string;
   status: 'connected' | 'disconnected' | 'reauthorize' | 'connecting';
 }
 export interface CloudState {
+  dropboxAvailable?: boolean;
   pendingOperations?: CloudPendingOperation[];
   recoveryError?: boolean;
   revision: number;
@@ -38,7 +46,7 @@ export interface CloudState {
   secureStorage: boolean;
   googleDriveAvailable: boolean;
 }
-export interface DriveItem {
+export interface RemoteItem {
   id: string;
   name: string;
   kind: 'folder' | 'markdown' | 'unsupported';
@@ -52,11 +60,17 @@ export interface DriveItem {
   editable?: boolean;
   readOnlyReason?: 'permission' | 'shared-drive' | 'validator';
 }
-export interface DrivePage {
-  items: DriveItem[];
+/** Compatibility names for the original Drive contracts. */
+export type DriveItem = RemoteItem;
+export interface RemotePage {
+  items: RemoteItem[];
   nextPage?: string;
 }
+export type DrivePage = RemotePage;
 export interface RemoteDocument {
+  /** Recovered creation whose provider has not yet confirmed its permanent ID. */
+  pendingCreate?: boolean;
+  provider?: CloudProviderId;
   operationId?: string;
   connectionId: string;
   accountId: string;
@@ -74,6 +88,7 @@ export interface RemoteTabRecovery {
   pendingSave?: { operationId: string; content: string; validator: string };
 }
 export interface CloudPendingOperation {
+  provider?: CloudProviderId;
   operationId: string;
   connectionId: string;
   accountId: string;
@@ -93,6 +108,7 @@ export type CloudCommand =
   | { action: 'acknowledge'; operationId: string }
   | {
       action: 'add';
+      provider?: CloudProviderId;
       name: string;
       clientId?: string;
       clientValue?: string;
@@ -185,10 +201,12 @@ export type CloudResponse = { requestId: string } & (
 );
 
 export const remoteDocumentPath = (
-  doc: Pick<RemoteDocument, 'connectionId' | 'accountId'> & {
+  doc: Pick<RemoteDocument, 'connectionId' | 'accountId' | 'provider'> & {
     item: Pick<DriveItem, 'id'> & Partial<DriveItem>;
   },
 ): string =>
-  `cloud-drive://${encodeURIComponent(doc.connectionId)}/${encodeURIComponent(doc.accountId)}/${encodeURIComponent(doc.item.id)}`;
+  `${doc.provider === 'dropbox' ? 'cloud-dropbox' : 'cloud-drive'}://${encodeURIComponent(doc.connectionId)}/${encodeURIComponent(doc.accountId)}/${encodeURIComponent(doc.item.id)}`;
 export const isRemotePath = (path: string | null | undefined): boolean =>
-  path?.startsWith('cloud-drive://') ?? false;
+  Boolean(
+    path?.startsWith('cloud-drive://') || path?.startsWith('cloud-dropbox://'),
+  );

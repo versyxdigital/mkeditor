@@ -1,4 +1,15 @@
 import { randomUUID } from 'crypto';
+import { Dropbox } from './Dropbox';
+import {
+  dropboxRegistration,
+  dropboxRegistrationSchema,
+} from './DropboxRegistration';
+import type {
+  CloudProvider,
+  CloudRegistration,
+  CloudTokens,
+  RemoteContents,
+} from './CloudProvider';
 import { z } from 'zod';
 import type {
   CloudCommand,
@@ -10,13 +21,7 @@ import type {
 } from '../../interfaces/Cloud';
 import { CloudError } from './CloudError';
 import type { CloudPersistence } from './CloudStore';
-import {
-  GoogleDrive,
-  type DriveTokens,
-  type DriveRegistration,
-  DRIVE_SCOPE,
-  DRIVE_WRITE_SCOPE,
-} from './GoogleDrive';
+import { GoogleDrive, type DriveRegistration } from './GoogleDrive';
 import {
   driveRegistrationSchema,
   googleDriveRegistration,
@@ -42,8 +47,9 @@ const commandSchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('add'),
     name: z.string().trim().min(1).max(100),
-    clientId: driveRegistrationSchema.shape.clientId.optional(),
-    clientValue: driveRegistrationSchema.shape.clientValue.optional(),
+    provider: z.enum(['google-drive', 'dropbox']).optional(),
+    clientId: z.string().min(1).max(512).optional(),
+    clientValue: z.string().max(512).optional(),
     authorize: z.boolean().optional(),
     copy: copySchema.optional(),
   }),
@@ -154,6 +160,7 @@ const requestSchema = z.object({
 });
 type StoredConnection = CloudConnection & { credential?: string };
 interface WriteOperation {
+  provider?: import('../../interfaces/Cloud').CloudProviderId;
   epoch?: string;
   sequence?: number;
   name?: string;
@@ -168,6 +175,7 @@ interface WriteOperation {
   document?: RemoteDocument;
 }
 interface ItemOperation {
+  provider?: import('../../interfaces/Cloud').CloudProviderId;
   name?: string;
   sourceFolderId?: string;
   notApplied?: boolean;
@@ -185,9 +193,9 @@ interface ItemOperation {
 export class CloudService {
   private connections: StoredConnection[] | null = null;
   private generations = new Map<string, number>();
-  private refreshes = new Map<string, Promise<DriveTokens>>();
+  private refreshes = new Map<string, Promise<CloudTokens>>();
   private cancellations = new Map<string, () => void>();
-  private tokens = new Map<string, DriveTokens>();
+  private tokens = new Map<string, CloudTokens>();
   private disposed = false;
   private revision = 0;
   private operations = new Map<string, WriteOperation>();
@@ -203,7 +211,17 @@ export class CloudService {
     private readonly drive = new GoogleDrive(),
     private readonly registration: Readonly<DriveRegistration> | null = googleDriveRegistration,
     private readonly recovery?: CloudRecoveryStore,
+    private readonly additional: {
+      dropbox?: CloudProvider;
+      dropboxRegistration?: CloudRegistration | null;
+    } = {},
   ) {}
+  private readonly dropbox = new Dropbox();
+  private adapter(entry: CloudConnection): CloudProvider {
+    return entry.provider === 'dropbox'
+      ? (this.additional.dropbox ?? this.dropbox)
+      : this.drive;
+  }
 
   private async loadJournal(): Promise<void> {
     if (!this.recovery || this.journalLoaded) return;
@@ -296,6 +314,7 @@ export class CloudService {
       )
       .map(([operationId, op]) => ({
         operationId,
+        ...(op.provider ? { provider: op.provider } : {}),
         connectionId: op.connectionId,
         accountId: op.accountId,
         itemId: op.itemId,
@@ -307,6 +326,10 @@ export class CloudService {
       ...(pendingOperations.length ? { pendingOperations } : {}),
       secureStorage: await this.store.available(),
       googleDriveAvailable: this.registration !== null,
+      dropboxAvailable:
+        (this.additional.dropboxRegistration !== undefined
+          ? this.additional.dropboxRegistration
+          : dropboxRegistration) !== null,
       revision: this.revision,
       connections: this.data().map(({ credential, ...entry }) => ({
         ...entry,
@@ -397,24 +420,42 @@ export class CloudService {
       const custom = command.clientId !== undefined;
       if (!custom && command.clientValue !== undefined)
         throw new CloudError('configuration');
+      const providerId = command.provider ?? 'google-drive';
       const registration = custom
         ? {
             clientId: command.clientId!,
             clientValue: command.clientValue ?? '',
           }
-        : this.registration;
-      if (!registration) throw new CloudError('configuration');
+        : providerId === 'dropbox'
+          ? this.additional.dropboxRegistration !== undefined
+            ? this.additional.dropboxRegistration
+            : dropboxRegistration
+          : this.registration;
+      if (
+        !registration ||
+        !(
+          providerId === 'dropbox'
+            ? dropboxRegistrationSchema
+            : driveRegistrationSchema
+        ).safeParse(registration).success
+      )
+        throw new CloudError('configuration');
       if (command.authorize && !(await this.store.available()))
         throw new CloudError('storage');
       if (this.disposed) throw new CloudError('cancelled');
       let name = command.name;
-      if (!custom && name === 'Google Drive') {
+      if (
+        !custom &&
+        name === (providerId === 'dropbox' ? 'Dropbox' : 'Google Drive')
+      ) {
         let number = 2;
         const names = new Set(this.data().map((entry) => entry.name));
-        while (names.has(name)) name = `Google Drive (${number++})`;
+        while (names.has(name))
+          name = `${providerId === 'dropbox' ? 'Dropbox' : 'Google Drive'} (${number++})`;
       }
       const next: StoredConnection = {
         id: randomUUID(),
+        ...(command.provider ? { provider: providerId } : {}),
         name,
         ...registration,
         registration: custom ? 'custom' : 'mkeditor',
@@ -433,6 +474,8 @@ export class CloudService {
       return { connectionId: next.id };
     }
     const entry = this.find(command.connectionId);
+    const provider = this.adapter(entry);
+    const organization = provider.organization;
     if (command.action === 'disconnect' || command.action === 'remove') {
       this.invalidate(entry.id);
       // In-memory access is blocked even if the disk write fails. Keep the
@@ -463,14 +506,14 @@ export class CloudService {
       this.replace({ ...entry, status: 'connecting' });
       await this.changed();
       try {
-        const flow = await this.drive.beginAuthorization(
+        const flow = await provider.beginAuthorization(
           entry,
           this.openBrowser,
           180_000,
           command.copy,
-          (command.writeAccess ?? entry.writeAccess)
-            ? [DRIVE_SCOPE, DRIVE_WRITE_SCOPE]
-            : [DRIVE_SCOPE],
+          provider.authorizationScopes(
+            Boolean(command.writeAccess ?? entry.writeAccess),
+          ),
         );
         if (this.disposed || this.generation(entry.id) !== generation)
           flow.cancel();
@@ -479,9 +522,9 @@ export class CloudService {
         const tokens = await flow.result;
         this.assertCurrent(entry.id, generation);
         const writeAccess = Boolean(command.writeAccess ?? entry.writeAccess);
-        if (writeAccess && !tokens.scopes?.includes(DRIVE_WRITE_SCOPE))
+        if (writeAccess && !provider.canWrite(tokens))
           throw new CloudError('permission');
-        const account = await this.drive.account(tokens.access);
+        const account = await provider.account(tokens.access);
         this.assertCurrent(entry.id, generation);
         const credential = await this.store.encrypt(tokens);
         this.assertCurrent(entry.id, generation);
@@ -492,6 +535,7 @@ export class CloudService {
           accountName: account.name,
           status: 'connected',
           writeAccess,
+          hasConnected: true,
         });
         this.tokens.set(entry.id, tokens);
       } catch (error) {
@@ -518,18 +562,16 @@ export class CloudService {
     )
       throw new CloudError('auth');
     try {
-      const editing =
-        entry.writeAccess === true &&
-        tokens.scopes?.includes(DRIVE_WRITE_SCOPE) === true;
-      const document = (
-        value: Awaited<ReturnType<GoogleDrive['read']>>,
-      ): RemoteDocument => ({
+      const editing = entry.writeAccess === true && provider.canWrite(tokens);
+      const document = (value: RemoteContents): RemoteDocument => ({
         ...value,
+        ...(entry.provider ? { provider: entry.provider } : {}),
         connectionId: entry.id,
         connectionName: entry.name,
         accountId: entry.accountId!,
       });
       if (command.action === 'reconcileItem') {
+        if (!organization) throw new CloudError('unsupported');
         const operation = this.itemOperations.get(command.operationId);
         if (
           !operation ||
@@ -540,22 +582,25 @@ export class CloudService {
         if (operation.notApplied) throw new CloudError('not_applied');
         if (!operation.item) {
           try {
-            const meta = await this.drive.metadata(
+            const meta = await organization!.metadata(
               tokens.access,
               operation.itemId,
             );
             if (
               !meta.parents?.includes(operation.folderId) ||
               (operation.kind === 'createFolder' &&
-                meta.appProperties?.mkeditorCreateOperation !==
-                  command.operationId)
+                !(await organization.createdBy(
+                  tokens.access,
+                  operation.itemId,
+                  command.operationId,
+                )))
             ) {
               if (
                 operation.kind === 'move' &&
                 operation.sourceFolderId &&
                 meta.parents?.includes(operation.sourceFolderId) &&
                 (
-                  await this.drive.contentValidator(
+                  await organization!.contentValidator(
                     tokens.access,
                     operation.itemId,
                   )
@@ -567,7 +612,7 @@ export class CloudService {
               }
               throw new CloudError('unconfirmed');
             }
-            operation.item = await this.drive.inspectItem(
+            operation.item = await organization!.inspectItem(
               tokens.access,
               operation.itemId,
             );
@@ -597,6 +642,7 @@ export class CloudService {
         };
       }
       if (command.action === 'createFolder' || command.action === 'move') {
+        if (!organization) throw new CloudError('unsupported');
         if (!editing) throw new CloudError('permission');
         const fingerprint = JSON.stringify(command);
         const key = `${entry.id}:${entry.accountId}:${command.action === 'move' ? command.itemId : command.folderId}`;
@@ -643,7 +689,7 @@ export class CloudService {
               throw new CloudError('pending_operation');
             const prepared =
               command.action === 'move'
-                ? await this.drive.prepareMove(
+                ? await organization!.prepareMove(
                     tokens.access,
                     command.itemId,
                     command.sourceFolderId,
@@ -653,14 +699,15 @@ export class CloudService {
             const itemId =
               command.action === 'move'
                 ? command.itemId
-                : await this.drive.prepareCreate(
+                : await organization!.prepareCreate(
                     tokens.access,
                     command.folderId,
                     command.name,
                   );
             const folderId =
               prepared?.destination ??
-              (await this.drive.metadata(tokens.access, command.folderId)).id;
+              (await organization!.metadata(tokens.access, command.folderId))
+                .id;
             this.assertCurrent(entry.id, generation);
             const operation: ItemOperation = {
               name:
@@ -683,7 +730,7 @@ export class CloudService {
             }
             try {
               if (command.action === 'move')
-                await this.drive.move(
+                await organization!.move(
                   tokens.access,
                   itemId,
                   prepared!.source,
@@ -692,7 +739,7 @@ export class CloudService {
                   () => this.assertCurrent(entry.id, generation),
                 );
               else
-                await this.drive.createFolder(
+                await organization!.createFolder(
                   tokens.access,
                   itemId,
                   folderId,
@@ -701,7 +748,7 @@ export class CloudService {
                   () => this.assertCurrent(entry.id, generation),
                 );
               try {
-                operation.item = await this.drive.inspectItem(
+                operation.item = await organization!.inspectItem(
                   tokens.access,
                   itemId,
                 );
@@ -763,20 +810,19 @@ export class CloudService {
             },
           };
         try {
-          const latest = await this.drive.read(
+          const latest = await provider.read(
             tokens.access,
             operation.itemId,
             editing,
           );
           this.assertCurrent(entry.id, generation);
           if (operation.kind === 'create') {
-            const meta = await this.drive.metadata(
-              tokens.access,
-              operation.itemId,
-            );
             if (
-              meta.appProperties?.mkeditorCreateOperation !==
-              command.operationId
+              !(await provider.createdBy(
+                tokens.access,
+                operation.itemId,
+                command.operationId,
+              ))
             )
               throw new CloudError('unconfirmed');
           }
@@ -882,13 +928,15 @@ export class CloudService {
             const itemId =
               command.action === 'save'
                 ? command.itemId
-                : await this.drive.prepareCreate(
+                : await provider.prepareCreate(
                     tokens.access,
                     command.folderId,
                     command.name,
+                    command.operationId,
                   );
             this.assertCurrent(entry.id, generation);
             const operation: WriteOperation = {
+              ...(entry.provider ? { provider: entry.provider } : {}),
               epoch: command.action === 'save' ? command.epoch : undefined,
               sequence:
                 command.action === 'save' ? command.sequence : undefined,
@@ -911,9 +959,9 @@ export class CloudService {
               throw error;
             }
             try {
-              let result: Awaited<ReturnType<GoogleDrive['read']>>;
+              let result: RemoteContents;
               if (command.action === 'save')
-                result = await this.drive.update(
+                result = await provider.update(
                   tokens.access,
                   itemId,
                   command.validator,
@@ -921,7 +969,7 @@ export class CloudService {
                   () => this.assertCurrent(entry.id, generation),
                 );
               else {
-                await this.drive.create(
+                const created = await provider.create(
                   tokens.access,
                   itemId,
                   command.folderId,
@@ -931,11 +979,15 @@ export class CloudService {
                   () => this.assertCurrent(entry.id, generation),
                 );
                 try {
-                  result = await this.drive.read(tokens.access, itemId, true);
+                  result =
+                    created ??
+                    (await provider.read(tokens.access, itemId, true));
                 } catch {
                   throw new CloudError('unconfirmed');
                 }
               }
+              if (command.action === 'create')
+                operation.itemId = result.item.id;
               operation.document = {
                 ...document(result),
                 operationId: command.operationId,
@@ -973,7 +1025,7 @@ export class CloudService {
         }
       }
       if (command.action === 'test') {
-        const account = await this.drive.account(tokens.access);
+        const account = await provider.account(tokens.access);
         this.assertCurrent(entry.id, generation);
         if (account.id !== entry.accountId) throw new CloudError('auth');
         return {};
@@ -981,18 +1033,18 @@ export class CloudService {
       if (command.action === 'list' || command.action === 'drives') {
         const page =
           command.action === 'list'
-            ? await this.drive.list(
+            ? await provider.list(
                 tokens.access,
                 command.folderId,
                 command.driveId,
                 command.page,
               )
-            : await this.drive.drives(tokens.access, command.page);
+            : await provider.drives(tokens.access, command.page);
         this.assertCurrent(entry.id, generation);
         return { page };
       }
       if (command.action !== 'open') throw new CloudError('unsupported');
-      const opened = await this.drive.read(
+      const opened = await provider.read(
         tokens.access,
         command.itemId,
         editing,
@@ -1001,6 +1053,7 @@ export class CloudService {
       return {
         document: {
           ...opened,
+          ...(entry.provider ? { provider: entry.provider } : {}),
           connectionId: entry.id,
           connectionName: entry.name,
           accountId: entry.accountId!,
@@ -1020,8 +1073,9 @@ export class CloudService {
     }
   }
 
-  private async access(id: string): Promise<DriveTokens> {
+  private async access(id: string): Promise<CloudTokens> {
     const entry = this.find(id);
+    const provider = this.adapter(entry);
     if (!entry.credential || entry.status !== 'connected' || !entry.accountId)
       throw new CloudError('auth');
     const current = this.refreshes.get(id);
@@ -1033,13 +1087,9 @@ export class CloudService {
           this.tokens.get(id) ?? (await this.store.decrypt(entry.credential!));
         this.assertCurrent(id, generation);
         if (tokens.expires < Date.now() + 60_000) {
-          tokens = await this.drive.refresh(
-            entry,
-            tokens.refresh,
-            tokens.scopes,
-          );
+          tokens = await provider.refresh(entry, tokens.refresh, tokens.scopes);
           this.assertCurrent(id, generation);
-          const account = await this.drive.account(tokens.access);
+          const account = await provider.account(tokens.access);
           this.assertCurrent(id, generation);
           if (account.id !== entry.accountId) throw new CloudError('auth');
           const credential = await this.store.encrypt(tokens);

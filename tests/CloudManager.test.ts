@@ -3,15 +3,21 @@ import type {
   CloudRequest,
   CloudResponse,
   CloudState,
+  CloudProviderId,
+  CloudWriteError,
 } from '../src/app/interfaces/Cloud';
 import { confirmExternal, openPromptExternal } from '../src/browser/prompts';
+import { sonnerToast } from '../src/browser/notify';
+
+jest.mock('../src/browser/notify', () => ({ sonnerToast: jest.fn() }));
+jest.mock('../src/browser/i18n', () => ({ t: jest.fn((key: string) => key) }));
 
 jest.mock('../src/browser/prompts', () => ({
   confirmExternal: jest.fn(async () => false),
   openPromptExternal: jest.fn(async () => ({ button: null })),
 }));
 
-function setup() {
+function setup(provider?: CloudProviderId) {
   const handlers = new Map<string, (value: never) => void>();
   const requests: CloudRequest[] = [];
   const files = {
@@ -49,6 +55,7 @@ function setup() {
     connections: [
       {
         id: 'drive',
+        provider,
         name: 'Drive',
         clientId: 'client',
         clientValue: '',
@@ -67,8 +74,22 @@ function setup() {
       requestId: request.requestId,
       ...value,
     } as never);
-  return { manager, files, requests, state, push, respond };
+  const fail = (request: CloudRequest, error: CloudWriteError) =>
+    handlers.get('from:cloud:result')!({
+      requestId: request.requestId,
+      ok: false,
+      error,
+    } as never);
+  return { manager, files, requests, state, push, respond, fail };
 }
+
+beforeEach(() => {
+  jest.mocked(sonnerToast).mockClear();
+  jest
+    .mocked(openPromptExternal)
+    .mockReset()
+    .mockResolvedValue({ button: null });
+});
 
 afterEach(() => {
   jest.useRealTimers();
@@ -189,6 +210,197 @@ test('snapshot is stable; late browsing results cannot populate another workspac
   unsubscribe();
   manager.dispose();
 });
+
+describe.each<CloudProviderId>(['google-drive', 'dropbox'])(
+  '%s editing introduction',
+  (provider) => {
+    test.each(['cancel', null])(
+      'offers editing after sign-in and keeps read-only access on %s',
+      async (button) => {
+        const { manager, state, requests, respond } = setup(provider);
+        state.connections[0].hasConnected = true;
+        jest.mocked(openPromptExternal).mockResolvedValueOnce({ button });
+        const signingIn = manager.run({
+          action: 'add',
+          provider,
+          name: 'Cloud',
+          authorize: true,
+        });
+        expect(openPromptExternal).not.toHaveBeenCalled();
+        respond(requests.at(-1)!, { ok: true, state, connectionId: 'drive' });
+        expect(await signingIn).toBe(true);
+        expect(openPromptExternal).toHaveBeenCalledTimes(1);
+        expect(openPromptExternal).toHaveBeenCalledWith(
+          expect.objectContaining({
+            description: `cloud:${provider === 'dropbox' ? 'dropbox.' : ''}editing_intro_description`,
+            buttons: [
+              { id: 'cancel', label: 'cloud:later', variant: 'secondary' },
+              {
+                id: 'confirm',
+                label: 'cloud:enable_editing_now',
+                variant: 'primary',
+              },
+            ],
+          }),
+        );
+        expect(manager.getSnapshot().busy).toEqual([]);
+        expect(
+          requests.some((request) => request.command.action === 'connect'),
+        ).toBe(false);
+        expect(manager.getSnapshot().connections[0].writeAccess).not.toBe(true);
+        manager.dispose();
+      },
+    );
+
+    test('Now starts the editing authorization and a failed upgrade retains read-only access', async () => {
+      const { manager, state, push, requests, respond, fail } = setup(provider);
+      push({
+        ...state,
+        connections: [
+          {
+            ...state.connections[0],
+            accountId: undefined,
+            status: 'disconnected',
+          },
+        ],
+      });
+      jest
+        .mocked(openPromptExternal)
+        .mockResolvedValueOnce({ button: 'confirm' });
+      const signingIn = manager.run({
+        action: 'connect',
+        connectionId: 'drive',
+      });
+      const connected = {
+        ...state,
+        revision: 2,
+        connections: [{ ...state.connections[0], hasConnected: true }],
+      };
+      respond(requests.at(-1)!, { ok: true, state: connected });
+      await signingIn;
+      const upgrade = requests.at(-1)!;
+      expect(upgrade.command).toMatchObject({
+        action: 'connect',
+        connectionId: 'drive',
+        writeAccess: true,
+      });
+      expect(manager.getSnapshot().busy).toEqual(['drive']);
+      fail(upgrade, 'permission');
+      await Promise.resolve();
+      expect(manager.getSnapshot().connections[0]).toMatchObject({
+        status: 'connected',
+        hasConnected: true,
+      });
+      expect(manager.getSnapshot().connections[0].writeAccess).not.toBe(true);
+      expect(manager.getSnapshot().error).toBe('permission');
+      expect(openPromptExternal).toHaveBeenCalledTimes(1);
+      manager.dispose();
+    });
+
+    test('restoring and reconnecting a previously connected account do not repeat the introduction', async () => {
+      const { manager, state, push, requests, respond } = setup(provider);
+      state.connections[0] = {
+        ...state.connections[0],
+        hasConnected: true,
+        accountId: undefined,
+        status: 'disconnected',
+      };
+      push(state);
+      expect(openPromptExternal).not.toHaveBeenCalled();
+      const reconnecting = manager.run({
+        action: 'connect',
+        connectionId: 'drive',
+      });
+      respond(requests.at(-1)!, {
+        ok: true,
+        state: {
+          ...state,
+          revision: 2,
+          connections: [
+            {
+              ...state.connections[0],
+              status: 'connected',
+              accountId: 'account',
+            },
+          ],
+        },
+      });
+      await reconnecting;
+      expect(openPromptExternal).not.toHaveBeenCalled();
+      manager.dispose();
+    });
+
+    test('failed sign-in and an already editable connection do not show the introduction', async () => {
+      const { manager, state, requests, respond, fail } = setup(provider);
+      const failed = manager.run({
+        action: 'add',
+        provider,
+        name: 'Cloud',
+        authorize: true,
+      });
+      fail(requests.at(-1)!, 'cancelled');
+      expect(await failed).toBe(false);
+      const editable = manager.run({
+        action: 'add',
+        provider,
+        name: 'Cloud',
+        authorize: true,
+      });
+      respond(requests.at(-1)!, {
+        ok: true,
+        connectionId: 'drive',
+        state: {
+          ...state,
+          connections: [{ ...state.connections[0], writeAccess: true }],
+        },
+      });
+      await editable;
+      expect(openPromptExternal).not.toHaveBeenCalled();
+      manager.dispose();
+    });
+
+    test.each(['disconnect', 'account-change', 'dispose'])(
+      'a prompt cannot authorize editing after %s',
+      async (change) => {
+        const { manager, state, push, requests, respond } = setup(provider);
+        let answer!: (result: { button: string }) => void;
+        jest.mocked(openPromptExternal).mockReturnValueOnce(
+          new Promise((resolve) => {
+            answer = resolve;
+          }),
+        );
+        const signingIn = manager.run({
+          action: 'add',
+          provider,
+          name: 'Cloud',
+          authorize: true,
+        });
+        respond(requests.at(-1)!, { ok: true, state, connectionId: 'drive' });
+        await signingIn;
+        if (change === 'dispose') manager.dispose();
+        else
+          push({
+            ...state,
+            revision: 2,
+            connections: [
+              {
+                ...state.connections[0],
+                ...(change === 'disconnect'
+                  ? { status: 'disconnected', accountId: undefined }
+                  : { accountId: 'other' }),
+              },
+            ],
+          });
+        answer({ button: 'confirm' });
+        await Promise.resolve();
+        expect(
+          requests.some((request) => request.command.action === 'connect'),
+        ).toBe(false);
+        manager.dispose();
+      },
+    );
+  },
+);
 
 test('disconnect clears listing, ignores stale state, and keeps open documents intact', async () => {
   const { manager, state, push, requests, respond, files } = setup();
@@ -407,8 +619,122 @@ test('cancelled or failed name prompts release creation controls without startin
   expect(requests.some((request) => request.command.action === 'create')).toBe(
     false,
   );
+  expect(sonnerToast).not.toHaveBeenCalled();
   manager.dispose();
 });
+
+describe.each<CloudProviderId>(['google-drive', 'dropbox'])(
+  '%s creation notifications',
+  (provider) => {
+    test.each([false, true])(
+      'confirms an acknowledged creation once (copy: %s)',
+      async (copy) => {
+        const { manager, files, requests, state, push, respond } =
+          setup(provider);
+        state.connections[0].writeAccess = true;
+        push(state);
+        manager.selectWorkspace('drive');
+        files.activeFile = 'untitled-1';
+        files.models.set('untitled-1', { getValue: () => 'unsaved draft' });
+        jest
+          .mocked(openPromptExternal)
+          .mockResolvedValueOnce({ button: 'confirm', value: 'New.md' });
+        const creating = manager.create(copy);
+        await Promise.resolve();
+        const request = requests.at(-1)!;
+        expect(sonnerToast).not.toHaveBeenCalled();
+        // Completing the operation still reports its result after changing workspaces.
+        manager.selectWorkspace('local');
+        const document = {
+          connectionId: 'drive',
+          accountId: 'account',
+          connectionName: 'Drive',
+          provider,
+          item: {
+            id: 'new',
+            name: 'New.md',
+            kind: 'markdown' as const,
+            parents: [],
+          },
+          content: copy ? 'unsaved draft' : '',
+        };
+        respond(request, { ok: true, state, document });
+        await creating;
+        expect(files.openRemoteDocument).toHaveBeenCalledWith(document);
+        expect(sonnerToast).toHaveBeenCalledTimes(1);
+        expect(sonnerToast).toHaveBeenCalledWith(
+          'success',
+          'cloud:created_file',
+        );
+        manager.dispose();
+      },
+    );
+
+    test.each<CloudWriteError>(['duplicate', 'network', 'unconfirmed'])(
+      'reports %s as an error toast, without a success toast',
+      async (error) => {
+        const { manager, files, requests, state, push, fail } = setup(provider);
+        state.connections[0].writeAccess = true;
+        push(state);
+        manager.selectWorkspace('drive');
+        jest
+          .mocked(openPromptExternal)
+          .mockResolvedValueOnce({ button: 'confirm', value: 'New.md' });
+        const creating = manager.create();
+        await Promise.resolve();
+        const request = requests.at(-1)!;
+        manager.selectWorkspace('local');
+        fail(request, error);
+        await creating;
+        expect(files.openRemoteDocument).not.toHaveBeenCalled();
+        expect(sonnerToast).toHaveBeenCalledTimes(1);
+        expect(sonnerToast).toHaveBeenCalledWith(
+          'error',
+          `cloud:${provider === 'dropbox' && error !== 'duplicate' ? 'dropbox.' : ''}error_${error}`,
+        );
+        expect(Boolean(manager.getSnapshot().pendingCreate)).toBe(
+          error === 'unconfirmed',
+        );
+        manager.dispose();
+      },
+    );
+
+    test('confirms a previously uncertain creation only after checking its result', async () => {
+      const { manager, requests, state, push, fail, respond } = setup(provider);
+      state.connections[0].writeAccess = true;
+      push(state);
+      manager.selectWorkspace('drive');
+      jest
+        .mocked(openPromptExternal)
+        .mockResolvedValueOnce({ button: 'confirm', value: 'New.md' });
+      const creating = manager.create();
+      await Promise.resolve();
+      fail(requests.at(-1)!, 'unconfirmed');
+      await creating;
+      jest.mocked(sonnerToast).mockClear();
+      const checking = manager.reconcileCreate();
+      await manager.reconcileCreate();
+      expect(sonnerToast).not.toHaveBeenCalled();
+      respond(requests.at(-1)!, {
+        ok: true,
+        state,
+        document: {
+          connectionId: 'drive',
+          accountId: 'account',
+          connectionName: 'Drive',
+          provider,
+          item: { id: 'new', name: 'New.md', kind: 'markdown', parents: [] },
+          content: '',
+        },
+      });
+      await checking;
+      expect(sonnerToast).toHaveBeenCalledTimes(1);
+      expect(sonnerToast).toHaveBeenCalledWith('success', 'cloud:created_file');
+      expect(manager.getSnapshot().pendingCreate).toBeUndefined();
+      manager.dispose();
+    });
+  },
+);
 
 function organizing() {
   const context = setup();

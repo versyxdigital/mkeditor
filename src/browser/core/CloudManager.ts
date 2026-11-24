@@ -1,5 +1,6 @@
 import type {
   CloudCommand,
+  CloudConnection,
   CloudWriteError,
   CloudResponse,
   CloudState,
@@ -9,7 +10,11 @@ import type {
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { FileManager } from './FileManager';
 import { t } from '../i18n';
+import { cloudMessageKey } from '../cloudLabels';
+import type { CloudProviderId } from '../../app/interfaces/Cloud';
 import { confirmExternal, openPromptExternal } from '../prompts';
+import { sonnerToast } from '../notify';
+import { providerName } from '../../app/interfaces/Cloud';
 
 interface Location {
   id: string;
@@ -83,6 +88,7 @@ export class CloudManager {
   private browseGeneration = 0;
   private pickerGeneration = 0;
   private initialized = false;
+  private disposed = false;
   private pending = new Map<
     string,
     {
@@ -160,6 +166,30 @@ export class CloudManager {
       } else pending.reject(response.error);
     });
   }
+  private label(
+    key: string,
+    provider: CloudProviderId | undefined = this.snapshot.connections.find(
+      (c) => c.id === this.snapshot.workspace,
+    )?.provider,
+  ): string {
+    return t(cloudMessageKey(key, provider));
+  }
+  private rootFolder(workspace = this.snapshot.workspace): Location {
+    return {
+      id: 'root',
+      name:
+        this.snapshot.connections.find((c) => c.id === workspace)?.provider ===
+        'dropbox'
+          ? 'dropbox_root'
+          : 'my_drive',
+    };
+  }
+  canOrganize(): boolean {
+    return (
+      this.snapshot.connections.find((c) => c.id === this.snapshot.workspace)
+        ?.provider !== 'dropbox'
+    );
+  }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -168,6 +198,25 @@ export class CloudManager {
   private update(patch: Partial<CloudSnapshot>) {
     this.snapshot = { ...this.snapshot, ...patch };
     this.listeners.forEach((listener) => listener());
+  }
+  private reportExplorerError(
+    error: CloudWriteError,
+    provider?: CloudProviderId,
+    itemOperation = false,
+  ) {
+    this.update({ error });
+    if (error !== 'cancelled')
+      sonnerToast(
+        'error',
+        t(
+          cloudMessageKey(
+            error === 'unconfirmed' && itemOperation
+              ? 'operation_unconfirmed'
+              : `error_${error}`,
+            provider,
+          ),
+        ),
+      );
   }
   private onState(state: CloudState) {
     if (state.revision < this.snapshot.revision) return;
@@ -239,7 +288,7 @@ export class CloudManager {
       (current?.status !== 'connected' ||
         current.accountId !== incoming.accountId)
     )
-      void this.browse([{ id: 'root', name: 'my_drive' }]);
+      void this.browse([this.rootFolder()]);
   }
   private request(
     command: CloudCommand,
@@ -325,7 +374,11 @@ export class CloudManager {
       if (this.snapshot.workspace === operation.connectionId)
         void this.browse();
     } catch (error) {
-      this.update({ error: error as CloudWriteError });
+      this.reportExplorerError(
+        error as CloudWriteError,
+        operation.provider,
+        operation.kind === 'move' || operation.kind === 'createFolder',
+      );
     } finally {
       this.update({
         busy: this.snapshot.busy.filter((id) => id !== operation.operationId),
@@ -333,6 +386,23 @@ export class CloudManager {
     }
   }
   async run(command: CloudCommand): Promise<boolean> {
+    if (this.disposed) return false;
+    const commandConnectionId =
+      'connectionId' in command ? command.connectionId : undefined;
+    const previous = this.snapshot.connections.find(
+      (connection) => connection.id === commandConnectionId,
+    );
+    const firstConnection =
+      (command.action === 'add' && command.authorize) ||
+      (command.action === 'connect' &&
+        !command.writeAccess &&
+        !previous?.hasConnected &&
+        !previous?.accountId);
+    const commandProvider =
+      'provider' in command
+        ? command.provider
+        : this.snapshot.connections.find((c) => c.id === commandConnectionId)
+            ?.provider;
     if (
       command.action === 'connect' ||
       (command.action === 'add' && command.authorize)
@@ -340,14 +410,15 @@ export class CloudManager {
       command = {
         ...command,
         copy: {
-          title: t('cloud:return_to_app'),
-          accepted: t('cloud:callback_body'),
-          cancelled: t('cloud:error_cancelled'),
-          close: t('cloud:close_tab'),
-          invalid: t('cloud:invalid_callback'),
+          title: this.label('return_to_app'),
+          accepted: this.label('callback_body', commandProvider),
+          cancelled: this.label('error_cancelled'),
+          close: this.label('close_tab'),
+          invalid: this.label('invalid_callback'),
         },
       };
     const id = 'connectionId' in command ? command.connectionId : 'settings';
+    let introduceEditing: CloudConnection | undefined;
     this.update({ busy: [...this.snapshot.busy, id], error: undefined });
     try {
       const response = await this.request(command);
@@ -357,6 +428,14 @@ export class CloudManager {
         response.connectionId
       )
         this.selectWorkspace(response.connectionId);
+      if (firstConnection) {
+        const connected = this.snapshot.connections.find(
+          (entry) =>
+            entry.id === (response.connectionId ?? commandConnectionId),
+        );
+        if (connected?.status === 'connected' && !connected.writeAccess)
+          introduceEditing = connected;
+      }
       return true;
     } catch (error) {
       this.update({ error: error as CloudWriteError });
@@ -366,6 +445,47 @@ export class CloudManager {
       const index = busy.indexOf(id);
       if (index >= 0) busy.splice(index, 1);
       this.update({ busy });
+      if (introduceEditing) void this.introduceEditing(introduceEditing);
+    }
+  }
+  private async introduceEditing(connection: CloudConnection): Promise<void> {
+    try {
+      const result = await openPromptExternal({
+        title: t('cloud:editing_intro_title', {
+          provider: providerName(connection.provider),
+        }),
+        description: this.label(
+          'editing_intro_description',
+          connection.provider,
+        ),
+        buttons: [
+          { id: 'cancel', label: t('cloud:later'), variant: 'secondary' },
+          {
+            id: 'confirm',
+            label: t('cloud:enable_editing_now'),
+            variant: 'primary',
+          },
+        ],
+      });
+      const current = this.snapshot.connections.find(
+        (entry) => entry.id === connection.id,
+      );
+      if (
+        result.button !== 'confirm' ||
+        this.disposed ||
+        current?.status !== 'connected' ||
+        current.accountId !== connection.accountId ||
+        current.writeAccess ||
+        this.snapshot.busy.includes(connection.id)
+      )
+        return;
+      await this.run({
+        action: 'connect',
+        connectionId: connection.id,
+        writeAccess: true,
+      });
+    } catch {
+      // Dismissing an unavailable prompt leaves the established read-only connection intact.
     }
   }
   selectWorkspace(workspace: string) {
@@ -378,17 +498,16 @@ export class CloudManager {
       error: undefined,
       loading: false,
     });
-    if (workspace !== 'local')
-      void this.browse([{ id: 'root', name: 'my_drive' }]);
+    if (workspace !== 'local') void this.browse([this.rootFolder()]);
   }
   async browse(folders = this.snapshot.folders, append = false) {
     if (this.snapshot.workspace === 'local') return;
     const connectionId = this.snapshot.workspace;
+    const provider = this.snapshot.connections.find(
+      (entry) => entry.id === connectionId,
+    )?.provider;
     const generation = ++this.browseGeneration;
-    const last = folders[folders.length - 1] ?? {
-      id: 'root',
-      name: 'my_drive',
-    };
+    const last = folders[folders.length - 1] ?? this.rootFolder();
     const page = append ? this.snapshot.nextPage : undefined;
     this.update({
       loading: true,
@@ -421,7 +540,7 @@ export class CloudManager {
       });
     } catch (error) {
       if (generation === this.browseGeneration)
-        this.update({ error: error as CloudWriteError });
+        this.reportExplorerError(error as CloudWriteError, provider);
     } finally {
       if (generation === this.browseGeneration) this.update({ loading: false });
     }
@@ -484,7 +603,7 @@ export class CloudManager {
       if (
         this.snapshot.opening.some((operation) => operation.id === opening.id)
       )
-        this.update({ error: error as CloudWriteError });
+        this.reportExplorerError(error as CloudWriteError, connection.provider);
     } finally {
       this.update({
         opening: this.snapshot.opening.filter(
@@ -521,7 +640,7 @@ export class CloudManager {
       if (compare) {
         this.files.openDiffTab({
           id: `diff://drive/${encodeURIComponent(path)}`,
-          name: t('cloud:compare'),
+          name: this.label('compare'),
           original: result.document.content,
           modified: model.getValue(),
           sourcePath: path,
@@ -532,10 +651,10 @@ export class CloudManager {
         this.files.getSnapshot().tabs.find((entry) => entry.path === path)
           ?.dirty &&
         !(await confirmExternal({
-          title: t('cloud:reload'),
-          description: t('cloud:reload_confirm'),
-          confirmLabel: t('cloud:reload'),
-          cancelLabel: t('cloud:cancel'),
+          title: this.label('reload'),
+          description: this.label('reload_confirm'),
+          confirmLabel: this.label('reload'),
+          cancelLabel: this.label('cancel'),
           destructive: true,
         }))
       )
@@ -545,12 +664,12 @@ export class CloudManager {
         model.getAlternativeVersionId() !== version ||
         this.files.models.get(path) !== model
       ) {
-        this.update({ error: 'conflict' });
+        this.reportExplorerError('conflict', remote.provider);
         return;
       }
       this.files.reloadRemoteDocument(path, result.document);
     } catch (error) {
-      this.update({ error: error as CloudWriteError });
+      this.reportExplorerError(error as CloudWriteError, remote.provider);
     }
   }
   canCreate(): boolean {
@@ -590,11 +709,11 @@ export class CloudManager {
     let result: Awaited<ReturnType<typeof openPromptExternal>>;
     try {
       result = await openPromptExternal({
-        title: t(copy ? 'cloud:save_copy' : 'cloud:new_file'),
-        input: { defaultValue: t('cloud:new_file_name') },
+        title: this.label(copy ? 'save_copy' : 'new_file'),
+        input: { defaultValue: this.label('new_file_name') },
         buttons: [
-          { id: 'cancel', label: t('cloud:cancel') },
-          { id: 'confirm', label: t('cloud:create'), variant: 'primary' },
+          { id: 'cancel', label: this.label('cancel') },
+          { id: 'confirm', label: this.label('create'), variant: 'primary' },
         ],
       });
     } catch {
@@ -633,12 +752,14 @@ export class CloudManager {
       });
       if (!result.document) throw 'unconfirmed';
       this.files.openRemoteDocument(result.document);
+      sonnerToast(
+        'success',
+        t('cloud:created_file', { name: result.document.item.name }),
+      );
       if (this.snapshot.workspace === connection.id) void this.browse();
     } catch (error) {
-      this.update({
-        error: error as CloudWriteError,
-        ...(error === 'unconfirmed' ? { pendingCreate } : {}),
-      });
+      if (error === 'unconfirmed') this.update({ pendingCreate });
+      this.reportExplorerError(error as CloudWriteError, connection.provider);
       // Keep a local recovery buffer if the create outcome is unknown.
       if (error === 'unconfirmed' && content)
         this.files.createLocalCopy(content);
@@ -652,23 +773,30 @@ export class CloudManager {
   async reconcileCreate(): Promise<void> {
     const pending = this.snapshot.pendingCreate;
     if (!pending || this.snapshot.busy.includes('create')) return;
+    const provider = this.snapshot.connections.find(
+      (entry) => entry.id === pending.connectionId,
+    )?.provider;
     this.update({ busy: [...this.snapshot.busy, 'create'], error: undefined });
     try {
       const result = await this.request({ action: 'reconcile', ...pending });
       if (!result.document) throw 'unconfirmed';
       this.files.openRemoteDocument(result.document);
       this.update({ pendingCreate: undefined });
+      sonnerToast(
+        'success',
+        t('cloud:created_file', { name: result.document.item.name }),
+      );
       if (this.snapshot.workspace === pending.connectionId) void this.browse();
     } catch (error) {
       if (error === 'not_applied') this.update({ pendingCreate: undefined });
-      this.update({ error: error as CloudWriteError });
+      this.reportExplorerError(error as CloudWriteError, provider);
     } finally {
       this.update({ busy: this.snapshot.busy.filter((id) => id !== 'create') });
     }
   }
 
   async createFolder(destination?: DriveItem): Promise<void> {
-    if (!this.canCreate()) return;
+    if (!this.canOrganize() || !this.canCreate()) return;
     const connection = this.snapshot.connections.find(
       (entry) => entry.id === this.snapshot.workspace,
     )!;
@@ -682,11 +810,11 @@ export class CloudManager {
     });
     try {
       const prompt = await openPromptExternal({
-        title: t('cloud:new_folder'),
-        input: { defaultValue: t('cloud:new_folder_name') },
+        title: this.label('new_folder'),
+        input: { defaultValue: this.label('new_folder_name') },
         buttons: [
-          { id: 'cancel', label: t('cloud:cancel') },
-          { id: 'confirm', label: t('cloud:create'), variant: 'primary' },
+          { id: 'cancel', label: this.label('cancel') },
+          { id: 'confirm', label: this.label('create'), variant: 'primary' },
         ],
       });
       if (prompt.button !== 'confirm') return;
@@ -724,10 +852,11 @@ export class CloudManager {
         throw error;
       }
     } catch (error) {
-      this.update({
-        error:
-          typeof error === 'string' ? (error as CloudWriteError) : 'cancelled',
-      });
+      this.reportExplorerError(
+        typeof error === 'string' ? (error as CloudWriteError) : 'cancelled',
+        connection.provider,
+        true,
+      );
     } finally {
       this.update({
         creating: undefined,
@@ -738,6 +867,7 @@ export class CloudManager {
 
   canMove(item: DriveItem): boolean {
     if (
+      !this.canOrganize() ||
       !this.canCreate() ||
       item.kind !== 'markdown' ||
       item.driveId ||
@@ -777,7 +907,7 @@ export class CloudManager {
         moving: false,
       },
     });
-    void this.browseMove([{ id: 'root', name: 'my_drive' }]);
+    void this.browseMove([this.rootFolder()]);
   }
 
   closeMove() {
@@ -883,13 +1013,15 @@ export class CloudManager {
       const code = error as CloudWriteError;
       this.update({
         ...(code === 'unconfirmed'
-          ? { pendingItem, movePicker: undefined, error: code }
+          ? { pendingItem, movePicker: undefined }
           : {
               movePicker: this.snapshot.movePicker
                 ? { ...this.snapshot.movePicker, moving: false, error: code }
                 : undefined,
             }),
       });
+      if (code === 'unconfirmed')
+        this.reportExplorerError(code, undefined, true);
     } finally {
       this.update({
         busy: this.snapshot.busy.filter((id) => id !== 'organize'),
@@ -900,6 +1032,9 @@ export class CloudManager {
   async reconcileItem(): Promise<void> {
     const pending = this.snapshot.pendingItem;
     if (!pending || this.snapshot.busy.includes('organize')) return;
+    const provider = this.snapshot.connections.find(
+      (entry) => entry.id === pending.connectionId,
+    )?.provider;
     this.update({
       busy: [...this.snapshot.busy, 'organize'],
       error: undefined,
@@ -940,7 +1075,7 @@ export class CloudManager {
           );
         this.update({ pendingItem: undefined });
       }
-      this.update({ error: error as CloudWriteError });
+      this.reportExplorerError(error as CloudWriteError, provider, true);
     } finally {
       this.update({
         busy: this.snapshot.busy.filter((id) => id !== 'organize'),
@@ -948,6 +1083,7 @@ export class CloudManager {
     }
   }
   dispose() {
+    this.disposed = true;
     this.pending.forEach((pending) => {
       clearTimeout(pending.timer);
       pending.reject('cancelled');

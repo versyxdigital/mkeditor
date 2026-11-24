@@ -10,16 +10,18 @@ import { homedir } from 'os';
 import { dirname, join } from 'path';
 import { z } from 'zod';
 import type { CloudConnection } from '../../interfaces/Cloud';
-import type { DriveTokens } from './GoogleDrive';
+import type { CloudTokens } from './CloudProvider';
 import { CloudError } from './CloudError';
 
 const connectionSchema = z.object({
+  provider: z.enum(['google-drive', 'dropbox']).optional(),
   id: z.string(),
   name: z.string(),
   clientId: z.string(),
   clientValue: z.string(),
   registration: z.enum(['mkeditor', 'custom']).optional(),
   writeAccess: z.boolean().optional(),
+  hasConnected: z.boolean().optional(),
   accountId: z.string().optional(),
   accountName: z.string().optional(),
   status: z.enum(['connected', 'disconnected', 'reauthorize', 'connecting']),
@@ -41,8 +43,8 @@ export interface CloudPersistence {
   load(): StoredConnection[];
   save(connections: StoredConnection[]): void;
   available(): Promise<boolean>;
-  encrypt(tokens: DriveTokens): Promise<string>;
-  decrypt(encoded: string): Promise<DriveTokens>;
+  encrypt(tokens: CloudTokens): Promise<string>;
+  decrypt(encoded: string): Promise<CloudTokens>;
 }
 
 /** A separate atomic store; unrelated settings, sessions and AI data stay untouched. */
@@ -94,7 +96,7 @@ export class CloudStore implements CloudPersistence {
       return false;
     }
   }
-  async encrypt(tokens: DriveTokens): Promise<string> {
+  async encrypt(tokens: CloudTokens): Promise<string> {
     if (!(await this.available())) throw new CloudError('storage');
     try {
       return (
@@ -104,7 +106,7 @@ export class CloudStore implements CloudPersistence {
       throw new CloudError('storage');
     }
   }
-  async decrypt(encoded: string): Promise<DriveTokens> {
+  async decrypt(encoded: string): Promise<CloudTokens> {
     if (!(await this.available())) throw new CloudError('storage');
     try {
       return tokensSchema.parse(

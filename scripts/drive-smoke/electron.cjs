@@ -5,6 +5,7 @@ const path = require('node:path');
 const { CloudService } = require('../../dist/app/lib/cloud/CloudService');
 const { CloudStore } = require('../../dist/app/lib/cloud/CloudStore');
 const { GoogleDrive } = require('../../dist/app/lib/cloud/GoogleDrive');
+const { Dropbox } = require('../../dist/app/lib/cloud/Dropbox');
 const {
   CloudRecoveryStore,
 } = require('../../dist/app/lib/cloud/CloudRecoveryStore');
@@ -24,6 +25,7 @@ const options = JSON.parse(
     'utf8',
   ),
 );
+const isDropbox = options.provider === 'dropbox';
 // Playwright adds browser-testing keychain switches; this check requires real OS encryption.
 app.commandLine.removeSwitch('password-store');
 app.commandLine.removeSwitch('use-mock-keychain');
@@ -88,6 +90,13 @@ function checkpoint() {
 const drive = options.live
   ? new GoogleDrive()
   : new GoogleDrive(options.endpoints);
+const dropbox = isDropbox
+  ? new Dropbox(
+      options.live ? undefined : options.endpoints,
+      options.live ? undefined : 0,
+    )
+  : undefined;
+const adapter = dropbox ?? drive;
 let requestId = 0;
 const execute = (command) =>
   service.handle({ requestId: `smoke-control-${++requestId}`, command });
@@ -110,7 +119,11 @@ function permitted(command) {
 }
 function remember(command, result) {
   if (!result.ok) return;
-  if (command.action === 'create' && result.document)
+  if (
+    (command.action === 'create' || command.action === 'reconcile') &&
+    result.document &&
+    !scope.documents.includes(result.document.item.id)
+  )
     scope.documents.push(result.document.item.id);
   if (command.action === 'createFolder' && result.item)
     scope.folders.push(result.item.id);
@@ -139,13 +152,28 @@ app
       },
       (state) => win?.webContents.send('from:cloud:state', state),
       drive,
-      options.live
-        ? undefined
-        : {
-            clientId: 'smoke.apps.googleusercontent.com',
-            clientValue: 'smoke-public-value',
-          },
+      isDropbox
+        ? null
+        : options.live
+          ? undefined
+          : {
+              clientId: 'smoke.apps.googleusercontent.com',
+              clientValue: 'smoke-public-value',
+            },
       recoveryStore,
+      isDropbox
+        ? {
+            dropbox,
+            ...(options.live
+              ? {}
+              : {
+                  dropboxRegistration: {
+                    clientId: 'dropbox-smoke-key',
+                    clientValue: '',
+                  },
+                }),
+          }
+        : {},
     );
     for (const [channel, value] of [
       ['mked:get-locale', 'en'],
@@ -185,6 +213,11 @@ app
         ? await service.handle(request)
         : { requestId: request.requestId, ok: false, error: 'permission' };
       remember(command, result);
+      if (!result.ok)
+        fs.writeFileSync(
+          path.join(profile, 'last-cloud-error.json'),
+          JSON.stringify({ action: command.action, error: result.error }),
+        );
       if (!event.sender.isDestroyed())
         event.sender.send('from:cloud:result', result);
     });
@@ -215,6 +248,38 @@ app
         );
         if (!entry)
           throw Error('Enable editing before preparing a disposable folder.');
+        if (isDropbox) {
+          const endpoint = options.live
+            ? 'https://api.dropboxapi.com/2/files/create_folder_v2'
+            : new URL(
+                'files/create_folder_v2',
+                options.endpoints.api,
+              ).toString();
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${await access()}`,
+              'Dropbox-API-Path-Root': '{".tag":"home"}',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              path: `/${scope.rootName}`,
+              autorename: false,
+            }),
+          });
+          if (!response.ok)
+            throw Error('Disposable Dropbox folder creation failed.');
+          const result = await response.json();
+          if (
+            typeof result.metadata?.id !== 'string' ||
+            result.metadata.name !== scope.rootName
+          )
+            throw Error('Invalid disposable folder acknowledgement.');
+          scope.rootId = result.metadata.id;
+          scope.folders.push(result.metadata.id);
+          persistScope();
+          return { ...scope };
+        }
         const operationId = `smoke-root-${Date.now()}`;
         const result = await execute({
           action: 'createFolder',
@@ -243,7 +308,7 @@ app
       },
       async verifyContent(id, expected) {
         assertDocument(id);
-        const document = await drive.read(await access(), id, true);
+        const document = await adapter.read(await access(), id, true);
         if (
           document.content.replace(/\r\n/g, '\n') !==
           expected.replace(/\r\n/g, '\n')
@@ -256,8 +321,8 @@ app
       async externalEdit(id, content) {
         assertDocument(id);
         const token = await access();
-        const document = await drive.read(token, id, true);
-        await drive.update(
+        const document = await adapter.read(token, id, true);
+        await adapter.update(
           token,
           id,
           document.item.validator,

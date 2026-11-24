@@ -3,7 +3,7 @@ import { useFiles } from '../../contexts/FilesContext';
 import { useManagers } from '../../contexts/ManagersContext';
 import { useModals } from '../../contexts/ModalsContext';
 import { useCloud } from '../../hooks/useCloud';
-import { useTranslation } from '../../hooks/useTranslation';
+import { useCloudTranslation } from '../../hooks/useCloudTranslation';
 import { Button } from '../ui/button';
 import { Icon } from '../Icon';
 
@@ -13,8 +13,8 @@ export const RemoteDocumentNotice: React.FC = () => {
   const { fileManager } = useManagers();
   const { state, manager } = useCloud();
   const { openModal } = useModals();
-  const { t } = useTranslation();
   const tab = tabs.find((entry) => entry.path === activeFile);
+  const { t } = useCloudTranslation(tab?.remote?.provider);
   const remote = tab?.remote;
   if (!remote || !activeFile) return null;
   const connection = state.connections.find(

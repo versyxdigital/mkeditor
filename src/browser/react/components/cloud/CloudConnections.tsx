@@ -7,6 +7,20 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { GoogleDriveLogo, GoogleLogo } from './GoogleBrand';
+import { CloudLogo, DropboxLogo } from './CloudBrand';
+import {
+  providerName,
+  type CloudProviderId,
+} from '../../../../app/interfaces/Cloud';
+import { cloudMessageKey } from '../../../cloudLabels';
+import { useCloudTranslation } from '../../hooks/useCloudTranslation';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '../ui/select';
 
 export const CloudConnections: React.FC = () => {
   const { manager, state } = useCloud();
@@ -15,12 +29,12 @@ export const CloudConnections: React.FC = () => {
   const [clientId, setClientId] = React.useState('');
   const [clientValue, setClientValue] = React.useState('');
   const [advanced, setAdvanced] = React.useState(false);
+  const [provider, setProvider] =
+    React.useState<CloudProviderId>('google-drive');
   return (
     <div className="space-y-5">
       <div className="space-y-2 text-sm text-muted-foreground">
-        <p>{t('cloud:intro')}</p>
-        <p>{t('cloud:editing_intro')}</p>
-        <p>{t('cloud:preview_limit')}</p>
+        <p>{t('cloud:storage_intro')}</p>
       </div>
       {!state.secureStorage && (
         <p role="status" className="text-sm text-destructive">
@@ -59,11 +73,50 @@ export const CloudConnections: React.FC = () => {
           }
         >
           <GoogleLogo />
-          {t(state.connections.length ? 'cloud:add_account' : 'cloud:connect')}
+          {t(
+            state.connections.some((entry) => entry.provider !== 'dropbox')
+              ? 'cloud:add_account'
+              : 'cloud:connect',
+          )}
         </Button>
         {!state.googleDriveAvailable && (
           <p className="w-full text-sm text-muted-foreground" role="status">
             {t('cloud:default_unavailable')}
+          </p>
+        )}
+      </section>
+      <section
+        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-subtle bg-card p-4"
+        aria-label="Dropbox"
+      >
+        <h3 className="flex items-center gap-2 font-medium">
+          <DropboxLogo className="h-5 w-5" />
+          Dropbox
+        </h3>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={
+            !manager ||
+            !state.secureStorage ||
+            !state.dropboxAvailable ||
+            state.busy.includes('settings')
+          }
+          onClick={() =>
+            void manager?.run({
+              action: 'add',
+              provider: 'dropbox',
+              name: 'Dropbox',
+              authorize: true,
+            })
+          }
+        >
+          <DropboxLogo />
+          {t('cloud:dropbox.connect')}
+        </Button>
+        {!state.dropboxAvailable && (
+          <p className="w-full text-sm text-muted-foreground" role="status">
+            {t('cloud:dropbox.default_unavailable')}
           </p>
         )}
       </section>
@@ -86,7 +139,13 @@ export const CloudConnections: React.FC = () => {
           onSubmit={(event) => {
             event.preventDefault();
             void manager
-              ?.run({ action: 'add', name, clientId, clientValue })
+              ?.run({
+                action: 'add',
+                ...(provider === 'dropbox' ? { provider } : {}),
+                name,
+                clientId,
+                clientValue: provider === 'dropbox' ? '' : clientValue,
+              })
               .then((ok) => {
                 if (ok) {
                   setName('');
@@ -96,7 +155,28 @@ export const CloudConnections: React.FC = () => {
               });
           }}
         >
-          <h3 className="font-medium">{t('cloud:custom_app')}</h3>
+          <h3 className="font-medium">
+            {t(cloudMessageKey('custom_app', provider))}
+          </h3>
+          <div className="space-y-1">
+            <Label htmlFor="cloud-provider">{t('cloud:provider')}</Label>
+            <Select
+              value={provider}
+              onValueChange={(value) => {
+                setProvider(value as CloudProviderId);
+                setClientId('');
+                setClientValue('');
+              }}
+            >
+              <SelectTrigger id="cloud-provider">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="google-drive">Google Drive</SelectItem>
+                <SelectItem value="dropbox">Dropbox</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-1">
             <Label htmlFor="cloud-name">{t('cloud:name')}</Label>
             <Input
@@ -108,7 +188,9 @@ export const CloudConnections: React.FC = () => {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="cloud-client-id">{t('cloud:client_id')}</Label>
+            <Label htmlFor="cloud-client-id">
+              {t(cloudMessageKey('client_id', provider))}
+            </Label>
             <Input
               id="cloud-client-id"
               required
@@ -117,19 +199,21 @@ export const CloudConnections: React.FC = () => {
               onChange={(event) => setClientId(event.target.value)}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="cloud-client-value">
-              {t('cloud:client_value')}
-            </Label>
-            <Input
-              id="cloud-client-value"
-              spellCheck={false}
-              value={clientValue}
-              onChange={(event) => setClientValue(event.target.value)}
-            />
-          </div>
+          {provider !== 'dropbox' && (
+            <div className="space-y-1">
+              <Label htmlFor="cloud-client-value">
+                {t('cloud:client_value')}
+              </Label>
+              <Input
+                id="cloud-client-value"
+                spellCheck={false}
+                value={clientValue}
+                onChange={(event) => setClientValue(event.target.value)}
+              />
+            </div>
+          )}
           <p className="text-xs text-muted-foreground">
-            {t('cloud:registration_help')}
+            {t(cloudMessageKey('registration_help', provider))}
           </p>
           <Button
             type="submit"
@@ -152,7 +236,7 @@ const ConnectionCard: React.FC<{ connection: CloudConnection }> = ({
   connection,
 }) => {
   const { manager, state } = useCloud();
-  const { t } = useTranslation();
+  const { t } = useCloudTranslation(connection.provider);
   const [name, setName] = React.useState(connection.name);
   React.useEffect(() => setName(connection.name), [connection.name]);
   const busy =
@@ -165,11 +249,13 @@ const ConnectionCard: React.FC<{ connection: CloudConnection }> = ({
     >
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="flex flex-1 items-center gap-2 font-medium">
-          <GoogleDriveLogo className="h-5 w-5" />
-          Google Drive
+          <CloudLogo provider={connection.provider} className="h-5 w-5" />
+          {providerName(connection.provider)}
         </h3>
         <span role="status" className="text-xs text-muted-foreground">
           {t(`cloud:status_${connection.status}`)}
+          {connect &&
+            ` · ${t(connection.writeAccess ? 'cloud:editable' : 'cloud:read_only')}`}
         </span>
       </div>
       <div className="flex items-end gap-2">
@@ -230,7 +316,11 @@ const ConnectionCard: React.FC<{ connection: CloudConnection }> = ({
         <Button
           disabled={busy || !state.secureStorage}
           variant="outline"
-          className="border-[#747775] bg-white text-[#1f1f1f] hover:bg-[#f5f6f8] hover:text-[#1f1f1f]"
+          className={
+            connection.provider === 'dropbox'
+              ? undefined
+              : 'border-[#747775] bg-white text-[#1f1f1f] hover:bg-[#f5f6f8] hover:text-[#1f1f1f]'
+          }
           onClick={() =>
             void manager?.run({
               action: 'connect',
@@ -238,7 +328,7 @@ const ConnectionCard: React.FC<{ connection: CloudConnection }> = ({
             })
           }
         >
-          <GoogleLogo />
+          {connection.provider === 'dropbox' ? <DropboxLogo /> : <GoogleLogo />}
           {t(connect ? 'cloud:reconnect' : 'cloud:connect')}
         </Button>
         <Button

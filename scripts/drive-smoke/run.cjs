@@ -153,9 +153,18 @@ async function fillName(name) {
   await dialog.waitFor({ state: 'hidden' });
 }
 async function createDocument(name) {
-  await page
+  const explorer = page
     .locator('#sidebar')
-    .getByRole('button', { name: labels.new_file, exact: true })
+    .getByRole('list', { name: labels.files, exact: true })
+    .locator('..');
+  const bounds = await explorer.boundingBox();
+  assert.ok(bounds);
+  await explorer.click({
+    button: 'right',
+    position: { x: 8, y: bounds.height - 8 },
+  });
+  await page
+    .getByRole('menuitem', { name: labels.new_file, exact: true })
     .click();
   await fillName(name);
   await until(async () =>
@@ -163,6 +172,10 @@ async function createDocument(name) {
       await page.locator('#editor-tabs li[data-active=true]').textContent()
     )?.includes(name),
   );
+  await page
+    .locator('[data-sonner-toast]')
+    .getByText(labels.created_file.replace('{{name}}', name), { exact: true })
+    .waitFor();
   return activeIdentity();
 }
 async function activeIdentity() {
@@ -418,12 +431,16 @@ async function recoveryScenarios(document) {
         ),
       live ? 210000 : 30000,
     );
-    await page
-      .getByRole('button', { name: labels.enable_editing, exact: true })
-      .click();
-    await page
-      .getByRole('dialog', { name: labels.enable_editing, exact: true })
-      .getByRole('button', { name: labels.enable_editing, exact: true })
+    const editingIntro = page.getByRole('dialog', {
+      name: labels.editing_intro_title.replace('{{provider}}', 'Google Drive'),
+      exact: true,
+    });
+    await editingIntro.waitFor();
+    await editingIntro
+      .getByText(labels.editing_intro_description, { exact: true })
+      .waitFor();
+    await editingIntro
+      .getByRole('button', { name: labels.enable_editing_now, exact: true })
       .click();
     await until(
       async () =>
@@ -474,6 +491,12 @@ async function recoveryScenarios(document) {
         )?.includes('Copy.md'),
       );
       const copy = await activeIdentity();
+      await page
+        .locator('[data-sonner-toast]')
+        .getByText(labels.created_file.replace('{{name}}', 'Copy.md'), {
+          exact: true,
+        })
+        .waitFor();
       assert.notEqual(copy.id, document.id);
       await verify(copy.id, content);
       await verify(document.id, content);
@@ -483,10 +506,10 @@ async function recoveryScenarios(document) {
         .click();
       await fillName('Copy.md');
       await page
-        .locator('#sidebar')
-        .getByRole('alert')
-        .filter({ hasText: labels.error_duplicate })
+        .locator('[data-sonner-toast]')
+        .getByText(labels.error_duplicate, { exact: true })
         .waitFor();
+      assert.equal(await page.locator('#sidebar [role=alert]').count(), 0);
       await verify(copy.id, content);
       await page
         .locator('#editor-tabs li')

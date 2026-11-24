@@ -11,6 +11,7 @@ import { openPromptExternal } from '../react/contexts/PromptsContext';
 import { debounce } from '../util';
 import { t } from '../i18n';
 import { sonnerToast } from '../notify';
+import { cloudMessageKey } from '../cloudLabels';
 import {
   isRemotePath,
   remoteDocumentPath,
@@ -887,7 +888,12 @@ export class FileManager {
    * Migrates the open model and unsaved-change baseline to the new path.
    * Returns true if a matching tab was renamed, false otherwise.
    */
-  public renameTab(oldPath: string, newPath: string, newName: string): boolean {
+  public renameTab(
+    oldPath: string,
+    newPath: string,
+    newName: string,
+    remote?: Omit<RemoteDocument, 'content'>,
+  ): boolean {
     const mdl = this.models.get(oldPath);
     if (!mdl) return false;
 
@@ -930,6 +936,7 @@ export class FileManager {
       for (const [path, info] of this.tabs) {
         if (path === oldPath) {
           next.set(newPath, {
+            ...(remote ? { remote } : {}),
             path: newPath,
             name: newName,
             dirty: wasDirty,
@@ -1505,6 +1512,7 @@ export class FileManager {
   }
 
   public checkRemoteRecovery(path: string): Promise<boolean> {
+    const checkKey = path;
     const pending = this.remoteChecks.get(path);
     if (pending) return pending;
     const tab = this.tabs.get(path),
@@ -1524,6 +1532,11 @@ export class FileManager {
       try {
         if (this.remoteUnconfirmed.has(path)) {
           await this.saveRemoteTab(path, true);
+          // A confirmed creation can replace a temporary provider identity.
+          const resolvedPath = [...this.models].find(
+            ([, entry]) => entry === model,
+          )?.[0];
+          if (resolvedPath) path = resolvedPath;
           if (this.remoteUnconfirmed.has(path)) {
             this.tabs.set(path, {
               ...this.tabs.get(path)!,
@@ -1605,9 +1618,10 @@ export class FileManager {
         this.refreshRemoteAccess();
       }
     });
-    this.remoteChecks.set(path, work);
+    this.remoteChecks.set(checkKey, work);
     void work.finally(() => {
-      if (this.remoteChecks.get(path) === work) this.remoteChecks.delete(path);
+      if (this.remoteChecks.get(checkKey) === work)
+        this.remoteChecks.delete(checkKey);
     });
     return work;
   }
@@ -1670,17 +1684,41 @@ export class FileManager {
       operationId: `remote-save-${Date.now()}-${FileManager.nextRemoteOperation++}`,
     };
     this.remoteSaveSnapshots.set(path, snapshot);
+    const writeKey = path;
     this.remoteStatus(path, { phase: 'saving' });
     const work = (async () => {
       try {
         const document = await (unresolved
           ? operations.reconcile(snapshot)
           : operations.save(snapshot));
-        if (
-          this.models.get(path) !== snapshot.model ||
-          remoteDocumentPath(document) !== path
-        )
-          return false;
+        if (this.models.get(path) !== snapshot.model) return false;
+        const resolvedPath = remoteDocumentPath(document);
+        if (resolvedPath !== path) {
+          if (
+            !unresolved ||
+            !snapshot.document.pendingCreate ||
+            document.operationId !== snapshot.operationId ||
+            document.connectionId !== snapshot.document.connectionId ||
+            document.accountId !== snapshot.document.accountId ||
+            document.provider !== snapshot.document.provider ||
+            this.models.has(resolvedPath) ||
+            document.content !== snapshot.content
+          )
+            return false;
+          const { content: _createdContent, ...createdRemote } = document;
+          this.remoteUnconfirmed.delete(path);
+          this.remoteSaveSnapshots.delete(path);
+          if (
+            !this.renameTab(
+              path,
+              resolvedPath,
+              document.item.name,
+              createdRemote,
+            )
+          )
+            return false;
+          path = resolvedPath;
+        }
         if (document.content !== snapshot.content) throw 'unconfirmed';
         const live = this.tabs.get(path)!;
         const { content: _content, ...remote } = document;
@@ -1702,7 +1740,11 @@ export class FileManager {
           snapshot.content,
           snapshot.version,
         );
-        if (!checkingRecovery) sonnerToast('success', t('cloud:save_saved'));
+        if (!checkingRecovery)
+          sonnerToast(
+            'success',
+            t(cloudMessageKey('save_saved', document.provider)),
+          );
         return true;
       } catch (error) {
         if (this.models.get(path) !== snapshot.model) return false;
@@ -1729,11 +1771,12 @@ export class FileManager {
         return false;
       }
     })();
-    this.remoteWrites.set(path, work);
+    this.remoteWrites.set(writeKey, work);
     void work.finally(() => {
       if (!this.remoteUnconfirmed.has(path))
         this.remoteSaveSnapshots.delete(path);
-      if (this.remoteWrites.get(path) === work) this.remoteWrites.delete(path);
+      if (this.remoteWrites.get(writeKey) === work)
+        this.remoteWrites.delete(writeKey);
     });
     return work;
   }

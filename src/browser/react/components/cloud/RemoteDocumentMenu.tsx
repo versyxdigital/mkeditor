@@ -3,7 +3,7 @@ import { useCloud } from '../../hooks/useCloud';
 import { useFiles } from '../../contexts/FilesContext';
 import { useManagers } from '../../contexts/ManagersContext';
 import { useModals } from '../../contexts/ModalsContext';
-import { useTranslation } from '../../hooks/useTranslation';
+import { useCloudTranslation } from '../../hooks/useCloudTranslation';
 import { Button } from '../ui/button';
 import { Icon } from '../Icon';
 import {
@@ -14,7 +14,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { GoogleDriveLogo } from './GoogleBrand';
+import { CloudLogo } from './CloudBrand';
+import { providerName } from '../../../../app/interfaces/Cloud';
 
 /** File actions stay beside the filename; normal remote editing adds no banner. */
 export const RemoteDocumentMenu: React.FC = () => {
@@ -22,8 +23,8 @@ export const RemoteDocumentMenu: React.FC = () => {
   const { state, manager } = useCloud();
   const { fileManager, mode } = useManagers();
   const { openModal } = useModals();
-  const { t } = useTranslation();
   const tab = tabs.find((entry) => entry.path === activeFile);
+  const { t } = useCloudTranslation(tab?.remote?.provider);
   const remote = tab?.remote;
   if (mode !== 'desktop' || !remote || !activeFile) return null;
   const connection = state.connections.find(
@@ -56,7 +57,7 @@ export const RemoteDocumentMenu: React.FC = () => {
             size="icon"
             className="h-7 w-7 shrink-0 rounded-sm p-0"
             aria-label={t('cloud:document_actions')}
-            title={`Google Drive · ${status}`}
+            title={`${providerName(remote.provider)} · ${status}`}
           >
             {saving ? (
               <Icon
@@ -69,14 +70,14 @@ export const RemoteDocumentMenu: React.FC = () => {
                 className="size-3.5 text-destructive"
               />
             ) : (
-              <GoogleDriveLogo />
+              <CloudLogo provider={remote.provider} />
             )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-w-[calc(100vw-16px)]">
           <DropdownMenuLabel className="flex h-8 items-center gap-2 text-xs font-medium">
-            <GoogleDriveLogo />
-            Google Drive
+            <CloudLogo provider={remote.provider} />
+            {providerName(remote.provider)}
           </DropdownMenuLabel>
           <div
             role="status"

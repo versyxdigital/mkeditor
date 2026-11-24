@@ -49,6 +49,12 @@ Builds can instead use `MKEDITOR_GOOGLE_CLIENT_ID` and `MKEDITOR_GOOGLE_CLIENT_S
 
 The release workflow reads repository Actions secrets with those same two names. Maintainers must configure both before releasing. It sets `MKEDITOR_REQUIRE_GOOGLE_DRIVE=true` so a missing registration fails the release build. Pull-request CI requires no credentials.
 
+### Dropbox build configuration
+
+Set `MKEDITOR_DROPBOX_APP_KEY`, or copy `src/app/config/dropbox.json` to the ignored `src/app/config/dropbox.local.json` and fill in `clientId`. Keep `clientValue` empty: Dropbox uses PKCE and needs no bundled app secret. The environment value overrides the local file; `build-app` injects it into build output. Releases require the repository Actions secret `MKEDITOR_DROPBOX_APP_KEY`. See [Dropbox setup and tests](docs/cloud/dropbox.md).
+
+`npm run test:dropbox-smoke` runs isolated fixture-based Electron checks after a build. `npm run test:dropbox-live` uses a new disposable folder and requires browser sign-in.
+
 ## Dependency compatibility
 
 TypeScript remains on 6.0.x because the current `ts-jest` and `@typescript-eslint/parser` peer requirements exclude TypeScript 7. The native TypeScript 7 package also changes the compiler API consumed by the test and webpack loaders. Upgrade that toolchain together when support is available; do not force unsupported peers with npm flags.
