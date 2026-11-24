@@ -23,6 +23,8 @@
     "serve-web": "http-server dist",
     "serve-app": "electron .",
     "verify-drive-writes": "electron scripts/verify-drive-precondition.cjs --authorize-disposable-test",
+    "test:drive-smoke": "node scripts/drive-smoke/run.cjs",
+    "test:drive-live": "node scripts/drive-smoke/run.cjs --live --authorize-disposable-test",
     "publish": "npm run build-editor && npm run build-app && electron-builder --publish always"
   },
   "repository": {
@@ -61,6 +63,7 @@
     "jest": "^30.5.2",
     "jest-environment-jsdom": "^30.5.2",
     "monaco-editor-webpack-plugin": "^7.1.1",
+    "playwright": "^1.65.1",
     "postcss": "^8.5.33",
     "postcss-loader": "^8.2.2",
     "prettier": "^3.10.1",

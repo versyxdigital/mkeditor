@@ -103,6 +103,15 @@ MKEditor is split into two main components:
 
 ## Testing
 
+The [Drive smoke tests](docs/cloud/drive-smoke-tests.md) use Playwright with Electron:
+
+```sh
+npm run build-all
+npm run test:drive-smoke
+```
+
+The default run uses a local provider fixture and an isolated OS-encrypted store, including real process restarts. `npm run test:drive-live` opts into Google and waits for interactive sign-in/consent, then changes only newly created disposable test documents. These checks run separately from Jest and require a working OS credential backend.
+
 - Run the test suite before submitting a pull request:
   ```sh
   npm test

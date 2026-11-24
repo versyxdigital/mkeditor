@@ -3,6 +3,29 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
+test('an explicit cloud store location isolates persisted connections across instances', () => {
+  const root = mkdtempSync(join(tmpdir(), 'mkeditor-cloud-isolation-'));
+  try {
+    const { CloudStore } =
+      require('../src/app/lib/cloud/CloudStore') as typeof import('../src/app/lib/cloud/CloudStore');
+    const file = join(root, 'smoke', 'connections.json');
+    const connection = {
+      id: 'smoke',
+      name: 'Smoke account',
+      clientId: 'client',
+      clientValue: '',
+      status: 'disconnected' as const,
+    };
+    new CloudStore(file).save([connection]);
+    expect(new CloudStore(file).load()).toEqual([connection]);
+    expect(
+      new CloudStore(join(root, 'other', 'connections.json')).load(),
+    ).toEqual([]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('credentials use OS encryption, atomic writes and corrupt stores are never silently overwritten', async () => {
   const root = mkdtempSync(join(tmpdir(), 'mkeditor-cloud-test-'));
   try {

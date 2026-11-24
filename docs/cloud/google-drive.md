@@ -83,6 +83,8 @@ Drive tabs and the selected remote workspace are not restored after restart. Sel
 
 ## Opt-in live smoke check
 
+For repeatable Playwright checks of Drive operations and encrypted connection persistence across restarts, see [Drive and restart smoke tests](drive-smoke-tests.md). `npm run test:drive-smoke` uses a local HTTP fixture; `npm run test:drive-live` runs against Google after interactive consent. Both use an isolated connection store.
+
 ### Existing-file write precondition
 
 Run `npm run build-app`, then `npm run verify-drive-writes -- --v2 --multipart` from the application checkout for the verified endpoint. This is an explicitly opt-in developer test, not part of CI or the ordinary Test access button. Keep one Google account connected for the spike. It opens separate read access plus `drive.file` consent for the marked disposable test file. Choose the connected account. Temporary tokens are not persisted or substituted for the normal connection.

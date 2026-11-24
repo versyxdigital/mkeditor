@@ -47,7 +47,9 @@ export interface CloudPersistence {
 
 /** A separate atomic store; unrelated settings, sessions and AI data stay untouched. */
 export class CloudStore implements CloudPersistence {
-  private readonly path = join(homedir(), '.mkeditor', 'connections.json');
+  constructor(
+    private readonly path = join(homedir(), '.mkeditor', 'connections.json'),
+  ) {}
   load(): StoredConnection[] {
     if (!existsSync(this.path)) return [];
     try {
