@@ -609,7 +609,7 @@ export class AppBridge {
     // AI assistant's `create_file` tool. Validates that
     // `parent/name` lands inside the workspace, then delegates to
     // `AppStorage.createFile` (which mkdir -p's the parent, writes,
-    // refreshes the tree, and opens the file as a tab); the
+    // refreshes the tree, and optionally opens the file as a tab); the
     // structured `{ok, error?}` result passes straight back to the
     // renderer so the tool can report honest status to the agent.
     this.handle(
@@ -625,6 +625,8 @@ export class AppBridge {
             dirname(safeTarget),
             basename(safeTarget),
             content,
+            this.providers.settings?.getSetting('assistantAutoOpenFiles') !==
+              false,
           );
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);

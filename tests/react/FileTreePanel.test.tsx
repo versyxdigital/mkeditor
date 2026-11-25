@@ -182,6 +182,15 @@ describe('<FileTreePanel>', () => {
     expect(
       container.querySelector('li[data-path="/root/docs/readme.md"]'),
     ).toBeNull();
+    fileTreeManager.requestDirectoryContents.mockClear();
+    fireEvent.click(container.querySelector('li[data-path="/root/docs"]')!);
+    expect(fileTreeManager.requestDirectoryContents).toHaveBeenCalledWith(
+      '/root/docs',
+    );
+    act(() => fileTreeManager._setSnapshot({ treeRoot: '/root', nodes: tree }));
+    expect(
+      container.querySelector('li[data-path="/root/docs/readme.md"]'),
+    ).not.toBeNull();
   });
 });
 

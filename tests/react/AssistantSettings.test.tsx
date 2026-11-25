@@ -28,6 +28,7 @@ import {
 } from '@testing-library/react';
 
 import { AssistantSettings } from '../../src/browser/react/components/assistant/AssistantSettings';
+import { SettingsProvider } from '../../src/browser/core/providers/SettingsProvider';
 import { fakeAssistantManager, renderWithProviders } from '../utils/render';
 
 jest.mock('../../src/browser/i18n', () => ({
@@ -81,6 +82,37 @@ function baseSnapshot() {
 }
 
 describe('<AssistantSettings> — loading + warning banners', () => {
+  it('saves the automatic file-opening preference from its labelled switch', () => {
+    const settings = new SettingsProvider('desktop', {
+      updateOptions: jest.fn(),
+    } as never);
+    const persist = jest.fn();
+    settings.setPersistHandler(persist);
+    renderWithProviders(<AssistantSettings />, {
+      managers: {
+        assistantManager: fakeAssistantManager({
+          initialSnapshot: baseSnapshot(),
+        }) as never,
+        mode: 'desktop',
+        providers: {
+          settings,
+          commands: null,
+          completion: null,
+          exportSettings: null,
+          bridge: null,
+        },
+      },
+    });
+    const toggle = screen.getByRole('switch', {
+      name: 'assistant-settings:auto_open_files_label',
+    });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(toggle);
+    expect(settings.getSnapshot().assistantAutoOpenFiles).toBe(false);
+    expect(persist).toHaveBeenCalledWith(
+      expect.objectContaining({ assistantAutoOpenFiles: false }),
+    );
+  });
   it('shows the loading placeholder when config is null', () => {
     const am = fakeAssistantManager();
     renderWithProviders(<AssistantSettings />, {

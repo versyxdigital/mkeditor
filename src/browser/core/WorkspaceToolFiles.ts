@@ -852,6 +852,12 @@ export class WorkspaceToolFiles {
     const plan = this.textPlans.get(args)!;
     this.textPlans.delete(args);
     const result = await this.applyTextPlan(plan);
+    if (
+      this.bridge.providers.settings?.getSettings().assistantAutoOpenFiles !==
+      false
+    ) {
+      this.bridge.fileManager.openFileFromPath(resolved);
+    }
     return { operation: 'create_from_template', path: resolved, ...result };
   }
 }

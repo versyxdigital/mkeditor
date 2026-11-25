@@ -9,6 +9,7 @@ import type { ToolbarDropdownKey } from '../../core/providers/CommandProvider';
 import { dom } from '../../dom';
 import { logger } from '../../util';
 import { useManagers } from '../contexts/ManagersContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { useModals } from '../contexts/ModalsContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { Icon } from './Icon';
@@ -29,6 +30,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   workspaceGroupRef,
 }) => {
   const { mode, editorManager, bridgeManager, providers } = useManagers();
+  const { settings, updateSetting } = useSettings();
   const { openModal } = useModals();
   const { t } = useTranslation();
 
@@ -55,11 +57,13 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     return () => commands.setOpenDropdown(null);
   }, [providers.commands]);
 
-  const handleResetSplit = () =>
+  const handleResetSplit = () => {
+    updateSetting('editorVisible', true);
     workspaceGroupRef.current?.setLayout({
       'editor-pane': 50,
       'preview-pane': 50,
     });
+  };
 
   const inline = (syntax: string) => () => {
     providers.commands?.editInline(syntax);
@@ -133,6 +137,17 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
   const content = (
     <div className="flex items-center gap-1">
+      <ToolbarButton
+        title={t(
+          settings.editorVisible
+            ? 'toolbar:hide_editor'
+            : 'toolbar:show_editor',
+        )}
+        pressed={!settings.editorVisible}
+        onClick={() => updateSetting('editorVisible', !settings.editorVisible)}
+      >
+        <Icon name="eye" />
+      </ToolbarButton>
       <ToolbarButton
         title={t('toolbar:reset_split')}
         onClick={handleResetSplit}
@@ -266,7 +281,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           className="w-auto p-1"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          {codeblocks.map((block, idx) => (
+          {codeblocks.map((block) => (
             <React.Fragment key={block.type}>
               <MenuItem onClick={insertCodeblock(block.type.toLowerCase())}>
                 <Icon name={block.type === 'Sh' ? 'terminal' : 'code'} />
@@ -274,8 +289,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                   {highlightChord(block.label ?? block.type, block.key)}
                 </span>
               </MenuItem>
-              {(idx === 0 || idx === 6 || idx === 8) && (
-                <div className="my-1 border-t border-border" />
+              {['Sh', 'Go', 'YAML'].includes(block.type) && (
+                <div role="separator" className="my-1 border-t border-border" />
               )}
             </React.Fragment>
           ))}
@@ -384,15 +399,17 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
 const ToolbarButton: React.FC<{
   title: string;
+  pressed?: boolean;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
   children: React.ReactNode;
-}> = ({ title, onClick, children }) => (
+}> = ({ title, pressed, onClick, children }) => (
   <Button
     type="button"
     size="sm"
     variant="ghost"
     title={title}
     aria-label={title}
+    aria-pressed={pressed}
     onClick={onClick}
     className="h-[30px] w-[30px] p-0"
   >

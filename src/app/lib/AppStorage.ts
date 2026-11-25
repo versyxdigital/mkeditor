@@ -817,6 +817,7 @@ export class AppStorage {
     parent: string,
     name: string,
     content = '',
+    openFile = true,
   ): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
     try {
       const file = join(parent, name);
@@ -835,7 +836,7 @@ export class AppStorage {
       // because the renderer-side `openPath` previously raced
       // `fs.writeFile` and surfaced a spurious "Unable to open path"
       // toast when stat ran before the write finished.
-      AppStorage.setActiveFile(context, file);
+      if (openFile) AppStorage.setActiveFile(context, file);
       return { ok: true, path: file };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

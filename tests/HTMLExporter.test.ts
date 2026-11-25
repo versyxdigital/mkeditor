@@ -1,5 +1,6 @@
 import { HTMLExporter } from '../src/browser/core/HTMLExporter';
 import { exportSettings } from '../src/browser/config';
+import { Markdown } from '../src/browser/core/Markdown';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -18,6 +19,31 @@ afterEach(() => {
 });
 
 describe('standalone document export', () => {
+  it.each([true, false])(
+    'preserves Setext headings, paragraph joining and Go code in exports (styles=%s)',
+    (withStyles) => {
+      const source =
+        'Setext title\n=====\n\nOne paragraph\non two lines.\n\n```go\npackage main\nfunc main() {}\n```';
+      const content = `<div id="preview-content">${Markdown.render(source)}</div>`;
+      const document = new DOMParser().parseFromString(
+        HTMLExporter.generateHTML(content, { ...exportSettings, withStyles }),
+        'text/html',
+      );
+      expect(document.querySelector('h1')?.textContent).toBe('Setext title');
+      expect(document.querySelector('p br')).toBeNull();
+      expect(
+        document.querySelector('p')?.textContent?.replace(/\s+/g, ' '),
+      ).toBe('One paragraph on two lines.');
+      expect(document.querySelector('code')?.textContent).toContain(
+        'package main',
+      );
+      expect(document.querySelector('[data-line-start]')).toBeNull();
+      if (withStyles)
+        expect(document.querySelector('code .hljs-keyword')).not.toBeNull();
+      else expect(document.querySelector('style')).toBeNull();
+    },
+  );
+
   it('preserves custom document typography and colours while retaining styled code and plain export behaviour', () => {
     const content =
       '<div id="preview-content" class="container-fluid"><h1>Draft</h1><pre><code class="language-typescript">const n = 1;</code></pre></div>';

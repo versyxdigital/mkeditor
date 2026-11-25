@@ -15,6 +15,8 @@ export interface EditorSettings {
   systemtheme: boolean;
   scrollsync: boolean;
   sessionRestore: boolean;
+  assistantAutoOpenFiles: boolean;
+  editorVisible: boolean;
   locale: string;
   fileExplorer: FileExplorerSettings;
   pasteImages: PasteImagesSettings;

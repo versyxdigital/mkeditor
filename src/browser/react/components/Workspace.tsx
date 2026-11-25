@@ -4,9 +4,11 @@ import {
   Panel,
   Separator,
   type GroupImperativeHandle,
+  type PanelImperativeHandle,
 } from 'react-resizable-panels';
 
 import { useManagers } from '../contexts/ManagersContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { EditorHost } from './EditorHost';
 import { EditorPaneDiffOverlay } from './EditorPaneDiffOverlay';
 import { PreviewPane } from './PreviewPane';
@@ -32,11 +34,26 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   onEditorReady,
 }) => {
   const { editorManager } = useManagers();
+  const { settings } = useSettings();
+  const editorPanelRef = React.useRef<PanelImperativeHandle>(null);
+
+  React.useEffect(() => {
+    const panel = editorPanelRef.current;
+    if (!panel) return;
+    if (settings.editorVisible) panel.expand();
+    else panel.collapse();
+    editorManager?.layout();
+  }, [settings.editorVisible, editorManager]);
 
   return (
     <Group orientation="horizontal" id="editor-preview" groupRef={groupRef}>
       <Panel
         id="editor-pane"
+        panelRef={editorPanelRef}
+        collapsible
+        collapsedSize={0}
+        minSize="10%"
+        defaultSize="50%"
         onResize={() => editorManager?.layout()}
         // `react-resizable-panels` v4 puts an inner `<div>` with inline
         // `overflow: auto` around the panel children. Monaco owns its own
@@ -50,12 +67,20 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             The overlay absolute-fills this wrapper when the active
             tab is a popped-out diff; otherwise it returns null and
             Monaco renders unobstructed. */}
-        <div className="relative h-full w-full">
+        <div
+          className="relative h-full w-full"
+          inert={!settings.editorVisible}
+          aria-hidden={!settings.editorVisible}
+        >
           <EditorHost onReady={onEditorReady} />
           <EditorPaneDiffOverlay />
         </div>
       </Panel>
-      <Separator className="gutter gutter-horizontal" />
+      <Separator
+        className="gutter gutter-horizontal"
+        disabled={!settings.editorVisible}
+        style={{ display: settings.editorVisible ? undefined : 'none' }}
+      />
       <Panel id="preview-pane">
         <PreviewPane />
       </Panel>

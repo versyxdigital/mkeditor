@@ -36,6 +36,8 @@ function fakeSettingsProvider(initial: Partial<EditorSettings> = {}) {
     systemtheme: false,
     scrollsync: true,
     sessionRestore: true,
+    assistantAutoOpenFiles: true,
+    editorVisible: true,
     locale: 'en',
     ...initial,
   };

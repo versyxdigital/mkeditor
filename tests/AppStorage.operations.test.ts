@@ -36,6 +36,38 @@ describe('AppStorage document operations', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
+  it.each([false, true])(
+    'creates and refreshes the explorer with openFile=%s',
+    async (openFile) => {
+      const context = fakeWindow();
+      const existing = join(root, 'existing.md');
+      writeFileSync(existing, 'current document');
+      AppStorage.setActiveFile(context, existing);
+      const send = context.webContents.send as jest.Mock;
+      send.mockClear();
+
+      const result = await AppStorage.createFile(
+        context,
+        root,
+        'new.md',
+        '# Created',
+        openFile,
+      );
+      expect(result).toEqual({ ok: true, path: join(root, 'new.md') });
+      expect(readFileSync(join(root, 'new.md'), 'utf8')).toBe('# Created');
+      expect(send).toHaveBeenCalledWith(
+        'from:folder:opened',
+        expect.objectContaining({ path: root }),
+      );
+      expect(
+        send.mock.calls.filter(([channel]) => channel === 'from:file:opened'),
+      ).toHaveLength(openFile ? 1 : 0);
+      expect(AppStorage.getActiveFilePath()).toBe(
+        openFile ? join(root, 'new.md') : existing,
+      );
+    },
+  );
+
   it('serializes menu and direct tool writes so an older save cannot overtake a later one', async () => {
     const target = join(root, 'queued.md');
     writeFileSync(target, 'original');

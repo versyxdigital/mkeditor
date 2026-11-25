@@ -59,5 +59,7 @@
   "provider_disabled": "Devre dışı",
   "ollama_context_label": "Bağlam penceresi (token)",
   "ollama_context_default": "Ollama varsayılanı",
-  "ollama_context_help": "Sohbet geçmişini, araç tanımlarını ve dosya içeriklerini kapsar. Belgeler için 32.768 deneyin. Büyük pencereler daha fazla bellek gerektirir; model sınırını aşmayın. Sonraki mesajlara uygulanır."
+  "ollama_context_help": "Sohbet geçmişini, araç tanımlarını ve dosya içeriklerini kapsar. Belgeler için 32.768 deneyin. Büyük pencereler daha fazla bellek gerektirir; model sınırını aşmayın. Sonraki mesajlara uygulanır.",
+  "auto_open_files_label": "Yapay zekanın oluşturduğu dosyaları aç",
+  "auto_open_files_help": "Yeni oluşturulan dosyaları otomatik olarak bir düzenleyici sekmesinde aç."
 }

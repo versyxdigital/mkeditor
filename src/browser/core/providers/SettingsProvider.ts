@@ -27,6 +27,8 @@ function normalizeSettings(value: unknown): EditorSettings {
     'systemtheme',
     'scrollsync',
     'sessionRestore',
+    'assistantAutoOpenFiles',
+    'editorVisible',
   ] as const;
   for (const key of booleanKeys) {
     if (typeof stored[key] === 'boolean') next[key] = stored[key];

@@ -38,6 +38,8 @@ export class AppSettings {
     systemtheme: true,
     scrollsync: true,
     sessionRestore: true,
+    assistantAutoOpenFiles: true,
+    editorVisible: true,
     locale: normalizeLanguage(app.getLocale()),
     fileExplorer: { extensions: ['md'] },
     pasteImages: { directory: './assets' },

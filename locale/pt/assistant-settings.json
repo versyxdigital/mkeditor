@@ -59,5 +59,7 @@
   "provider_disabled": "Desativado",
   "ollama_context_label": "Janela de contexto (tokens)",
   "ollama_context_default": "Padrão do Ollama",
-  "ollama_context_help": "Inclui histórico, definições de ferramentas e arquivos. Tente 32.768 para documentos. Janelas maiores precisam de mais memória; respeite o limite do modelo. Aplica-se às próximas mensagens."
+  "ollama_context_help": "Inclui histórico, definições de ferramentas e arquivos. Tente 32.768 para documentos. Janelas maiores precisam de mais memória; respeite o limite do modelo. Aplica-se às próximas mensagens.",
+  "auto_open_files_label": "Abrir ficheiros criados pela IA",
+  "auto_open_files_help": "Abrir automaticamente novos ficheiros num separador do editor."
 }

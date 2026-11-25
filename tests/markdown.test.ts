@@ -3,6 +3,84 @@ import {
   renderAssistantMarkdown,
 } from '../src/browser/core/Markdown';
 
+describe('document Markdown', () => {
+  it('renders Setext headings with the same heading elements and scroll metadata as ATX headings', () => {
+    const source = 'Title\n=====\n\nSubtitle\n-----\n\n# ATX title\n\n---';
+    for (const render of [
+      Markdown.render.bind(Markdown),
+      renderAssistantMarkdown,
+    ]) {
+      const document = new DOMParser().parseFromString(
+        render(source),
+        'text/html',
+      );
+      expect(document.querySelector('h1')?.textContent).toBe('Title');
+      expect(
+        document.querySelector('h1')?.getAttribute('data-line-start'),
+      ).toBe('1');
+      expect(document.querySelector('h1')?.getAttribute('data-line-end')).toBe(
+        '2',
+      );
+      expect(document.querySelector('h2')?.textContent).toBe('Subtitle');
+      expect(document.querySelectorAll('h1')).toHaveLength(2);
+      expect(document.querySelectorAll('hr')).toHaveLength(1);
+    }
+  });
+});
+
+describe('document Markdown', () => {
+  it('renders Setext headings at both levels with source-line metadata', () => {
+    const html = Markdown.render(
+      'Title\n=====\n\nSubtitle\n--------\n\nParagraph.',
+    );
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    expect(doc.querySelector('h1')?.textContent).toBe('Title');
+    expect(doc.querySelector('h2')?.textContent).toBe('Subtitle');
+    expect(doc.querySelector('h1')?.getAttribute('data-line-start')).toBe('1');
+    expect(doc.querySelector('p')?.textContent).toBe('Paragraph.');
+  });
+
+  it('joins soft-wrapped paragraph lines while preserving explicit hard breaks and paragraphs', () => {
+    const doc = new DOMParser().parseFromString(
+      Markdown.render(
+        'This is a new paragraph.\nLines written one after another\nare joined together.\n\nHard break  \nNext line\\\nAnother line.',
+      ),
+      'text/html',
+    );
+    const paragraphs = doc.querySelectorAll('p');
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs[0].querySelector('br')).toBeNull();
+    expect(paragraphs[0].textContent?.replace(/\s+/g, ' ')).toBe(
+      'This is a new paragraph. Lines written one after another are joined together.',
+    );
+    expect(paragraphs[1].querySelectorAll('br')).toHaveLength(2);
+  });
+
+  it.each(['go', 'golang'])(
+    'highlights %s fences in document and assistant rendering',
+    (language) => {
+      const source =
+        '```' +
+        language +
+        '\npackage main\nfunc main() { println("hello") }\n```';
+      for (const render of [
+        Markdown.render.bind(Markdown),
+        renderAssistantMarkdown,
+      ]) {
+        const doc = new DOMParser().parseFromString(
+          render(source),
+          'text/html',
+        );
+        expect(doc.querySelector('.md-codeblock-lang')?.textContent).toBe('Go');
+        expect(doc.querySelector('code .hljs-keyword')).not.toBeNull();
+        expect(doc.querySelector('code')?.textContent).toContain(
+          'package main',
+        );
+      }
+    },
+  );
+});
+
 describe('renderAssistantMarkdown (AI Assistant P4)', () => {
   it('renders chat tables in a focusable scroll container while preserving alignment and escaping HTML', () => {
     const source = [

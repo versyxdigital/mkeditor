@@ -18,6 +18,8 @@ export interface EditorSettings {
   scrollsync: boolean;
   /** Persist + restore tabs / cursor across launches. See SessionPayload. */
   sessionRestore: boolean;
+  assistantAutoOpenFiles: boolean;
+  editorVisible: boolean;
   locale: string;
   fileExplorer: FileExplorerSettings;
   pasteImages: PasteImagesSettings;

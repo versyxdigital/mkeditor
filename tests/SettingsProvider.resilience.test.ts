@@ -18,6 +18,19 @@ afterEach(() => {
 });
 
 describe('settings storage resilience', () => {
+  it('persists preview visibility and AI file-opening choices across restarts', () => {
+    const provider = new SettingsProvider('web', makeEditor());
+    expect(provider.getSetting('editorVisible')).toBe(true);
+    expect(provider.getSetting('assistantAutoOpenFiles')).toBe(true);
+    provider.updateSetting('editorVisible', false);
+    provider.updateSetting('assistantAutoOpenFiles', false);
+    const restored = new SettingsProvider('web', makeEditor());
+    expect(restored.getSnapshot()).toMatchObject({
+      editorVisible: false,
+      assistantAutoOpenFiles: false,
+    });
+  });
+
   it('flushes pending export preferences before the debounce during shutdown', () => {
     jest.useFakeTimers();
     const provider = new ExportSettingsProvider('desktop');

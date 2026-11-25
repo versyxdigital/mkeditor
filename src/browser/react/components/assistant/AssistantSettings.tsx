@@ -7,6 +7,7 @@ import type {
 } from '../../../../app/interfaces/Assistant';
 import { useManagers } from '../../contexts/ManagersContext';
 import { useAssistantConfig } from '../../contexts/AssistantContext';
+import { useSettings } from '../../contexts/SettingsContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { sonnerToast } from '../../../notify';
 import { cn } from '../../lib/utils';
@@ -43,6 +44,7 @@ import { getThinkingLevels } from '../../../../app/shared/assistantModels';
 export const AssistantSettings: React.FC = () => {
   const { mode } = useManagers();
   const { snapshot, manager } = useAssistantConfig();
+  const { settings, updateSetting } = useSettings();
   const { t } = useTranslation();
 
   if (!snapshot.config || !manager) {
@@ -55,6 +57,23 @@ export const AssistantSettings: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-4 border-b border-subtle pb-4">
+        <div className="space-y-1">
+          <Label htmlFor="assistant-auto-open-files">
+            {t('assistant-settings:auto_open_files_label')}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {t('assistant-settings:auto_open_files_help')}
+          </p>
+        </div>
+        <Switch
+          id="assistant-auto-open-files"
+          checked={settings.assistantAutoOpenFiles}
+          onCheckedChange={(value) =>
+            updateSetting('assistantAutoOpenFiles', value)
+          }
+        />
+      </div>
       {mode === 'web' && (
         <div
           role="note"

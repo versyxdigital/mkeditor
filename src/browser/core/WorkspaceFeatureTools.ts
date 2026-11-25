@@ -22,6 +22,8 @@ export function validateAgentSetting(
       'systemtheme',
       'scrollsync',
       'sessionRestore',
+      'assistantAutoOpenFiles',
+      'editorVisible',
     ].includes(key)
   ) {
     if (typeof value === 'boolean') return key as keyof EditorSettings;
@@ -85,7 +87,7 @@ export const workspaceFeatureTools: Record<string, ToolSpec> = {
   },
   set_setting: {
     description:
-      'Change one known editor setting after confirmation. Accepts autoindent, darkmode, wordwrap, whitespace, minimap, systemtheme, scrollsync, sessionRestore (booleans), locale (supported language code), fileExplorer ({extensions:[known extensions]}) or pasteImages ({directory:workspace-relative path}). Use get_settings to inspect current values; never accepts arbitrary config keys or API keys.',
+      'Change one known editor setting after confirmation. Accepts autoindent, darkmode, wordwrap, whitespace, minimap, systemtheme, scrollsync, sessionRestore, assistantAutoOpenFiles, editorVisible (booleans), locale (supported language code), fileExplorer ({extensions:[known extensions]}) or pasteImages ({directory:workspace-relative path}). Use get_settings to inspect current values; never accepts arbitrary config keys or API keys.',
     parameters: {
       type: 'object',
       properties: { key: { type: 'string' }, value: {} },

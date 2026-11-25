@@ -79,6 +79,8 @@ Runs Node. Owns:
 
 ### Renderer process (`src/browser/`)
 
+`SettingsProvider` persists `editorVisible` and `assistantAutoOpenFiles` alongside existing editor preferences. The toolbar's preview-only toggle collapses the editor panel without unmounting Monaco, preserving models, undo history and the previous split width. AI Settings controls automatic opening of newly created files; both the native `create_file` handler and renderer template tool honor that choice, while explorer creation keeps opening files normally.
+
 Runs in Chromium with `contextIsolation: true` and `nodeIntegration: false`. Owns:
 
 - Monaco editor + markdown-it preview.

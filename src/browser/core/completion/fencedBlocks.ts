@@ -20,6 +20,8 @@ export const autoCompleteFencedConfig = {
       'c',
       'cpp',
       'csharp',
+      'go',
+      'golang',
       'javascript',
       'json',
       'php',

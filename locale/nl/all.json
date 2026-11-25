@@ -121,7 +121,9 @@
     "provider_disabled": "Uitgeschakeld",
     "ollama_context_label": "Contextvenster (tokens)",
     "ollama_context_default": "Ollama-standaard",
-    "ollama_context_help": "Bevat chatgeschiedenis, tooldefinities en bestanden. Probeer 32.768 voor documenten. Grotere vensters gebruiken meer geheugen; blijf binnen de modellimiet. Geldt voor toekomstige berichten."
+    "ollama_context_help": "Bevat chatgeschiedenis, tooldefinities en bestanden. Probeer 32.768 voor documenten. Grotere vensters gebruiken meer geheugen; blijf binnen de modellimiet. Geldt voor toekomstige berichten.",
+    "auto_open_files_label": "Door AI gemaakte bestanden openen",
+    "auto_open_files_help": "Open nieuwe bestanden automatisch in een editortabblad."
   },
   "assistant-tools": {
     "confirm_title": "{{toolName}} toestaan?",
@@ -669,6 +671,8 @@
     "export_pdf_tooltip": "Exporteren naar PDF-bestand",
     "export_to_prefix": "Exporteren naar ",
     "export_html_label": "HTML",
-    "export_pdf_label": "PDF"
+    "export_pdf_label": "PDF",
+    "hide_editor": "Editor verbergen",
+    "show_editor": "Editor tonen"
   }
 }

@@ -121,6 +121,8 @@ describe('SettingsProvider.loadSettingsFromLocalStorage (web)', () => {
       systemtheme: false,
       scrollsync: true,
       sessionRestore: false,
+      assistantAutoOpenFiles: true,
+      editorVisible: true,
       locale: 'en',
       fileExplorer: { extensions: ['md'] },
       pasteImages: { directory: './assets' },

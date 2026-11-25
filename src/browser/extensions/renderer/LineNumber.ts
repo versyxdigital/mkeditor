@@ -4,6 +4,7 @@ import { dom } from '../../dom';
 
 const LineNumber = (md: MarkdownIt) => {
   const rules = [
+    'heading_open',
     'paragraph_open',
     'image',
     'code_block',

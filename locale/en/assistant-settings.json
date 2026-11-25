@@ -59,5 +59,7 @@
   "provider_disabled": "Disabled",
   "ollama_context_label": "Context window (tokens)",
   "ollama_context_default": "Ollama default",
-  "ollama_context_help": "Includes chat history, tool definitions and file contents. Try 32,768 for document work. Larger windows need more memory; stay within your model’s supported limit. Applies to future messages."
+  "ollama_context_help": "Includes chat history, tool definitions and file contents. Try 32,768 for document work. Larger windows need more memory; stay within your model’s supported limit. Applies to future messages.",
+  "auto_open_files_label": "Open files created by AI",
+  "auto_open_files_help": "Automatically open newly created files in an editor tab."
 }

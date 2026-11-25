@@ -1183,7 +1183,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const parent = lastSlash > 0 ? path.slice(0, lastSlash) : '';
       const name = lastSlash > 0 ? path.slice(lastSlash + 1) : path;
       // Awaited invoke: main mkdir -p's the parent, writes the
-      // file, refreshes the tree, and opens the new file as a tab.
+      // file, refreshes the tree, and opens a tab if the user enabled it.
       // The structured `{ok, error?}` reply lets us tell the agent
       // when something actually failed (read-only fs, permission
       // denied, etc.) instead of always claiming success.

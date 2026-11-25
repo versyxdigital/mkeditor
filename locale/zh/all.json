@@ -121,7 +121,9 @@
     "provider_disabled": "已禁用",
     "ollama_context_label": "上下文窗口（令牌）",
     "ollama_context_default": "Ollama 默认值",
-    "ollama_context_help": "包括聊天记录、工具定义和文件内容。处理文档时可尝试 32,768。更大的窗口需要更多内存；请勿超过模型支持的上限。应用于后续消息。"
+    "ollama_context_help": "包括聊天记录、工具定义和文件内容。处理文档时可尝试 32,768。更大的窗口需要更多内存；请勿超过模型支持的上限。应用于后续消息。",
+    "auto_open_files_label": "打开 AI 创建的文件",
+    "auto_open_files_help": "在编辑器标签页中自动打开新创建的文件。"
   },
   "assistant-tools": {
     "confirm_title": "允许 {{toolName}}?",
@@ -669,6 +671,8 @@
     "export_pdf_tooltip": "导出为 PDF 文件",
     "export_to_prefix": "导出为 ",
     "export_html_label": "HTML",
-    "export_pdf_label": "PDF"
+    "export_pdf_label": "PDF",
+    "hide_editor": "隐藏编辑器",
+    "show_editor": "显示编辑器"
   }
 }

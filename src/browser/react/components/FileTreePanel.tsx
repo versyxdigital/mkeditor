@@ -195,14 +195,13 @@ export const FileTreePanel: React.FC = () => {
     (node: TreeNode) => {
       setExpandedPaths((prev) => {
         const next = new Set(prev);
-        if (next.has(node.path)) next.delete(node.path);
+        // A shallow refresh after a move can retain expansion intent while
+        // dropping loaded children. The first click must reopen that row.
+        if (next.has(node.path) && node.loaded) next.delete(node.path);
         else next.add(node.path);
         return next;
       });
-      // requestLoad is idempotent (guards on `loaded`, `hasChildren` and
-      // the in-flight ref), so calling it on every toggle is safe and
-      // avoids the React-batching trap where a setState updater's side
-      // effects don't run synchronously with the surrounding code.
+      // Keep bridge side effects outside the React state updater.
       requestLoad(node);
     },
     [requestLoad],

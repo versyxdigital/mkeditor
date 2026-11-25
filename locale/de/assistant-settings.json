@@ -59,5 +59,7 @@
   "provider_disabled": "Deaktiviert",
   "ollama_context_label": "Kontextfenster (Tokens)",
   "ollama_context_default": "Ollama-Standard",
-  "ollama_context_help": "Enthält Chatverlauf, Werkzeugdefinitionen und Dateiinhalte. Für Dokumente 32.768 versuchen. Größere Fenster benötigen mehr Speicher; die Modellgrenze beachten. Gilt für künftige Nachrichten."
+  "ollama_context_help": "Enthält Chatverlauf, Werkzeugdefinitionen und Dateiinhalte. Für Dokumente 32.768 versuchen. Größere Fenster benötigen mehr Speicher; die Modellgrenze beachten. Gilt für künftige Nachrichten.",
+  "auto_open_files_label": "Von der KI erstellte Dateien öffnen",
+  "auto_open_files_help": "Neu erstellte Dateien automatisch in einem Editor-Tab öffnen."
 }

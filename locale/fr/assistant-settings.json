@@ -59,5 +59,7 @@
   "provider_disabled": "Désactivé",
   "ollama_context_label": "Fenêtre de contexte (tokens)",
   "ollama_context_default": "Valeur par défaut d’Ollama",
-  "ollama_context_help": "Inclut l’historique, les définitions des outils et les fichiers. Essayez 32 768 pour les documents. Une fenêtre plus grande consomme plus de mémoire ; respectez la limite du modèle. S’applique aux futurs messages."
+  "ollama_context_help": "Inclut l’historique, les définitions des outils et les fichiers. Essayez 32 768 pour les documents. Une fenêtre plus grande consomme plus de mémoire ; respectez la limite du modèle. S’applique aux futurs messages.",
+  "auto_open_files_label": "Ouvrir les fichiers créés par l’IA",
+  "auto_open_files_help": "Ouvrir automatiquement les nouveaux fichiers dans un onglet de l’éditeur."
 }

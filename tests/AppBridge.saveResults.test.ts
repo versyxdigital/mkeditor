@@ -8,6 +8,8 @@ jest.mock('../src/app/lib/AppStorage', () => ({
     openPath: jest.fn(),
     showOpenDialog: jest.fn(),
     getPathProperties: jest.fn(),
+    assertInWorkspace: jest.fn(async (path: string) => path),
+    createFile: jest.fn(async () => ({ ok: true, path: '/new.md' })),
   },
 }));
 
@@ -35,6 +37,44 @@ async function drainMicrotasks() {
 
 describe('AppBridge correlated document saves', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it.each([undefined, true, false])(
+    'honors the AI auto-open preference (%s) only on the assistant create handler',
+    async (preference) => {
+      const { bridge, context, handler } = makeBridge();
+      bridge.provide('settings', { getSetting: () => preference });
+      const invoke = (ipcMain.handle as jest.Mock).mock.calls.find(
+        ([name]) => name === 'mked:fs:createfile',
+      )![1];
+      const result = await invoke(
+        { sender: { id: 17 } },
+        '/workspace',
+        'new.md',
+        'text',
+      );
+      expect(result.ok).toBe(true);
+      expect(AppStorage.createFile).toHaveBeenLastCalledWith(
+        context,
+        expect.any(String),
+        'new.md',
+        'text',
+        preference !== false,
+      );
+      handler('to:file:create')({
+        parent: '/workspace',
+        name: 'manual.md',
+        content: '',
+      });
+      await drainMicrotasks();
+      expect(AppStorage.createFile).toHaveBeenLastCalledWith(
+        context,
+        '/workspace',
+        'manual.md',
+        '',
+      );
+      bridge.dispose();
+    },
+  );
 
   it('waits for the write result before acknowledging the captured request', async () => {
     let finish!: (result: { ok: boolean; path: string }) => void;

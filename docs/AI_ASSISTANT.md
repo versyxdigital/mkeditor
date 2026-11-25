@@ -8,6 +8,10 @@ Read first: [../AGENTS.md](../AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Decisions
 
+### Opening created files
+
+**Settings → AI Providers → Open files created by AI** controls whether `create_file` and `create_from_template` open their results in an editor tab. It defaults to on. Turning it off keeps the current tab active; files are still written and the workspace listing is refreshed. Explorer-created files keep their usual opening behavior.
+
 ### ChatGPT subscription access (desktop)
 
 OpenAI offers two explicit connection methods: the existing API key and **ChatGPT plan**. The subscription connection uses OpenAI's [Sign in with ChatGPT flow for local open-source apps](https://developers.openai.com/siwc/token-sharing-open-source/sign-in). It does not require a partner client ID or access an existing ChatGPT conversation. Anthropic remains API-key-only; its [authentication rules](https://code.claude.com/docs/en/legal-and-compliance#authentication-and-credential-use) do not permit MKEditor to handle Claude subscription tokens.

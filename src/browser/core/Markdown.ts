@@ -5,6 +5,7 @@ import c from 'highlight.js/lib/languages/c';
 import cpp from 'highlight.js/lib/languages/cpp';
 import css from 'highlight.js/lib/languages/css';
 import diff from 'highlight.js/lib/languages/diff';
+import go from 'highlight.js/lib/languages/go';
 import csharp from 'highlight.js/lib/languages/csharp';
 import javascript from 'highlight.js/lib/languages/javascript';
 import json from 'highlight.js/lib/languages/json';
@@ -32,6 +33,8 @@ import { logger } from '../util';
 
 hljs.registerLanguage('css', css);
 hljs.registerLanguage('diff', diff);
+hljs.registerLanguage('go', go);
+hljs.registerAliases('golang', { languageName: 'go' });
 
 hljs.registerLanguage('javascript', javascript);
 hljs.registerAliases('js', { languageName: 'javascript' });
@@ -84,6 +87,8 @@ const languageDisplayNames: Record<string, string> = {
   cpp: 'C++',
   css: 'CSS',
   diff: 'Diff',
+  go: 'Go',
+  golang: 'Go',
   mermaid: 'Mermaid',
   c: 'C',
 };
@@ -156,7 +161,7 @@ function renderCodeblock(
  */
 const Markdown = new MarkdownIt({
   html: true,
-  breaks: true,
+  breaks: false,
   linkify: true,
   highlight: (str: string, lang: string): string => {
     const { escapeHtml } = Markdown.utils;

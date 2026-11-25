@@ -18,5 +18,7 @@
   "export_pdf_tooltip": "PDF 파일로 내보내기",
   "export_to_prefix": "다음으로 내보내기 ",
   "export_html_label": "HTML",
-  "export_pdf_label": "PDF"
+  "export_pdf_label": "PDF",
+  "hide_editor": "편집기 숨기기",
+  "show_editor": "편집기 표시"
 }

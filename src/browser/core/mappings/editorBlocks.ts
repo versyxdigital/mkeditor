@@ -40,6 +40,7 @@ export const codeblocks: BlockMapping[] = [
   { type: 'PHP', key: 'P' },
   { type: 'Python', key: 'Y' },
   { type: 'Rust', key: 'R' },
+  { type: 'Go', key: 'G' },
   { type: 'JSON', key: 'O' },
   { type: 'YAML', key: 'M' },
   { type: 'SQL', key: 'Q' },

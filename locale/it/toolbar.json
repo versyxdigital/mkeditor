@@ -18,5 +18,7 @@
   "export_pdf_tooltip": "Esporta in file PDF",
   "export_to_prefix": "Esporta in ",
   "export_html_label": "HTML",
-  "export_pdf_label": "PDF"
+  "export_pdf_label": "PDF",
+  "hide_editor": "Nascondi editor",
+  "show_editor": "Mostra editor"
 }

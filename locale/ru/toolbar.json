@@ -18,5 +18,7 @@
   "export_pdf_tooltip": "Экспортировать в файл PDF",
   "export_to_prefix": "Экспорт в ",
   "export_html_label": "HTML",
-  "export_pdf_label": "PDF"
+  "export_pdf_label": "PDF",
+  "hide_editor": "Скрыть редактор",
+  "show_editor": "Показать редактор"
 }

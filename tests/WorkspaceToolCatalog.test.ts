@@ -25,6 +25,7 @@ let tabActions: {
   activeFile: string | null;
   saveTab: jest.Mock;
   closeTab: jest.Mock;
+  openFileFromPath: jest.Mock;
 };
 let settingsActions: { getSettings: jest.Mock; updateSetting: jest.Mock };
 function fakeModel(initial: string) {
@@ -95,6 +96,7 @@ beforeEach(async () => {
   snapshot = () => ({ treeRoot: root, nodes: [] });
   tabActions = {
     activeFile: null,
+    openFileFromPath: jest.fn(),
     saveTab: jest.fn(async (path: string) => {
       const file = await native.readText(path);
       await native.request({
@@ -148,6 +150,7 @@ beforeEach(async () => {
       getActiveEditablePath: () => tabActions.activeFile,
       saveTab: tabActions.saveTab,
       closeTab: tabActions.closeTab,
+      openFileFromPath: tabActions.openFileFromPath,
       getSnapshot: () => ({
         tabs: [...models].map(([path]) => ({
           path,
@@ -455,34 +458,41 @@ it('lists dirty/active tabs, saves the requested buffer, and refuses accidental 
   expect(models.has(path)).toBe(false);
   expect(tabActions.closeTab).toHaveBeenLastCalledWith(path, true);
 });
-it('creates each built-in template safely and returns Unicode-aware counts', async () => {
-  for (const template of ['readme', 'blog-post', 'meeting-notes']) {
-    await tools.execute('create_from_template', {
-      path: `nested/${template}.md`,
-      template,
-      variables: { title: 'Hello world', description: 'A description' },
+it.each([true, false])(
+  'creates templates safely and honors auto-open=%s',
+  async (autoOpen) => {
+    settingsActions.getSettings.mockReturnValue({
+      assistantAutoOpenFiles: autoOpen,
     });
+    for (const template of ['readme', 'blog-post', 'meeting-notes']) {
+      await tools.execute('create_from_template', {
+        path: `nested/${template}.md`,
+        template,
+        variables: { title: 'Hello world', description: 'A description' },
+      });
+      expect(
+        await fs.readFile(join(root, `nested/${template}.md`), 'utf8'),
+      ).toContain('# Hello world');
+    }
+    expect(tabActions.openFileFromPath).toHaveBeenCalledTimes(autoOpen ? 3 : 0);
+    await expect(
+      tools.execute('create_from_template', {
+        path: 'nested/readme.md',
+        template: 'readme',
+      }),
+    ).rejects.toMatchObject({ code: 'destination_exists' });
+    await expect(
+      tools.execute('create_from_template', {
+        path: 'bad.md',
+        template: 'unknown',
+      }),
+    ).rejects.toMatchObject({ code: 'unknown_template' });
+    await fs.writeFile(join(root, 'count.md'), 'Hello 🌍\nworld');
     expect(
-      await fs.readFile(join(root, `nested/${template}.md`), 'utf8'),
-    ).toContain('# Hello world');
-  }
-  await expect(
-    tools.execute('create_from_template', {
-      path: 'nested/readme.md',
-      template: 'readme',
-    }),
-  ).rejects.toMatchObject({ code: 'destination_exists' });
-  await expect(
-    tools.execute('create_from_template', {
-      path: 'bad.md',
-      template: 'unknown',
-    }),
-  ).rejects.toMatchObject({ code: 'unknown_template' });
-  await fs.writeFile(join(root, 'count.md'), 'Hello 🌍\nworld');
-  expect(await tools.execute('word_count', { path: 'count.md' })).toMatchObject(
-    { words: 3, characters: 13, lines: 2, readingMinutes: 1 },
-  );
-});
+      await tools.execute('word_count', { path: 'count.md' }),
+    ).toMatchObject({ words: 3, characters: 13, lines: 2, readingMinutes: 1 });
+  },
+);
 it('applies the workspace boundary even when the original read tool targets an open buffer', async () => {
   models.set(join(root, '../outside.md'), fakeModel('secret'));
   for (const name of [

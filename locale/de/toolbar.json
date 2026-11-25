@@ -18,5 +18,7 @@
   "export_pdf_tooltip": "Als PDF-Datei exportieren",
   "export_to_prefix": "Exportieren als ",
   "export_html_label": "HTML",
-  "export_pdf_label": "PDF"
+  "export_pdf_label": "PDF",
+  "hide_editor": "Editor ausblenden",
+  "show_editor": "Editor anzeigen"
 }

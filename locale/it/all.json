@@ -121,7 +121,9 @@
     "provider_disabled": "Disattivato",
     "ollama_context_label": "Finestra di contesto (token)",
     "ollama_context_default": "Predefinito di Ollama",
-    "ollama_context_help": "Include cronologia, definizioni degli strumenti e contenuti dei file. Prova 32.768 per i documenti. Finestre più grandi richiedono più memoria; rispetta il limite del modello. Vale per i messaggi futuri."
+    "ollama_context_help": "Include cronologia, definizioni degli strumenti e contenuti dei file. Prova 32.768 per i documenti. Finestre più grandi richiedono più memoria; rispetta il limite del modello. Vale per i messaggi futuri.",
+    "auto_open_files_label": "Apri i file creati dall’IA",
+    "auto_open_files_help": "Apri automaticamente i nuovi file in una scheda dell’editor."
   },
   "assistant-tools": {
     "confirm_title": "Consentire {{toolName}}?",
@@ -669,6 +671,8 @@
     "export_pdf_tooltip": "Esporta in file PDF",
     "export_to_prefix": "Esporta in ",
     "export_html_label": "HTML",
-    "export_pdf_label": "PDF"
+    "export_pdf_label": "PDF",
+    "hide_editor": "Nascondi editor",
+    "show_editor": "Mostra editor"
   }
 }

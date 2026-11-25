@@ -13,6 +13,8 @@ export const settings: EditorSettings = {
   systemtheme: true,
   scrollsync: true,
   sessionRestore: true,
+  assistantAutoOpenFiles: true,
+  editorVisible: true,
   locale: normalizeLanguage(navigator.language),
   fileExplorer: { extensions: ['md'] },
   pasteImages: { directory: './assets' },

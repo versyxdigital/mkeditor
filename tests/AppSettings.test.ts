@@ -41,6 +41,8 @@ describe('AppSettings migration', () => {
     const settings = new AppSettings(context);
     expect(settings.getSetting('darkmode')).toBe(true);
     expect(settings.getSetting('sessionRestore')).toBe(true);
+    expect(settings.getSetting('assistantAutoOpenFiles')).toBe(true);
+    expect(settings.getSetting('editorVisible')).toBe(true);
     expect(settings.getSetting('exportSettings')).toMatchObject({
       fontSize: 22,
       withStyles: true,
