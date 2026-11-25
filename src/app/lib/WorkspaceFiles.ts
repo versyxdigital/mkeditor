@@ -12,6 +12,7 @@ import { basename, dirname, isAbsolute, join, relative, sep } from 'path';
 import { randomUUID } from 'crypto';
 import { shell, type BrowserWindow } from 'electron';
 import { AppStorage } from './AppStorage';
+import type { WorkspaceMutationGuard } from './WorkspaceMutationGuard';
 import { runWorkspaceRegex } from './workspaceRegex';
 import type {
   PathOperationInput,
@@ -30,6 +31,7 @@ import {
 } from '../shared/workspacePaths';
 
 interface PreparedPath {
+  guard: WorkspaceMutationGuard;
   root: string;
   input: PathOperationInput;
   plan: PathOperationPlan;
@@ -430,11 +432,15 @@ export class WorkspaceFiles {
   }
 
   /** Also refuses directory symlinks in destructive recursive operations. */
-  private async stamp(path: string): Promise<{ stamp: string; files: number }> {
+  private async stamp(
+    path: string,
+    guard?: WorkspaceMutationGuard,
+  ): Promise<{ stamp: string; files: number }> {
     const entries: string[] = [];
     let files = 0;
     const visit = async (target: string): Promise<void> => {
       await this.resolve(target);
+      guard?.capture(target);
       const stat = await this.stat(target);
       if (!stat) {
         entries.push(`${target}:missing`);
@@ -454,9 +460,11 @@ export class WorkspaceFiles {
         `${target}:${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`,
       );
       if (stat.isFile()) files++;
-      else
+      else {
+        guard?.directory(target);
         for (const name of (await fs.readdir(target)).sort())
           await visit(join(target, name));
+      }
     };
     await visit(path);
     return { stamp: entries.join('\n'), files };
@@ -492,7 +500,9 @@ export class WorkspaceFiles {
           `${flag} must be boolean.`,
         );
     const root = AppStorage.getWorkspaceRoot();
+    const guard = AppStorage.workspaceMutationGuard();
     const source = await this.resolve(input.source);
+    guard.capture(source);
     const sourceEntry = await this.stat(resolveAgentPath(root, input.source));
     if (sourceEntry?.isSymbolicLink())
       throw new WorkspaceToolError(
@@ -516,6 +526,7 @@ export class WorkspaceFiles {
           ? join(dirname(source), input.newName!)
           : (input.destination ?? ''),
       );
+      guard.capture(destination);
       validateWorkspaceName(basename(destination));
       for (const name of destination
         .slice(root!.length)
@@ -549,9 +560,9 @@ export class WorkspaceFiles {
         'not_empty',
         'The folder is not empty. Set recursive: true to trash its contents.',
       );
-    const src = await this.stamp(source);
+    const src = await this.stamp(source, guard);
     const dst = destination
-      ? await this.stamp(destination)
+      ? await this.stamp(destination, guard)
       : { stamp: '', files: 0 };
     const id = randomUUID();
     const summary = `${input.operation} ${source}${destination ? ` → ${destination}` : ' to the OS trash'}; ${src.files} file(s) affected${dst.files ? `; replace ${dst.files} destination file(s)` : ''}.`;
@@ -572,6 +583,7 @@ export class WorkspaceFiles {
         'Too many pending operations.',
       );
     this.plans.set(id, {
+      guard,
       root: root!,
       input: { ...input },
       plan,
@@ -595,12 +607,13 @@ export class WorkspaceFiles {
         'workspace_changed',
         'The workspace changed after preview.',
       );
-    const { plan, input } = prepared;
+    const { plan, input, guard } = prepared;
     const { source, destination } = plan;
     if (
-      (await this.stamp(source)).stamp !== prepared.sourceStamp ||
+      (await this.stamp(source, guard)).stamp !== prepared.sourceStamp ||
       (destination &&
-        (await this.stamp(destination)).stamp !== prepared.destinationStamp)
+        (await this.stamp(destination, guard)).stamp !==
+          prepared.destinationStamp)
     )
       throw new WorkspaceToolError(
         'stale_plan',
@@ -611,35 +624,31 @@ export class WorkspaceFiles {
     let staged: string | undefined;
     let committed = false;
     try {
-      if (input.operation === 'delete') await shell.trashItem(source);
+      if (input.operation === 'delete') await this.trash(source, guard);
       else {
-        await fs.mkdir(dirname(destination!), { recursive: true });
-        await this.resolve(destination!);
+        guard.createParents(destination!);
         if (input.operation === 'copy') {
           staged = join(
             dirname(destination!),
             `.mkeditor-copy-${randomUUID()}`,
           );
-          await fs.cp(source, staged, {
-            recursive: true,
-            force: false,
-            errorOnExist: true,
-          });
+          await guard.copy(source, staged);
         }
-        if (await this.stat(destination!)) {
+        if (guard.inspect(destination!)) {
           if (!input.overwrite)
             throw new WorkspaceToolError(
               'destination_exists',
               `Destination exists: ${destination}`,
             );
-          backup = join(
+          const candidate = join(
             dirname(destination!),
             `.mkeditor-backup-${randomUUID()}`,
           );
-          await fs.rename(destination!, backup);
+          guard.rename(destination!, candidate);
+          backup = candidate;
         }
         try {
-          await fs.rename(staged ?? source, destination!);
+          guard.rename(staged ?? source, destination!);
         } catch (error) {
           if (
             (error as NodeJS.ErrnoException).code !== 'EXDEV' ||
@@ -650,22 +659,18 @@ export class WorkspaceFiles {
             dirname(destination!),
             `.mkeditor-move-${randomUUID()}`,
           );
-          await fs.cp(source, staged, {
-            recursive: true,
-            force: false,
-            errorOnExist: true,
-          });
-          if ((await this.stamp(source)).stamp !== prepared.sourceStamp)
+          await guard.copy(source, staged);
+          if ((await this.stamp(source, guard)).stamp !== prepared.sourceStamp)
             throw new WorkspaceToolError(
               'stale_plan',
               'Source changed during cross-device copy.',
             );
-          await fs.rename(staged, destination!);
+          guard.rename(staged, destination!);
           staged = undefined;
           try {
-            await shell.trashItem(source);
+            await this.trash(source, guard);
           } catch (error) {
-            await fs.rm(destination!, { recursive: true, force: true });
+            await guard.remove(destination!);
             throw error;
           }
         }
@@ -675,7 +680,7 @@ export class WorkspaceFiles {
     } catch (error) {
       if (backup) {
         try {
-          await fs.rename(backup, destination!);
+          guard.rename(backup, destination!);
           backup = undefined;
         } catch {
           throw new WorkspaceToolError(
@@ -686,13 +691,19 @@ export class WorkspaceFiles {
       }
       throw error;
     } finally {
-      if (staged) await fs.rm(staged, { recursive: true, force: true });
+      if (staged) {
+        try {
+          await guard.remove(staged);
+        } catch {
+          // Retain staging rather than following replaced parents during cleanup.
+        }
+      }
       if (committed) await this.refresh(plan);
     }
     if (backup) {
       // Keep replacement recovery available in the trash too.
       try {
-        await shell.trashItem(backup);
+        await this.trash(backup, guard);
       } catch {
         return {
           operation: plan.operation,
@@ -711,6 +722,45 @@ export class WorkspaceFiles {
       summary: plan.summary,
       ...(input.operation === 'delete' ? { deletion: 'trash' as const } : {}),
     };
+  }
+
+  private async trash(
+    path: string,
+    guard: WorkspaceMutationGuard,
+  ): Promise<void> {
+    // Quarantine on the same volume before native async trash. Keep the original
+    // basename in the recycle bin, without depending on its old parent path.
+    const directory = join(
+      guard.volumeRoot(path),
+      `.mkeditor-trash-${randomUUID()}`,
+    );
+    const quarantined = join(directory, basename(path));
+    guard.createParents(quarantined);
+    try {
+      guard.rename(path, quarantined);
+      try {
+        guard.inspect(quarantined);
+        await shell.trashItem(quarantined);
+      } catch (error) {
+        try {
+          guard.rename(quarantined, path);
+        } catch {
+          throw new WorkspaceToolError(
+            'partial_failure',
+            `Trash failed; original remains at ${quarantined}. ${String(error)}`,
+          );
+        }
+        throw error;
+      }
+    } finally {
+      // Never recursively remove this directory: it can contain a retained
+      // original when the native trash call or restoration fails.
+      try {
+        guard.removeEmptyDirectory(directory);
+      } catch {
+        /* Retain recovery data. */
+      }
+    }
   }
 
   private async refresh(plan: PathOperationPlan): Promise<void> {

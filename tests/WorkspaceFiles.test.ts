@@ -192,12 +192,15 @@ it('keeps a destination intact if committing an overwrite fails', async () => {
     destination: 'b.md',
     overwrite: true,
   });
-  const rename = fs.rename;
-  jest.spyOn(fs, 'rename').mockImplementation(async (source, destination) => {
-    if (source === join(root, 'a.md'))
-      throw Object.assign(new Error('denied'), { code: 'EACCES' });
-    return rename(source, destination);
-  });
+  const nativeFs = jest.requireActual('fs') as typeof import('fs');
+  const rename = nativeFs.renameSync;
+  jest
+    .spyOn(nativeFs, 'renameSync')
+    .mockImplementation((source, destination) => {
+      if (source === join(root, 'a.md'))
+        throw Object.assign(new Error('denied'), { code: 'EACCES' });
+      return rename(source, destination);
+    });
   await expect(
     files.request({ action: 'execute-path', id: plan.id }),
   ).rejects.toMatchObject({ code: 'EACCES' });
@@ -404,18 +407,171 @@ it('rejects replacement of a parent by a different ordinary directory', async ()
   );
   expect(await fs.readdir(parent)).toEqual(['note.md']);
 });
+it.each(['move', 'rename', 'copy', 'delete'] as const)(
+  'rejects a parent junction swap after final %s path validation',
+  async (operation) => {
+    const parent = join(root, 'parent');
+    const parked = join(root, 'parked');
+    const outside = await fs.realpath(
+      await fs.mkdtemp(join(tmpdir(), 'mkeditor-path-outside-')),
+    );
+    await fs.mkdir(parent);
+    await fs.writeFile(join(parent, 'source.md'), 'original');
+    await fs.writeFile(join(outside, 'source.md'), 'outside original');
+    const plan = await files.prepare({
+      operation,
+      source: 'parent/source.md',
+      ...(operation === 'rename'
+        ? { newName: 'renamed.md' }
+        : operation === 'delete'
+          ? {}
+          : { destination: 'parent/nested/new.md' }),
+    });
+    const validate = AppStorage.assertInWorkspace.bind(AppStorage);
+    let swapped = false;
+    jest
+      .spyOn(AppStorage, 'assertInWorkspace')
+      .mockImplementation(async (...args) => {
+        const canonical = await validate(...args);
+        if (!swapped && args[0] === plan.source) {
+          await fs.rename(parent, parked);
+          createDirectoryLink(outside, parent);
+          swapped = true;
+        }
+        return canonical;
+      });
+    try {
+      await expect(
+        files.request({ action: 'execute-path', id: plan.id }),
+      ).rejects.toThrow(/changed|symbolic/);
+      expect(swapped).toBe(true);
+      expect(await fs.readFile(join(outside, 'source.md'), 'utf8')).toBe(
+        'outside original',
+      );
+      expect(await fs.readdir(outside)).toEqual(['source.md']);
+      expect(await fs.readFile(join(parked, 'source.md'), 'utf8')).toBe(
+        'original',
+      );
+      expect(shell.trashItem).not.toHaveBeenCalled();
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  },
+);
+
+it('trashes the quarantined original after its old parent is replaced', async () => {
+  const parent = join(root, 'parent');
+  const outside = await fs.realpath(
+    await fs.mkdtemp(join(tmpdir(), 'mkeditor-trash-outside-')),
+  );
+  await fs.mkdir(parent);
+  await fs.writeFile(join(parent, 'note.md'), 'original');
+  await fs.writeFile(join(outside, 'note.md'), 'outside original');
+  (shell.trashItem as jest.Mock).mockImplementation(async (path: string) => {
+    expect(path).toMatch(/\.mkeditor-trash-/);
+    expect(path.endsWith('note.md')).toBe(true);
+    await fs.rename(parent, join(root, 'parked'));
+    createDirectoryLink(outside, parent);
+    await fs.rename(path, join(root, 'mock-recycle-bin.md'));
+  });
+  try {
+    await expect(
+      run({ operation: 'delete', source: 'parent/note.md' }),
+    ).resolves.toMatchObject({ deletion: 'trash' });
+    expect(await fs.readFile(join(root, 'mock-recycle-bin.md'), 'utf8')).toBe(
+      'original',
+    );
+    expect(await fs.readFile(join(outside, 'note.md'), 'utf8')).toBe(
+      'outside original',
+    );
+    expect(
+      (await fs.readdir(root)).filter((name) =>
+        name.startsWith('.mkeditor-trash-'),
+      ),
+    ).toEqual([]);
+  } finally {
+    await fs.rm(outside, { recursive: true, force: true });
+  }
+});
+
+it('restores the original file when native trash fails', async () => {
+  await fs.writeFile(join(root, 'note.md'), 'original');
+  (shell.trashItem as jest.Mock).mockRejectedValue(
+    Object.assign(new Error('denied'), { code: 'EACCES' }),
+  );
+  await expect(
+    run({ operation: 'delete', source: 'note.md' }),
+  ).rejects.toMatchObject({ code: 'EACCES' });
+  expect(await fs.readFile(join(root, 'note.md'), 'utf8')).toBe('original');
+  expect(await fs.readdir(root)).toEqual(['note.md']);
+});
+
+it.each([false, true])(
+  'retains the original on failed native trash (parent replaced: %s)',
+  async (replaceParent) => {
+    const parent = join(root, 'parent');
+    const outside = await fs.realpath(
+      await fs.mkdtemp(join(tmpdir(), 'mkeditor-trash-failure-')),
+    );
+    await fs.mkdir(parent);
+    await fs.writeFile(join(parent, 'source.md'), 'original');
+    await fs.writeFile(join(outside, 'source.md'), 'outside document');
+    (shell.trashItem as jest.Mock).mockImplementation(async () => {
+      if (replaceParent) {
+        await fs.rename(parent, join(root, 'parked'));
+        createDirectoryLink(outside, parent);
+      }
+      throw Object.assign(new Error('trash denied'), { code: 'EACCES' });
+    });
+    try {
+      await expect(
+        run({ operation: 'delete', source: 'parent/source.md' }),
+      ).rejects.toMatchObject({
+        code: replaceParent ? 'partial_failure' : 'EACCES',
+      });
+      const retained = (await fs.readdir(root)).filter((name) =>
+        name.startsWith('.mkeditor-trash-'),
+      );
+      if (replaceParent) {
+        expect(retained).toHaveLength(1);
+        expect(
+          await fs.readFile(join(root, retained[0], 'source.md'), 'utf8'),
+        ).toBe('original');
+      } else {
+        expect(retained).toEqual([]);
+        expect(await fs.readFile(join(parent, 'source.md'), 'utf8')).toBe(
+          'original',
+        );
+      }
+      expect(await fs.readFile(join(outside, 'source.md'), 'utf8')).toBe(
+        'outside document',
+      );
+      expect(await fs.readdir(outside)).toEqual(['source.md']);
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  },
+);
+
 it('handles cross-device moves with staged copy and trash removal of the original', async () => {
   await fs.writeFile(join(root, 'a.md'), 'source');
-  const rename = fs.rename;
-  jest.spyOn(fs, 'rename').mockImplementation(async (source, destination) => {
-    if (
-      source === join(root, 'a.md') &&
-      destination === join(root, 'nested/b.md')
-    )
-      throw Object.assign(new Error('cross-device'), { code: 'EXDEV' });
-    return rename(source, destination);
-  });
+  const nativeFs = jest.requireActual('fs') as typeof import('fs');
+  const rename = nativeFs.renameSync;
+  let crossDevice = false;
+  jest
+    .spyOn(nativeFs, 'renameSync')
+    .mockImplementation((source, destination) => {
+      if (
+        source === join(root, 'a.md') &&
+        destination === join(root, 'nested/b.md')
+      ) {
+        crossDevice = true;
+        throw Object.assign(new Error('cross-device'), { code: 'EXDEV' });
+      }
+      return rename(source, destination);
+    });
   await run({ operation: 'move', source: 'a.md', destination: 'nested/b.md' });
+  expect(crossDevice).toBe(true);
   expect(await fs.readFile(join(root, 'nested/b.md'), 'utf8')).toBe('source');
   expect(await files.info('a.md')).toMatchObject({ exists: false });
 });

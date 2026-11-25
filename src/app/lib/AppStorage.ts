@@ -4,6 +4,9 @@ import {
   realpathSync,
   statSync,
   lstatSync,
+  linkSync,
+  copyFileSync,
+  unlinkSync,
   promises as fs,
   constants as fsConstants,
 } from 'fs';
@@ -22,6 +25,7 @@ import type {
   WorkspaceFileListing,
 } from '../interfaces/Storage';
 import { WORKSPACE_EXTENSIONS_DOTTED } from '../shared/fileExtensions';
+import { WorkspaceMutationGuard } from './WorkspaceMutationGuard';
 
 export const WORKSPACE_LISTING_LIMITS = {
   files: 5000,
@@ -158,6 +162,14 @@ export class AppStorage {
 
   static getWorkspaceRoot(): string | null {
     return AppStorage.workspaceRoot;
+  }
+
+  static workspaceMutationGuard(): WorkspaceMutationGuard {
+    const root = AppStorage.workspaceRoot;
+    if (!root) throw new Error('No workspace is open.');
+    return new WorkspaceMutationGuard(root, (directory, expected) =>
+      AppStorage.verifyWorkspaceDirectory(directory, root, expected),
+    );
   }
 
   /** Synchronous guard for a canonical directory immediately before mutation. */
@@ -836,7 +848,7 @@ export class AppStorage {
    * Filename: `Pasted image YYYYMMDDHHMMSS.<ext>`, with `(2)`/`(3)`/…
    * counter suffixes when same-second pastes collide.
    *
-   * Atomic write via tmp + rename so a crash mid-write doesn't
+   * Stage complete bytes before exclusive publication so a crash mid-write doesn't
    * leave a half-written image referenced by the freshly-inserted
    * markdown link.
    */
@@ -848,6 +860,7 @@ export class AppStorage {
     extension: string,
   ): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
     try {
+      const guard = AppStorage.workspaceMutationGuard();
       // Resolve `directory` against the source file's folder when it
       // looks relative; treat absolute paths as-is.
       const sourceDir = dirname(sourceFile);
@@ -861,8 +874,9 @@ export class AppStorage {
       const safeTargetDir = await AppStorage.assertInWorkspace(targetDir, {
         mustExist: false,
       });
-
-      await fs.mkdir(safeTargetDir, { recursive: true });
+      const anchorPath = join(safeTargetDir, '.mkeditor-guard');
+      guard.capture(anchorPath);
+      guard.createParents(anchorPath);
 
       const safeExt = AppStorage.normalizeImageExtension(extension);
       const baseName = AppStorage.buildPastedImageBasename(new Date());
@@ -872,18 +886,24 @@ export class AppStorage {
       );
       let finalPath: string;
       try {
-        await fs.writeFile(tmpPath, Buffer.from(bytes), { flag: 'wx' });
-        const finalName = await AppStorage.allocatePastedImageName(
+        await guard.writeNew(tmpPath, bytes);
+        const finalName = AppStorage.allocatePastedImageName(
           safeTargetDir,
           baseName,
           safeExt,
           tmpPath,
+          guard,
         );
         finalPath = join(safeTargetDir, finalName);
       } finally {
-        await fs.unlink(tmpPath).catch(() => {});
+        try {
+          if (guard.inspect(tmpPath)) unlinkSync(tmpPath);
+        } catch {
+          // A replaced parent must never redirect temporary-file cleanup.
+        }
       }
 
+      guard.inspect(finalPath);
       // Refresh the file-tree row for the target directory so the
       // newly-written image surfaces in the sidebar.
       try {
@@ -897,6 +917,7 @@ export class AppStorage {
         // tree manually if this listing read fails.
       }
 
+      guard.inspect(finalPath);
       return { ok: true, path: finalPath };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -934,12 +955,13 @@ export class AppStorage {
    * then `_3`, … up to a sane cap. The cap exists so a broken
    * filesystem can't spin this forever.
    */
-  private static async allocatePastedImageName(
+  private static allocatePastedImageName(
     directory: string,
     baseName: string,
     extension: string,
     tmpPath: string,
-  ): Promise<string> {
+    guard: WorkspaceMutationGuard,
+  ): string {
     const candidate = (n: number) =>
       n === 1 ? `${baseName}.${extension}` : `${baseName}_${n}.${extension}`;
     for (let n = 1; n <= 1000; n++) {
@@ -948,14 +970,18 @@ export class AppStorage {
         // Publish complete bytes exclusively. Access followed by rename
         // allowed simultaneous pastes to overwrite each other's images.
         try {
-          await fs.link(tmpPath, join(directory, name));
+          guard.inspect(tmpPath);
+          guard.parent(join(directory, name));
+          linkSync(tmpPath, join(directory, name));
         } catch (error) {
           const code = (error as NodeJS.ErrnoException).code;
           if (!['EPERM', 'ENOTSUP', 'EOPNOTSUPP', 'EXDEV'].includes(code ?? ''))
             throw error;
           // Removable filesystems may lack hard links. An exclusive copy
           // still protects existing documents from overwrite.
-          await fs.copyFile(
+          guard.inspect(tmpPath);
+          guard.parent(join(directory, name));
+          copyFileSync(
             tmpPath,
             join(directory, name),
             fsConstants.COPYFILE_EXCL,
