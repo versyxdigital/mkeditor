@@ -861,16 +861,19 @@ export class Dropbox implements CloudProvider {
       (await this.parent(access, meta)) !== source
     )
       throw new CloudError('conflict');
+    const sourcePath = meta.path_lower ?? meta.path_display;
+    if (!sourcePath?.startsWith('/')) throw new CloudError('conflict');
     authorize();
-    // Dropbox has no conditional move. Moving the stable ID changes location only;
-    // concurrent remote text is retained and must never advance a stale editor baseline.
+    // Bind the move to the location just checked. A stable ID would follow a
+    // concurrent relocation and move the document again from an unchecked folder.
+    // Dropbox still has no revision-conditional move; remote text is retained.
     let response: unknown;
     try {
       response = await this.rpc(
         access,
         'files/move_v2',
         {
-          from_path: id,
+          from_path: sourcePath,
           to_path:
             destination === 'root'
               ? `/${meta.name}`
@@ -881,19 +884,20 @@ export class Dropbox implements CloudProvider {
         false,
       );
     } catch (error) {
+      if (error instanceof CloudError && error.code === 'missing')
+        throw new CloudError('conflict');
       if (error instanceof CloudError) throw error;
       throw new CloudError('unconfirmed');
     }
+    let moved: Metadata;
     try {
-      if (
-        parseMetadata(
-          z.object({ metadata: z.unknown() }).parse(response).metadata,
-        ).id !== id
-      )
-        throw new Error();
+      moved = parseMetadata(
+        z.object({ metadata: z.unknown() }).parse(response).metadata,
+      );
     } catch {
       throw new CloudError('unconfirmed');
     }
+    if (moved.id !== id) throw new CloudError('conflict');
   }
   async create(
     access: string,

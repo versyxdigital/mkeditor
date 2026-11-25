@@ -747,6 +747,8 @@ export class CloudService {
               throw error;
             }
             try {
+              // A source conflict must propagate before checking the destination:
+              // its final parent alone cannot prove that this request moved it.
               if (command.action === 'move')
                 await organization!.move(
                   tokens.access,

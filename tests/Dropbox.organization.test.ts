@@ -174,6 +174,92 @@ test('a lost move response survives restart, blocks saves and checks location wi
   expect(fixture.files.get('id:markdown')!.content).toBe('# Dropbox notes');
 });
 
+test.each(['elsewhere', 'destination', 'missing'] as const)(
+  'a write-time source relocation (%s) is a conflict and cannot be adopted from the final destination',
+  async (location) => {
+    const identity = await connection();
+    fixture.state.beforeWrite = () => {
+      if (location === 'missing') fixture.files.delete('id:markdown');
+      else
+        fixture.files.get('id:markdown')!.path =
+          location === 'destination'
+            ? '/Documents/notes.md'
+            : '/Elsewhere/notes.md';
+    };
+    expect(
+      await request({
+        action: 'move',
+        ...identity,
+        operationId: 'stale-source',
+        itemId: 'id:markdown',
+        sourceFolderId: 'root',
+        folderId: 'id:docs',
+      }),
+    ).toMatchObject({ ok: false, error: 'conflict' });
+    expect(
+      fixture.state.requests.find((entry) => entry.route === 'files/move_v2')
+        ?.body,
+    ).toMatchObject({
+      from_path: '/notes.md',
+      to_path: 'id:docs/notes.md',
+      autorename: false,
+      allow_ownership_transfer: false,
+    });
+    expect(fixture.state.moves).toBe(0);
+    if (location !== 'missing') {
+      expect(fixture.files.get('id:markdown')!.content).toBe('# Dropbox notes');
+      expect(fixture.files.get('id:markdown')!.path).toBe(
+        location === 'destination'
+          ? '/Documents/notes.md'
+          : '/Elsewhere/notes.md',
+      );
+    }
+    restart();
+    expect(
+      await request({
+        action: 'reconcileItem',
+        ...identity,
+        operationId: 'stale-source',
+      }),
+    ).toMatchObject({ ok: false, error: 'not_applied' });
+    expect(fixture.state.moves).toBe(0);
+  },
+);
+
+test('a replacement at the validated source path cannot be accepted as the expected document', async () => {
+  const identity = await connection();
+  fixture.state.beforeWrite = () => {
+    fixture.files.get('id:markdown')!.path = '/Elsewhere/notes.md';
+    fixture.files.set('id:replacement', {
+      id: 'id:replacement',
+      name: 'notes.md',
+      path: '/notes.md',
+      content: 'different document',
+      revision: 1,
+    });
+  };
+  expect(
+    await request({
+      action: 'move',
+      ...identity,
+      operationId: 'replaced-source',
+      itemId: 'id:markdown',
+      sourceFolderId: 'root',
+      folderId: 'id:docs',
+    }),
+  ).toMatchObject({ ok: false, error: 'conflict' });
+  expect(fixture.files.get('id:markdown')!.path).toBe('/Elsewhere/notes.md');
+  expect(fixture.files.get('id:markdown')!.content).toBe('# Dropbox notes');
+  restart();
+  expect(
+    await request({
+      action: 'reconcileItem',
+      ...identity,
+      operationId: 'replaced-source',
+    }),
+  ).toMatchObject({ ok: false, error: 'not_applied' });
+});
+
 test('a folder whose creation reply was lost is never adopted without an ownership marker or recreated automatically', async () => {
   const identity = await connection();
   fixture.state.loseFolderReply = true;
