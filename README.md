@@ -28,7 +28,7 @@ Download for desktop or use it directly through your [browser](https://versyxdig
   - [Export to HTML & PDF](#export-to-html--pdf)
   - [Enable AI assistance](#enable-ai-assistance)
   - [Connect Google Drive](#connect-google-drive)
-  = [Connect Dropbox](#connect-dropbox)
+  - [Connect Dropbox](#connect-dropbox)
 - [Contributing](#contributing)
 - [License](#license)
 
