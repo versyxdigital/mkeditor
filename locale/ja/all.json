@@ -203,6 +203,7 @@
     "callback_return": "このタブを閉じて MKEditor に戻れます。"
   },
   "cloud": {
+    "created_duplicate": "{{name}} を作成しました。このフォルダーに同じ名前の項目があるため、両方を保持しました。",
     "connections": "接続",
     "intro": "Google ドライブに接続して Markdown ファイルを参照・表示できます。",
     "read_only_reason": "Driveは既定で読み取り専用で開きます。「接続」で編集を有効にして再読み込みするか、ローカルコピーを編集してください。",

@@ -1,4 +1,5 @@
 {
+  "created_duplicate": "Se creó {{name}}. Otro elemento de esta carpeta tiene el mismo nombre; se conservaron ambos.",
   "connections": "Conexiones",
   "intro": "Conecta Google Drive para explorar y abrir archivos Markdown.",
   "read_only_reason": "Drive se abre en modo de solo lectura. Activa la edición en Conexiones y recarga, o edita una copia local.",

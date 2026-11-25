@@ -1,4 +1,5 @@
 {
+  "created_duplicate": "{{name}} is aangemaakt. Een ander item in deze map heeft dezelfde naam; beide zijn behouden.",
   "connections": "Verbindingen",
   "intro": "Verbind Google Drive om Markdown-bestanden te bekijken en te openen.",
   "read_only_reason": "Drive opent standaard als alleen-lezen. Schakel bewerken in bij Verbindingen en laad opnieuw, of bewerk een lokale kopie.",

@@ -3,6 +3,15 @@ import type { AddressInfo } from 'net';
 import type { DriveEndpoints } from '../../src/app/lib/cloud/GoogleDrive';
 import { createHash } from 'crypto';
 
+interface CreatedItem {
+  id: string;
+  name: string;
+  appProperties: Record<string, string>;
+  mimeType?: string;
+  parents?: string[];
+  content?: string;
+}
+
 /** Deterministic HTTP fixture for the production adapter. No live credentials. */
 export async function driveFixture() {
   const calls: {
@@ -27,6 +36,9 @@ export async function driveFixture() {
     duplicate: false,
     loseWrite: false,
     writeWait: undefined as Promise<void> | undefined,
+    // Opt-in multi-client storage; ordinary fixture behavior stays unchanged.
+    creations: undefined as Map<string, CreatedItem> | undefined,
+    generatedIds: undefined as string[] | undefined,
     created: undefined as
       | {
           id: string;
@@ -103,13 +115,15 @@ export async function driveFixture() {
         return;
       }
       if (request.method === 'POST' && url.pathname === '/drive/v3/files') {
-        state.created = JSON.parse(body);
+        const created: CreatedItem = JSON.parse(body);
+        state.created = created;
+        state.creations?.set(created.id, created);
         await state.writeWait;
         if (state.loseWrite) {
           response.destroy();
           return;
         }
-        send(response, { id: state.created!.id });
+        send(response, { id: created.id });
         return;
       }
       if (request.method === 'PATCH') {
@@ -149,7 +163,10 @@ export async function driveFixture() {
         state.content = content;
         state.revision = String(Number(state.revision) + 1);
         state.contentRevision = `content-${state.revision}`;
-        if (request.method === 'POST') state.created = metadata;
+        if (request.method === 'POST') {
+          state.created = metadata;
+          state.creations?.set(metadata.id, { ...metadata, content });
+        }
         if (state.loseWrite) {
           response.destroy();
           return;
@@ -172,7 +189,7 @@ export async function driveFixture() {
         return;
       }
       if (url.pathname === '/drive/v3/files/generateIds') {
-        send(response, { ids: ['created-id'] });
+        send(response, { ids: [state.generatedIds?.shift() ?? 'created-id'] });
         return;
       }
       if (url.pathname === '/drive/v3/about') {
@@ -190,8 +207,22 @@ export async function driveFixture() {
       }
       if (url.pathname === '/drive/v3/files') {
         if (url.searchParams.get('q')?.includes(' and name = ')) {
+          const query = url.searchParams.get('q')!;
+          const decode = (value?: string) => value?.replace(/\\(.)/g, '$1');
+          const name = decode(/ and name = '((?:\\.|[^'])*)'/.exec(query)?.[1]);
+          const parent = decode(
+            /^'((?:\\.|[^'])*)' in parents/.exec(query)?.[1],
+          );
           send(response, {
-            files: state.duplicate ? [{ id: 'existing' }] : [],
+            files: state.duplicate
+              ? [{ id: 'existing' }]
+              : [...(state.creations?.values() ?? [])]
+                  .filter(
+                    (file) =>
+                      file.name === name &&
+                      (file.parents ?? ['root']).includes(parent!),
+                  )
+                  .map((file) => ({ id: file.id })),
           });
           return;
         }
@@ -226,6 +257,21 @@ export async function driveFixture() {
         return;
       }
       const id = decodeURIComponent(url.pathname.split('/').pop()!);
+      const created = state.creations?.get(id);
+      if (created) {
+        if (url.searchParams.get('alt') === 'media')
+          response.end(created.content ?? '');
+        else
+          send(response, {
+            ...meta(id, created.name, created.mimeType),
+            appProperties: created.appProperties,
+            parents: created.parents ?? ['root'],
+            md5Checksum: createHash('md5')
+              .update(created.content ?? '')
+              .digest('hex'),
+          });
+        return;
+      }
       if (id === 'gone') {
         send(response, { error: {} }, 404);
         return;

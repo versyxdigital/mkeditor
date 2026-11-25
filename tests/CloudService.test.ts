@@ -890,6 +890,140 @@ test('a lost creation acknowledgement is reconciled by its durable generated ide
   });
 });
 
+describe.each(['create', 'createFolder'] as const)(
+  'concurrent name during %s',
+  (kind) => {
+    test.each([false, true])(
+      'keeps its generated ID and warning across restart (lost reply: %s)',
+      async (lost) => {
+        const { id } = await editingConnection();
+        await journalRun(async (restart, store) => {
+          let release!: () => void;
+          fixture.state.writeWait = new Promise<void>((resolve) => {
+            release = resolve;
+          });
+          fixture.state.loseWrite = lost;
+          const command: CloudCommand =
+            kind === 'create'
+              ? {
+                  action: 'create',
+                  connectionId: id,
+                  accountId: 'account-a',
+                  folderId: 'root',
+                  name: 'New.md',
+                  content: 'own contents',
+                  operationId: 'same-name-file',
+                }
+              : {
+                  action: 'createFolder',
+                  connectionId: id,
+                  accountId: 'account-a',
+                  folderId: 'root',
+                  name: 'New',
+                  operationId: 'same-name-folder',
+                };
+          const before = fixture.calls.filter(
+            (call) => call.method === 'POST',
+          ).length;
+          const pending = request(command);
+          try {
+            for (
+              let attempt = 0;
+              attempt < 200 &&
+              fixture.calls.filter((call) => call.method === 'POST').length ===
+                before;
+              attempt++
+            )
+              await new Promise((resolve) => setTimeout(resolve, 2));
+            expect(
+              fixture.calls.filter((call) => call.method === 'POST'),
+            ).toHaveLength(before + 1);
+            fixture.state.duplicate = true;
+            release();
+            const response = await pending;
+            if (lost)
+              expect(response).toMatchObject({
+                ok: false,
+                error: 'unconfirmed',
+              });
+            else
+              expect(response).toMatchObject(
+                kind === 'create'
+                  ? {
+                      ok: true,
+                      document: {
+                        item: { id: 'created-id', nameConflict: true },
+                      },
+                    }
+                  : {
+                      ok: true,
+                      item: { id: 'created-id', nameConflict: true },
+                    },
+              );
+            restart();
+            const check: CloudCommand = {
+              action: kind === 'create' ? 'reconcile' : 'reconcileItem',
+              connectionId: id,
+              accountId: 'account-a',
+              operationId: command.operationId,
+            };
+            if (lost) {
+              fixture.state.override = (url, response) => {
+                if (
+                  !url.searchParams.get('fields')?.includes('incompleteSearch')
+                )
+                  return false;
+                response.writeHead(200, { 'Content-Type': 'application/json' });
+                response.end(
+                  JSON.stringify({ files: [], incompleteSearch: true }),
+                );
+                return true;
+              };
+              expect(await request(check)).toMatchObject({
+                ok: false,
+                error: 'unconfirmed',
+              });
+              expect(await request(check)).toMatchObject({
+                ok: false,
+                error: 'unconfirmed',
+              });
+              fixture.state.override = undefined;
+            }
+            expect(await request(check)).toMatchObject(
+              kind === 'create'
+                ? {
+                    ok: true,
+                    document: {
+                      item: { id: 'created-id', nameConflict: true },
+                    },
+                  }
+                : { ok: true, item: { id: 'created-id', nameConflict: true } },
+            );
+            const saved = (await store().load()).operations.find(
+              (operation) => operation.operationId === command.operationId,
+            );
+            expect(
+              kind === 'create'
+                ? saved?.document?.item.nameConflict
+                : saved?.item?.nameConflict,
+            ).toBe(true);
+            expect(await request(command)).toMatchObject({ ok: true });
+            expect(
+              fixture.calls.filter((call) => call.method === 'POST'),
+            ).toHaveLength(before + 1);
+            expect(
+              fixture.calls.filter((call) => call.method === 'DELETE'),
+            ).toEqual([]);
+          } finally {
+            release();
+            await pending;
+          }
+        });
+      },
+    );
+  },
+);
+
 test('an interrupted move is read back after restart and never sent twice', async () => {
   const { id } = await editingConnection();
   await journalRun(async (restart) => {

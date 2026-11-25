@@ -203,6 +203,7 @@
     "callback_return": "Sie können diesen Tab schließen und zu MKEditor zurückkehren."
   },
   "cloud": {
+    "created_duplicate": "{{name}} wurde erstellt. Ein weiterer Eintrag in diesem Ordner hat denselben Namen; beide wurden beibehalten.",
     "connections": "Verbindungen",
     "intro": "Google Drive verbinden, um Markdown-Dateien zu öffnen.",
     "read_only_reason": "Drive wird zunächst schreibgeschützt geöffnet. Aktivieren Sie die Bearbeitung unter Verbindungen und laden Sie neu, oder bearbeiten Sie eine lokale Kopie.",

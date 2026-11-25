@@ -58,6 +58,8 @@ export interface RemoteItem {
   validator?: string;
   contentRevision?: string;
   editable?: boolean;
+  /** Creation succeeded, but reconciliation found another item with this name. */
+  nameConflict?: boolean;
   readOnlyReason?: 'permission' | 'shared-drive' | 'validator';
 }
 /** Compatibility names for the original Drive contracts. */

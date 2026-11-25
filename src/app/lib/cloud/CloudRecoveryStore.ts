@@ -27,6 +27,7 @@ export const recoveryItemSchema = z.object({
   validator: z.string().max(2048).optional(),
   contentRevision: z.string().optional(),
   editable: z.boolean().optional(),
+  nameConflict: z.boolean().optional(),
   readOnlyReason: z
     .enum(['permission', 'shared-drive', 'validator'])
     .optional(),

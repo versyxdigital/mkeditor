@@ -116,7 +116,7 @@ A read-then-compare-then-write sequence **does not qualify**. See the [save-safe
 
 ## Stage 1c — Create, polish, documentation
 
-- **Create a new Markdown file** in a chosen folder with a create-only request (pre-generated ID). A same-named existing item is refused and left unchanged. A name is never silently altered.
+- **Create a new Markdown file** in a chosen folder with a create-only request (pre-generated ID). The preflight refuses same-name items already visible, but cannot enforce uniqueness against another client. After document or folder creation, reconcile names and warn about observed concurrent duplicates while keeping both items. A name is never silently altered.
 - A create whose response is lost ends as unconfirmed and reconciles by file ID.
 - **Keyboard and themes:** every connection, browser and conflict control is reachable with Tab, operable with Enter or Space, has a visible focus state and an accessible label, and is legible in both light and dark themes. Check by hand or by test, and report which.
 - **Preview limitation:** relative links and images in remote documents are **not** fetched. Preserve them in the Markdown source and do not guess local paths. Document the limitation.

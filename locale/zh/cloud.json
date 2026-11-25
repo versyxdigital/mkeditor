@@ -1,4 +1,5 @@
 {
+  "created_duplicate": "已创建 {{name}}。此文件夹中还有同名项目，两个项目均已保留。",
   "connections": "连接",
   "intro": "连接 Google 云端硬盘以浏览和打开 Markdown 文件。",
   "read_only_reason": "云端硬盘默认以只读方式打开。请在“连接”中启用编辑并重新加载，或编辑本地副本。",

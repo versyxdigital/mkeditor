@@ -203,6 +203,7 @@
     "callback_return": "이 탭을 닫고 MKEditor로 돌아갈 수 있습니다."
   },
   "cloud": {
+    "created_duplicate": "{{name}}을(를) 만들었습니다. 이 폴더에 같은 이름의 항목이 있어 둘 다 유지했습니다.",
     "connections": "연결",
     "intro": "Google Drive에 연결하여 Markdown 파일을 찾아 열 수 있습니다.",
     "read_only_reason": "Drive는 기본적으로 읽기 전용으로 열립니다. 연결에서 편집을 활성화하고 다시 불러오거나 로컬 사본을 편집하세요.",

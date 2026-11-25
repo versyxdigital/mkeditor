@@ -1009,6 +1009,75 @@ test.each<CloudProviderId>(['google-drive'])(
   },
 );
 
+describe.each(['create', 'createFolder'] as const)(
+  '%s duplicate warnings',
+  (kind) => {
+    test.each([false, true])(
+      'warns without offering to recreate the confirmed item (recovered: %s)',
+      async (recovered) => {
+        const { manager, files, requests, respond, fail, state } =
+          organizing('google-drive');
+        jest
+          .mocked(openPromptExternal)
+          .mockResolvedValueOnce({ button: 'confirm', value: 'New.md' });
+        let pending =
+          kind === 'create' ? manager.create() : manager.createFolder();
+        await Promise.resolve();
+        if (recovered) {
+          fail(requests.at(-1)!, 'unconfirmed');
+          await pending;
+          jest.mocked(sonnerToast).mockClear();
+          pending =
+            kind === 'create'
+              ? manager.reconcileCreate()
+              : manager.reconcileItem();
+        }
+        const item = {
+          id: 'own-id',
+          name: 'New.md',
+          kind: kind === 'create' ? ('markdown' as const) : ('folder' as const),
+          parents: ['root'],
+          nameConflict: true,
+        };
+        respond(requests.at(-1)!, {
+          ok: true,
+          state,
+          ...(kind === 'create'
+            ? {
+                document: {
+                  provider: 'google-drive',
+                  connectionId: 'drive',
+                  accountId: 'account',
+                  connectionName: 'Drive',
+                  content: '',
+                  item,
+                },
+              }
+            : { item }),
+        });
+        await pending;
+        expect(sonnerToast).toHaveBeenCalledTimes(1);
+        expect(sonnerToast).toHaveBeenCalledWith(
+          'warning',
+          'cloud:created_duplicate',
+        );
+        if (kind === 'create')
+          expect(files.openRemoteDocument).toHaveBeenCalledWith(
+            expect.objectContaining({
+              item: expect.objectContaining({
+                id: 'own-id',
+                nameConflict: true,
+              }),
+            }),
+          );
+        expect(manager.getSnapshot().pendingCreate).toBeUndefined();
+        expect(manager.getSnapshot().pendingItem).toBeUndefined();
+        manager.dispose();
+      },
+    );
+  },
+);
+
 test('Dropbox moves stay disabled while folder creation remains available', async () => {
   const { manager, requests } = organizing('dropbox');
   const count = requests.length;

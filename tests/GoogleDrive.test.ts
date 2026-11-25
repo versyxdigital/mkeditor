@@ -282,3 +282,149 @@ test('move preflight refuses duplicate destinations and shared-drive sources', a
   ).rejects.toMatchObject({ code: 'unsupported' });
   expect(fixture.calls.some((call) => call.method === 'PATCH')).toBe(false);
 });
+
+test.each(['documents', 'folders'] as const)(
+  'two clients creating same-name %s retain their own IDs and report both creations as name conflicts',
+  async (kind) => {
+    fixture.state.creations = new Map();
+    fixture.state.generatedIds = ['client-a', 'client-b'];
+    const clients = [drive, new GoogleDrive(fixture.endpoints)];
+    const name = kind === 'documents' ? "Team's notes.md" : "Team's drafts";
+    const ids = await Promise.all(
+      clients.map((client) =>
+        client.prepareCreate('fixture-access', 'root', name),
+      ),
+    );
+    let release!: () => void;
+    fixture.state.writeWait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const outcomes = Promise.allSettled(
+      clients.map((client, index) =>
+        kind === 'folders'
+          ? client.createFolder(
+              'fixture-access',
+              ids[index],
+              'root',
+              name,
+              `client-${index}`,
+              () => {},
+            )
+          : client.create(
+              'fixture-access',
+              ids[index],
+              'root',
+              name,
+              `client ${index} content`,
+              `client-${index}`,
+              () => {},
+            ),
+      ),
+    );
+    try {
+      for (
+        let attempt = 0;
+        attempt < 200 &&
+        fixture.calls.filter((call) => call.method === 'POST').length < 2;
+        attempt++
+      )
+        await new Promise((resolve) => setTimeout(resolve, 2));
+      expect(
+        fixture.calls.filter((call) => call.method === 'POST'),
+      ).toHaveLength(2);
+      release();
+      const results = await outcomes;
+      for (const [index, result] of results.entries()) {
+        if (result.status !== 'fulfilled') throw result.reason;
+        const created =
+          'item' in result.value ? result.value.item : result.value;
+        expect(created).toMatchObject({
+          id: ids[index],
+          name,
+          nameConflict: true,
+        });
+        expect(
+          fixture.state.creations.get(ids[index])?.appProperties
+            .mkeditorCreateOperation,
+        ).toBe(`client-${index}`);
+        if ('content' in result.value)
+          expect(result.value.content).toBe(`client ${index} content`);
+      }
+      expect(fixture.state.creations.size).toBe(2);
+      expect(
+        fixture.calls.filter((call) =>
+          ['DELETE', 'PATCH', 'PUT'].includes(call.method),
+        ),
+      ).toEqual([]);
+    } finally {
+      release();
+      await outcomes;
+    }
+  },
+);
+
+test('post-create name reconciliation follows pages and ignores only the generated ID', async () => {
+  fixture.state.override = (url, response) => {
+    if (url.pathname !== '/drive/v3/files') return false;
+    response.writeHead(200, { 'Content-Type': 'application/json' });
+    response.end(
+      JSON.stringify(
+        url.searchParams.has('pageToken')
+          ? { files: [{ id: 'another-client' }] }
+          : { files: [{ id: 'own-id' }], nextPageToken: 'next' },
+      ),
+    );
+    return true;
+  };
+  expect(
+    await drive.creationNameConflict(
+      'fixture-access',
+      'own-id',
+      'root',
+      "Team's notes.md",
+    ),
+  ).toBe(true);
+  expect(
+    fixture.calls.filter((call) => call.url.pathname === '/drive/v3/files'),
+  ).toHaveLength(2);
+  expect(fixture.calls.at(-1)?.url.searchParams.get('pageToken')).toBe('next');
+});
+
+test.each(['documents', 'folders'] as const)(
+  'an incomplete post-create lookup leaves %s unconfirmed without replaying or deleting the acknowledged creation',
+  async (kind) => {
+    fixture.state.override = (url, response) => {
+      if (!url.searchParams.get('fields')?.includes('incompleteSearch'))
+        return false;
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({ files: [], incompleteSearch: true }));
+      return true;
+    };
+    const id = await drive.prepareCreate('fixture-access', 'root', 'new.md');
+    await expect(
+      kind === 'folders'
+        ? drive.createFolder(
+            'fixture-access',
+            id,
+            'root',
+            'new.md',
+            'operation',
+            () => {},
+          )
+        : drive.create(
+            'fixture-access',
+            id,
+            'root',
+            'new.md',
+            'draft',
+            'operation',
+            () => {},
+          ),
+    ).rejects.toMatchObject({ code: 'unconfirmed' });
+    expect(fixture.state.created?.id).toBe(id);
+    expect(fixture.calls.filter((call) => call.method === 'POST')).toHaveLength(
+      1,
+    );
+    expect(fixture.calls.some((call) => call.method === 'DELETE')).toBe(false);
+  },
+);

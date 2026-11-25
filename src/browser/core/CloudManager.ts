@@ -370,7 +370,11 @@ export class CloudManager {
       if (response.document) {
         this.files.openRemoteDocument(response.document);
         this.files.checkRecoveredRemoteDocuments?.();
+        if (operation.kind === 'create' && response.document.item.nameConflict)
+          this.notifyCreated(response.document.item);
       } else {
+        if (operation.kind === 'createFolder' && response.item?.nameConflict)
+          this.notifyCreated(response.item);
         if (response.item && operation.kind === 'move')
           await this.files.moveRemoteDocument(
             {
@@ -787,10 +791,7 @@ export class CloudManager {
       });
       if (!result.document) throw 'unconfirmed';
       this.files.openRemoteDocument(result.document);
-      sonnerToast(
-        'success',
-        t('cloud:created_file', { name: result.document.item.name }),
-      );
+      this.notifyCreated(result.document.item);
       if (this.snapshot.workspace === connection.id) void this.browse();
     } catch (error) {
       if (error === 'unconfirmed') this.update({ pendingCreate });
@@ -822,10 +823,7 @@ export class CloudManager {
       if (!result.document) throw 'unconfirmed';
       this.files.openRemoteDocument(result.document);
       this.update({ pendingCreate: undefined });
-      sonnerToast(
-        'success',
-        t('cloud:created_file', { name: result.document.item.name }),
-      );
+      this.notifyCreated(result.document.item);
       if (this.snapshot.workspace === pending.connectionId) void this.browse();
     } catch (error) {
       if (error === 'not_applied') this.update({ pendingCreate: undefined });
@@ -833,6 +831,13 @@ export class CloudManager {
     } finally {
       this.update({ busy: this.snapshot.busy.filter((id) => id !== 'create') });
     }
+  }
+
+  private notifyCreated(item: DriveItem): void {
+    if (item.nameConflict)
+      sonnerToast('warning', t('cloud:created_duplicate', { name: item.name }));
+    else if (item.kind === 'markdown')
+      sonnerToast('success', t('cloud:created_file', { name: item.name }));
   }
 
   async createFolder(destination?: DriveItem): Promise<void> {
@@ -883,6 +888,7 @@ export class CloudManager {
           name,
         });
         if (!result.item) throw 'unconfirmed';
+        this.notifyCreated(result.item);
         void this.request({
           action: 'acknowledge',
           operationId: pendingItem.operationId,
@@ -1108,7 +1114,7 @@ export class CloudManager {
           { ...pending, item: pending.item },
           check,
         );
-      else await check();
+      else this.notifyCreated((await check()).item);
       void this.request({
         action: 'acknowledge',
         operationId: pending.operationId,

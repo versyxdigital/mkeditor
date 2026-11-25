@@ -575,6 +575,8 @@ export class GoogleDrive implements CloudProvider {
   }
 
   async prepareCreate(access: string, folderId: string, name: string) {
+    // Advisory only: another client can create after this lookup. Reconcile
+    // the acknowledged creation by its generated ID without deleting either item.
     await this.checkDestination(access, folderId, name);
     const response = await this.get(access, 'files/generateIds', {
       count: '1',
@@ -584,6 +586,42 @@ export class GoogleDrive implements CloudProvider {
     return z
       .object({ ids: z.array(z.string()).length(1) })
       .parse(await response.json()).ids[0];
+  }
+
+  async creationNameConflict(
+    access: string,
+    id: string,
+    folderId: string,
+    name: string,
+  ): Promise<boolean> {
+    const escape = (value: string) =>
+      value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const seen = new Set<string>();
+    let page: string | undefined;
+    for (let count = 0; count < 20; count++) {
+      const response = await this.get(access, 'files', {
+        q: `'${escape(folderId)}' in parents and name = '${escape(name)}' and trashed = false`,
+        fields: 'nextPageToken,incompleteSearch,files(id)',
+        pageSize: '2',
+        supportsAllDrives: 'true',
+        includeItemsFromAllDrives: 'true',
+        ...(page ? { pageToken: page } : {}),
+      });
+      const result = z
+        .object({
+          files: z.array(z.object({ id: z.string() })),
+          nextPageToken: z.string().optional(),
+          incompleteSearch: z.boolean().optional(),
+        })
+        .parse(await response.json());
+      if (result.files.some((file) => file.id !== id)) return true;
+      if (result.incompleteSearch) throw new CloudError('unconfirmed');
+      if (!result.nextPageToken) return false;
+      if (seen.has(result.nextPageToken)) throw new CloudError('unconfirmed');
+      seen.add(result.nextPageToken);
+      page = result.nextPageToken;
+    }
+    throw new CloudError('unconfirmed');
   }
 
   private async checkDestination(
@@ -662,6 +700,19 @@ export class GoogleDrive implements CloudProvider {
         throw new CloudError('unconfirmed');
     } catch (error) {
       if (error instanceof CloudError && error.code !== 'network') throw error;
+      throw new CloudError('unconfirmed');
+    }
+    try {
+      const nameConflict = await this.creationNameConflict(
+        access,
+        id,
+        folderId,
+        name,
+      );
+      const created = await this.inspectItem(access, id);
+      return { ...created, ...(nameConflict ? { nameConflict: true } : {}) };
+    } catch {
+      // A successful POST remains recoverable by generated ID; never replay it.
       throw new CloudError('unconfirmed');
     }
   }
@@ -770,6 +821,24 @@ export class GoogleDrive implements CloudProvider {
       if (ack.id !== id) throw new CloudError('unconfirmed');
     } catch (error) {
       if (error instanceof CloudError && error.code !== 'network') throw error;
+      throw new CloudError('unconfirmed');
+    }
+    try {
+      const nameConflict = await this.creationNameConflict(
+        access,
+        id,
+        folderId,
+        name,
+      );
+      const created = await this.read(access, id, true);
+      return {
+        ...created,
+        item: {
+          ...created.item,
+          ...(nameConflict ? { nameConflict: true } : {}),
+        },
+      };
+    } catch {
       throw new CloudError('unconfirmed');
     }
   }

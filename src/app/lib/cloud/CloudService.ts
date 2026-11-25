@@ -627,12 +627,24 @@ export class CloudService {
               }
               throw new CloudError('unconfirmed');
             }
-            operation.item = await organization!.inspectItem(
+            const restored = await organization!.inspectItem(
               tokens.access,
               operation.itemId,
             );
-            operation.itemId = operation.item.id;
+            if (
+              operation.kind === 'createFolder' &&
+              operation.name &&
+              (await organization.creationNameConflict?.(
+                tokens.access,
+                restored.id,
+                operation.folderId,
+                operation.name,
+              ))
+            )
+              restored.nameConflict = true;
             this.assertCurrent(entry.id, generation);
+            operation.itemId = restored.id;
+            operation.item = restored;
             await this.persistJournal();
           } catch (error) {
             if (
@@ -767,10 +779,13 @@ export class CloudService {
                   command.operationId,
                   () => this.assertCurrent(entry.id, generation),
                 );
-                if (created) operation.itemId = created.id;
+                if (created) {
+                  operation.itemId = created.id;
+                  operation.item = created;
+                }
               }
               try {
-                operation.item = await organization!.inspectItem(
+                operation.item ??= await organization!.inspectItem(
                   tokens.access,
                   operation.itemId,
                 );
@@ -847,6 +862,17 @@ export class CloudService {
               ))
             )
               throw new CloudError('unconfirmed');
+            if (
+              operation.folderId &&
+              operation.name &&
+              (await provider.creationNameConflict?.(
+                tokens.access,
+                latest.item.id,
+                operation.folderId,
+                operation.name,
+              ))
+            )
+              latest.item.nameConflict = true;
           }
           if (
             latest.content !== operation.content ||
@@ -863,6 +889,7 @@ export class CloudService {
             }
             throw new CloudError('unconfirmed');
           }
+          this.assertCurrent(entry.id, generation);
           operation.document = {
             ...document(latest),
             operationId: command.operationId,

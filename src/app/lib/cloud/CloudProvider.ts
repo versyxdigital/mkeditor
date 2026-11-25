@@ -19,7 +19,16 @@ export interface RemoteContents {
   item: RemoteItem;
   content: string;
 }
-export interface CloudOrganization {
+export interface CloudCreationNames {
+  /** Read-only name reconciliation for an acknowledged or recovered creation. */
+  creationNameConflict?(
+    access: string,
+    id: string,
+    folderId: string,
+    name: string,
+  ): Promise<boolean>;
+}
+export interface CloudOrganization extends CloudCreationNames {
   metadata(
     access: string,
     id: string,
@@ -57,7 +66,7 @@ export interface CloudOrganization {
   ): Promise<RemoteItem | void>;
 }
 /** Adapters share lifecycle and document safety; organization is an explicit capability. */
-export interface CloudProvider {
+export interface CloudProvider extends CloudCreationNames {
   readonly provider: CloudProviderId;
   readonly organization?: CloudOrganization;
   authorizationScopes(editing: boolean): readonly string[];

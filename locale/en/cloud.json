@@ -1,4 +1,5 @@
 {
+  "created_duplicate": "Created {{name}}. Another item in this folder has the same name; both were kept.",
   "connections": "Connections",
   "intro": "Connect Google Drive to browse and open Markdown files.",
   "read_only_reason": "Drive opens read-only by default. Enable editing in Connections, then reload, or edit a local copy.",

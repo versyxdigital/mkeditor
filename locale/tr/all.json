@@ -203,6 +203,7 @@
     "callback_return": "Bu sekmeyi kapatıp MKEditor’a dönebilirsiniz."
   },
   "cloud": {
+    "created_duplicate": "{{name}} oluşturuldu. Bu klasörde aynı ada sahip başka bir öğe var; ikisi de korundu.",
     "connections": "Bağlantılar",
     "intro": "Markdown dosyalarına göz atmak ve açmak için Google Drive’ı bağlayın.",
     "read_only_reason": "Drive varsayılan olarak salt okunur açılır. Bağlantılar’dan düzenlemeyi etkinleştirip yeniden yükleyin veya yerel bir kopyayı düzenleyin.",

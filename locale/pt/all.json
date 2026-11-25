@@ -203,6 +203,7 @@
     "callback_return": "Pode fechar este separador e voltar ao MKEditor."
   },
   "cloud": {
+    "created_duplicate": "{{name}} foi criado. Outro item nesta pasta tem o mesmo nome; ambos foram mantidos.",
     "connections": "Conexões",
     "intro": "Conecte o Google Drive para explorar e abrir arquivos Markdown.",
     "read_only_reason": "O Drive abre em modo somente leitura. Ative a edição em Conexões e recarregue, ou edite uma cópia local.",
