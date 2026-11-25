@@ -66,13 +66,16 @@ export function runQuitFlush(deps: QuitFlushDeps): void {
     if (timer !== null) clearTimer(timer);
     onDone();
   };
+
   const tryFinish = () => {
     if (sessionAcked && assistantAcked) finish();
   };
+
   const onSessionAck = () => {
     sessionAcked = true;
     tryFinish();
   };
+
   const onAssistantAck = () => {
     assistantAcked = true;
     tryFinish();

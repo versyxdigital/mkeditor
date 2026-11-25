@@ -83,6 +83,7 @@ export class MkedLinkProvider {
 
         return { links };
       },
+
       resolveLink: async (link) => {
         const mked = window.mked;
         if (!mked) return link;

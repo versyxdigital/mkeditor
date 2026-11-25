@@ -121,6 +121,7 @@ export const workspaceEditorTools: Record<string, ToolSpec> = {
         (args as { path?: string }).path,
         'save',
       ),
+
     execute: (args, ctx) =>
       ctx.workspace.executeTab(
         args as object,
@@ -148,6 +149,7 @@ export const workspaceEditorTools: Record<string, ToolSpec> = {
         a.discard,
       );
     },
+
     execute: (args, ctx) => {
       const a = args as { path: string; discard?: boolean };
       return ctx.workspace.executeTab(
@@ -180,6 +182,7 @@ export const workspaceEditorTools: Record<string, ToolSpec> = {
         `Append ${a.content.length} characters to ${a.path}.`,
       );
     },
+
     execute: (args, ctx) => {
       const a = args as { path: string; content: string };
       return ctx.workspace.executeEdit(
@@ -222,6 +225,7 @@ export const workspaceEditorTools: Record<string, ToolSpec> = {
         `Edit lines ${a.startLine}–${a.endLine} in ${a.path}.`,
       );
     },
+
     execute: (args, ctx) => {
       const a = args as {
         path: string;
@@ -292,6 +296,7 @@ export const workspaceEditorTools: Record<string, ToolSpec> = {
         true,
       ) as Promise<import('../../app/interfaces/Assistant').ToolConfirmPreview>;
     },
+
     execute: (args, ctx) => {
       const a = args as {
         path: string;

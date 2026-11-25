@@ -123,6 +123,7 @@ export function fakeAssistantManager(
   const configListeners = new Set<() => void>();
   const chatListeners = new Set<() => void>();
   const emitConfig = () => configListeners.forEach((l) => l());
+
   const emitChat = () => chatListeners.forEach((l) => l());
   return {
     // P3 config surface
@@ -194,6 +195,7 @@ export function fakeAssistantManager(
       snapshot = next;
       emitConfig();
     },
+
     _setChatSnapshot: (next: ChatSnapshot) => {
       chatSnapshot = next;
       emitChat();
@@ -240,10 +242,12 @@ export function fakeDispatcher() {
     removeEventListener: target.removeEventListener.bind(target),
     dispatchEvent: target.dispatchEvent.bind(target),
     render: () => target.dispatchEvent(new CustomEvent('editor:render')),
+
     setTrackedContent: ({ content }: { content: string }) =>
       target.dispatchEvent(
         new CustomEvent('editor:track:content', { detail: content }),
       ),
+
     message: ({ detail }: { detail: string }) =>
       target.dispatchEvent(new CustomEvent('message', { detail })),
   };

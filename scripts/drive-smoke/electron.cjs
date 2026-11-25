@@ -63,6 +63,7 @@ const localSessionAdapter = {
     fs.renameSync(localSessionFile + '.tmp', localSessionFile);
     return true;
   },
+
   clear() {
     if (fs.existsSync(localSessionFile)) fs.unlinkSync(localSessionFile);
     return true;
@@ -100,10 +101,12 @@ const adapter = dropbox ?? drive;
 let requestId = 0;
 const execute = (command) =>
   service.handle({ requestId: `smoke-control-${++requestId}`, command });
+
 const assertDocument = (id) => {
   if (!scope.documents.includes(id))
     throw Error("Only this run's disposable documents may be changed.");
 };
+
 function permitted(command) {
   if (command.action === 'create' || command.action === 'createFolder')
     return scope.folders.includes(command.folderId);
@@ -117,6 +120,7 @@ function permitted(command) {
     );
   return true;
 }
+
 function remember(command, result) {
   if (!result.ok) return;
   if (
@@ -129,6 +133,7 @@ function remember(command, result) {
     scope.folders.push(result.item.id);
   persistScope();
 }
+
 async function access() {
   const entry = store
     .load()
@@ -223,6 +228,7 @@ app
     });
     globalThis.driveSmoke = {
       state: () => service.state(),
+
       scope: () => ({ ...scope }),
       checkpoint,
       recoveryMeta: async () => {
@@ -240,6 +246,7 @@ app
             }
           : null;
       },
+
       async prepareRoot() {
         if (scope.rootId) return { ...scope };
         const state = await service.state();
@@ -297,6 +304,7 @@ app
         await execute({ action: 'acknowledge', operationId });
         return { ...scope };
       },
+
       async expireCredentials() {
         const entries = store.load();
         for (const entry of entries)
@@ -306,6 +314,7 @@ app
           }
         store.save(entries);
       },
+
       async verifyContent(id, expected) {
         assertDocument(id);
         const document = await adapter.read(await access(), id, true);
@@ -318,6 +327,7 @@ app
           );
         return true;
       },
+
       async externalEdit(id, content) {
         assertDocument(id);
         const token = await access();

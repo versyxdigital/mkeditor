@@ -17,6 +17,7 @@ jest.mock('../src/browser/react/contexts/PromptsContext', () => ({
 }));
 jest.mock('../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   whenLanguageReady: () => Promise.resolve(),
 }));
 jest.mock('monaco-editor', () => ({
@@ -28,12 +29,15 @@ jest.mock('monaco-editor', () => ({
       const model = {
         disposed: false,
         getValue: () => value,
+
         setValue: (next: string) => {
           value = next;
           version++;
           listeners.forEach((listener) => listener());
         },
+
         getAlternativeVersionId: () => version,
+
         onDidChangeContent: (listener: () => void) => {
           listeners.add(listener);
           return { dispose: () => listeners.delete(listener) };
@@ -52,9 +56,11 @@ function setup() {
   const bridge = { send: jest.fn(), receive: jest.fn() };
   const mk = {
     getModel: () => active,
+
     setModel: (model: typeof active) => {
       active = model;
     },
+
     getValue: () => active?.getValue() ?? '',
     saveViewState: jest.fn(() => ({ cursorState: [] })),
     restoreViewState: jest.fn(),
@@ -71,6 +77,7 @@ function setup() {
     fm.activateFile(path);
     return model;
   };
+
   const lastSave = () => {
     const call = bridge.send.mock.calls
       .filter(
@@ -1040,6 +1047,7 @@ test('remote session restores a dirty draft offline with its baseline, identity 
   const restored = setup();
   restored.fm.setRemoteOperations({
     canEdit: () => false,
+
     canCheck: () => false,
     save: jest.fn(),
     reconcile: jest.fn(),
@@ -1075,6 +1083,7 @@ test('recovered drafts validate the remote baseline before the first save', asyn
   }));
   restored.fm.setRemoteOperations({
     canEdit: () => true,
+
     canCheck: () => true,
     check,
     save,
@@ -1109,7 +1118,9 @@ test('an external change during downtime preserves the recovered draft and opens
   const save = jest.fn();
   restored.fm.setRemoteOperations({
     canEdit: () => true,
+
     canCheck: () => true,
+
     check: async () => ({ ...source.document, content: 'changed in Drive' }),
     save,
     reconcile: jest.fn(),
@@ -1137,6 +1148,7 @@ test('a restored clean document refreshes from Drive while intervening local edi
   );
   restored.fm.setRemoteOperations({
     canEdit: () => true,
+
     canCheck: () => true,
     check,
     save: jest.fn(),
@@ -1163,7 +1175,9 @@ test('a missing Drive file leaves its recovered text available and never recreat
   const save = jest.fn();
   restored.fm.setRemoteOperations({
     canEdit: () => true,
+
     canCheck: () => true,
+
     check: async () => {
       throw 'missing';
     },
@@ -1205,7 +1219,9 @@ test('interrupted saves are reconciled after restoring and newer draft edits sta
   const reconcile = jest.fn(async () => acknowledged);
   restored.fm.setRemoteOperations({
     canEdit: () => true,
+
     canCheck: () => true,
+
     check: async () => acknowledged,
     save,
     reconcile,
@@ -1251,9 +1267,11 @@ test('a recovered Dropbox creation adopts its confirmed file ID without losing n
   const save = jest.fn();
   restored.fm.setRemoteOperations({
     canEdit: () => true,
+
     canCheck: () => true,
     save,
     reconcile: async () => confirmed,
+
     check: async () => confirmed,
   });
   restored.fm.restoreSession({

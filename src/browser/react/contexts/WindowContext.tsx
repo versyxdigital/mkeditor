@@ -13,8 +13,11 @@ export interface WindowControls {
 const NOOP: WindowControls = {
   isMaximized: false,
   minimize: () => {},
+
   maximize: () => {},
+
   close: () => {},
+
   toggleFullscreen: () => {},
 };
 
@@ -62,8 +65,11 @@ export const WindowProvider: React.FC<{ children: React.ReactNode }> = ({
     return {
       isMaximized: state.isMaximized,
       minimize: () => bridgeManager.windowMinimize(),
+
       maximize: () => bridgeManager.windowMaximize(),
+
       close: () => bridgeManager.windowClose(),
+
       toggleFullscreen: () => bridgeManager.windowToggleFullscreen(),
     };
   }, [bridgeManager, mode, state.isMaximized]);

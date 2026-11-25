@@ -10,9 +10,13 @@ import type { ExportSettings } from './interfaces/Editor';
 // to `console.*` so the same failures surface in DevTools on the web.
 export const logger: NonNullable<Window['logger']> = window.logger ?? {
   log: (level, msg, meta) => console.log(`[${level}] ${msg}`, meta),
+
   debug: (msg, meta) => console.debug(msg, meta),
+
   info: (msg, meta) => console.info(msg, meta),
+
   warn: (msg, meta) => console.warn(msg, meta),
+
   error: (msg, meta) => console.error(msg, meta),
 };
 

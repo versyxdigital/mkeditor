@@ -14,6 +14,7 @@ const prompt = (title: string): PromptRequest => ({
   title,
   buttons: [{ id: 'confirm', label: 'Confirm' }],
 });
+
 const toolRequest = (toolCallId: string, callId = 'chat') => ({
   toolCallId,
   callId,

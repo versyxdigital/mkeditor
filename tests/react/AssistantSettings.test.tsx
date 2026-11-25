@@ -32,7 +32,9 @@ import { fakeAssistantManager, renderWithProviders } from '../utils/render';
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   normalizeLanguage: (lng: string) => lng,
+
   whenLanguageReady: () => Promise.resolve(),
   getAvailableLocales: jest.fn(async () => []),
   initI18n: jest.fn(),

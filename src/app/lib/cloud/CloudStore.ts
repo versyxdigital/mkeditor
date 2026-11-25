@@ -52,6 +52,7 @@ export class CloudStore implements CloudPersistence {
   constructor(
     private readonly path = join(homedir(), '.mkeditor', 'connections.json'),
   ) {}
+
   load(): StoredConnection[] {
     if (!existsSync(this.path)) return [];
     try {
@@ -68,6 +69,7 @@ export class CloudStore implements CloudPersistence {
       throw new CloudError('storage');
     }
   }
+
   save(connections: StoredConnection[]): void {
     try {
       mkdirSync(dirname(this.path), { recursive: true });
@@ -81,6 +83,7 @@ export class CloudStore implements CloudPersistence {
       throw new CloudError('storage');
     }
   }
+
   async available(): Promise<boolean> {
     try {
       const available = await safeStorage.isAsyncEncryptionAvailable();
@@ -96,6 +99,7 @@ export class CloudStore implements CloudPersistence {
       return false;
     }
   }
+
   async encrypt(tokens: CloudTokens): Promise<string> {
     if (!(await this.available())) throw new CloudError('storage');
     try {
@@ -106,6 +110,7 @@ export class CloudStore implements CloudPersistence {
       throw new CloudError('storage');
     }
   }
+
   async decrypt(encoded: string): Promise<CloudTokens> {
     if (!(await this.available())) throw new CloudError('storage');
     try {

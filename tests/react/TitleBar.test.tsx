@@ -21,6 +21,7 @@ jest.mock('../../src/browser/menuDispatch', () => ({
 jest.mock('../../src/browser/i18n', () => ({
   t: (_key: string, opts?: { defaultValue?: string }) =>
     opts?.defaultValue ?? _key,
+
   normalizeLanguage: (lng: string) => lng,
 }));
 
@@ -39,7 +40,9 @@ function buildBridgeManager(initial = false) {
       listeners.add(l);
       return () => listeners.delete(l);
     },
+
     getWindowState: () => state,
+
     setWindowState: (next: typeof state) => {
       state = next;
       listeners.forEach((l) => l());

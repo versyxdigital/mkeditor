@@ -23,6 +23,7 @@ beforeEach(() => jest.mocked(sonnerToast).mockClear());
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   normalizeLanguage: () => 'en',
 }));
 beforeAll(() => {

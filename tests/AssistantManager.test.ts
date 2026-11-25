@@ -805,14 +805,17 @@ describe('AssistantManager — paced streaming reveal (P8)', () => {
         pending.push(cb);
         return pending.length;
       },
+
       cancelFrame: () => {
         pending = [];
       },
+
       tick: () => {
         const due = pending;
         pending = [];
         for (const cb of due) cb(performance.now());
       },
+
       pendingCount: () => pending.length,
     };
   }
@@ -892,9 +895,13 @@ describe('AssistantManager — paced streaming reveal (P8)', () => {
     });
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'read' as const,
+
       buildPreview: () => null,
+
       execute: async () => ({ ok: true }),
     });
     const conv = mgr.createConversation('anthropic');
@@ -1116,10 +1123,15 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
     const execute = jest.fn(async () => ({ ok: true }));
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write',
+
       requiresConfirmation: () => true,
+
       buildPreview: () => null,
+
       preparePreview: () =>
         new Promise((resolve) => {
           finish = resolve;
@@ -1157,9 +1169,13 @@ describe('AssistantManager.onToolCall — write-class confirmation', () => {
     const execute = jest.fn();
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write',
+
       buildPreview: () => null,
+
       preparePreview: () =>
         new Promise((resolve) => {
           finish = resolve;
@@ -1333,8 +1349,11 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     };
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write' as const,
+
       buildPreview: () => preview,
       execute: jest.fn(),
     });
@@ -1364,8 +1383,11 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     const executor = {
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write' as const,
+
       buildPreview: () => ({
         kind: 'write' as const,
         path: '/x.md',
@@ -1403,8 +1425,11 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     const executor = {
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write' as const,
+
       buildPreview: () => null,
       execute: jest.fn(),
     };
@@ -1447,8 +1472,11 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write' as const,
+
       buildPreview: () => null,
       execute: jest.fn(),
     });
@@ -1488,8 +1516,11 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     );
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write' as const,
+
       buildPreview: () => ({
         kind: 'write' as const,
         path: '/x.md',
@@ -1533,8 +1564,11 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write' as const,
+
       buildPreview: () => null,
       getFullPreviewContent: jest.fn(async () => 'should-not-be-returned'),
       execute: jest.fn(async () => ({ ok: true })),
@@ -1573,6 +1607,7 @@ describe('AssistantManager — startCall ships tools when an executor is set', (
     const conv = mgr.createConversation('anthropic');
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [
         {
           name: 'read_file',
@@ -1580,8 +1615,11 @@ describe('AssistantManager — startCall ships tools when an executor is set', (
           parameters: { type: 'object' },
         },
       ],
+
       classify: () => 'read',
+
       buildPreview: () => null,
+
       execute: async () => ({}),
     });
     mgr.startCall('anthropic', conv, 'hi');
@@ -1633,9 +1671,13 @@ describe('AssistantManager — interleaved segments (P6 polish)', () => {
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'read' as const,
+
       buildPreview: () => null,
+
       execute: async () => ({ ok: true }),
     });
     mgr.appendChunk(callId, "I'll create one. ");
@@ -1672,9 +1714,13 @@ describe('AssistantManager — interleaved segments (P6 polish)', () => {
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'read' as const,
+
       buildPreview: () => null,
+
       execute: async () => ({ ok: true }),
     });
     mgr.onToolCall({
@@ -1732,10 +1778,15 @@ describe('AssistantManager async tool lifecycle regressions', () => {
       });
       mgr.setToolExecutor({
         hasTool: () => true,
+
         describe: () => [],
+
         classify: () => 'read',
+
         buildPreview: () => null,
+
         getFullPreviewContent: async () => undefined,
+
         execute: () => work,
       });
       mgr.onToolCall({
@@ -1766,9 +1817,13 @@ describe('AssistantManager async tool lifecycle regressions', () => {
     const execute = jest.fn(async () => ({ ok: true }));
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'read',
+
       buildPreview: () => null,
+
       getFullPreviewContent: async () => undefined,
       execute,
     });

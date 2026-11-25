@@ -412,11 +412,13 @@ app.on('before-quit', (event) => {
         channel === 'to:session:save' ? 'mked:session:committed' : channel,
         listener,
       ),
+
     off: (channel, listener) =>
       ipcMain.removeListener(
         channel === 'to:session:save' ? 'mked:session:committed' : channel,
         listener,
       ),
+
     send: (channel, payload) => {
       if (!context || context.isDestroyed()) return;
       if (channel === 'from:session:flush-request') {

@@ -121,6 +121,7 @@ export class AppBridge {
     }
     return envelope;
   }
+
   flushSession(): Promise<boolean> {
     const id = `session-flush-${++this.flushSequence}`;
     return new Promise((resolve) => {

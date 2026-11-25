@@ -78,6 +78,7 @@ export async function verifyDriveWritePrecondition(
       redirect: 'error',
       signal: AbortSignal.timeout(20_000),
     });
+
   const metadata = async () => {
     if (!id) throw new Error('No verification file');
     const response = await call(
@@ -92,6 +93,7 @@ export async function verifyDriveWritePrecondition(
       throw new Error('Verification identity mismatch');
     return { data, etag: response.headers.get('etag') };
   };
+
   const contents = async () => {
     const response = await call(
       `${endpoints.api}files/${encodeURIComponent(id!)}?alt=media&supportsAllDrives=true`,
@@ -102,6 +104,7 @@ export async function verifyDriveWritePrecondition(
       etag: response.headers.get('etag'),
     };
   };
+
   const write = async (content: string, etag?: string) => {
     const before = await metadata(); // Ownership check, not a save concurrency guard.
     const boundary = `mkeditor_update_${nonce}`;

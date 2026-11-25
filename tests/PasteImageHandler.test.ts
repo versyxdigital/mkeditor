@@ -53,6 +53,7 @@ function makeFakeEditor(opts: { container?: HTMLElement } = {}) {
     setVersion: (next: number) => {
       version = next;
     },
+
     setTextFocus: (v: boolean) => {
       textFocus = v;
     },
@@ -110,6 +111,7 @@ function dispatchPaste(
     preventDefault: () => {
       preventedDefault = true;
     },
+
     stopPropagation: () => {},
   });
   inner.dispatchEvent(event as never);
@@ -475,6 +477,7 @@ describe('PasteImageHandler', () => {
         files: [filesFile],
       },
       preventDefault: () => {},
+
       stopPropagation: () => {},
     });
     ed.inner.dispatchEvent(event as never);
@@ -507,6 +510,7 @@ describe('PasteImageHandler', () => {
         files: [file],
       },
       preventDefault: () => {},
+
       stopPropagation: () => {},
     });
     ed.inner.dispatchEvent(event as never);

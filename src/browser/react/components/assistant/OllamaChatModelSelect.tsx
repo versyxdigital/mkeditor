@@ -47,6 +47,7 @@ export const OllamaChatModelSelect: React.FC<{
         );
     }
   };
+
   const commit = () => {
     if (draft.trim()) onChange(draft.trim());
     else setDraft(model);

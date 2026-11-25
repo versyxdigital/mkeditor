@@ -81,6 +81,7 @@ const pathCatalog: Record<string, ToolSpec> = Object.fromEntries(
             input(args),
             (args as { updateLinks?: boolean }).updateLinks !== false,
           ),
+
         execute: (args, ctx) =>
           ctx.workspace.executePath(
             args as object,
@@ -158,12 +159,14 @@ export const workspaceToolCatalog: Record<string, ToolSpec> = {
     alwaysConfirm: true,
     classifyArgs: (args) =>
       (args as { dryRun?: boolean }).dryRun === false ? 'write' : 'read',
+
     prepare: (args, ctx) =>
       ctx.workspace.replace(
         args as object,
         args as Parameters<typeof ctx.workspace.replace>[1],
         true,
       ) as Promise<import('../../app/interfaces/Assistant').ToolConfirmPreview>,
+
     execute: (args, ctx) =>
       ctx.workspace.replace(
         args as object,
@@ -187,6 +190,7 @@ export const workspaceToolCatalog: Record<string, ToolSpec> = {
     alwaysConfirm: true,
     classifyArgs: (args) =>
       (args as { dryRun?: boolean }).dryRun === false ? 'write' : 'read',
+
     prepare: (args, ctx) => {
       const a = args as { oldPath: string; newPath: string; dryRun?: boolean };
       return ctx.workspace.links(
@@ -197,6 +201,7 @@ export const workspaceToolCatalog: Record<string, ToolSpec> = {
         true,
       ) as Promise<import('../../app/interfaces/Assistant').ToolConfirmPreview>;
     },
+
     execute: (args, ctx) => {
       const a = args as { oldPath: string; newPath: string; dryRun?: boolean };
       return ctx.workspace.links(

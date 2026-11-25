@@ -96,6 +96,7 @@ When implementing changes, preserve these priorities:
 ## TypeScript and coding style
 
 - Follow [.prettierrc](.prettierrc): two-space indentation, semicolons, single quotes, and spaces inside object braces. Let Prettier decide wrapping. Format changed files instead of running a repository-wide write for an unrelated task.
+- Leave one blank line between adjacent function definitions, named arrow functions and class/object methods. Keep TypeScript overload signatures together. `npm run prettier-fix` applies function spacing and Prettier; `npm run prettier-check` checks both.
 - Keep TypeScript strict. Use `import type` or inline `type` imports for type-only dependencies, as required by [eslint.config.mjs](eslint.config.mjs). Prefer explicit domain interfaces, narrow unions, and `unknown` with validation at external boundaries over new unchecked `any` casts. Existing permissive lint rules are not a reason to weaken new code.
 - Match local naming and exports: PascalCase manager/component files, camelCase functions and fields, `use...` hooks, and named exports in most managers/components. Markdown-it extensions currently use default exports; follow the surrounding module's convention.
 - React uses function components and typed props; `import * as React` and `React.use...` are the prevailing style. Reuse contexts/hooks and existing UI primitives before adding another state store or component framework.

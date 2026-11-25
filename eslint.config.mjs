@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import js from '@eslint/js';
 import { FlatCompat } from '@eslint/eslintrc';
+import functionSpacing from './scripts/eslint-function-spacing.cjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,6 +33,7 @@ export default [
   {
     plugins: {
       '@typescript-eslint': typescriptEslint,
+      mkeditor: { rules: { 'function-spacing': functionSpacing } },
     },
 
     languageOptions: {
@@ -46,6 +48,7 @@ export default [
     },
 
     rules: {
+      'mkeditor/function-spacing': 'error',
       // Indentation is owned by Prettier (`.prettierrc` + `prettier-fix`
       // in the build pipeline). ESLint's `indent` rule disagrees with
       // Prettier on a few real cases — ternary-with-object-literal

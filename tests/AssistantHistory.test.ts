@@ -19,6 +19,7 @@ const tool = (
   result: { ok: true, path: `/poems/${id}.md` },
   ...overrides,
 });
+
 const message = (overrides: Partial<UiChatMessage> = {}): UiChatMessage => ({
   id: 'message',
   role: 'assistant',
@@ -215,9 +216,13 @@ describe.each(['anthropic', 'openai', 'ollama'] as const)(
         manager.setAutoAcceptWrites(provider, conversation, true);
         const executor: ToolExecutor = {
           hasTool: () => true,
+
           describe: () => [],
+
           classify: () => 'write',
+
           buildPreview: () => null,
+
           getFullPreviewContent: async () => undefined,
           execute: jest.fn(async (_name, args) => ({
             ok: true,
@@ -293,10 +298,15 @@ it('saves already completed tool work as interrupted history when closing mid-re
   const conversation = source.createConversation(provider);
   source.setToolExecutor({
     hasTool: () => true,
+
     describe: () => [],
+
     classify: () => 'read',
+
     buildPreview: () => null,
+
     getFullPreviewContent: async () => undefined,
+
     execute: async () => ({ paths: ['/poems/1.md'] }),
   });
   const call = source.startCall(provider, conversation, 'List the poems')!;

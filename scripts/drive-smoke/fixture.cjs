@@ -28,6 +28,7 @@ async function createFixture() {
     response.writeHead(status, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify(value));
   };
+
   const metadata = (file) => ({
     ...file,
     version: String(file.version),

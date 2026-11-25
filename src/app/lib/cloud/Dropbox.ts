@@ -90,6 +90,7 @@ const parseMetadata = (input: unknown): Metadata => {
   if (result.data['.tag'] === 'deleted') throw new CloudError('missing');
   return result.data;
 };
+
 /** Dropbox hashes the concatenated SHA-256 hashes of its 4 MiB blocks. */
 export function dropboxContentHash(content: Uint8Array): string {
   const hashes: Buffer[] = [];
@@ -101,6 +102,7 @@ export function dropboxContentHash(content: Uint8Array): string {
     );
   return createHash('sha256').update(Buffer.concat(hashes)).digest('hex');
 }
+
 function prepared(id: string) {
   if (!id.startsWith(pendingPrefix)) return undefined;
   try {
@@ -127,13 +129,16 @@ export class Dropbox implements CloudProvider {
         parents: meta.id === 'root' ? [] : [await this.parent(access, meta)],
       };
     },
+
     createdBy: (access, id, operationId) =>
       this.createdBy(access, id, operationId),
+
     contentValidator: async (access, id) => {
       const meta = await this.metadata(access, id);
       if (!meta.rev) throw new CloudError('unsupported');
       return { etag: `"${meta.rev}"` };
     },
+
     inspectItem: async (access, id) => {
       const meta = await this.metadata(access, id);
       return this.item(
@@ -142,17 +147,21 @@ export class Dropbox implements CloudProvider {
         true,
       );
     },
+
     prepareCreate: (access, folderId, name, operationId) =>
       this.prepareCreation(access, folderId, name, operationId, 'folder'),
+
     // move_v2 has no atomic source-ID/revision/location precondition. Path
     // moves can affect replacements; ID moves can follow an unchecked relocation.
     // Retain read-only organization methods for recovering older pending moves.
     prepareMove: async () => {
       throw new CloudError('unsupported');
     },
+
     move: async () => {
       throw new CloudError('unsupported');
     },
+
     createFolder: (access, id, folderId, name, operationId, authorize) =>
       this.createFolder(access, id, folderId, name, operationId, authorize),
   };
@@ -161,11 +170,13 @@ export class Dropbox implements CloudProvider {
     private readonly endpoints: DropboxEndpoints = production,
     private readonly callbackPort = DROPBOX_CALLBACK_PORT,
   ) {}
+
   authorizationScopes(editing: boolean): readonly string[] {
     return editing
       ? [...DROPBOX_READ_SCOPES, ...DROPBOX_WRITE_SCOPES]
       : DROPBOX_READ_SCOPES;
   }
+
   canWrite(tokens: CloudTokens): boolean {
     return DROPBOX_WRITE_SCOPES.every((scope) =>
       tokens.scopes?.includes(scope),
@@ -248,12 +259,14 @@ export class Dropbox implements CloudProvider {
       throw new CloudError('configuration');
     }
   }
+
   private headers(access: string, rooted = true): Record<string, string> {
     return {
       Authorization: `Bearer ${access}`,
       ...(rooted ? { 'Dropbox-API-Path-Root': '{".tag":"home"}' } : {}),
     };
   }
+
   private async rpc(
     access: string,
     route: string,
@@ -278,6 +291,7 @@ export class Dropbox implements CloudProvider {
     );
     return response.json();
   }
+
   private async token(
     registration: CloudRegistration,
     form: Record<string, string>,
@@ -318,6 +332,7 @@ export class Dropbox implements CloudProvider {
       scopes,
     };
   }
+
   refresh(registration: CloudRegistration, refresh: string, scopes?: string[]) {
     return this.token(
       registration,
@@ -326,6 +341,7 @@ export class Dropbox implements CloudProvider {
       scopes,
     );
   }
+
   async beginAuthorization(
     registration: CloudRegistration,
     openBrowser: (url: string) => Promise<void>,
@@ -356,6 +372,7 @@ export class Dropbox implements CloudProvider {
       port: this.callbackPort,
     });
   }
+
   async account(access: string): Promise<{ id: string; name: string }> {
     const result = z
       .object({
@@ -370,6 +387,7 @@ export class Dropbox implements CloudProvider {
       name: result.data.email ?? result.data.name.display_name,
     };
   }
+
   private async metadata(access: string, id: string): Promise<Metadata> {
     if (id === 'root') return root;
     const plan = prepared(id);
@@ -393,6 +411,7 @@ export class Dropbox implements CloudProvider {
       throw new CloudError('conflict');
     return meta;
   }
+
   private matches(
     meta: Metadata,
     templateId: string,
@@ -408,6 +427,7 @@ export class Dropbox implements CloudProvider {
       ),
     );
   }
+
   private item(meta: Metadata, parent: string, editing = false): RemoteItem {
     const kind =
       meta['.tag'] === 'folder'
@@ -435,12 +455,14 @@ export class Dropbox implements CloudProvider {
         : {}),
     };
   }
+
   private async parent(access: string, meta: Metadata): Promise<string> {
     const path = meta.path_lower ?? meta.path_display;
     if (!path) throw new CloudError('unsupported');
     const parent = path.slice(0, path.lastIndexOf('/'));
     return parent ? (await this.metadata(access, parent)).id : 'root';
   }
+
   async list(
     access: string,
     folderId: string,
@@ -484,9 +506,11 @@ export class Dropbox implements CloudProvider {
       nextPage: result.data.has_more ? result.data.cursor : undefined,
     };
   }
+
   async drives(): Promise<RemotePage> {
     throw new CloudError('unsupported');
   }
+
   async read(
     access: string,
     id: string,
@@ -551,6 +575,7 @@ export class Dropbox implements CloudProvider {
       content,
     };
   }
+
   private async upload(
     access: string,
     args: Record<string, unknown>,
@@ -591,6 +616,7 @@ export class Dropbox implements CloudProvider {
       throw new CloudError('unconfirmed');
     }
   }
+
   async update(
     access: string,
     id: string,
@@ -620,6 +646,7 @@ export class Dropbox implements CloudProvider {
       throw new CloudError('unconfirmed');
     }
   }
+
   private async template(access: string, allowCreate = true): Promise<string> {
     const existing = this.templates.get(access);
     if (existing) return existing;
@@ -693,6 +720,7 @@ export class Dropbox implements CloudProvider {
       throw error;
     }
   }
+
   async prepareCreate(
     access: string,
     folderId: string,
@@ -701,6 +729,7 @@ export class Dropbox implements CloudProvider {
   ): Promise<string> {
     return this.prepareCreation(access, folderId, name, operationId, 'file');
   }
+
   private async prepareCreation(
     access: string,
     folderId: string,
@@ -744,6 +773,7 @@ export class Dropbox implements CloudProvider {
     if (id.length > 1024) throw new CloudError('unsupported');
     return id;
   }
+
   private async createFolder(
     access: string,
     id: string,
@@ -820,6 +850,7 @@ export class Dropbox implements CloudProvider {
       throw new CloudError('unconfirmed');
     }
   }
+
   async create(
     access: string,
     id: string,
@@ -861,6 +892,7 @@ export class Dropbox implements CloudProvider {
     }
     return { item: this.item(meta, folderId, true), content };
   }
+
   async createdBy(
     access: string,
     id: string,

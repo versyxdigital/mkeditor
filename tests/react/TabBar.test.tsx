@@ -8,6 +8,7 @@ import { renderWithProviders, fakeFileManager } from '../utils/render';
 // resolved string so the menu items have stable accessible names.
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   normalizeLanguage: (lng: string) => lng,
 }));
 

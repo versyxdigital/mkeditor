@@ -115,9 +115,11 @@ export class GoogleDrive implements CloudProvider {
   authorizationScopes(editing: boolean): readonly string[] {
     return editing ? [DRIVE_SCOPE, DRIVE_WRITE_SCOPE] : [DRIVE_SCOPE];
   }
+
   canWrite(tokens: DriveTokens): boolean {
     return hasExactScope(tokens.scopes, DRIVE_WRITE_SCOPE);
   }
+
   async createdBy(
     access: string,
     id: string,
@@ -128,6 +130,7 @@ export class GoogleDrive implements CloudProvider {
         ?.mkeditorCreateOperation === operationId
     );
   }
+
   constructor(private readonly endpoints: DriveEndpoints = production) {}
 
   async request(

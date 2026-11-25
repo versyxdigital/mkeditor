@@ -13,6 +13,7 @@ import { renderWithProviders } from '../utils/render';
 // deterministic.
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   normalizeLanguage: (lng: string) => lng,
   getAvailableLocales: jest.fn(async () => [
     { code: 'en', name: 'English', native: 'English' },

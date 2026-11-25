@@ -6,7 +6,9 @@ import type { ConfigPushPayload } from '../../src/app/interfaces/Assistant';
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   normalizeLanguage: (lng: string) => lng,
+
   whenLanguageReady: () => Promise.resolve(),
   getAvailableLocales: jest.fn(async () => []),
   initI18n: jest.fn(),
@@ -41,6 +43,7 @@ function snapshot(): ConfigPushPayload {
     },
   };
 }
+
 function renderSettings(initial = snapshot()) {
   const manager = fakeAssistantManager({ initialSnapshot: initial });
   renderWithProviders(<AssistantSettings />, {

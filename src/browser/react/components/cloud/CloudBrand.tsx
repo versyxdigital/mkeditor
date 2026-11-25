@@ -15,6 +15,7 @@ export const DropboxLogo: React.FC<{ className?: string }> = ({
     className={cn('h-4 w-4 shrink-0 object-contain', className)}
   />
 );
+
 export const CloudLogo: React.FC<{
   provider?: CloudProviderId;
   className?: string;

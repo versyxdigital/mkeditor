@@ -80,6 +80,7 @@ export const MentionPicker: React.FC<MentionPickerProps> = ({
           setListing({ root, paths: [], loading: false, error: true });
       }
     };
+
     const onFocus = () => void refresh(true);
     const unsubscribe = fileTreeManager.on('change', () => {
       const next = fileTreeManager.getSnapshot();

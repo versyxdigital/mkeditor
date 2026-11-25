@@ -48,12 +48,17 @@ async function fixtureFor(id: CloudProviderId): Promise<Fixture> {
       loseResponse: () => {
         f.state.loseWriteReply = true;
       },
+
       externalEdit: (content) => f.externalEdit('id:markdown', content),
+
       account: (value) => {
         f.state.account = value;
       },
+
       contents: () => f.files.get('id:markdown')!.content,
+
       writes: () => f.state.writes,
+
       revoke: () => {
         f.state.revoked = true;
       },
@@ -72,20 +77,25 @@ async function fixtureFor(id: CloudProviderId): Promise<Fixture> {
     loseResponse: () => {
       f.state.loseWrite = true;
     },
+
     externalEdit: (content) => {
       f.state.content = content;
       f.state.revision = String(Number(f.state.revision) + 1);
     },
+
     account: (value) => {
       f.state.accountId = value;
     },
+
     contents: () => f.state.content,
+
     writes: () =>
       f.calls.filter(
         (call) =>
           call.method === 'PUT' ||
           (call.method === 'POST' && call.url.pathname.startsWith('/upload/')),
       ).length,
+
     revoke: () => {
       f.state.revoked = true;
       f.state.override = (_url, response) => {
@@ -97,6 +107,7 @@ async function fixtureFor(id: CloudProviderId): Promise<Fixture> {
     close: f.close,
   };
 }
+
 const success = (result: CloudResponse) => {
   if (!result.ok) throw Error(`Unexpected provider error: ${result.error}`);
   return result;
@@ -130,8 +141,10 @@ describe.each(['google-drive', 'dropbox'] as const)(
             }
           : {},
       );
+
     const request = (command: CloudCommand) =>
       service.handle({ requestId: 'conformance', command });
+
     async function connect(id: string, writeAccess = true) {
       authorize = undefined;
       const connecting = request({
@@ -150,6 +163,7 @@ describe.each(['google-drive', 'dropbox'] as const)(
       await fetch(callback);
       return connecting;
     }
+
     async function open() {
       const added = success(
         await request({
@@ -169,6 +183,7 @@ describe.each(['google-drive', 'dropbox'] as const)(
         }),
       ).document!;
     }
+
     const save = (doc: RemoteDocument, operationId = 'save') =>
       request({
         action: 'save',
@@ -187,11 +202,15 @@ describe.each(['google-drive', 'dropbox'] as const)(
       recovery = new CloudRecoveryStore(join(directory, 'recovery.bin'));
       persistence = {
         load: () => data,
+
         save: (value) => {
           data = value;
         },
+
         available: async () => true,
+
         encrypt: async (tokens) => JSON.stringify(tokens),
+
         decrypt: async (encoded) => JSON.parse(encoded),
       };
       service = construct();

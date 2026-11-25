@@ -11,8 +11,8 @@
   "main": "dist/app/main.js",
   "scripts": {
     "prepare": "husky",
-    "prettier-check": "prettier . --check",
-    "prettier-fix": "prettier . --write",
+    "prettier-check": "prettier . --check && eslint --no-config-lookup --config eslint.spacing.config.mjs .",
+    "prettier-fix": "eslint --no-config-lookup --config eslint.spacing.config.mjs . --fix && prettier . --write",
     "lint": "eslint src",
     "pretest": "node ./scripts/audit-tests.cjs",
     "test:audit": "node ./scripts/audit-tests.cjs",

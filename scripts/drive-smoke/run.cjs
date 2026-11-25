@@ -45,13 +45,16 @@ async function until(check, timeout = 30000) {
   }
   throw Error(`Timed out during ${phase}.`);
 }
+
 async function step(name, work) {
   phase = name;
   console.log(name);
   await work();
   report.steps.push(name);
 }
+
 const state = () => application.evaluate(() => globalThis.driveSmoke.state());
+
 async function launch() {
   application = await _electron.launch({
     executablePath: require('electron'),
@@ -92,6 +95,7 @@ async function launch() {
     'Build with a Google Desktop registration before a live run.',
   );
 }
+
 async function settings() {
   await page
     .getByRole('button', { name: navbar.settings_tooltip, exact: true })
@@ -100,12 +104,14 @@ async function settings() {
     .getByRole('tab', { name: labels.connections, exact: true })
     .click();
 }
+
 async function closeDialog() {
   await page
     .getByRole('dialog')
     .getByRole('button', { name: 'Close', exact: true })
     .click();
 }
+
 async function selectDrive() {
   const picker = page.getByRole('combobox', { name: labels.workspace });
   await picker.click();
@@ -127,6 +133,7 @@ async function selectDrive() {
     .getByRole('button', { name: labels.refresh, exact: true })
     .click();
 }
+
 async function enterRoot() {
   const row = page
     .locator('#sidebar')
@@ -144,6 +151,7 @@ async function enterRoot() {
   }
   throw Error('Disposable test folder was not listed.');
 }
+
 async function fillName(name) {
   const dialog = page.getByRole('dialog');
   await dialog.locator('input').fill(name);
@@ -152,6 +160,7 @@ async function fillName(name) {
     .click();
   await dialog.waitFor({ state: 'hidden' });
 }
+
 async function createDocument(name) {
   const explorer = page
     .locator('#sidebar')
@@ -178,12 +187,14 @@ async function createDocument(name) {
     .waitFor();
   return activeIdentity();
 }
+
 async function activeIdentity() {
   const tab = page.locator('#editor-tabs li[data-active=true]');
   const identity = await tab.getAttribute('data-path');
   assert.ok(identity?.startsWith('cloud-drive://'));
   return { identity, id: decodeURIComponent(identity.split('/').at(-1)) };
 }
+
 async function edit(content) {
   await page
     .locator(
@@ -200,12 +211,14 @@ async function edit(content) {
         .getAttribute('data-dirty')) === 'true',
   );
 }
+
 async function save() {
   // Native menus send this same event; the production bridge/manager performs the save.
   await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].webContents.send('from:file:save'),
   );
 }
+
 async function saved() {
   await until(
     async () =>
@@ -214,6 +227,7 @@ async function saved() {
         .getAttribute('data-dirty')),
   );
 }
+
 async function verify(id, content) {
   assert.equal(
     await application.evaluate(
@@ -239,6 +253,7 @@ async function crash() {
   await exited;
   await application.close().catch(() => {});
 }
+
 async function assertDraft(document, marker) {
   await until(
     async () => (await activeIdentity()).identity === document.identity,
@@ -255,12 +270,14 @@ async function assertDraft(document, marker) {
     'true',
   );
 }
+
 async function checkpoint() {
   assert.equal(
     await application.evaluate(() => globalThis.driveSmoke.checkpoint()),
     true,
   );
 }
+
 async function recoveryScenarios(document) {
   await step(
     'Unsaved remote drafts, tab identity and cursor survive a normal restart',

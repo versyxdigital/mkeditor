@@ -123,6 +123,7 @@ export class CloudRecoveryStore {
   constructor(
     private readonly path = join(homedir(), '.mkeditor', 'cloud-recovery.bin'),
   ) {}
+
   async load(): Promise<RecoveryData> {
     if (this.data) return this.data;
     if (this.loading) return this.loading;
@@ -133,6 +134,7 @@ export class CloudRecoveryStore {
       this.loading = undefined;
     }
   }
+
   private async read(): Promise<RecoveryData> {
     try {
       const stat = await fs.stat(this.path).catch((error) => {
@@ -174,6 +176,7 @@ export class CloudRecoveryStore {
       throw new CloudError('storage');
     }
   }
+
   private update(change: (data: RecoveryData) => RecoveryData): Promise<void> {
     const work = this.queue
       .catch(() => {})
@@ -217,6 +220,7 @@ export class CloudRecoveryStore {
       throw new CloudError('storage');
     });
   }
+
   async saveSession(
     session: SessionPayload | undefined,
     acknowledgements: string[] = [],
@@ -306,6 +310,7 @@ export class CloudRecoveryStore {
       };
     });
   }
+
   async saveOperations(operations: RecoveryOperation[]) {
     await this.update((data) => {
       const merged = new Map(data.operations.map((op) => [op.operationId, op]));
@@ -326,6 +331,7 @@ export class CloudRecoveryStore {
       };
     });
   }
+
   async discardDocument(document: RemoteDocumentDiscard): Promise<void> {
     const path = remoteDocumentPath({
       ...document,
@@ -371,6 +377,7 @@ export class CloudRecoveryStore {
       return { ...data, session, suppressedOperations: [...suppressed] };
     });
   }
+
   async acknowledge(operationId: string) {
     const operation = (await this.load()).operations.find(
       (op) => op.operationId === operationId,

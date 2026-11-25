@@ -182,11 +182,13 @@ export class FileManager {
   public setCheckpointAcknowledgements(enabled: boolean): void {
     this.checkpointAcknowledgements = enabled;
   }
+
   public onSessionCheckpointSaved(): void {
     this.checkpointInFlight = false;
     if (this.finalCheckpoints.length || this.checkpointQueued)
       this.sendSessionCheckpoint();
   }
+
   public flushSessionCheckpoint(
     id?: string,
     copy?: import('../../app/interfaces/Session').SessionRecoveryCopy,
@@ -194,6 +196,7 @@ export class FileManager {
     this.finalCheckpoints.push({ id, copy });
     this.sendSessionCheckpoint();
   }
+
   private sendSessionCheckpoint(): void {
     if (this.checkpointAcknowledgements && this.checkpointInFlight) {
       this.checkpointQueued = true;
@@ -1500,6 +1503,7 @@ export class FileManager {
         void this.checkRemoteRecovery(path);
     }
   }
+
   public markRecoveredMoves(
     operations: import('../../app/interfaces/Cloud').CloudPendingOperation[],
   ): void {
@@ -1525,6 +1529,7 @@ export class FileManager {
     for (const path of next) this.remoteMoveUnconfirmed.add(path);
     this.restoredMoveMarkers = next;
   }
+
   public clearUnappliedMove(
     connectionId: string,
     accountId: string,

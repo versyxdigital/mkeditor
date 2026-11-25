@@ -47,7 +47,9 @@ export interface ProviderModelFactories {
 
 const DEFAULT_FACTORIES: ProviderModelFactories = {
   openai: (apiKey, modelId) => createOpenAI({ apiKey })(modelId),
+
   anthropic: (apiKey, modelId) => createAnthropic({ apiKey })(modelId),
+
   ollama: (baseURL, modelId) => createOllama({ baseURL })(modelId),
 };
 

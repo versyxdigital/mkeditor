@@ -217,6 +217,7 @@ export const remoteDocumentPath = (
   },
 ): string =>
   `${doc.provider === 'dropbox' ? 'cloud-dropbox' : 'cloud-drive'}://${encodeURIComponent(doc.connectionId)}/${encodeURIComponent(doc.accountId)}/${encodeURIComponent(doc.item.id)}`;
+
 export const isRemotePath = (path: string | null | undefined): boolean =>
   Boolean(
     path?.startsWith('cloud-drive://') || path?.startsWith('cloud-dropbox://'),

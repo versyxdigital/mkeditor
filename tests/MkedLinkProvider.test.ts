@@ -81,6 +81,7 @@ function makeModel(value: string): editor.ITextModel {
   // `getValue()` and computes offsets via `getPositionAt`.
   return {
     getValue: () => value,
+
     getPositionAt: (offset: number) => {
       // Walk newlines to derive 1-based line/column from the offset.
       let line = 1;

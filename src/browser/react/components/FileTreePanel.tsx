@@ -530,9 +530,11 @@ const NodeRow: React.FC<NodeRowProps> = ({
     e.dataTransfer.dropEffect = 'move';
     setIsDropTarget(true);
   };
+
   const handleDragLeave = () => {
     if (isDropTarget) setIsDropTarget(false);
   };
+
   const handleDrop = (e: React.DragEvent) => {
     setIsDropTarget(false);
     if (!acceptsDrops) return;

@@ -70,6 +70,7 @@ describe('useExpandableContent', () => {
       new Promise<string>((resolve) => {
         finishOld = resolve;
       });
+
     const newFetcher = () =>
       new Promise<string>((resolve) => {
         finishNew = resolve;

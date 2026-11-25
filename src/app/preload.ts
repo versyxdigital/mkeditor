@@ -118,6 +118,7 @@ const contextBridgeChannel = () => {
         ipcRenderer.send(channel, data);
       }
     },
+
     receive: (channel: string, fn: (...args: any[]) => void) => {
       if (receiverWhitelist.includes(channel)) {
         // Listen to channels and execute callack when messages are received.
@@ -145,7 +146,9 @@ contextBridge.exposeInMainWorld('mked', {
   // by the composition root in `index.ts` and threaded through Managers.
   platform: process.platform,
   getActiveFilePath: () => ipcRenderer.sendSync('mked:get-active-file'),
+
   getAppLocale: () => ipcRenderer.sendSync('mked:get-locale'),
+
   /**
    * SPKI base64 of main's per-session RSA-OAEP public key. The
    * renderer imports this via Web Crypto and uses it to encrypt
@@ -156,10 +159,14 @@ contextBridge.exposeInMainWorld('mked', {
    */
   secureChannelPublicKey: (): string =>
     ipcRenderer.sendSync('mked:secure:public-key'),
+
   openMkedUrl: (url: string) => ipcRenderer.send('mked:open-url', url),
+
   pathDirname: (p: string) => ipcRenderer.invoke('mked:path:dirname', p),
+
   resolvePath: (base: string, rel: string) =>
     ipcRenderer.invoke('mked:path:resolve', base, rel),
+
   /**
    * Read a file's contents without opening it as a tab. Used by the
    * AI assistant's `read_file` tool when the requested file isn't
@@ -171,16 +178,19 @@ contextBridge.exposeInMainWorld('mked', {
       content: string;
       lineCount: number;
     }>,
+
   listWorkspaceFiles: (root: string) =>
     ipcRenderer.invoke('mked:fs:listworkspacefiles', root) as Promise<
       import('./interfaces/Storage').WorkspaceFileListing
     >,
+
   workspaceOperation: (
     request: import('./interfaces/WorkspaceTools').WorkspaceRequest,
   ) =>
     ipcRenderer.invoke('mked:fs:workspace-operation', request) as Promise<
       import('./interfaces/WorkspaceTools').WorkspaceResponse
     >,
+
   /**
    * Write `content` to an existing or new file at `path`. Resolves
    * with `{ok: true, path}` on success or `{ok: false, error}` on
@@ -193,6 +203,7 @@ contextBridge.exposeInMainWorld('mked', {
     ipcRenderer.invoke('mked:fs:savefile', path, content) as Promise<
       { ok: true; path: string } | { ok: false; error: string }
     >,
+
   /**
    * Create a new file at `parent/name` with `content`. Resolves with
    * `{ok: true, path}` on success or `{ok: false, error}` on failure.
@@ -204,6 +215,7 @@ contextBridge.exposeInMainWorld('mked', {
     ipcRenderer.invoke('mked:fs:createfile', parent, name, content) as Promise<
       { ok: true; path: string } | { ok: false; error: string }
     >,
+
   /**
    * Create a new (empty) directory at `parent/name`. Resolves with
    * `{ok: true, path}` on success or `{ok: false, error}` on
@@ -215,6 +227,7 @@ contextBridge.exposeInMainWorld('mked', {
     ipcRenderer.invoke('mked:fs:createfolder', parent, name) as Promise<
       { ok: true; path: string } | { ok: false; error: string }
     >,
+
   /**
    * Save a pasted-image's raw bytes into the workspace and return
    * the absolute on-disk path.
@@ -240,15 +253,19 @@ contextBridge.exposeInMainWorld('logger', {
   log(level: LogLevel, msg: string, meta?: unknown) {
     ipcRenderer.send('log', { level, msg, meta });
   },
+
   debug(msg: string, meta?: unknown) {
     ipcRenderer.send('log', { level: 'debug', msg, meta });
   },
+
   info(msg: string, meta?: unknown) {
     ipcRenderer.send('log', { level: 'info', msg, meta });
   },
+
   warn(msg: string, meta?: unknown) {
     ipcRenderer.send('log', { level: 'warn', msg, meta });
   },
+
   error(msg: string, meta?: unknown) {
     ipcRenderer.send('log', { level: 'error', msg, meta });
   },

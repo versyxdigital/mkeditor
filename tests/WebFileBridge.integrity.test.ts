@@ -24,6 +24,7 @@ class FakeFile {
   }));
   readonly getFile = jest.fn(async () => ({
     text: async () => this.data,
+
     arrayBuffer: async () =>
       typeof this.data === 'string'
         ? new TextEncoder().encode(this.data).buffer

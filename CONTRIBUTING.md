@@ -100,7 +100,9 @@ MKEditor is split into two main components:
 ### Code Standards
 
 - Formatting is handled by Prettier (`npm run prettier-fix` writes,
-  `npm run prettier-check` verifies). ESLint owns lint
+  `npm run prettier-check` verifies), with ESLint enforcing one blank line
+  between adjacent function definitions, named arrow functions and methods.
+  These commands run both formatting stages. ESLint also owns lint
   (`npm run lint`). Both run automatically in the pre-commit hook
   installed by `npm install`.
 - Prefer readability over micro-optimizations.

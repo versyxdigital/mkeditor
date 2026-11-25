@@ -15,6 +15,7 @@ import {
 // resolved string so the dialog has a stable accessible name.
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   normalizeLanguage: (lng: string) => lng,
 }));
 

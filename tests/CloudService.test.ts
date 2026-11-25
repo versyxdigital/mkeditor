@@ -30,11 +30,15 @@ beforeEach(async () => {
   authorize = undefined;
   persistence = {
     load: () => data,
+
     save: (value) => {
       data = value;
     },
+
     available: async () => true,
+
     encrypt: async (tokens) => JSON.stringify(tokens),
+
     decrypt: async (encoded) => JSON.parse(encoded),
   };
   service = new CloudService(
@@ -64,11 +68,13 @@ async function add() {
   if (!response.ok) throw new Error(response.error);
   return response.state.connections.at(-1)!.id;
 }
+
 async function waitForBrowser() {
   for (let i = 0; i < 100 && !authorize; i++)
     await new Promise((resolve) => setTimeout(resolve, 2));
   if (!authorize) throw new Error('Browser did not open');
 }
+
 async function authorizeConnection(id: string, writeAccess?: boolean) {
   authorize = undefined;
   const pending = request({ action: 'connect', connectionId: id, writeAccess });
@@ -807,6 +813,7 @@ async function journalRun(
   const root = mkdtempSync(join(tmpdir(), 'mkeditor-journal-'));
   const path = join(root, 'journal.bin');
   const store = () => new CloudRecoveryStore(path);
+
   const restart = () => {
     service.dispose();
     service = new CloudService(

@@ -40,6 +40,7 @@ export async function renderMermaidDiagrams(
       saved.set(key, value);
       if (saved.size > 40) saved.delete(saved.keys().next().value!);
     };
+
     const task = async () => {
       if (signal.aborted || !host.contains(block)) return;
       const insert = (svg: string) => {

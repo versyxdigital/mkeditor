@@ -23,6 +23,7 @@ export class CloudSessionRecovery {
       'save' | 'clear'
     > = AppSession,
   ) {}
+
   async restore(local: SessionPayload | null): Promise<SessionRestoreEnvelope> {
     try {
       const recovery = await this.store.load();
@@ -139,6 +140,7 @@ export class CloudSessionRecovery {
       return { ...AppSession.buildRestoreEnvelope(local), recoveryError: true };
     }
   }
+
   save(payload: SessionPayload): Promise<void> {
     const work = this.queue
       .catch(() => {})
@@ -185,6 +187,7 @@ export class CloudSessionRecovery {
     this.queue = work;
     return work;
   }
+
   clear(): Promise<string> {
     const token = `clear-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     this.clearToken = token;

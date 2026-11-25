@@ -361,9 +361,11 @@ export class EditorManager {
       setOriginal(value: string) {
         if (originalModel.getValue() !== value) originalModel.setValue(value);
       },
+
       setModified(value: string) {
         if (modifiedModel.getValue() !== value) modifiedModel.setValue(value);
       },
+
       dispose() {
         // Editor first, then models — disposing a model that an
         // editor still references throws inside Monaco's internals.

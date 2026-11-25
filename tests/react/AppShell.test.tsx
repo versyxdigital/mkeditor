@@ -54,9 +54,11 @@ jest.mock('react-resizable-panels', () => ({
       {children}
     </div>
   ),
+
   Panel: ({ children, id }: { children: React.ReactNode; id?: string }) => (
     <div data-panel-id={id}>{children}</div>
   ),
+
   Separator: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
     <div {...props} role="separator">
       {children}
@@ -66,7 +68,9 @@ jest.mock('react-resizable-panels', () => ({
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   whenLanguageReady: () => Promise.resolve(),
+
   normalizeLanguage: (lng: string) => lng,
   getAvailableLocales: jest.fn(async () => []),
   initI18n: jest.fn(),

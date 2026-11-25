@@ -266,6 +266,7 @@ export class CloudService {
       this.journalLoading = undefined;
     }
   }
+
   private async persistJournal(): Promise<void> {
     if (!this.recovery) return;
     const operations: RecoveryOperation[] = [
@@ -284,18 +285,22 @@ export class CloudService {
   private data(): StoredConnection[] {
     return (this.connections ??= this.store.load());
   }
+
   private find(id: string): StoredConnection {
     const found = this.data().find((entry) => entry.id === id);
     if (!found) throw new CloudError('missing');
     return found;
   }
+
   private generation(id: string) {
     return this.generations.get(id) ?? 0;
   }
+
   private assertCurrent(id: string, generation: number) {
     if (this.disposed || this.generation(id) !== generation)
       throw new CloudError('cancelled');
   }
+
   private replace(value: StoredConnection) {
     const next = this.data().map((entry) =>
       entry.id === value.id ? value : entry,
@@ -304,6 +309,7 @@ export class CloudService {
     this.connections = next;
     this.revision++;
   }
+
   async state(): Promise<CloudState> {
     let recoveryError = false;
     try {
@@ -350,6 +356,7 @@ export class CloudService {
       })),
     };
   }
+
   private async changed() {
     if (!this.disposed) this.push(await this.state());
   }

@@ -30,13 +30,16 @@ jest.mock('../src/app/lib/AssistantKeyStore', () => ({
   AssistantKeyStore: {
     getKey: mockGetKey,
     hasKey: async () => true,
+
     isEncryptionAvailable: async () => true,
   },
 }));
 jest.mock('ai', () => ({
   streamText: jest.fn(),
   tool: (value: unknown) => value,
+
   jsonSchema: (value: unknown) => value,
+
   isStepCount: () => ({}),
 }));
 jest.mock('@ai-sdk/openai', () => ({ createOpenAI: jest.fn() }));
@@ -68,6 +71,7 @@ const request = (): ChatRequest => ({
     },
   ],
 });
+
 const stream = (chunks: unknown[] = [], reason = 'stop') => ({
   stream: (async function* () {
     yield* chunks;
@@ -78,6 +82,7 @@ const stream = (chunks: unknown[] = [], reason = 'stop') => ({
   usage: Promise.resolve({}),
   finishReason: Promise.resolve(reason),
 });
+
 async function drain() {
   for (let i = 0; i < 50; i++) await Promise.resolve();
 }

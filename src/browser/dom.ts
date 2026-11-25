@@ -15,6 +15,7 @@ export const dom = {
     get wrapper(): HTMLDivElement {
       return document.querySelector('#preview') as HTMLDivElement;
     },
+
     get dom(): HTMLDivElement {
       return document.querySelector('#preview-content') as HTMLDivElement;
     },

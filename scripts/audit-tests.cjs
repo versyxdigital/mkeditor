@@ -77,6 +77,7 @@ function auditTestSource(file, text) {
       message,
     });
   }
+
   function hasPromiseMatcher(node) {
     if (
       chainRoot(node) === 'expect' &&
@@ -86,6 +87,7 @@ function auditTestSource(file, text) {
     }
     return ts.forEachChild(node, hasPromiseMatcher) ?? false;
   }
+
   function visit(node) {
     if (
       (ts.isPropertyAccessExpression(node) ||

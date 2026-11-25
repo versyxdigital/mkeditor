@@ -283,6 +283,7 @@ describe('AppSession.save', () => {
           calls.push(`write:${path}`);
           return realFs.writeFileSync(path, data, opts);
         },
+
         renameSync: (from: string, to: string) => {
           calls.push(`rename:${from}->${to}`);
           return realFs.renameSync(from, to);

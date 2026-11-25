@@ -186,11 +186,17 @@ export class SettingsProvider {
   private applyOne<K extends keyof EditorSettings>(key: K) {
     const handlers: Partial<Record<keyof EditorSettings, () => void>> = {
       autoindent: () => this.setAudoIndent(),
+
       darkmode: () => this.setTheme(),
+
       minimap: () => this.setMinimap(),
+
       wordwrap: () => this.setWordWrap(),
+
       whitespace: () => this.setWhitespace(),
+
       systemtheme: () => this.setTheme(),
+
       // scrollsync has no editor option — checked at scroll time.
       locale: () => window.setLanguage(this.currentSettings.locale),
     };

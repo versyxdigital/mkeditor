@@ -31,6 +31,7 @@ function snapshot(): ConfigPushPayload {
     },
   };
 }
+
 function setup() {
   const bridge = { send: jest.fn(), receive: jest.fn() };
   const manager = new AssistantManager(bridge, { disablePacedReveal: true });

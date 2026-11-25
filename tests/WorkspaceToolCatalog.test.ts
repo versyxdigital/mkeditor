@@ -32,8 +32,11 @@ function fakeModel(initial: string) {
     version = 1;
   return {
     getValue: () => content,
+
     getLineCount: () => content.split('\n').length,
+
     getAlternativeVersionId: () => version,
+
     getFullModelRange: () => ({
       startLineNumber: 1,
       startColumn: 1,
@@ -141,6 +144,7 @@ beforeEach(async () => {
       get activeFile() {
         return tabActions.activeFile;
       },
+
       getActiveEditablePath: () => tabActions.activeFile,
       saveTab: tabActions.saveTab,
       closeTab: tabActions.closeTab,

@@ -97,6 +97,7 @@ export function parseWorkspaceMarkdown(source: string): {
     }
     return low;
   };
+
   const destination = (position: number, image: boolean): number => {
     while (/\s/.test(source[position] ?? '') && position < source.length)
       position++;

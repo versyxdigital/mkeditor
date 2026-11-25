@@ -61,12 +61,15 @@ export class WorkspaceMutationGuard {
   capture(path: string): void {
     this.parents(path, 'capture');
   }
+
   parent(path: string): void {
     this.parents(path, 'verify');
   }
+
   createParents(path: string): void {
     this.parents(path, 'create');
   }
+
   directory(path: string): void {
     this.parent(join(path, '.mkeditor-guard'));
   }

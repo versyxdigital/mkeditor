@@ -591,6 +591,7 @@ function useConnectionStatus(identity: string) {
       setStatus('testing');
       return ticket;
     },
+
     complete: (ticket: number, ok: boolean) => {
       if (ticket !== version.current) return false;
       setStatus(ok ? 'connected' : 'failed');

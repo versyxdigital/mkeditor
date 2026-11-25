@@ -345,6 +345,7 @@ function waitForDirectoryLoad(
     }
     return undefined;
   };
+
   const isLoaded = (): boolean => {
     const node = findNode(ftm.getSnapshot().nodes as Node[]);
     return node?.type === 'directory' && node.loaded === true;
@@ -727,6 +728,7 @@ const CATALOG: Record<string, ToolSpec> = {
       };
 
       const inScope = (p: string): boolean => !scope || p.startsWith(scope);
+
       // True if walking into this directory could still reach the scope
       // (either the dir is inside the scope, or the scope is inside it).
       const couldReachScope = (p: string): boolean =>
@@ -902,6 +904,7 @@ const CATALOG: Record<string, ToolSpec> = {
         after: truncate(content),
       };
     },
+
     async getFullContent(args, ctx, side) {
       const { path: input, content } = args as {
         path: string;
@@ -919,6 +922,7 @@ const CATALOG: Record<string, ToolSpec> = {
       // Same hierarchy preview() uses for the truncated `before`.
       return readFullFile(ctx, path);
     },
+
     async execute(args, ctx) {
       const { path: input, content } = args as {
         path: string;
@@ -1012,6 +1016,7 @@ const CATALOG: Record<string, ToolSpec> = {
         after: truncate(newText),
       };
     },
+
     async getFullContent(args, ctx, side) {
       const {
         path: input,
@@ -1048,6 +1053,7 @@ const CATALOG: Record<string, ToolSpec> = {
         ? before.replace(needle, () => replacement)
         : before;
     },
+
     async execute(args, ctx) {
       const {
         path: input,
@@ -1154,6 +1160,7 @@ const CATALOG: Record<string, ToolSpec> = {
         after: truncate(content),
       };
     },
+
     async getFullContent(args, _ctx, side) {
       // `create_file` has no `before` (the file doesn't exist yet);
       // `after` is the full agent payload from args.
@@ -1161,6 +1168,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const { content } = args as { content: string };
       return content;
     },
+
     async execute(args, ctx) {
       const { path: input, content } = args as {
         path: string;
@@ -1260,6 +1268,7 @@ const CATALOG: Record<string, ToolSpec> = {
         after: truncate(content),
       };
     },
+
     async getFullContent(args, _ctx, side) {
       // `before` is the user's selection at tool-fire time — already
       // captured in the preview; there's nothing further to refetch
@@ -1269,6 +1278,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const { content } = args as { content: string };
       return content;
     },
+
     async execute(args, ctx) {
       const { content } = args as { content: string };
       const editor = ctx.bridge.mkeditor;
@@ -1312,6 +1322,7 @@ const CATALOG: Record<string, ToolSpec> = {
         after: truncate(content),
       };
     },
+
     async getFullContent(args, _ctx, side) {
       // Pure insertion — no `before` to expand. `after` is the
       // full args payload.
@@ -1319,6 +1330,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const { content } = args as { content: string };
       return content;
     },
+
     async execute(args, ctx) {
       const { content } = args as { content: string };
       const editor = ctx.bridge.mkeditor;
@@ -1469,6 +1481,7 @@ export class AssistantTools implements ToolExecutor {
               ].join(':')
             : null;
         };
+
         const positionKey = () => {
           const position = editor.getPosition();
           return position ? `${position.lineNumber}:${position.column}` : null;

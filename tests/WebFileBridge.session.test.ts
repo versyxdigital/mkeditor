@@ -31,11 +31,13 @@ function installIndexedDbStub() {
           setTimeout(() => req.onsuccess?.(), 0);
           return req;
         },
+
         put: () => {
           const req: { onsuccess?: () => void } = {};
           setTimeout(() => req.onsuccess?.(), 0);
           return req;
         },
+
         delete: () => {
           const req: { onsuccess?: () => void } = {};
           setTimeout(() => req.onsuccess?.(), 0);
@@ -45,6 +47,7 @@ function installIndexedDbStub() {
       oncomplete: undefined as (() => void) | undefined,
       onerror: undefined as (() => void) | undefined,
     }),
+
     close: () => {},
   };
 

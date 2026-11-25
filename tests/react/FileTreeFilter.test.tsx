@@ -232,6 +232,7 @@ describe('<FileTreePanel> — filter bar integration', () => {
             '/root',
           ),
         );
+
       const folderRow = () =>
         container.querySelector('li[data-path="/root/new-folder"]');
 

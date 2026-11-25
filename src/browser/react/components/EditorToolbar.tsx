@@ -120,6 +120,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   };
 
   const openExportSettingsModal = () => openModal('exportSettings');
+
   const handleDelete = () => editorManager?.resetContent();
 
   // Find the host once; we render via createPortal into the static

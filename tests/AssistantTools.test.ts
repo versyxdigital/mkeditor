@@ -140,6 +140,7 @@ function makeBridgeManager(
     }),
     activateFile: jest.fn(),
     _emit: () => changeListeners.forEach((l) => l()),
+
     _setModel: (path: string, model: FakeModel) => {
       models.set(path, model);
       changeListeners.forEach((l) => l());
@@ -180,11 +181,13 @@ function makeBridgeManager(
     _setLazyLoadHandler: (handler: LazyLoadHandler) => {
       lazyLoadHandler = handler;
     },
+
     /** Replace the snapshot (must be the exact same reference style). */
     _setTreeSnapshot: (next: typeof treeSnapshotRef) => {
       treeSnapshotRef = next;
       treeListeners.forEach((l) => l());
     },
+
     /** Notify subscribers that the snapshot was mutated in place. */
     _emitTreeChange: () => treeListeners.forEach((l) => l()),
   };

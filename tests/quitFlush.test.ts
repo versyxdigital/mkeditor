@@ -42,6 +42,7 @@ function makeHarness(): {
       for (const set of listeners.values()) n += set.size;
       return n;
     },
+
     fireTimeout: () => {
       timerFn?.();
     },
@@ -53,9 +54,11 @@ function makeHarness(): {
       set.add(listener);
       listeners.set(channel, set);
     },
+
     off: (channel, listener) => {
       listeners.get(channel)?.delete(listener);
     },
+
     send: (channel, payload) => {
       sent.push({ channel, payload });
     },
@@ -64,6 +67,7 @@ function makeHarness(): {
       timerFn = fn;
       return 1;
     },
+
     clearTimer: () => {
       timerFn = null;
     },

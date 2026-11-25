@@ -108,6 +108,7 @@ test('replaces existing connections through a staged write followed by rename', 
         calls.push(`write:${args[0]}`);
         return fs.writeFileSync(...args);
       },
+
       renameSync: (from: string, to: string) => {
         calls.push(`rename:${from}->${to}`);
         return fs.renameSync(from, to);

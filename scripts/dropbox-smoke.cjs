@@ -52,12 +52,14 @@ async function until(check, timeout = 30000) {
   }
   throw Error(`Timed out during ${phase}.`);
 }
+
 async function step(name, work) {
   phase = name;
   console.log(name);
   await work();
   report.steps.push(name);
 }
+
 async function launch() {
   application = await _electron.launch({
     executablePath: require('electron'),
@@ -92,6 +94,7 @@ async function launch() {
   assert.equal(state.secureStorage, true);
   assert.equal(state.dropboxAvailable, true);
 }
+
 async function settings() {
   await page
     .getByRole('button', { name: navbar.settings_tooltip, exact: true })
@@ -100,12 +103,14 @@ async function settings() {
     .getByRole('tab', { name: labels.connections, exact: true })
     .click();
 }
+
 async function closeDialog() {
   await page
     .getByRole('dialog')
     .getByRole('button', { name: 'Close', exact: true })
     .click();
 }
+
 async function selectDropbox() {
   await page.getByRole('combobox', { name: labels.workspace }).click();
   await page.getByRole('option').filter({ hasText: 'Dropbox' }).first().click();
@@ -137,6 +142,7 @@ async function selectDropbox() {
   }
   throw Error('Disposable Dropbox folder not listed.');
 }
+
 async function identity() {
   const value = await page
     .locator('#editor-tabs li[data-active=true]')
@@ -144,6 +150,7 @@ async function identity() {
   assert.ok(value?.startsWith('cloud-dropbox://'));
   return { path: value, id: decodeURIComponent(value.split('/').at(-1)) };
 }
+
 async function edit(content) {
   await page
     .locator(
@@ -160,11 +167,13 @@ async function edit(content) {
         .getAttribute('data-dirty')) === 'true',
   );
 }
+
 async function save() {
   await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].webContents.send('from:file:save'),
   );
 }
+
 async function saved() {
   await until(
     async () =>
@@ -173,6 +182,7 @@ async function saved() {
         .getAttribute('data-dirty')),
   );
 }
+
 async function fillName(name) {
   const dialog = page.getByRole('dialog');
   await dialog.locator('input').fill(name);
@@ -181,6 +191,7 @@ async function fillName(name) {
     .click();
   await dialog.waitFor({ state: 'hidden' });
 }
+
 async function creationMenu() {
   const explorer = page
     .locator('#sidebar')
@@ -193,6 +204,7 @@ async function creationMenu() {
     position: { x: 8, y: bounds.height - 8 },
   });
 }
+
 async function create(name) {
   await creationMenu();
   await page
@@ -210,12 +222,14 @@ async function create(name) {
     .waitFor();
   return identity();
 }
+
 async function checkpoint() {
   assert.equal(
     await application.evaluate(() => globalThis.driveSmoke.checkpoint()),
     true,
   );
 }
+
 async function verify(id, content) {
   assert.equal(
     await application.evaluate(
@@ -226,6 +240,7 @@ async function verify(id, content) {
     true,
   );
 }
+
 async function crash() {
   const child = application.process();
   const exited = new Promise((resolve) => child.once('exit', resolve));

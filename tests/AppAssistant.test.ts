@@ -23,7 +23,9 @@ import { buildChatHistory } from '../src/app/shared/assistantHistory';
 jest.mock('ai', () => ({
   streamText: jest.fn(),
   tool: (spec: unknown) => spec,
+
   jsonSchema: (schema: unknown) => schema,
+
   isStepCount: (n: number) => ({ kind: 'isStepCount', n }),
 }));
 

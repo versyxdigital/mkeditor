@@ -76,7 +76,9 @@ function entry(name: string, directory = false): Dirent {
   return {
     name,
     isDirectory: () => directory,
+
     isFile: () => !directory,
+
     isSymbolicLink: () => false,
   } as Dirent;
 }

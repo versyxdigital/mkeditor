@@ -2,6 +2,7 @@ import { registerBridgeListeners } from '../src/browser/core/BridgeListeners';
 
 jest.mock('../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   whenLanguageReady: () => Promise.resolve(),
 }));
 

@@ -11,8 +11,11 @@ type ToastFn = (message: string) => void;
 
 const fns: Record<ToastLevel, ToastFn> = {
   success: (m) => toast.success(m),
+
   error: (m) => toast.error(m),
+
   info: (m) => toast.info(m),
+
   warning: (m) => toast.warning(m),
 };
 

@@ -44,6 +44,7 @@ function loadAssistantConfig(tmpHome: string): ConfigClass {
 
 const fileFor = (tmpHome: string) =>
   normalize(tmpHome + '/.mkeditor/assistant.json');
+
 const tmpFor = (tmpHome: string) => fileFor(tmpHome) + '.tmp';
 
 describe('AssistantConfig.load', () => {
@@ -256,6 +257,7 @@ describe('AssistantConfig — atomic writes', () => {
           calls.push(`write:${p}`);
           return realFs.writeFileSync(p, d, o);
         },
+
         renameSync: (from: string, to: string) => {
           calls.push(`rename:${from}->${to}`);
           return realFs.renameSync(from, to);

@@ -116,11 +116,13 @@ export class CloudManager {
           },
         });
       },
+
       acknowledge: (operationId) => {
         void this.request({ action: 'acknowledge', operationId }).catch(
           () => {},
         );
       },
+
       canCheck: (document) =>
         this.snapshot.connections.some(
           (entry) =>
@@ -128,6 +130,7 @@ export class CloudManager {
             entry.accountId === document.accountId &&
             entry.status === 'connected',
         ),
+
       check: async (document) => {
         const response = await this.request({
           action: 'open',
@@ -138,7 +141,9 @@ export class CloudManager {
         if (!response.document) throw 'network';
         return response.document;
       },
+
       canEdit: (document) => this.canEdit(document),
+
       save: async ({ document, content, operationId, epoch, sequence }) => {
         const result = await this.request({
           action: 'save',
@@ -155,6 +160,7 @@ export class CloudManager {
         if (!result.document) throw 'unconfirmed';
         return result.document;
       },
+
       reconcile: async ({ document, operationId }) => {
         const result = await this.request({
           action: 'reconcile',
@@ -180,6 +186,7 @@ export class CloudManager {
       } else pending.reject(response.error);
     });
   }
+
   private label(
     key: string,
     provider: CloudProviderId | undefined = this.snapshot.connections.find(
@@ -188,6 +195,7 @@ export class CloudManager {
   ): string {
     return t(cloudMessageKey(key, provider));
   }
+
   private rootFolder(workspace = this.snapshot.workspace): Location {
     return {
       id: 'root',
@@ -198,20 +206,25 @@ export class CloudManager {
           : 'my_drive',
     };
   }
+
   canOrganize(): boolean {
     return this.snapshot.connections.some(
       (connection) => connection.id === this.snapshot.workspace,
     );
   }
+
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
+
   getSnapshot = () => this.snapshot;
+
   private update(patch: Partial<CloudSnapshot>) {
     this.snapshot = { ...this.snapshot, ...patch };
     this.listeners.forEach((listener) => listener());
   }
+
   private reportExplorerError(
     error: CloudWriteError,
     provider?: CloudProviderId,
@@ -231,6 +244,7 @@ export class CloudManager {
         ),
       );
   }
+
   private onState(state: CloudState) {
     if (state.revision < this.snapshot.revision) return;
     const shouldCheck =
@@ -303,6 +317,7 @@ export class CloudManager {
     )
       void this.browse([this.rootFolder()]);
   }
+
   private request(
     command: CloudCommand,
   ): Promise<Extract<CloudResponse, { ok: true }>> {
@@ -339,6 +354,7 @@ export class CloudManager {
       }
     });
   }
+
   initialize() {
     if (this.initialized) return;
     this.initialized = true;
@@ -407,6 +423,7 @@ export class CloudManager {
       });
     }
   }
+
   async run(command: CloudCommand): Promise<boolean> {
     if (this.disposed) return false;
     const commandConnectionId =
@@ -470,6 +487,7 @@ export class CloudManager {
       if (introduceEditing) void this.introduceEditing(introduceEditing);
     }
   }
+
   private async introduceEditing(connection: CloudConnection): Promise<void> {
     try {
       const result = await openPromptExternal({
@@ -510,6 +528,7 @@ export class CloudManager {
       // Dismissing an unavailable prompt leaves the established read-only connection intact.
     }
   }
+
   selectWorkspace(workspace: string) {
     this.browseGeneration++;
     this.update({
@@ -539,6 +558,7 @@ export class CloudManager {
       operation.accountId === connection.accountId,
     );
   }
+
   async browse(folders = this.snapshot.folders, append = false) {
     if (this.snapshot.workspace === 'local') return;
     const connectionId = this.snapshot.workspace;
@@ -584,6 +604,7 @@ export class CloudManager {
       if (generation === this.browseGeneration) this.update({ loading: false });
     }
   }
+
   async open(item: DriveItem) {
     if (item.kind === 'folder') {
       await this.browse([
@@ -651,6 +672,7 @@ export class CloudManager {
       });
     }
   }
+
   canEdit(document: Omit<RemoteDocument, 'content'>): boolean {
     const connection = this.snapshot.connections.find(
       (entry) => entry.id === document.connectionId,
@@ -662,6 +684,7 @@ export class CloudManager {
       document.item.editable,
     );
   }
+
   async reload(path: string, compare = false): Promise<void> {
     const tab = this.files.tabs.get(path);
     const remote = tab?.remote;
@@ -711,6 +734,7 @@ export class CloudManager {
       this.reportExplorerError(error as CloudWriteError, remote.provider);
     }
   }
+
   canCreate(): boolean {
     const connection = this.snapshot.connections.find(
       (entry) => entry.id === this.snapshot.workspace,
@@ -729,6 +753,7 @@ export class CloudManager {
       !this.snapshot.busy.includes('create'),
     );
   }
+
   async create(copy = false, destination?: DriveItem): Promise<void> {
     if (!this.canCreate()) return;
     const connection = this.snapshot.connections.find(
@@ -806,6 +831,7 @@ export class CloudManager {
       });
     }
   }
+
   async reconcileCreate(): Promise<void> {
     const pending = this.snapshot.pendingCreate;
     if (
@@ -1139,6 +1165,7 @@ export class CloudManager {
       });
     }
   }
+
   dispose() {
     this.disposed = true;
     this.pending.forEach((pending) => {

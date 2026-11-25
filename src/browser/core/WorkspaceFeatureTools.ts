@@ -107,6 +107,7 @@ export const workspaceFeatureTools: Record<string, ToolSpec> = {
         summary: `Set ${a.key} to ${JSON.stringify(a.value)}.`,
       };
     },
+
     async execute(args, ctx) {
       const a = args as { key: string; value: unknown };
       const key = validateAgentSetting(
@@ -152,6 +153,7 @@ export const workspaceFeatureTools: Record<string, ToolSpec> = {
         summary: `Export ${path} to HTML${a.withStyles === false ? ' without styles' : ''}. You will choose the output in the Save dialog; unsaved buffer text is included.`,
       };
     },
+
     async execute(args, ctx) {
       const a = args as { path?: string; withStyles?: boolean },
         input = a.path ?? ctx.bridge.fileManager.getActiveEditablePath();

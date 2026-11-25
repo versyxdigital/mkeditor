@@ -62,9 +62,11 @@ function status(next, message) {
   );
   console.log(message);
 }
+
 function caption(text) {
   fs.writeFileSync(captionPath, text);
 }
+
 function nativeWindow(mode, handle) {
   const args = [
     '-NoProfile',
@@ -86,9 +88,11 @@ function nativeWindow(mode, handle) {
     throw Error('Could not inspect the recording browser window.');
   return JSON.parse(result.stdout.trim());
 }
+
 async function ui(expression) {
   return win.webContents.executeJavaScript(expression, true);
 }
+
 async function until(check, description, timeout = 180000) {
   const end = Date.now() + timeout;
   while (!stop && Date.now() < end) {
@@ -97,6 +101,7 @@ async function until(check, description, timeout = 180000) {
   }
   throw Error(`Stopped or timed out: ${description}`);
 }
+
 async function click(label) {
   await until(
     () =>
@@ -107,6 +112,7 @@ async function click(label) {
     20000,
   );
 }
+
 async function control(action) {
   await until(
     () => {
@@ -120,12 +126,14 @@ async function control(action) {
     1800000,
   );
 }
+
 async function foregroundApp() {
   source = 'app';
   win.show();
   win.focus();
   await delay(600);
 }
+
 async function openAuthorization(url) {
   const authorization = new URL(url);
   authorization.searchParams.set('hl', 'en');
@@ -162,6 +170,7 @@ async function openAuthorization(url) {
     'Google consent is open. Review every requested permission in English, scroll if needed, and authorize when ready.',
   );
 }
+
 async function startRecording() {
   caption(
     'MKEditor - Google Drive verification\nLive Google account; disposable review documents only',
@@ -275,6 +284,7 @@ async function startRecording() {
     }
   })();
 }
+
 async function finishRecording() {
   recording = false;
   try {
@@ -285,6 +295,7 @@ async function finishRecording() {
   const exit = await encoderExit;
   if (exit !== 0) throw Error('Video encoder did not finish successfully.');
 }
+
 async function editorInput(text) {
   await ui(
     `document.querySelector('.monaco-editor textarea, .monaco-editor [contenteditable], .monaco-editor .native-edit-context, .monaco-editor [role=textbox]').focus()`,
@@ -292,6 +303,7 @@ async function editorInput(text) {
   await win.webContents.debugger.sendCommand('Input.insertText', { text });
   await delay(900);
 }
+
 async function save() {
   await ui(
     `document.querySelector('button[title="Save markdown file"]').click()`,
@@ -326,14 +338,18 @@ app
     const drive = new GoogleDrive();
     const store = {
       load: () => connectionData,
+
       save: (value) => {
         connectionData = value;
       },
+
       available: () => safeStorage.isAsyncEncryptionAvailable(),
+
       encrypt: async (value) =>
         (await safeStorage.encryptStringAsync(JSON.stringify(value))).toString(
           'base64',
         ),
+
       decrypt: async (value) =>
         JSON.parse(
           (await safeStorage.decryptStringAsync(Buffer.from(value, 'base64')))

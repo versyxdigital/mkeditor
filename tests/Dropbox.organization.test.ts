@@ -29,8 +29,10 @@ const construct = () =>
     new CloudRecoveryStore(join(directory, 'recovery.bin')),
     { dropbox: adapter, dropboxRegistration: registration },
   );
+
 const request = (command: CloudCommand) =>
   service.handle({ requestId: 'organization-test', command });
+
 const success = (response: CloudResponse) => {
   if (!response.ok) throw Error(response.error);
   return response;
@@ -42,11 +44,15 @@ beforeEach(async () => {
   data = [];
   persistence = {
     load: () => data,
+
     save: (value) => {
       data = value;
     },
+
     available: async () => true,
+
     encrypt: async (tokens) => JSON.stringify(tokens),
+
     decrypt: async (value) => JSON.parse(value),
   };
   service = construct();
@@ -78,6 +84,7 @@ async function connection(editing = true) {
   success(await connecting);
   return { connectionId: id, accountId: fixture.state.account };
 }
+
 const restart = () => {
   service.dispose();
   service = construct();

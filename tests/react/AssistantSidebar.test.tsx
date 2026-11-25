@@ -22,7 +22,9 @@ import { useModals } from '../../src/browser/react/contexts/ModalsContext';
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   normalizeLanguage: (lng: string) => lng,
+
   whenLanguageReady: () => Promise.resolve(),
   getAvailableLocales: jest.fn(async () => []),
   initI18n: jest.fn(),

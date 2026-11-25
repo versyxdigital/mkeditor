@@ -8,6 +8,7 @@ import { sonnerToast } from '../../src/browser/notify';
 jest.mock('../../src/browser/notify', () => ({ sonnerToast: jest.fn() }));
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   normalizeLanguage: (language: string) => language,
 }));
 import {
@@ -507,7 +508,9 @@ function fakeSettingsProvider(extensions: string[]) {
   };
   return {
     subscribe: () => () => {},
+
     getSnapshot: () => snapshot,
+
     updateSetting: () => {},
   };
 }

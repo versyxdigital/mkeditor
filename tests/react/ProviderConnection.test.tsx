@@ -13,7 +13,9 @@ import type {
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   normalizeLanguage: (lng: string) => lng,
+
   whenLanguageReady: () => Promise.resolve(),
   getAvailableLocales: jest.fn(async () => []),
   initI18n: jest.fn(),
@@ -25,7 +27,9 @@ jest.mock('../../src/browser/core/Markdown', () => ({
 }));
 jest.mock('react-resizable-panels', () => ({
   Group: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+
   Panel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+
   Separator: () => <div />,
 }));
 
@@ -49,6 +53,7 @@ function snapshot(
     },
   };
 }
+
 function setup(
   provider: 'openai' | 'anthropic',
   config = snapshot(provider),

@@ -52,7 +52,9 @@ function makeContextProvider(
   return {
     _state: state,
     getActiveFile: () => state.active,
+
     getSelection: () => state.selection,
+
     readFile: async (path: string) => {
       const content = state.fileContents.get(path);
       if (content === undefined) throw new Error(`ENOENT: ${path}`);

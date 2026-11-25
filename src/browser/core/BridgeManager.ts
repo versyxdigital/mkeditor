@@ -247,9 +247,11 @@ export class BridgeManager {
   public editCut(): void {
     this.bridge.send('to:edit:cut', null);
   }
+
   public editCopy(): void {
     this.bridge.send('to:edit:copy', null);
   }
+
   public editPaste(): void {
     this.bridge.send('to:edit:paste', null);
   }

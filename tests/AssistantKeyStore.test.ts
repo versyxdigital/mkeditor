@@ -253,6 +253,7 @@ describe('AssistantKeyStore — file shape & atomic writes', () => {
           calls.push(`write:${p}`);
           return realFs.writeFileSync(p, d, o);
         },
+
         renameSync: (from: string, to: string) => {
           calls.push(`rename:${from}->${to}`);
           return realFs.renameSync(from, to);

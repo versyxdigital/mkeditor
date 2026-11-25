@@ -40,6 +40,7 @@ jest.mock('monaco-editor', () => {
   class Disposable {
     public _isDisposed = false;
     constructor(private onDispose: () => void) {}
+
     dispose() {
       if (this._isDisposed) return;
       this._isDisposed = true;

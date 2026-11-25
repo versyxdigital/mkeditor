@@ -23,6 +23,7 @@ function hash(value: string | Buffer) {
     );
   return createHash('sha256').update(Buffer.concat(chunks)).digest('hex');
 }
+
 export async function dropboxFixture() {
   const files = new Map<string, DropboxFile>([
     [
@@ -104,6 +105,7 @@ export async function dropboxFixture() {
       )
     );
   }
+
   const metadata = (file: DropboxFile) => ({
     '.tag': file.folder ? 'folder' : 'file',
     id: file.id,
@@ -123,10 +125,12 @@ export async function dropboxFixture() {
         }
       : {}),
   });
+
   const json = (response: ServerResponse, value: unknown, status = 200) => {
     response.writeHead(status, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify(value));
   };
+
   const error = (response: ServerResponse, summary: string, status = 409) =>
     json(
       response,
@@ -387,6 +391,7 @@ export async function dropboxFixture() {
       file.content = content;
       file.revision++;
     },
+
     close: () =>
       new Promise<void>((resolve) => {
         server.closeAllConnections();

@@ -294,6 +294,7 @@ export function startChatGptLogin(options: {
       );
     } else server?.closeAllConnections();
   };
+
   const cancel = () => {
     finish('error');
     fail(new ChatGptAuthError('cancelled'));

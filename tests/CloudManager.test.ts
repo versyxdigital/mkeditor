@@ -43,6 +43,7 @@ function setup(provider?: CloudProviderId) {
     receive: (channel: string, fn: (value: never) => void) => {
       handlers.set(channel, fn);
     },
+
     send: (_channel: string, value: CloudRequest) => {
       requests.push(value);
     },
@@ -66,6 +67,7 @@ function setup(provider?: CloudProviderId) {
   };
   const push = (value: CloudState) =>
     handlers.get('from:cloud:state')!(value as never);
+
   const respond = (
     request: CloudRequest,
     value: Omit<Extract<CloudResponse, { ok: true }>, 'requestId'>,
@@ -74,6 +76,7 @@ function setup(provider?: CloudProviderId) {
       requestId: request.requestId,
       ...value,
     } as never);
+
   const fail = (request: CloudRequest, error: CloudWriteError) =>
     handlers.get('from:cloud:result')!({
       requestId: request.requestId,
@@ -134,6 +137,7 @@ test('reload asks before discarding a dirty remote buffer and refuses edits made
   let version = 2;
   const model = {
     getAlternativeVersionId: () => version,
+
     getValue: () => 'my edits',
   };
   const remote = {
@@ -829,6 +833,7 @@ describe.each<CloudProviderId>(['google-drive', 'dropbox'])(
           await manager.reconcileItem();
           await manager.checkRestoredOperation(restored);
         };
+
         const recoveryCount = () =>
           requests.filter((request) =>
             ['reconcile', 'reconcileItem'].includes(request.command.action),
