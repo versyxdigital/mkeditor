@@ -213,9 +213,13 @@ export class WorkspaceToolFiles {
   async list(subpath?: string): Promise<string[]> {
     const root = this.root();
     const scope = subpath ? await this.resolve(subpath) : root;
-    return (await this.bridge.fileTreeManager.listWorkspaceFiles(true)).filter(
-      (path) => withinWorkspacePath(path, scope),
-    );
+    const listing = await this.bridge.fileTreeManager.listWorkspaceFiles(true);
+    if (listing.truncated)
+      throw new WorkspaceToolError(
+        'listing_truncated',
+        'Workspace file listing reached its scan limit. Use explicit file paths or open a smaller workspace.',
+      );
+    return listing.paths.filter((path) => withinWorkspacePath(path, scope));
   }
 
   private async makeTextPlan(

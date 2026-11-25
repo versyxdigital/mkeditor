@@ -172,7 +172,9 @@ contextBridge.exposeInMainWorld('mked', {
       lineCount: number;
     }>,
   listWorkspaceFiles: (root: string) =>
-    ipcRenderer.invoke('mked:fs:listworkspacefiles', root) as Promise<string[]>,
+    ipcRenderer.invoke('mked:fs:listworkspacefiles', root) as Promise<
+      import('./interfaces/Storage').WorkspaceFileListing
+    >,
   workspaceOperation: (
     request: import('./interfaces/WorkspaceTools').WorkspaceRequest,
   ) =>

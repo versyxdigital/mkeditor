@@ -54,64 +54,52 @@ export const MentionPicker: React.FC<MentionPickerProps> = ({
     error: boolean;
   }>({ root: null, paths: [], loading: false, error: false });
 
-  // Tree mutations invalidate the inventory without loading any tree nodes.
-  const [tick, forceTick] = React.useReducer((n: number) => n + 1, 0);
+  // Scan on open/focus. Tree changes reuse the cache unless its inventory
+  // revision changed; query edits only filter the in-memory paths.
   React.useEffect(() => {
     if (!open || !fileTreeManager) return;
-    return fileTreeManager.on('change', forceTick);
-  }, [fileTreeManager, open]);
-
-  // Refresh on open/mutation, and while visible so external renames and
-  // deletions also disappear. Query edits filter the same in-memory list.
-  React.useEffect(() => {
-    if (!open || !fileTreeManager) return;
-    const root = fileTreeManager.getSnapshot().treeRoot;
-    setListing({ root, paths: [], loading: !!root, error: false });
-    if (!root) return;
     let active = true;
     let generation = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const refresh = async () => {
-      if (!active) return;
-      clearTimeout(timer);
-      if (document.visibilityState === 'hidden') {
-        timer = setTimeout(() => void refresh(), 2000);
-        return;
-      }
+    let snapshot = fileTreeManager.getSnapshot();
+    const refresh = async (force: boolean) => {
+      if (!active || document.visibilityState === 'hidden') return;
+      const root = fileTreeManager.getSnapshot().treeRoot;
       const request = ++generation;
+      setListing({ root, paths: [], loading: !!root, error: false });
+      if (!root) return;
       try {
-        const paths = await fileTreeManager.listWorkspaceFiles(true);
+        const { paths } = await fileTreeManager.listWorkspaceFiles(force);
         if (
           active &&
           request === generation &&
           root === fileTreeManager.getSnapshot().treeRoot
-        ) {
-          setListing((previous) =>
-            previous.paths === paths && !previous.loading && !previous.error
-              ? previous
-              : { root, paths, loading: false, error: false },
-          );
-        }
+        )
+          setListing({ root, paths, loading: false, error: false });
       } catch {
         if (active && request === generation)
           setListing({ root, paths: [], loading: false, error: true });
-      } finally {
-        if (active && request === generation)
-          timer = setTimeout(() => void refresh(), 2000);
       }
     };
-    const onFocus = () => {
-      void refresh();
-    };
-    void refresh();
+    const onFocus = () => void refresh(true);
+    const unsubscribe = fileTreeManager.on('change', () => {
+      const next = fileTreeManager.getSnapshot();
+      if (
+        next.treeRoot === snapshot.treeRoot &&
+        next.fileListingRevision === snapshot.fileListingRevision
+      )
+        return;
+      snapshot = next;
+      void refresh(false);
+    });
+    void refresh(true);
     window.addEventListener('focus', onFocus);
     return () => {
       active = false;
       generation++;
-      clearTimeout(timer);
+      unsubscribe();
       window.removeEventListener('focus', onFocus);
     };
-  }, [open, fileTreeManager, tick]);
+  }, [open, fileTreeManager]);
 
   const entries = React.useMemo(
     () =>
@@ -157,7 +145,7 @@ export const MentionPicker: React.FC<MentionPickerProps> = ({
       if (flat.length > MAX_RESULTS) flat.pop();
     }
     return flat;
-  }, [query, fileTreeManager, open, tick, entries, listing.root]);
+  }, [query, fileTreeManager, open, entries, listing.root]);
 
   // Reset highlight when the query (or visibility) changes so the
   // user always starts at the top hit.

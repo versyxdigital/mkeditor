@@ -207,6 +207,32 @@ it('renames an unsaved open file, retains its model and warns in confirmation', 
     tools.preparePreview('delete_path', { path: 'renamed.md' }),
   ).rejects.toMatchObject({ code: 'unsaved_changes' });
 });
+it('refuses incomplete workspace-wide plans while allowing explicit file paths', async () => {
+  await fs.writeFile(join(root, 'note.md'), 'old');
+  jest.spyOn(AppStorage, 'listWorkspaceFiles').mockResolvedValue({
+    paths: [join(root, 'note.md')],
+    truncated: true,
+  });
+  await expect(
+    tools.preparePreview('find_and_replace', {
+      find: 'old',
+      replace: 'new',
+      dryRun: false,
+    }),
+  ).rejects.toMatchObject({ code: 'listing_truncated' });
+  await expect(
+    tools.execute('search_files', { query: 'old' }),
+  ).rejects.toMatchObject({ code: 'listing_truncated' });
+  expect(await fs.readFile(join(root, 'note.md'), 'utf8')).toBe('old');
+  expect(
+    await tools.execute('find_and_replace', {
+      find: 'old',
+      replace: 'new',
+      paths: ['note.md'],
+    }),
+  ).toMatchObject({ dryRun: true, matches: 1 });
+});
+
 it('searches unopened files, prefers unsaved buffers and caps results/snippets', async () => {
   await fs.mkdir(join(root, 'nested'));
   await fs.writeFile(join(root, 'nested/note.md'), 'Hello world\nHELLO again');

@@ -17,8 +17,24 @@ import {
   isAbsolute,
   sep,
 } from 'path';
-import type { SaveFileOptions } from '../interfaces/Storage';
+import type {
+  SaveFileOptions,
+  WorkspaceFileListing,
+} from '../interfaces/Storage';
 import { WORKSPACE_EXTENSIONS_DOTTED } from '../shared/fileExtensions';
+
+export const WORKSPACE_LISTING_LIMITS = {
+  files: 5000,
+  directories: 1000,
+  entries: 20000,
+} as const;
+const EXCLUDED_LISTING_DIRECTORIES = new Set([
+  'node_modules',
+  'dist',
+  'out',
+  'build',
+  'coverage',
+]);
 
 /**
  * AppStorage
@@ -174,9 +190,9 @@ export class AppStorage {
   }
 
   /** Filename metadata for references, independent of the explorer's lazy/filter state. */
-  static async listWorkspaceFiles(root: string): Promise<string[]> {
+  static async listWorkspaceFiles(root: string): Promise<WorkspaceFileListing> {
     const workspace = AppStorage.workspaceRoot;
-    // Directory operations may address the root itself. readdir below still
+    // Directory operations may address the root itself. opendir below still
     // requires it to exist; the canonical containment check remains enforced.
     const safeRoot = await AppStorage.assertInWorkspace(root, {
       mustExist: false,
@@ -186,47 +202,67 @@ export class AppStorage {
     const displayRoot = resolve(root);
     const pending = [displayRoot];
     const files: string[] = [];
+    let directories = 1;
+    let entries = 0;
+    let truncated = false;
     const checkWorkspace = () => {
       if (AppStorage.workspaceRoot !== workspace)
         throw new Error('Workspace changed during file listing.');
     };
-    while (pending.length > 0) {
+    scan: while (pending.length > 0) {
       checkWorkspace();
-      const batch = pending.splice(Math.max(0, pending.length - 8));
-      await Promise.all(
-        batch.map(async (directory) => {
-          try {
-            const safe = await AppStorage.assertInWorkspace(directory, {
-              mustExist: false,
-            });
-            checkWorkspace();
-            const entries = await fs.readdir(safe, { withFileTypes: true });
-            checkWorkspace();
-            for (const entry of entries) {
-              const path = join(directory, entry.name);
-              if (entry.isDirectory()) pending.push(path);
-              else if (entry.isFile()) files.push(path);
-              else if (entry.isSymbolicLink()) {
-                // Include safe file aliases, but never follow directory links
-                // (cycles and paths outside the selected workspace).
-                try {
-                  const target = await AppStorage.assertInWorkspace(path);
-                  if ((await fs.stat(target)).isFile()) files.push(path);
-                } catch {
-                  /* Broken/outside-workspace aliases are not referenceable. */
-                }
-              }
-            }
-          } catch (error) {
-            checkWorkspace();
-            if (directory === displayRoot) throw error;
-            // A subfolder may disappear or become unreadable during the walk.
+      const directory = pending.pop()!;
+      try {
+        const safe = await AppStorage.assertInWorkspace(directory, {
+          mustExist: false,
+        });
+        checkWorkspace();
+        // Stream entries so a single huge directory cannot allocate an
+        // unbounded array before the traversal budget is checked.
+        const handle = await fs.opendir(safe);
+        for await (const entry of handle) {
+          checkWorkspace();
+          if (++entries > WORKSPACE_LISTING_LIMITS.entries) {
+            truncated = true;
+            break scan;
           }
-        }),
-      );
+          const path = join(directory, entry.name);
+          if (entry.isDirectory()) {
+            if (
+              entry.name.startsWith('.') ||
+              EXCLUDED_LISTING_DIRECTORIES.has(entry.name.toLowerCase())
+            )
+              continue;
+            if (directories >= WORKSPACE_LISTING_LIMITS.directories) {
+              truncated = true;
+              continue;
+            }
+            directories++;
+            pending.push(path);
+          } else if (entry.isFile()) files.push(path);
+          else if (entry.isSymbolicLink()) {
+            // Include safe file aliases, but never follow directory links
+            // (cycles and paths outside the selected workspace).
+            try {
+              const target = await AppStorage.assertInWorkspace(path);
+              if ((await fs.stat(target)).isFile()) files.push(path);
+            } catch {
+              /* Broken/outside-workspace aliases are not referenceable. */
+            }
+          }
+          if (files.length >= WORKSPACE_LISTING_LIMITS.files) {
+            truncated = true;
+            break scan;
+          }
+        }
+      } catch (error) {
+        checkWorkspace();
+        if (directory === displayRoot) throw error;
+        // A subfolder may disappear or become unreadable during the walk.
+      }
     }
     checkWorkspace();
-    return files.sort();
+    return { paths: files.sort(), truncated };
   }
 
   /** Offer only directories selected by a native picker or trusted restore. */

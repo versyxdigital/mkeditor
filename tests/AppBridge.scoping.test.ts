@@ -24,7 +24,10 @@ jest.mock('../src/app/lib/AppStorage', () => ({
   AppStorage: {
     getActiveFilePath: jest.fn(() => '/abs/active.md'),
     setWorkspaceRoot: jest.fn(),
-    listWorkspaceFiles: jest.fn(async () => ['/workspace/poems/one.md']),
+    listWorkspaceFiles: jest.fn(async () => ({
+      paths: ['/workspace/poems/one.md'],
+      truncated: false,
+    })),
   },
 }));
 
@@ -213,9 +216,10 @@ describe('AppBridge — sender-scoped IPC handlers', () => {
       /sender mismatch/,
     );
     expect(AppStorage.listWorkspaceFiles).not.toHaveBeenCalled();
-    expect(await handler(fakeEvent(), '/workspace')).toEqual([
-      '/workspace/poems/one.md',
-    ]);
+    expect(await handler(fakeEvent(), '/workspace')).toEqual({
+      paths: ['/workspace/poems/one.md'],
+      truncated: false,
+    });
     expect(AppStorage.listWorkspaceFiles).toHaveBeenCalledWith('/workspace');
   });
 

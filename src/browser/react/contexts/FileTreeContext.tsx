@@ -3,7 +3,11 @@ import * as React from 'react';
 import type { FileTreeSnapshot } from '../../core/FileTreeManager';
 import { useManagers } from './ManagersContext';
 
-const EMPTY_SNAPSHOT: FileTreeSnapshot = { treeRoot: null, nodes: [] };
+const EMPTY_SNAPSHOT: FileTreeSnapshot = {
+  treeRoot: null,
+  nodes: [],
+  fileListingRevision: 0,
+};
 
 const FileTreeContext = React.createContext<FileTreeSnapshot>(EMPTY_SNAPSHOT);
 

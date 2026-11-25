@@ -1,3 +1,8 @@
+export interface WorkspaceFileListing {
+  paths: string[];
+  truncated: boolean;
+}
+
 export interface CreateFileOptions {
   id?: number | string;
   data: string;

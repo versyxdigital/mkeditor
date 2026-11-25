@@ -695,7 +695,10 @@ describe('<ChatPane> — P6 context chips + token estimate', () => {
       getSnapshot: jest.fn(() => treeSnapshot),
       on: jest.fn(() => () => {}),
       requestDirectoryContents: jest.fn(),
-      listWorkspaceFiles: jest.fn(async () => ['/w/notes.md']),
+      listWorkspaceFiles: jest.fn(async () => ({
+        paths: ['/w/notes.md'],
+        truncated: false,
+      })),
       treeRoot: '/w',
     };
     const { conv, snapshot } = snapshotWith({ messages: [] });
@@ -734,7 +737,10 @@ describe('<ChatPane> — P6 context chips + token estimate', () => {
       getSnapshot: jest.fn(() => treeSnapshot),
       on: jest.fn(() => () => {}),
       requestDirectoryContents: jest.fn(),
-      listWorkspaceFiles: jest.fn(async () => ['/w/a.md']),
+      listWorkspaceFiles: jest.fn(async () => ({
+        paths: ['/w/a.md'],
+        truncated: false,
+      })),
       treeRoot: '/w',
     };
     const { conv, snapshot } = snapshotWith({ messages: [] });

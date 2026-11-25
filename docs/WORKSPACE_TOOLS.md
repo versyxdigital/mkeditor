@@ -36,6 +36,8 @@ The HTML export's input is workspace-scoped. Its output, like an untitled tab's 
 
 Text files are limited to 4 MiB. Search defaults to 100 matches, caps at 500 and returns snippets of at most 240 characters. Broken-link reports and open-tab lists cap at 500. Bulk edits fail before writing if more than 500 changed files or 12 MiB of preview text would be involved; native batch payloads cap at 32 MiB. Dry-run previews cap each side at 600 characters and flag truncation. Regex evaluation runs in a native worker with a one-second timeout and bounded output/memory, keeping both UI and main event loops responsive.
 
+The shared workspace inventory skips dot-directories and `node_modules`, `dist`, `out`, `build` and `coverage`. Scans cap at 5,000 files, 1,000 directories and 20,000 entries. Workspace-wide tools reject a truncated inventory with `listing_truncated` rather than reporting partial results as complete; explicit-path text plans remain available.
+
 Failures return `{ ok: false, error, message }` through the existing tool-result channel. Codes include `not_found`, `destination_exists`, `outside_workspace`, `permission_denied`, `invalid_name`, `unsaved_changes`, `not_empty`, `stale_plan`, `partial_failure`, `regex_timeout` and `cancelled`.
 
 ## Implementation map

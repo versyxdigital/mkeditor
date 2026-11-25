@@ -1,4 +1,5 @@
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
+import type { WorkspaceFileListing } from '../../app/interfaces/Storage';
 
 /**
  * A plain data node in the file explorer tree. Mirrors what main process
@@ -20,9 +21,15 @@ export interface TreeNode {
 export interface FileTreeSnapshot {
   treeRoot: string | null;
   nodes: TreeNode[];
+  fileListingRevision: number;
 }
 
-const EMPTY_SNAPSHOT: FileTreeSnapshot = { treeRoot: null, nodes: [] };
+const EMPTY_SNAPSHOT: FileTreeSnapshot = {
+  treeRoot: null,
+  nodes: [],
+  fileListingRevision: 0,
+};
+const EMPTY_LISTING: WorkspaceFileListing = { paths: [], truncated: false };
 
 /**
  * Handle the file explorer tree.
@@ -51,7 +58,7 @@ export class FileTreeManager {
     root: string;
     revision: number;
     pending: boolean;
-    promise: Promise<string[]>;
+    promise: Promise<WorkspaceFileListing>;
     paths?: string[];
   } | null = null;
 
@@ -64,13 +71,15 @@ export class FileTreeManager {
   constructor(
     private bridge: ContextBridgeAPI,
     private openFileFromPath: (path: string) => void,
-    private loadWorkspaceFiles?: (root: string) => Promise<string[]>,
+    private loadWorkspaceFiles?: (
+      root: string,
+    ) => Promise<WorkspaceFileListing>,
   ) {}
 
   /** Read-only workspace inventory. Never loads or expands explorer nodes. */
-  public listWorkspaceFiles(refresh = false): Promise<string[]> {
+  public listWorkspaceFiles(refresh = false): Promise<WorkspaceFileListing> {
     const root = this.treeRoot;
-    if (!root) return Promise.resolve([]);
+    if (!root) return Promise.resolve(EMPTY_LISTING);
     const load = this.loadWorkspaceFiles;
     if (!load)
       return Promise.reject(
@@ -83,7 +92,7 @@ export class FileTreeManager {
       previous.revision !== this.fileListingRevision
     ) {
       const refreshAfter = () =>
-        this.treeRoot === root ? this.listWorkspaceFiles(true) : [];
+        this.treeRoot === root ? this.listWorkspaceFiles(false) : EMPTY_LISTING;
       return previous.promise.then(refreshAfter, refreshAfter);
     }
     if (
@@ -98,13 +107,13 @@ export class FileTreeManager {
       revision,
       pending: true,
       paths: previous?.root === root ? previous.paths : undefined,
-      promise: Promise.resolve([] as string[]),
+      promise: Promise.resolve(EMPTY_LISTING),
     };
     listing.promise = Promise.resolve()
       .then(() => load(root))
-      .then((paths) => {
+      .then(({ paths, truncated }) => {
         if (this.treeRoot !== root || this.fileListingRevision !== revision)
-          return [];
+          return EMPTY_LISTING;
         const next = [
           ...new Set(
             paths.filter(
@@ -118,7 +127,7 @@ export class FileTreeManager {
           listing.paths.every((path, i) => path === next[i])
             ? listing.paths
             : next;
-        return listing.paths;
+        return { paths: listing.paths, truncated };
       })
       .catch((error) => {
         if (this.fileListing === listing) this.fileListing = null;
@@ -169,6 +178,7 @@ export class FileTreeManager {
     // possible so React reconciliation is stable.
     this.snapshot = {
       treeRoot: this.treeRoot,
+      fileListingRevision: this.fileListingRevision,
       // Consumers memoize derived filtering by the nodes array identity.
       // Mutating children without replacing this array leaves that UI stale.
       nodes: [...this.snapshot.nodes],
@@ -201,7 +211,11 @@ export class FileTreeManager {
       const rooted = sorted.map((node) =>
         this.registerNode(this.cloneNode(node)),
       );
-      this.snapshot = { treeRoot: this.treeRoot, nodes: rooted };
+      this.snapshot = {
+        treeRoot: this.treeRoot,
+        nodes: rooted,
+        fileListingRevision: this.fileListingRevision,
+      };
       this.listeners.forEach((l) => l());
       return;
     }
@@ -345,7 +359,11 @@ export class FileTreeManager {
     this.treeRoot = null;
     this.openingFolder = false;
     this.directoryIndex = new Map();
-    this.snapshot = { treeRoot: null, nodes: [] };
+    this.snapshot = {
+      treeRoot: null,
+      nodes: [],
+      fileListingRevision: this.fileListingRevision,
+    };
     this.listeners.forEach((l) => l());
   }
 
