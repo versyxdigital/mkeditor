@@ -6,11 +6,14 @@ import { useCloud } from '../../hooks/useCloud';
 import { useCloudTranslation } from '../../hooks/useCloudTranslation';
 import { Button } from '../ui/button';
 import { Icon } from '../Icon';
+import { CloudLogo } from './CloudBrand';
+import { CloudReconnectButton } from './CloudReconnectButton';
+import { providerName } from '../../../../app/interfaces/Cloud';
 
 /** A fixed-height recovery bar only when a remote document needs attention. */
 export const RemoteDocumentNotice: React.FC = () => {
   const { tabs, activeFile } = useFiles();
-  const { fileManager } = useManagers();
+  const { fileManager, mode } = useManagers();
   const { state, manager } = useCloud();
   const { openModal } = useModals();
   const tab = tabs.find((entry) => entry.path === activeFile);
@@ -34,8 +37,18 @@ export const RemoteDocumentNotice: React.FC = () => {
   )
     return null;
   const unknown = phase === 'unconfirmed';
-  const message =
-    recovery && phase !== 'conflict' && phase !== 'unconfirmed'
+  const reconnect =
+    mode === 'web' &&
+    connection &&
+    connection.status !== 'connected' &&
+    (!connection.accountId || connection.accountId === remote.accountId);
+  const reconnectNotice =
+    reconnect && !unknown && phase !== 'conflict' && phase !== 'failed';
+  const message = reconnectNotice
+    ? t('cloud:web_reconnect_document', {
+        provider: providerName(remote.provider),
+      })
+    : recovery && phase !== 'conflict' && phase !== 'unconfirmed'
       ? t(
           recovery.status === 'checking'
             ? 'cloud:checking_recovery'
@@ -56,11 +69,17 @@ export const RemoteDocumentNotice: React.FC = () => {
       className="flex h-8 min-w-0 shrink-0 items-center gap-2 whitespace-nowrap border-b border-subtle bg-sidebar px-2 text-xs"
       role="status"
     >
-      <Icon name="exclamation-circle" className="size-3.5 text-destructive" />
+      {reconnectNotice ? (
+        <CloudLogo provider={remote.provider} />
+      ) : (
+        <Icon name="exclamation-circle" className="size-3.5 text-destructive" />
+      )}
       <span className="min-w-0 flex-1 truncate" title={message}>
         {message}
       </span>
-      {!connected ? (
+      {reconnect ? (
+        <CloudReconnectButton connection={connection} compact />
+      ) : !connected ? (
         <Button
           variant="ghost"
           size="icon"

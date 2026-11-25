@@ -22,7 +22,7 @@ jest.mock('../../src/browser/core/Markdown', () => ({
       '<img src="relative.png"><a href="other.md">Other</a><a href="https://example.test">External</a>',
   ),
   Markdown: {
-    render: jest.fn((src: string) => `<rendered>${src}</rendered>`),
+    render: jest.fn((src: string) => `<article>${src}</article>`),
   },
 }));
 
@@ -36,6 +36,35 @@ jest.mock('../../src/browser/mermaid', () => ({
 }));
 
 describe('<PreviewPane>', () => {
+  it('sanitizes executable HTML in local web previews while preserving document markup', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<h1>Safe heading</h1><details><summary>Details</summary>Text</details>' +
+        '<img src="missing.png" onerror="window.compromised=true">' +
+        '<a href="javascript:alert(1)">Unsafe</a>' +
+        '<svg onload="alert(1)"><circle r="1" /></svg>' +
+        '<script>alert(1)</script><style>body{display:none}</style>' +
+        '<iframe srcdoc="evil"></iframe><form action="/capture"><input></form>',
+    );
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'web',
+        editorManager: { getValue: () => 'untrusted local document' } as never,
+        fileManager: fakeFileManager({ activeFile: 'notes/test.md' }) as never,
+      },
+    });
+    await waitFor(() =>
+      expect(container.querySelector('h1')).toHaveTextContent('Safe heading'),
+    );
+    expect(container.querySelector('details summary')).toHaveTextContent(
+      'Details',
+    );
+    expect(container.querySelector('img')).not.toHaveAttribute('onerror');
+    expect(container.querySelector('a')).not.toHaveAttribute('href');
+    expect(container.querySelector('svg')).not.toHaveAttribute('onload');
+    expect(container.querySelector('script,style,iframe,form')).toBeNull();
+  });
+
   it('renders document diagrams and aborts obsolete work when text changes or the preview unmounts', async () => {
     const { Markdown } = require('../../src/browser/core/Markdown');
     const renderer = Markdown.render as jest.Mock;
@@ -104,21 +133,21 @@ describe('<PreviewPane>', () => {
       },
     });
     await waitFor(() =>
-      expect(container.querySelector('rendered')?.textContent).toBe('# Cached'),
+      expect(container.querySelector('article')?.textContent).toBe('# Cached'),
     );
-    const original = container.querySelector('rendered');
+    const original = container.querySelector('article');
     act(() => {
       dispatcher.render();
       dispatcher.render();
     });
     expect(renderer).toHaveBeenCalledTimes(1);
-    expect(container.querySelector('rendered')).toBe(original);
+    expect(container.querySelector('article')).toBe(original);
     value = '# Changed';
     act(() => {
       dispatcher.render();
     });
     expect(renderer).toHaveBeenCalledTimes(2);
-    expect(container.querySelector('rendered')?.textContent).toBe('# Changed');
+    expect(container.querySelector('article')?.textContent).toBe('# Changed');
   });
 
   it('reuses parsed Markdown while rewriting assets after a file switch', async () => {
@@ -232,7 +261,7 @@ describe('<PreviewPane>', () => {
     // The dynamic `import()` in PreviewPane resolves on a microtask;
     // wait for the first render to land.
     await waitFor(() => {
-      expect(content?.innerHTML).toBe('<rendered># Hello</rendered>');
+      expect(content?.innerHTML).toBe('<article># Hello</article>');
     });
   });
 
@@ -582,7 +611,7 @@ describe('<PreviewPane>', () => {
 
     const content = container.querySelector('#preview-content');
     await waitFor(() => {
-      expect(content?.innerHTML).toBe('<rendered># v1</rendered>');
+      expect(content?.innerHTML).toBe('<article># v1</article>');
     });
 
     // Mutate the value the manager returns and dispatch — the pane
@@ -592,6 +621,6 @@ describe('<PreviewPane>', () => {
       dispatcher.render();
     });
 
-    expect(content?.innerHTML).toBe('<rendered># v2</rendered>');
+    expect(content?.innerHTML).toBe('<article># v2</article>');
   });
 });

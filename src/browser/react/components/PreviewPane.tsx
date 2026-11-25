@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { isRemotePath } from '../../../app/interfaces/Cloud';
+import DOMPurify from 'dompurify';
 
 import {
   dirnameOf,
@@ -231,7 +232,15 @@ function buildPreviewFragment(
   },
 ): DocumentFragment {
   const template = document.createElement('template');
-  template.innerHTML = html;
+  // Web previews share an origin with short-lived OAuth credentials. Sanitize
+  // even local/untitled documents before inserting user-authored HTML there.
+  // Keep safe HTML and generated KaTeX/SVG markup; desktop behavior is unchanged.
+  template.innerHTML =
+    ctx.mode === 'web'
+      ? DOMPurify.sanitize(html, {
+          FORBID_TAGS: ['style', 'form', 'iframe', 'object', 'embed'],
+        })
+      : html;
 
   if (ctx.remote) {
     // Never guess local paths for cloud documents. Raw HTML is disabled when

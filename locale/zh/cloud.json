@@ -1,4 +1,11 @@
 {
+  "dropbox_move_unavailable": "由于源文件可能发生更改，暂不支持移动 Dropbox 文件。",
+  "web_storage_error": "无法访问浏览器存储。请检查此网站的存储权限和可用空间，然后重试。",
+  "web_busy": "云存储已在另一个标签页中打开。请关闭该标签页，然后重新加载此页面。",
+  "web_lock_unavailable": "此浏览器不支持安全云编辑所需的存储锁定。",
+  "web_intro": "连接 Google Drive 或 Dropbox。关闭或刷新标签页后需要重新连接，您的账户和草稿会保留。",
+  "web_unavailable": "云存储需要 HTTPS 和可用的浏览器存储空间。",
+  "web_config_unavailable": "此网站尚未为该服务商配置浏览器登录。",
   "created_duplicate": "已创建 {{name}}。此文件夹中还有同名项目，两个项目均已保留。",
   "connections": "连接",
   "intro": "连接 Google 云端硬盘以浏览和打开 Markdown 文件。",
@@ -144,5 +151,9 @@
     "tab_label": "{{connection}} 中的 {{name}}（Dropbox）",
     "recovered_draft": "已恢复本地草稿。保存前请检查 Dropbox。",
     "checking_recovery": "正在与 Dropbox 核对恢复的文档…"
-  }
+  },
+  "web_reconnect": "重新连接 {{provider}}",
+  "web_reconnect_status": "需要重新连接",
+  "web_reconnect_help": "您的账户已保存。请重新连接以浏览文件。",
+  "web_reconnect_document": "请重新连接 {{provider}} 以检查此文档。您的本地副本已保留。"
 }

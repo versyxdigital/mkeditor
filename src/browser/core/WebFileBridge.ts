@@ -8,6 +8,7 @@ import type {
   SessionTab,
 } from '../interfaces/Session';
 import { logger } from '../util';
+import { WebCloudService } from './cloud/WebCloudService';
 
 /**
  * Clamp a paste-image extension to a known image format.
@@ -107,11 +108,34 @@ export class WebFileBridge implements ContextBridgeAPI {
     handles: Map<string, Handle>;
   } | null = null;
   private imageWriteQueue: Promise<void> = Promise.resolve();
+  private readonly cloud = new WebCloudService(
+    (state) => this.emit('from:cloud:state', state),
+    { beforeDispose: () => this.emit('from:session:flush-request') },
+  );
+  private readonly beforeUnload = () => {
+    this.emit('from:session:flush-request');
+  };
+
+  private readonly visibilityChanged = () => {
+    if (document.visibilityState === 'hidden') this.beforeUnload();
+  };
+
+  public dispose(): void {
+    this.cloud.dispose();
+    window.removeEventListener('beforeunload', this.beforeUnload);
+    document.removeEventListener('visibilitychange', this.visibilityChanged);
+    this.listeners.clear();
+  }
 
   // ContextBridgeAPI ---------------------------------------------------
 
   send(channel: string, data: any): void {
     switch (channel) {
+      case 'to:cloud:request':
+        void this.cloud.handle(data).then((result) => {
+          this.emit('from:cloud:result', result);
+        });
+        break;
       case 'to:folder:open':
         void this.openFolder();
         break;
@@ -169,10 +193,12 @@ export class WebFileBridge implements ContextBridgeAPI {
         HTMLExporter.pdfWebExport(data.content);
         break;
       case 'to:session:save':
-        this.persistSession(data as SessionPayload);
+        this.emit('from:session:saved', {
+          ok: this.persistSession(data as SessionPayload),
+        });
         break;
       case 'to:session:clear':
-        this.clearSession();
+        void this.clearSession();
         break;
       case 'to:title:set':
       case 'to:editor:state':
@@ -271,6 +297,22 @@ export class WebFileBridge implements ContextBridgeAPI {
     this.installBeforeUnloadFlush();
   }
 
+  private localCheckpointId(): string | undefined {
+    const raw = localStorage.getItem(LS_KEY_SESSION);
+    if (raw === null) return undefined;
+    try {
+      const value: unknown = JSON.parse(raw);
+      if (value && typeof value === 'object' && 'webCheckpointId' in value) {
+        const id = value.webCheckpointId;
+        if (typeof id === 'string' && id.length > 0 && id.length <= 128)
+          return id;
+      }
+    } catch {
+      // A validated cloud snapshot may recover a corrupt local checkpoint.
+    }
+    return undefined;
+  }
+
   /**
    * Persist the session payload to localStorage. Synchronous — survives
    * a `beforeunload` flush. Any error (quota exceeded, storage
@@ -282,9 +324,30 @@ export class WebFileBridge implements ContextBridgeAPI {
       (tab) => !tab.remote && !isRemotePath(tab.path),
     );
     try {
+      // Synchronous browser checkpoints also complete during beforeunload.
+      // Credentials are held separately in memory and never enter this record.
+      const checkpointTabs = payload.tabs.filter(
+        (tab) => !isRemotePath(tab.path) || Boolean(tab.remote),
+      );
+      if (
+        !this.cloud.saveSessionSync(
+          {
+            ...payload,
+            tabs: checkpointTabs,
+            activeFile: checkpointTabs.some(
+              (tab) => tab.path === payload.activeFile,
+            )
+              ? payload.activeFile
+              : (checkpointTabs[0]?.path ?? null),
+          },
+          this.localCheckpointId(),
+        )
+      )
+        return true;
       localStorage.setItem(
         LS_KEY_SESSION,
         JSON.stringify({
+          webCheckpointId: this.cloud.checkpointId,
           version: payload.version,
           tabs,
           activeFile: tabs.some((tab) => tab.path === payload.activeFile)
@@ -295,8 +358,8 @@ export class WebFileBridge implements ContextBridgeAPI {
         }),
       );
       return true;
-    } catch (err) {
-      logger?.error('WebFileBridge.persistSession', JSON.stringify(err));
+    } catch {
+      logger?.error('WebFileBridge.persistSession', 'Storage failed');
       return false;
     }
   }
@@ -307,11 +370,23 @@ export class WebFileBridge implements ContextBridgeAPI {
    * reads no session and lands on a fresh untitled. Fires the same
    * `notifications:session_cleared` toast desktop does.
    */
-  private clearSession(): void {
+  private async clearSession(): Promise<void> {
+    let committedToken: string | undefined;
     try {
+      const token = await this.cloud.clearSession();
+      committedToken = token;
       localStorage.removeItem(LS_KEY_SESSION);
-    } catch (err) {
-      logger?.error('WebFileBridge.clearSession', JSON.stringify(err));
+      this.emit('from:session:cleared', { token });
+    } catch {
+      // The cloud clear may already be durable. Publish its guard even when
+      // removing the local fallback fails, so a later edit can resume saves.
+      if (committedToken)
+        this.emit('from:session:cleared', { token: committedToken });
+      this.emit('from:notification:display', {
+        status: 'error',
+        key: 'cloud:recovery_storage_error',
+      });
+      return;
     }
     this.emit('from:notification:display', {
       status: 'success',
@@ -336,9 +411,12 @@ export class WebFileBridge implements ContextBridgeAPI {
     })();
 
     let payload: SessionPayload | null = null;
+    let webCheckpointId: string | undefined;
     if (raw) {
       try {
-        const parsed = JSON.parse(raw) as Partial<SessionPayload>;
+        const parsed = JSON.parse(raw) as Partial<SessionPayload> & {
+          webCheckpointId?: unknown;
+        };
         if (
           parsed &&
           (parsed.version === 1 ||
@@ -347,6 +425,12 @@ export class WebFileBridge implements ContextBridgeAPI {
           Array.isArray(parsed.tabs) &&
           (parsed.activeFile === null || typeof parsed.activeFile === 'string')
         ) {
+          if (
+            typeof parsed.webCheckpointId === 'string' &&
+            parsed.webCheckpointId.length > 0 &&
+            parsed.webCheckpointId.length <= 128
+          )
+            webCheckpointId = parsed.webCheckpointId;
           payload = {
             version: parsed.version,
             tabs: parsed.tabs.filter(
@@ -371,10 +455,24 @@ export class WebFileBridge implements ContextBridgeAPI {
       }
     }
 
+    let recoveryError = false;
+    try {
+      // The cloud service validates persisted metadata and merges outstanding
+      // operations without replaying any provider writes or requesting sign-in.
+      payload = (await this.cloud.restoreSession(
+        payload,
+        webCheckpointId,
+      )) as SessionPayload | null;
+    } catch {
+      recoveryError = true;
+    }
+    // Merge cloud recovery before a legacy migration can write a checkpoint;
+    // otherwise a local-only migration could discard the saved remote tabs.
     payload = this.applyLegacyContentMigration(payload);
 
     if (!payload) {
       this.emit('from:session:restore', {
+        recoveryError,
         session: null,
         missing: [],
         contents: {},
@@ -387,6 +485,10 @@ export class WebFileBridge implements ContextBridgeAPI {
     const contents: Record<string, string> = {};
 
     for (const tab of payload.tabs) {
+      if (tab.remote && isRemotePath(tab.path)) {
+        kept.push(tab);
+        continue;
+      }
       if (tab.path.startsWith('untitled-')) {
         kept.push(tab);
         continue;
@@ -410,6 +512,7 @@ export class WebFileBridge implements ContextBridgeAPI {
       kept.some((t) => t.path === payload!.activeFile);
 
     this.emit('from:session:restore', {
+      recoveryError,
       session: {
         version: payload.version,
         tabs: kept,
@@ -489,9 +592,8 @@ export class WebFileBridge implements ContextBridgeAPI {
   private installBeforeUnloadFlush(): void {
     if (typeof window === 'undefined' || this.beforeUnloadInstalled) return;
     this.beforeUnloadInstalled = true;
-    window.addEventListener('beforeunload', () => {
-      this.emit('from:session:flush-request');
-    });
+    window.addEventListener('beforeunload', this.beforeUnload);
+    document.addEventListener('visibilitychange', this.visibilityChanged);
   }
 
   private beforeUnloadInstalled = false;

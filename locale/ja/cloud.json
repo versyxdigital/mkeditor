@@ -1,4 +1,11 @@
 {
+  "dropbox_move_unavailable": "移動前に元のファイルが変更される可能性があるため、Dropbox のファイルは移動できません。",
+  "web_storage_error": "ブラウザーストレージにアクセスできませんでした。このサイトのストレージ権限と空き容量を確認し、もう一度お試しください。",
+  "web_busy": "クラウドストレージが別のタブで開かれています。そのタブを閉じてから、このタブを再読み込みしてください。",
+  "web_lock_unavailable": "このブラウザーは、安全なクラウド編集に必要なストレージのロックに対応していません。",
+  "web_intro": "Google Drive または Dropbox に接続します。タブを閉じたり再読み込みしたりした後は再接続が必要ですが、アカウントと下書きは保存されます。",
+  "web_unavailable": "クラウドストレージには HTTPS と利用可能なブラウザーストレージが必要です。",
+  "web_config_unavailable": "このサイトでは、このプロバイダーのブラウザーログインが設定されていません。",
   "created_duplicate": "{{name}} を作成しました。このフォルダーに同じ名前の項目があるため、両方を保持しました。",
   "connections": "接続",
   "intro": "Google ドライブに接続して Markdown ファイルを参照・表示できます。",
@@ -144,5 +151,9 @@
     "tab_label": "{{connection}} の {{name}}（Dropbox）",
     "recovered_draft": "ローカルの下書きを復元しました。保存する前に Dropbox を確認してください。",
     "checking_recovery": "復元したドキュメントを Dropbox と照合中…"
-  }
+  },
+  "web_reconnect": "{{provider}} に再接続",
+  "web_reconnect_status": "再接続が必要",
+  "web_reconnect_help": "アカウントは保存されています。ファイルを閲覧するには再接続してください。",
+  "web_reconnect_document": "この文書を確認するには {{provider}} に再接続してください。ローカルコピーは保持されています。"
 }

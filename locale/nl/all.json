@@ -205,6 +205,13 @@
     "callback_return": "Je kunt dit tabblad sluiten en terugkeren naar MKEditor."
   },
   "cloud": {
+    "dropbox_move_unavailable": "Dropbox-bestanden kunnen niet worden verplaatst omdat het bronbestand kan veranderen.",
+    "web_storage_error": "Geen toegang tot browseropslag. Controleer de opslagrechten van deze site en de beschikbare ruimte en probeer het opnieuw.",
+    "web_busy": "Cloudopslag is geopend in een ander tabblad. Sluit dat tabblad en herlaad dit tabblad.",
+    "web_lock_unavailable": "Deze browser ondersteunt de opslagvergrendeling voor veilig bewerken in de cloud niet.",
+    "web_intro": "Verbind Google Drive of Dropbox. Verbind opnieuw nadat je het tabblad sluit of vernieuwt; je accounts en concepten blijven bewaard.",
+    "web_unavailable": "Cloudopslag vereist HTTPS en beschikbare browseropslag.",
+    "web_config_unavailable": "Deze website heeft aanmelden via de browser voor deze aanbieder niet ingesteld.",
     "created_duplicate": "{{name}} is aangemaakt. Een ander item in deze map heeft dezelfde naam; beide zijn behouden.",
     "connections": "Verbindingen",
     "intro": "Verbind Google Drive om Markdown-bestanden te bekijken en te openen.",
@@ -350,7 +357,11 @@
       "tab_label": "{{name}} in {{connection}} (Dropbox)",
       "recovered_draft": "Lokaal concept hersteld. Controleer Dropbox voordat u opslaat.",
       "checking_recovery": "Hersteld document wordt gecontroleerd met Dropbox…"
-    }
+    },
+    "web_reconnect": "Opnieuw verbinden met {{provider}}",
+    "web_reconnect_status": "Opnieuw verbinden nodig",
+    "web_reconnect_help": "Je account is opgeslagen. Verbind opnieuw om je bestanden te bekijken.",
+    "web_reconnect_document": "Verbind opnieuw met {{provider}} om dit document te controleren. Je lokale kopie blijft bewaard."
   },
   "menus-alerts": {
     "primary": "Primair",

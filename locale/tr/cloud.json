@@ -1,4 +1,11 @@
 {
+  "dropbox_move_unavailable": "Kaynak dosya değişebileceği için Dropbox dosyaları taşınamıyor.",
+  "web_storage_error": "Tarayıcı depolamasına erişilemedi. Bu sitenin depolama izinlerini ve kullanılabilir alanı kontrol edip yeniden deneyin.",
+  "web_busy": "Bulut depolama başka bir sekmede açık. O sekmeyi kapatıp bu sekmeyi yenileyin.",
+  "web_lock_unavailable": "Bu tarayıcı, güvenli bulut düzenlemesi için gereken depolama kilitlemesini desteklemiyor.",
+  "web_intro": "Google Drive veya Dropbox bağlayın. Sekmeyi kapattıktan veya yeniledikten sonra yeniden bağlanın; hesaplarınız ve taslaklarınız korunur.",
+  "web_unavailable": "Bulut depolama için HTTPS ve kullanılabilir tarayıcı depolama alanı gerekir.",
+  "web_config_unavailable": "Bu site, bu sağlayıcı için tarayıcıdan giriş yapmayı yapılandırmamış.",
   "created_duplicate": "{{name}} oluşturuldu. Bu klasörde aynı ada sahip başka bir öğe var; ikisi de korundu.",
   "connections": "Bağlantılar",
   "intro": "Markdown dosyalarına göz atmak ve açmak için Google Drive’ı bağlayın.",
@@ -144,5 +151,9 @@
     "tab_label": "{{connection}} içindeki {{name}} (Dropbox)",
     "recovered_draft": "Yerel taslak kurtarıldı. Kaydetmeden önce Dropbox’ı kontrol edin.",
     "checking_recovery": "Kurtarılan belge Dropbox ile kontrol ediliyor…"
-  }
+  },
+  "web_reconnect": "{{provider}} hizmetine yeniden bağlan",
+  "web_reconnect_status": "Yeniden bağlanmak gerekiyor",
+  "web_reconnect_help": "Hesabınız hatırlanıyor. Dosyalarınıza göz atmak için yeniden bağlanın.",
+  "web_reconnect_document": "Bu belgeyi kontrol etmek için {{provider}} hizmetine yeniden bağlanın. Yerel kopyanız korunur."
 }

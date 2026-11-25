@@ -205,6 +205,13 @@
     "callback_return": "Vous pouvez fermer cet onglet et revenir à MKEditor."
   },
   "cloud": {
+    "dropbox_move_unavailable": "Le déplacement de fichiers Dropbox est indisponible, car le fichier source pourrait changer.",
+    "web_storage_error": "Impossible d’accéder au stockage du navigateur. Vérifiez les autorisations de stockage de ce site et l’espace disponible, puis réessayez.",
+    "web_busy": "Le stockage cloud est ouvert dans un autre onglet. Fermez-le, puis rechargez celui-ci.",
+    "web_lock_unavailable": "Ce navigateur ne prend pas en charge le verrouillage du stockage nécessaire à une édition cloud sûre.",
+    "web_intro": "Connectez Google Drive ou Dropbox. Reconnectez-vous après avoir fermé ou actualisé cet onglet ; vos comptes et brouillons sont conservés.",
+    "web_unavailable": "Le stockage cloud nécessite HTTPS et un espace de stockage disponible dans le navigateur.",
+    "web_config_unavailable": "Ce site n’a pas configuré la connexion dans le navigateur pour ce fournisseur.",
     "created_duplicate": "{{name}} a été créé. Un autre élément de ce dossier porte le même nom ; les deux ont été conservés.",
     "connections": "Connexions",
     "intro": "Connectez Google Drive pour parcourir et ouvrir des fichiers Markdown.",
@@ -350,7 +357,11 @@
       "tab_label": "{{name}} dans {{connection}} (Dropbox)",
       "recovered_draft": "Brouillon local récupéré. Vérifiez Dropbox avant d’enregistrer.",
       "checking_recovery": "Vérification du document récupéré avec Dropbox…"
-    }
+    },
+    "web_reconnect": "Se reconnecter à {{provider}}",
+    "web_reconnect_status": "Reconnexion nécessaire",
+    "web_reconnect_help": "Votre compte est enregistré. Reconnectez-vous pour parcourir vos fichiers.",
+    "web_reconnect_document": "Reconnectez-vous à {{provider}} pour vérifier ce document. Votre copie locale est conservée."
   },
   "menus-alerts": {
     "primary": "Primaire",

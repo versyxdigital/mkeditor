@@ -205,6 +205,13 @@
     "callback_return": "Sie können diesen Tab schließen und zu MKEditor zurückkehren."
   },
   "cloud": {
+    "dropbox_move_unavailable": "Dropbox-Dateien können nicht verschoben werden, da sich die Quelldatei ändern könnte.",
+    "web_storage_error": "Auf den Browser-Speicher konnte nicht zugegriffen werden. Prüfe die Speicherberechtigungen dieser Website und den verfügbaren Speicherplatz und versuche es erneut.",
+    "web_busy": "Cloud-Speicher ist in einem anderen Tab geöffnet. Schließe ihn und lade diesen Tab neu.",
+    "web_lock_unavailable": "Dieser Browser unterstützt die für sicheres Cloud-Bearbeiten erforderliche Speichersperre nicht.",
+    "web_intro": "Verbinde Google Drive oder Dropbox. Nach dem Schließen oder Neuladen des Tabs musst du dich erneut verbinden; deine Konten und Entwürfe bleiben gespeichert.",
+    "web_unavailable": "Cloud-Speicher erfordert HTTPS und verfügbaren Browser-Speicher.",
+    "web_config_unavailable": "Diese Website hat die Browser-Anmeldung für diesen Anbieter nicht eingerichtet.",
     "created_duplicate": "{{name}} wurde erstellt. Ein weiterer Eintrag in diesem Ordner hat denselben Namen; beide wurden beibehalten.",
     "connections": "Verbindungen",
     "intro": "Google Drive verbinden, um Markdown-Dateien zu öffnen.",
@@ -350,7 +357,11 @@
       "tab_label": "{{name}} in {{connection}} (Dropbox)",
       "recovered_draft": "Lokaler Entwurf wiederhergestellt. Vor dem Speichern Dropbox prüfen.",
       "checking_recovery": "Wiederhergestelltes Dokument wird mit Dropbox geprüft…"
-    }
+    },
+    "web_reconnect": "Erneut mit {{provider}} verbinden",
+    "web_reconnect_status": "Erneute Verbindung nötig",
+    "web_reconnect_help": "Dein Konto ist gespeichert. Verbinde dich erneut, um deine Dateien zu durchsuchen.",
+    "web_reconnect_document": "Verbinde dich erneut mit {{provider}}, um dieses Dokument zu prüfen. Deine lokale Kopie bleibt erhalten."
   },
   "menus-alerts": {
     "primary": "Primär",

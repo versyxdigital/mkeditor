@@ -26,7 +26,7 @@ export const RemoteDocumentMenu: React.FC = () => {
   const tab = tabs.find((entry) => entry.path === activeFile);
   const { t } = useCloudTranslation(tab?.remote?.provider);
   const remote = tab?.remote;
-  if (mode !== 'desktop' || !remote || !activeFile) return null;
+  if (!remote || !activeFile) return null;
   const connection = state.connections.find(
     (entry) => entry.id === remote.connectionId,
   );
@@ -39,13 +39,17 @@ export const RemoteDocumentMenu: React.FC = () => {
     tab.remoteSave?.phase ?? '',
   );
   const status =
-    tab.remoteRecovery && !failure
-      ? t('cloud:recovered_draft')
-      : !connected
-        ? t('cloud:disconnected')
-        : tab.remoteSave
-          ? t(`cloud:save_${tab.remoteSave.phase}`)
-          : t(manager?.canEdit(remote) ? 'cloud:editable' : 'cloud:read_only');
+    mode === 'web' && connection?.status === 'reauthorize' && !failure
+      ? t('cloud:web_reconnect_status')
+      : tab.remoteRecovery && !failure
+        ? t('cloud:recovered_draft')
+        : !connected
+          ? t('cloud:disconnected')
+          : tab.remoteSave
+            ? t(`cloud:save_${tab.remoteSave.phase}`)
+            : t(
+                manager?.canEdit(remote) ? 'cloud:editable' : 'cloud:read_only',
+              );
   const canReload = connected && !saving && !unknown;
   const menuClass = 'whitespace-nowrap text-xs';
   return (
@@ -81,10 +85,13 @@ export const RemoteDocumentMenu: React.FC = () => {
           </DropdownMenuLabel>
           <div
             role="status"
-            title={connected ? status : t('cloud:disconnected')}
+            title={status}
             className="h-6 max-w-72 truncate px-3 text-xs leading-6 text-muted-foreground"
           >
-            {connected ? status : t('cloud:disconnected')}
+            {connected ||
+            (mode === 'web' && connection?.status === 'reauthorize')
+              ? status
+              : t('cloud:disconnected')}
           </div>
           <DropdownMenuSeparator />
           {tab.remoteRecovery && (

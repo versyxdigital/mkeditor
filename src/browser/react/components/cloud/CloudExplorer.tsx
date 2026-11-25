@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { DriveItem } from '../../../../app/interfaces/Cloud';
+import { providerName, type DriveItem } from '../../../../app/interfaces/Cloud';
 import { MoveDriveDocument } from './MoveDriveDocument';
 import {
   ContextMenu,
@@ -11,12 +11,13 @@ import {
 import { useCloud } from '../../hooks/useCloud';
 import { useCloudTranslation } from '../../hooks/useCloudTranslation';
 import { useModals } from '../../contexts/ModalsContext';
-import { useManagers } from '../../contexts/ManagersContext';
 import { useFiles } from '../../contexts/FilesContext';
+import { useManagers } from '../../contexts/ManagersContext';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Icon } from '../Icon';
 import { CloudLogo } from './CloudBrand';
+import { CloudReconnectButton } from './CloudReconnectButton';
 import {
   Tooltip,
   TooltipContent,
@@ -50,15 +51,27 @@ export const WorkspacePicker: React.FC = () => {
   const connection = state.connections.find(
     (entry) => entry.id === state.workspace,
   );
-  const { t } = useCloudTranslation(connection?.provider);
-  if (mode !== 'desktop' || state.connections.length === 0) return null;
+  const { t } = useCloudTranslation();
   return (
     <Select
       value={connection?.id ?? 'local'}
       onValueChange={(value) => {
         if (value === 'manage-connections')
           openModal('settings', { tab: 'connections' });
-        else manager?.selectWorkspace(value);
+        else if (
+          value === 'connect-google-drive' ||
+          value === 'connect-dropbox'
+        ) {
+          const provider =
+            value === 'connect-dropbox' ? 'dropbox' : 'google-drive';
+          openModal('settings', { tab: 'connections' });
+          void manager?.run({
+            action: 'add',
+            provider,
+            name: providerName(provider),
+            authorize: true,
+          });
+        } else manager?.selectWorkspace(value);
       }}
     >
       <SelectTrigger
@@ -91,17 +104,50 @@ export const WorkspacePicker: React.FC = () => {
             key={entry.id}
             value={entry.id}
             textValue={`${entry.name} ${entry.accountName ?? ''}`}
+            title={`${entry.name}${entry.accountName ? ` · ${entry.accountName}` : ''} · ${t(`cloud:status_${entry.status}`)}`}
             className="text-xs"
           >
             <span className="flex min-w-0 items-center gap-2 whitespace-nowrap">
               <CloudLogo provider={entry.provider} />
               <span className="max-w-32 truncate">{entry.name}</span>
               <span className="max-w-40 truncate text-muted-foreground">
-                {entry.accountName ?? t(`cloud:status_${entry.status}`)}
+                {mode === 'web' && entry.status !== 'connected'
+                  ? t(`cloud:status_${entry.status}`)
+                  : (entry.accountName ?? t(`cloud:status_${entry.status}`))}
               </span>
             </span>
           </SelectItem>
         ))}
+        <SelectItem
+          value="connect-google-drive"
+          disabled={
+            !manager ||
+            !state.secureStorage ||
+            !state.googleDriveAvailable ||
+            state.busy.includes('settings')
+          }
+          className="mt-1 border-t border-subtle text-xs"
+        >
+          <span className="flex items-center gap-2">
+            <CloudLogo provider="google-drive" />
+            {t('cloud:connect')}
+          </span>
+        </SelectItem>
+        <SelectItem
+          value="connect-dropbox"
+          disabled={
+            !manager ||
+            !state.secureStorage ||
+            !state.dropboxAvailable ||
+            state.busy.includes('settings')
+          }
+          className="text-xs"
+        >
+          <span className="flex items-center gap-2">
+            <CloudLogo provider="dropbox" />
+            {t('cloud:dropbox.connect')}
+          </span>
+        </SelectItem>
         <SelectItem
           value="manage-connections"
           className="mt-1 border-t border-subtle text-xs"
@@ -121,6 +167,7 @@ export const CloudExplorer: React.FC = () => {
   const { manager, state } = useCloud();
   const { tabs, activeFile } = useFiles();
   const { openModal } = useModals();
+  const { mode } = useManagers();
   const connection = state.connections.find(
     (entry) => entry.id === state.workspace,
   );
@@ -137,6 +184,10 @@ export const CloudExplorer: React.FC = () => {
     .join(' / ');
   const manage = () => openModal('settings', { tab: 'connections' });
   const canCreate = Boolean(manager?.canCreate());
+  const moveUnavailableReason =
+    connection?.provider === 'dropbox'
+      ? t('cloud:dropbox_move_unavailable')
+      : undefined;
   const creating =
     state.creating?.connectionId === connection?.id &&
     state.creating?.accountId === connection?.accountId
@@ -150,8 +201,15 @@ export const CloudExplorer: React.FC = () => {
       {!connected ? (
         <div className="space-y-3 px-2 py-4">
           <p role="status" className="text-muted-foreground">
-            {t('cloud:disconnected')}
+            {t(
+              mode === 'web' && connection
+                ? 'cloud:web_reconnect_help'
+                : 'cloud:disconnected',
+            )}
           </p>
+          {mode === 'web' && connection && (
+            <CloudReconnectButton connection={connection} />
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -557,14 +615,17 @@ export const CloudExplorer: React.FC = () => {
                   </ContextMenuItem>
                   {contextItem.kind === 'markdown' &&
                     manager?.canOrganize() && (
-                      <ContextMenuItem
-                        className="gap-2 text-xs"
-                        disabled={!manager?.canMove(contextItem)}
-                        onSelect={() => manager?.startMove(contextItem)}
-                      >
-                        <Icon name="folder-open" />
-                        {t('cloud:move_to')}
-                      </ContextMenuItem>
+                      <span className="block" title={moveUnavailableReason}>
+                        <ContextMenuItem
+                          className="gap-2 text-xs"
+                          disabled={!manager?.canMove(contextItem)}
+                          aria-description={moveUnavailableReason}
+                          onSelect={() => manager?.startMove(contextItem)}
+                        >
+                          <Icon name="folder-open" />
+                          {t('cloud:move_to')}
+                        </ContextMenuItem>
+                      </span>
                     )}
                   <ContextMenuSeparator />
                 </>

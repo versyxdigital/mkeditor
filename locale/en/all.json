@@ -205,6 +205,13 @@
     "callback_return": "You can close this tab and return to MKEditor."
   },
   "cloud": {
+    "dropbox_move_unavailable": "Dropbox moves are unavailable because the source file could change.",
+    "web_storage_error": "Could not access browser storage. Check this site's storage permissions and available space, then try again.",
+    "web_busy": "Cloud storage is open in another tab. Close that tab, then reload this one.",
+    "web_lock_unavailable": "This browser does not support the storage locking needed for safe cloud editing.",
+    "web_intro": "Connect Google Drive or Dropbox. Reconnect after closing or refreshing the tab; your accounts and drafts are remembered.",
+    "web_unavailable": "Cloud storage requires HTTPS and available browser storage.",
+    "web_config_unavailable": "This website has not configured browser sign-in for this provider.",
     "created_duplicate": "Created {{name}}. Another item in this folder has the same name; both were kept.",
     "connections": "Connections",
     "intro": "Connect Google Drive to browse and open Markdown files.",
@@ -350,7 +357,11 @@
       "tab_label": "{{name}} in {{connection}} (Dropbox)",
       "recovered_draft": "Recovered local draft. Check Dropbox before saving.",
       "checking_recovery": "Checking recovered document with Dropbox…"
-    }
+    },
+    "web_reconnect": "Reconnect to {{provider}}",
+    "web_reconnect_status": "Reconnect needed",
+    "web_reconnect_help": "Your account is remembered. Reconnect to browse your files.",
+    "web_reconnect_document": "Reconnect to {{provider}} to check this document. Your local copy is kept."
   },
   "menus-alerts": {
     "primary": "Primary",

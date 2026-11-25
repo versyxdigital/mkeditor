@@ -1,4 +1,8 @@
 const path = require('path');
+const { DefinePlugin } = require('webpack');
+const {
+  webCloudRegistration,
+} = require('./scripts/web-cloud-registration.cjs');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlMinimizerPlugin = require('html-minimizer-webpack-plugin');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
@@ -81,6 +85,9 @@ module.exports = {
     },
   },
   plugins: [
+    new DefinePlugin({
+      __MKEDITOR_WEB_CLOUD_CONFIG__: JSON.stringify(webCloudRegistration()),
+    }),
     new MonacoWebpackPlugin({
       languages: ['markdown'],
       // Trimmed in the bundle-size pass: dropped `codeAction`,

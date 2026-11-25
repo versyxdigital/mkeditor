@@ -14,6 +14,7 @@ import {
 } from '../../../../app/interfaces/Cloud';
 import { cloudMessageKey } from '../../../cloudLabels';
 import { useCloudTranslation } from '../../hooks/useCloudTranslation';
+import { useManagers } from '../../contexts/ManagersContext';
 import {
   Select,
   SelectTrigger,
@@ -24,6 +25,8 @@ import {
 
 export const CloudConnections: React.FC = () => {
   const { manager, state } = useCloud();
+  const { mode } = useManagers();
+  const web = mode === 'web';
   const { t } = useTranslation();
   const [name, setName] = React.useState('');
   const [clientId, setClientId] = React.useState('');
@@ -34,16 +37,28 @@ export const CloudConnections: React.FC = () => {
   return (
     <div className="space-y-5">
       <div className="space-y-2 text-sm text-muted-foreground">
-        <p>{t('cloud:storage_intro')}</p>
+        <p>{t(web ? 'cloud:web_intro' : 'cloud:storage_intro')}</p>
       </div>
       {!state.secureStorage && (
         <p role="status" className="text-sm text-destructive">
-          {t('cloud:secure_unavailable')}
+          {t(
+            web
+              ? state.browserAccess === 'busy'
+                ? 'cloud:web_busy'
+                : state.browserAccess === 'unavailable'
+                  ? 'cloud:web_lock_unavailable'
+                  : 'cloud:web_unavailable'
+              : 'cloud:secure_unavailable',
+          )}
         </p>
       )}
       {state.error && (
         <p role="alert" className="text-sm text-destructive">
-          {t(`cloud:error_${state.error}`)}
+          {t(
+            web && state.error === 'storage'
+              ? 'cloud:web_storage_error'
+              : `cloud:error_${state.error}`,
+          )}
         </p>
       )}
       <section
@@ -81,7 +96,11 @@ export const CloudConnections: React.FC = () => {
         </Button>
         {!state.googleDriveAvailable && (
           <p className="w-full text-sm text-muted-foreground" role="status">
-            {t('cloud:default_unavailable')}
+            {t(
+              web
+                ? 'cloud:web_config_unavailable'
+                : 'cloud:default_unavailable',
+            )}
           </p>
         )}
       </section>
@@ -116,23 +135,29 @@ export const CloudConnections: React.FC = () => {
         </Button>
         {!state.dropboxAvailable && (
           <p className="w-full text-sm text-muted-foreground" role="status">
-            {t('cloud:dropbox.default_unavailable')}
+            {t(
+              web
+                ? 'cloud:web_config_unavailable'
+                : 'cloud:dropbox.default_unavailable',
+            )}
           </p>
         )}
       </section>
       {state.connections.map((connection) => (
         <ConnectionCard key={connection.id} connection={connection} />
       ))}
-      <Button
-        type="button"
-        variant="ghost"
-        aria-expanded={advanced}
-        aria-controls="cloud-advanced"
-        onClick={() => setAdvanced((value) => !value)}
-      >
-        {t('cloud:advanced')}
-      </Button>
-      {advanced && (
+      {!web && (
+        <Button
+          type="button"
+          variant="ghost"
+          aria-expanded={advanced}
+          aria-controls="cloud-advanced"
+          onClick={() => setAdvanced((value) => !value)}
+        >
+          {t('cloud:advanced')}
+        </Button>
+      )}
+      {!web && advanced && (
         <form
           id="cloud-advanced"
           className="space-y-3 rounded-lg border border-subtle p-4"
@@ -237,6 +262,7 @@ const ConnectionCard: React.FC<{ connection: CloudConnection }> = ({
 }) => {
   const { manager, state } = useCloud();
   const { t } = useCloudTranslation(connection.provider);
+  const { mode } = useManagers();
   const [name, setName] = React.useState(connection.name);
   React.useEffect(() => setName(connection.name), [connection.name]);
   const busy =
@@ -329,7 +355,13 @@ const ConnectionCard: React.FC<{ connection: CloudConnection }> = ({
           }
         >
           {connection.provider === 'dropbox' ? <DropboxLogo /> : <GoogleLogo />}
-          {t(connect ? 'cloud:reconnect' : 'cloud:connect')}
+          {t(
+            connect ||
+              (mode === 'web' &&
+                (connection.hasConnected || connection.accountId))
+              ? 'cloud:reconnect'
+              : 'cloud:connect',
+          )}
         </Button>
         <Button
           variant="outline"

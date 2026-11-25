@@ -9,7 +9,7 @@ Markdown with _style_.
 | Windows     | v5.0.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v5.0.0/mkeditor-setup-5.0.0.exe) |
 | Linux       | v5.0.0  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v5.0.0/mkeditor-setup-5.0.0.deb) |
 
-Download for desktop or use it directly through your [browser](https://versyxdigital.github.io/mkeditor/web/). More documentation is available at the [website](https://versyxdigital.github.io/mkeditor).
+Download for desktop or use it directly through your [browser](https://versyx.digital/mkeditor/web/). More documentation is available at the [website](https://versyx.digital/mkeditor/).
 
 <p>
     <img src="https://versyxdigital.github.io/mkeditor/assets/screenshots/editor-dark.webp" alt="MKEditor dark mode" width="45%" style="display:inline-block; margin-right:10px;" />
@@ -104,7 +104,7 @@ Choose between Anthropic, OpenAI, or a local Ollama install.
 
 ## Connect Google Drive
 
-Desktop builds can connect through **Settings → Connections → Connect with Google**, browse My Drive/shared drives and open Markdown files.
+Connect through **Settings → Connections → Connect with Google** to browse My Drive/shared drives and open Markdown files. Desktop and configured web builds support cloud connections; see [web setup](docs/cloud/web-cloud.md) when hosting the browser editor.
 
 ## Connect Dropbox
 

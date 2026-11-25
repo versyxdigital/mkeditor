@@ -36,6 +36,10 @@ Use Node.js 24.x. The `.nvmrc` file selects this major version for local version
      ```sh
      npm run build-app
      ```
+   - Build the deployable web editor into `out/web/`:
+     ```sh
+     npm run build-web
+     ```
    - Build both editor and app, and create an installable package:
      ```sh
      npm run make-installer
@@ -54,6 +58,12 @@ The release workflow reads repository Actions secrets with those same two names.
 Set `MKEDITOR_DROPBOX_APP_KEY`, or copy `src/app/config/dropbox.json` to the ignored `src/app/config/dropbox.local.json` and fill in `clientId`. Keep `clientValue` empty: Dropbox uses PKCE and needs no bundled app secret. The environment value overrides the local file; `build-app` injects it into build output. Releases require the repository Actions secret `MKEDITOR_DROPBOX_APP_KEY`. See [Dropbox setup and tests](docs/cloud/dropbox.md).
 
 `npm run test:dropbox-smoke` runs isolated fixture-based Electron checks after a build. `npm run test:dropbox-live` uses a new disposable folder and requires browser sign-in.
+
+### Web cloud build configuration
+
+`npm run build-web` builds a standalone website under `out/web/`, separate from Electron output. Set `MKEDITOR_WEB_GOOGLE_CLIENT_ID` and `MKEDITOR_WEB_DROPBOX_APP_KEY` to include the public browser registrations. No client secret is used. A contributor build can omit these values; release builds set `MKEDITOR_REQUIRE_WEB_CLOUD=true` and fail when registration is incomplete.
+
+The release workflow reads repository Actions variables with those names and produces `mkeditor-web-<version>.zip`. CI uses fixture identifiers and runs the built web UI under `/mkeditor/web/`. See [web setup, hosting and verification](docs/cloud/web-cloud.md).
 
 ## Dependency compatibility
 

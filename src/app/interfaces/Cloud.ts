@@ -38,6 +38,8 @@ export interface CloudConnection {
   status: 'connected' | 'disconnected' | 'reauthorize' | 'connecting';
 }
 export interface CloudState {
+  /** Browser cloud editing requires exclusive origin ownership and Web Locks. */
+  browserAccess?: 'busy' | 'unavailable';
   dropboxAvailable?: boolean;
   pendingOperations?: CloudPendingOperation[];
   recoveryError?: boolean;

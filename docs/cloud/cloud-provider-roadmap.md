@@ -2,9 +2,9 @@
 
 **Status:** Dropbox is implemented, fixture-tested and live-verified on Windows; other adapters remain planned. See [Dropbox setup and scope](dropbox.md). Nothing listed here is part of the original [Google Drive ticket](cloud-provider-integration.md). Everything is subject to the [shared standards](cloud-provider-standards.md), including the safety requirements for enabling saves.
 
-## Web cloud support — deferred
+## Web cloud support — v5.2.0
 
-Deferred to a later release with no target version. Bug fixes, small quality-of-life improvements and optimization take priority. The future work will bring the existing Google Drive and Dropbox integrations to the web editor.
+Implemented, fixture-tested and live-verified in Chromium on loopback for v5.2.0. The existing Google Drive and Dropbox integrations now share their Explorer, document handling and save-safety engine with the web editor. See [browser setup, security and verification results](web-cloud.md).
 
 - Reuse the cloud Explorer, remote tabs, conflict handling and provider contracts.
 - Add browser authorization and registered web origins/callbacks, replacing the desktop loopback flow.

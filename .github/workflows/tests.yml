@@ -33,3 +33,34 @@ jobs:
       # the Electron main process.
       - run: npm run build-editor
       - run: npm run build-app
+
+  web:
+    name: Web cloud integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build deployable web editor with fixture registration
+        run: npm run build-web
+        env:
+          MKEDITOR_WEB_GOOGLE_CLIENT_ID: fixture-web.apps.googleusercontent.com
+          MKEDITOR_WEB_DROPBOX_APP_KEY: fixture-web-dropbox
+          MKEDITOR_REQUIRE_WEB_CLOUD: 'true'
+      - name: Verify web cloud UI under the deployment path
+        run: npm run test:web-cloud-smoke -- --skip-build --build-dir out/web --base-path /mkeditor/web/
+      - name: Upload browser verification results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-cloud-verification
+          path: |
+            out/web-cloud-smoke/report.json
+            out/web-cloud-smoke/*.png
+          if-no-files-found: warn

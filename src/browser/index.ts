@@ -246,6 +246,11 @@ function onEditorReadyInner() {
   editorManager.provide('bridge', bridgeManager);
   if (mode === 'desktop')
     editorManager.registerCleanup(bridgeManager.startLocalFileWatching());
+  else
+    editorManager.registerCleanup(() => {
+      bridgeManager.cloudManager.dispose();
+      (bridge as InstanceType<typeof WebFileBridge>).dispose();
+    });
 
   // Let FileManager honour the user's `sessionRestore` setting.
   bridgeManager.fileManager.setSessionEnabledGetter(

@@ -111,7 +111,7 @@ describe('WebFileBridge.persistSession (to:session:save)', () => {
     const stored = JSON.parse(
       localStorage.getItem('mkeditor-session') ?? 'null',
     );
-    expect(stored).toEqual(payload);
+    expect(stored).toEqual({ ...payload, webCheckpointId: expect.any(String) });
   });
 
   it.each(['cloud-drive', 'cloud-dropbox'])(
@@ -355,10 +355,110 @@ describe('WebFileBridge beforeunload flush', () => {
   });
 });
 
+describe('WebFileBridge page lifecycle', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    installIndexedDbStub();
+  });
+
+  it('flushes when backgrounded and detaches its visibility listener on disposal', async () => {
+    const previous = Object.getOwnPropertyDescriptor(
+      document,
+      'visibilityState',
+    );
+    let visibility = 'visible';
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => visibility,
+    });
+    const bridge = await loadBridge();
+    try {
+      await bridge.bootstrap();
+      let flushes = 0;
+      bridge.receive('from:session:flush-request', () => flushes++);
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(flushes).toBe(0);
+      visibility = 'hidden';
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(flushes).toBe(1);
+      bridge.dispose();
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(flushes).toBe(1);
+    } finally {
+      bridge.dispose();
+      if (previous)
+        Object.defineProperty(document, 'visibilityState', previous);
+      else Reflect.deleteProperty(document, 'visibilityState');
+    }
+  });
+
+  it('persists final text when pagehide occurs without beforeunload', async () => {
+    const bridge = await loadBridge();
+    await bridge.bootstrap();
+    const payload: SessionPayload = {
+      version: 3,
+      tabs: [
+        {
+          path: 'untitled-1',
+          name: 'Untitled 1',
+          viewState: null,
+          untitledContent: 'final text',
+        },
+      ],
+      activeFile: 'untitled-1',
+      workspaceRoot: null,
+    };
+    bridge.receive('from:session:flush-request', () => {
+      bridge.send('to:session:save', payload);
+    });
+    window.dispatchEvent(new Event('pagehide'));
+    expect(JSON.parse(localStorage.getItem('mkeditor-session')!)).toMatchObject(
+      payload,
+    );
+    bridge.dispose();
+  });
+});
+
 describe('WebFileBridge to:session:clear', () => {
   beforeEach(() => {
     localStorage.clear();
     installIndexedDbStub();
+  });
+
+  it('keeps a cleared local session cleared through an unload checkpoint, until a new edit resumes it', async () => {
+    const bridge = await loadBridge();
+    await bridge.bootstrap();
+    const payload: SessionPayload = {
+      version: 3,
+      tabs: [
+        {
+          path: 'untitled-1',
+          name: 'Untitled 1',
+          viewState: null,
+          untitledContent: 'draft stays open',
+        },
+      ],
+      activeFile: 'untitled-1',
+      workspaceRoot: null,
+    };
+    bridge.send('to:session:save', payload);
+    const cleared = new Promise<string>((resolve) => {
+      bridge.receive('from:session:cleared', (value: { token: string }) =>
+        resolve(value.token),
+      );
+    });
+    bridge.send('to:session:clear', null);
+    const token = await cleared;
+    bridge.receive('from:session:flush-request', () =>
+      bridge.send('to:session:save', payload),
+    );
+    window.dispatchEvent(new Event('beforeunload'));
+    expect(localStorage.getItem('mkeditor-session')).toBeNull();
+    bridge.send('to:session:save', { ...payload, resumeAfterClear: token });
+    expect(JSON.parse(localStorage.getItem('mkeditor-session')!)).toMatchObject(
+      payload,
+    );
+    bridge.dispose();
   });
 
   it('removes mkeditor-session and fires the success notification', async () => {
@@ -369,12 +469,64 @@ describe('WebFileBridge to:session:clear', () => {
       notifications.push(e as { status: string; key: string }),
     );
 
+    const cleared = new Promise<void>((resolve) => {
+      bridge.receive('from:session:cleared', () => resolve());
+    });
     bridge.send('to:session:clear', null);
-
+    await cleared;
     expect(localStorage.getItem('mkeditor-session')).toBeNull();
     expect(notifications).toEqual([
       { status: 'success', key: 'notifications:session_cleared' },
     ]);
+  });
+
+  it('allows a new edit to resume saving after the cloud clear commits but local removal fails', async () => {
+    const bridge = await loadBridge();
+    const payload: SessionPayload = {
+      version: 3,
+      tabs: [
+        {
+          path: 'untitled-1',
+          name: 'Untitled 1',
+          viewState: null,
+          untitledContent: 'original',
+        },
+      ],
+      activeFile: 'untitled-1',
+      workspaceRoot: null,
+    };
+    bridge.send('to:session:save', payload);
+    const errors: unknown[] = [];
+    bridge.receive('from:notification:display', (value: unknown) =>
+      errors.push(value),
+    );
+    const cleared = new Promise<string>((resolve) => {
+      bridge.receive('from:session:cleared', (value: { token: string }) =>
+        resolve(value.token),
+      );
+    });
+    const remove = jest
+      .spyOn(Storage.prototype, 'removeItem')
+      .mockImplementationOnce(() => {
+        throw new Error('storage unavailable');
+      });
+    bridge.send('to:session:clear', null);
+    const token = await cleared;
+    remove.mockRestore();
+    expect(errors).toContainEqual({
+      status: 'error',
+      key: 'cloud:recovery_storage_error',
+    });
+    bridge.send('to:session:save', {
+      ...payload,
+      resumeAfterClear: token,
+      tabs: [{ ...payload.tabs[0], untitledContent: 'new edit' }],
+    });
+    expect(
+      JSON.parse(localStorage.getItem('mkeditor-session')!).tabs[0]
+        .untitledContent,
+    ).toBe('new edit');
+    bridge.dispose();
   });
 
   it('still fires the notification when nothing was stored', async () => {
@@ -384,8 +536,11 @@ describe('WebFileBridge to:session:clear', () => {
       notifications.push(e as { status: string; key: string }),
     );
 
+    const cleared = new Promise<void>((resolve) => {
+      bridge.receive('from:session:cleared', () => resolve());
+    });
     bridge.send('to:session:clear', null);
-
+    await cleared;
     expect(notifications).toHaveLength(1);
     expect(notifications[0].key).toBe('notifications:session_cleared');
   });

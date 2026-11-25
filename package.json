@@ -1,7 +1,7 @@
 {
   "name": "mkeditor",
   "productName": "MKEditor",
-  "version": "5.0.0",
+  "version": "5.2.0",
   "engines": {
     "node": "^24.0.0"
   },
@@ -19,6 +19,7 @@
     "test": "jest",
     "prebuild": "node -p \"\\\"export const APP_VERSION = '\\\" + require('./package.json').version + \\\"';\\\"\" > src/browser/version.ts",
     "build-editor": "npm run prebuild && node ./scripts/combine-locales.mjs && webpack --config webpack.config.js",
+    "build-web": "npm run prebuild && node ./scripts/combine-locales.mjs && webpack --config webpack.web.config.js",
     "build-app": "node ./scripts/compile-app.mjs",
     "build-all": "npm run build-editor && npm run build-app",
     "make-installer": "node ./scripts/make-installer.mjs",
@@ -30,6 +31,7 @@
     "test:drive-live": "node scripts/drive-smoke/run.cjs --live --authorize-disposable-test",
     "test:dropbox-smoke": "node scripts/dropbox-smoke.cjs",
     "test:dropbox-live": "node scripts/dropbox-smoke.cjs --live --authorize-disposable-test",
+    "test:web-cloud-smoke": "node scripts/web-cloud-smoke.cjs",
     "publish": "npm run build-editor && npm run build-app && electron-builder --publish always"
   },
   "repository": {

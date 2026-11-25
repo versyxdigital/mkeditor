@@ -69,9 +69,9 @@ Now that the React migration is in.
 
 ---
 
-## 5. Web Cloud Support _(deferred)_
+## 5. Web Cloud Support _(v5.2.0)_
 
-Deferred to a later release; no target version is set. Current work focuses on bug fixes, small quality-of-life improvements and optimization. The future integration will bring Google Drive and Dropbox to the web editor with browser authorization, suitable token/draft storage and verified save safety. Scope and acceptance criteria are in the [cloud provider roadmap](cloud/cloud-provider-roadmap.md).
+Implemented, fixture-tested and live-verified in Chromium on loopback for v5.2.0. Google Drive and Dropbox reuse the desktop cloud Explorer, document identities, conditional-save checks and recovery journal through browser authorization and storage adapters. Browser credentials remain in memory; drafts remain in browser storage. Scope and acceptance criteria are in the [cloud provider roadmap](cloud/cloud-provider-roadmap.md), with deployment instructions and verification results in [Web cloud support](cloud/web-cloud.md).
 
 ---
 

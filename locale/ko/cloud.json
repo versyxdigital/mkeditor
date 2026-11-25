@@ -1,4 +1,11 @@
 {
+  "dropbox_move_unavailable": "원본 파일이 변경될 수 있어 Dropbox 파일 이동을 사용할 수 없습니다.",
+  "web_storage_error": "브라우저 저장소에 접근할 수 없습니다. 이 사이트의 저장소 권한과 사용 가능한 공간을 확인한 후 다시 시도하세요.",
+  "web_busy": "다른 탭에서 클라우드 저장소를 사용 중입니다. 해당 탭을 닫고 이 탭을 새로고침하세요.",
+  "web_lock_unavailable": "이 브라우저는 안전한 클라우드 편집에 필요한 저장소 잠금을 지원하지 않습니다.",
+  "web_intro": "Google Drive 또는 Dropbox를 연결하세요. 탭을 닫거나 새로고침한 후에는 다시 연결해야 하지만 계정과 초안은 유지됩니다.",
+  "web_unavailable": "클라우드 저장소에는 HTTPS와 사용 가능한 브라우저 저장 공간이 필요합니다.",
+  "web_config_unavailable": "이 웹사이트는 이 서비스의 브라우저 로그인을 설정하지 않았습니다.",
   "created_duplicate": "{{name}}을(를) 만들었습니다. 이 폴더에 같은 이름의 항목이 있어 둘 다 유지했습니다.",
   "connections": "연결",
   "intro": "Google Drive에 연결하여 Markdown 파일을 찾아 열 수 있습니다.",
@@ -144,5 +151,9 @@
     "tab_label": "{{connection}}의 {{name}}(Dropbox)",
     "recovered_draft": "로컬 초안을 복구했습니다. 저장하기 전에 Dropbox를 확인하세요.",
     "checking_recovery": "복구된 문서를 Dropbox와 확인 중…"
-  }
+  },
+  "web_reconnect": "{{provider}}에 다시 연결",
+  "web_reconnect_status": "다시 연결 필요",
+  "web_reconnect_help": "계정이 저장되어 있습니다. 파일을 탐색하려면 다시 연결하세요.",
+  "web_reconnect_document": "이 문서를 확인하려면 {{provider}}에 다시 연결하세요. 로컬 사본은 유지됩니다."
 }

@@ -236,9 +236,11 @@ export class CloudManager {
         'error',
         t(
           cloudMessageKey(
-            error === 'unconfirmed' && itemOperation
-              ? 'operation_unconfirmed'
-              : `error_${error}`,
+            error === 'storage'
+              ? 'recovery_storage_error'
+              : error === 'unconfirmed' && itemOperation
+                ? 'operation_unconfirmed'
+                : `error_${error}`,
             provider,
           ),
         ),

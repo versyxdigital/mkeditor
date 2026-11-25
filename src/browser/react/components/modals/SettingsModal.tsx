@@ -65,8 +65,8 @@ export const SettingsModal: React.FC = () => {
     if (open === 'settings') {
       const requested = payload && 'tab' in payload ? payload.tab : undefined;
       setActiveTab(
-        (requested === 'assistant' || requested === 'connections') &&
-          showAssistantTab
+        requested === 'connections' ||
+          (requested === 'assistant' && showAssistantTab)
           ? requested
           : 'general',
       );
@@ -131,13 +131,9 @@ export const SettingsModal: React.FC = () => {
             icon: 'comments',
             label: t('modals-settings:tab_assistant'),
           },
-          {
-            id: 'connections' as const,
-            icon: 'link',
-            label: t('cloud:connections'),
-          },
         ]
       : []),
+    { id: 'connections', icon: 'link', label: t('cloud:connections') },
     { id: 'editor', icon: 'file', label: t('modals-settings:nav_editor') },
     { id: 'preview', icon: 'eye', label: t('modals-settings:nav_preview') },
     { id: 'appearance', icon: 'moon', label: t('modals-settings:appearance') },
@@ -252,11 +248,9 @@ export const SettingsModal: React.FC = () => {
                 </p>
               </Section>
             </TabsContent>
-            {showAssistantTab && (
-              <TabsContent value="connections" className="mt-0">
-                <CloudConnections />
-              </TabsContent>
-            )}
+            <TabsContent value="connections" className="mt-0">
+              <CloudConnections />
+            </TabsContent>
             <TabsContent value="editor" className="mt-0">
               <Section label={t('modals-settings:editing')} separator={false}>
                 {(

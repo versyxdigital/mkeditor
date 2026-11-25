@@ -205,6 +205,13 @@
     "callback_return": "Pode fechar este separador e voltar ao MKEditor."
   },
   "cloud": {
+    "dropbox_move_unavailable": "Não é possível mover arquivos do Dropbox porque o arquivo de origem pode mudar.",
+    "web_storage_error": "Não foi possível acessar o armazenamento do navegador. Verifique as permissões de armazenamento deste site e o espaço disponível e tente novamente.",
+    "web_busy": "O armazenamento na nuvem está aberto em outra aba. Feche-a e recarregue esta.",
+    "web_lock_unavailable": "Este navegador não oferece o bloqueio de armazenamento necessário para editar na nuvem com segurança.",
+    "web_intro": "Ligue o Google Drive ou o Dropbox. Volte a ligar depois de fechar ou atualizar o separador; as suas contas e rascunhos são preservados.",
+    "web_unavailable": "O armazenamento na nuvem requer HTTPS e armazenamento disponível no navegador.",
+    "web_config_unavailable": "Este site não configurou o login pelo navegador para este provedor.",
     "created_duplicate": "{{name}} foi criado. Outro item nesta pasta tem o mesmo nome; ambos foram mantidos.",
     "connections": "Conexões",
     "intro": "Conecte o Google Drive para explorar e abrir arquivos Markdown.",
@@ -350,7 +357,11 @@
       "tab_label": "{{name}} em {{connection}} (Dropbox)",
       "recovered_draft": "Rascunho local recuperado. Verifique o Dropbox antes de guardar.",
       "checking_recovery": "A verificar o documento recuperado no Dropbox…"
-    }
+    },
+    "web_reconnect": "Voltar a ligar ao {{provider}}",
+    "web_reconnect_status": "É necessário voltar a ligar",
+    "web_reconnect_help": "A sua conta está guardada. Volte a ligar para explorar os seus ficheiros.",
+    "web_reconnect_document": "Volte a ligar ao {{provider}} para verificar este documento. A sua cópia local é preservada."
   },
   "menus-alerts": {
     "primary": "Primário",

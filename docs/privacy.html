@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light dark" />
     <meta
       name="description"
-      content="How MKEditor handles documents, Google Drive access, optional AI features and locally stored data."
+      content="How MKEditor handles documents, Google Drive and Dropbox access, optional AI features and locally stored data."
     />
     <title>Privacy Policy — MKEditor</title>
     <style>
@@ -130,7 +130,7 @@
       <header>
         <a href="https://versyxdigital.github.io/mkeditor/">MKEditor</a>
         <h1>Privacy Policy</h1>
-        <p class="metadata">Last updated: 23 November 2026</p>
+        <p class="metadata">Last updated: 25 November 2026</p>
         <p>
           MKEditor is an open-source Markdown editor published by
           <strong>Versyx Digital</strong>. This policy explains how the desktop
@@ -140,9 +140,9 @@
         </p>
         <p>
           You can use MKEditor to edit local documents without connecting Google
-          Drive or an AI provider. Local editing does not upload your documents
-          to a Versyx Digital document-storage service. Optional connections
-          send information to the services described below.
+          Drive, Dropbox or an AI provider. Local editing does not upload your
+          documents to a Versyx Digital document-storage service. Optional
+          connections send information to the services described below.
         </p>
       </header>
 
@@ -150,6 +150,7 @@
         <ul>
           <li><a href="#local-data">Documents and local storage</a></li>
           <li><a href="#google-drive">Google Drive</a></li>
+          <li><a href="#dropbox">Dropbox</a></li>
           <li><a href="#ai">Optional AI assistance</a></li>
           <li><a href="#network">Other network connections</a></li>
           <li><a href="#retention">Retention and deletion</a></li>
@@ -178,11 +179,17 @@
           The browser editor uses your browser's local storage and IndexedDB for
           settings, saved sessions and folder-access handles. File access
           depends on the permissions you grant through the browser. Google Drive
-          and AI provider connections described here are desktop features.
+          and Dropbox connections are available in the desktop application and
+          configured browser editor. AI provider connections remain
+          desktop-only.
         </p>
         <p>
-          Saved API keys, account tokens and cloud recovery snapshots use
-          operating-system-backed encryption. Ordinary document files,
+          In the desktop application, saved API keys, account tokens and cloud
+          recovery snapshots use operating-system-backed encryption. Browser
+          cloud access tokens live only in memory and require sign-in again
+          after reload or expiry. Browser cloud drafts, saved baselines and
+          unresolved operation records use storage under the website's origin
+          and are not encrypted by MKEditor. Ordinary document files,
           conversation history, settings and local session files are not
           encrypted by MKEditor itself; protection also depends on your device,
           browser, account permissions and backups.
@@ -193,10 +200,11 @@
         <h2 id="google-drive">Google Drive</h2>
         <p>
           Connecting Google Drive is optional. Sign-in takes place in your
-          system browser with Google. MKEditor receives authorization tokens
-          rather than your Google password. It obtains your account identifier
-          and available email address or display name to label the connection
-          and keep files bound to the correct account.
+          browser with Google. The configured browser editor loads Google's
+          Identity Services library to support sign-in. MKEditor receives
+          authorization tokens rather than your Google password. It obtains your
+          account identifier and available email address or display name to
+          label the connection and keep files bound to the correct account.
         </p>
         <p>
           To display the folders you browse, MKEditor reads file and folder
@@ -224,21 +232,22 @@
           conflicts or check an uncertain save result. New files include an
           application operation marker used to check creation without creating a
           duplicate. These requests travel directly between your desktop
-          application and Google; they are not routed through a Versyx Digital
-          document server.
+          application or browser editor and Google; they are not routed through
+          a Versyx Digital document server.
         </p>
         <p>
-          Connection names, account labels and encrypted tokens are stored
-          locally in <code>~/.mkeditor/connections.json</code>. With session
-          restoration enabled, Drive tab contents, unsaved drafts, saved
-          baselines and cursor positions are checkpointed locally in the
-          OS-encrypted <code>~/.mkeditor/cloud-recovery.bin</code>. The same
-          encrypted store records file/account identifiers and write intentions
-          before saves, creations and moves, so interrupted operations can be
-          checked after restart without automatically repeating them. Restoring
-          a draft does not upload it to Google. Copies you save locally, text
-          you share in AI conversations and operating-system backups can persist
-          separately.
+          On desktop, connection names, account labels and encrypted tokens are
+          stored locally in <code>~/.mkeditor/connections.json</code>. With
+          session restoration enabled, remote tab contents, unsaved drafts,
+          saved baselines and cursor positions are checkpointed locally in the
+          OS-encrypted <code>~/.mkeditor/cloud-recovery.bin</code>. The browser
+          editor stores connection names, account labels and document
+          checkpoints under the website's origin; browser access tokens are not
+          persisted. Both modes record unresolved write intentions before saves,
+          creations and moves, so interrupted operations can be checked after
+          restart without automatically repeating them. Restoring a draft does
+          not upload it to Google. Copies you save locally, text you share in AI
+          conversations and operating-system backups can persist separately.
         </p>
         <p>
           MKEditor's use and transfer of information received from Google APIs
@@ -257,22 +266,27 @@
       <section aria-labelledby="dropbox">
         <h2 id="dropbox">Optional Dropbox connection</h2>
         <p>
-          If you connect Dropbox, MKEditor uses browser authorization with PKCE
-          and reads your account identifier and label, folder listings, file
-          metadata and the Markdown documents you choose to open. Connections
-          start read-only. Enable editing requests additional access to save
-          chosen documents and create files or copies in your selected folder.
-          Requests travel directly between the desktop app and Dropbox.
+          Connecting Dropbox is optional in the desktop application and
+          configured browser editor. Sign-in uses Dropbox browser authorization
+          with PKCE. MKEditor receives authorization tokens rather than your
+          Dropbox password and reads your account identifier and label, folder
+          listings, file metadata and the Markdown documents you choose to open.
+          Connections start read-only. <strong>Enable editing</strong> requests
+          additional access to save chosen documents and create files, copies
+          and folders in your selected location. Dropbox moves remain
+          unavailable. The application does not expose remote delete or rename
+          commands. Requests travel directly between the desktop application or
+          browser editor and Dropbox.
         </p>
         <p>
           Created files include an app-owned operation property, backed by a
           Dropbox property template, so MKEditor can check an interrupted
-          creation without uploading it again. Account tokens use OS encryption
-          in <code>~/.mkeditor/connections.json</code>. With session restoration
-          enabled, document snapshots and drafts use the same encrypted
-          <code>~/.mkeditor/cloud-recovery.bin</code> store as Drive. The
-          operation journal also retains unresolved write intentions. Restoring
-          a draft does not upload it to Dropbox.
+          creation without uploading it again. On desktop, account tokens use OS
+          encryption in <code>~/.mkeditor/connections.json</code>; browser
+          access tokens live only in memory. Document snapshots, drafts and
+          unresolved write intentions use the same desktop encrypted recovery
+          store or browser origin storage described for Drive. Restoring a draft
+          does not upload it to Dropbox.
         </p>
         <p>
           Disconnect clears local credentials and the account label; Remove also

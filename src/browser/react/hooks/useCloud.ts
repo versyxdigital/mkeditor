@@ -7,8 +7,8 @@ const emptySubscribe = () => () => {};
 const emptySnapshot = () => EMPTY_CLOUD;
 
 export function useCloud() {
-  const { bridgeManager, mode } = useManagers();
-  const manager = mode === 'desktop' ? bridgeManager?.cloudManager : undefined;
+  const { bridgeManager } = useManagers();
+  const manager = bridgeManager?.cloudManager;
   const state = React.useSyncExternalStore(
     manager?.subscribe ?? emptySubscribe,
     manager?.getSnapshot ?? emptySnapshot,

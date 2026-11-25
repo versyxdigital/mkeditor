@@ -390,12 +390,12 @@ describe.each<CloudProviderId>(['google-drive', 'dropbox'])(
   },
 );
 
-test('web toolbar hides the storage selector even with a configured cloud manager', () => {
+test('web toolbar offers the storage selector with a configured cloud manager', () => {
   const { manager, managers } = setup();
   renderWithProviders(<Navbar />, { managers: { ...managers, mode: 'web' } });
   expect(
     screen.queryByRole('combobox', { name: 'cloud:workspace' }),
-  ).not.toBeInTheDocument();
+  ).toBeInTheDocument();
   act(() => manager.dispose());
 });
 
@@ -959,10 +959,22 @@ test.each<CloudProviderId>(['google-drive', 'dropbox'])(
     const move = screen.getByRole('menuitem', { name: 'cloud:move_to' });
     if (provider === 'dropbox') {
       expect(move).toHaveAttribute('data-disabled');
+      expect(move).toHaveAttribute(
+        'aria-description',
+        'cloud:dropbox_move_unavailable',
+      );
+      expect(move.parentElement).toHaveAttribute(
+        'title',
+        'cloud:dropbox_move_unavailable',
+      );
       fireEvent.click(move);
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       expect(manager.getSnapshot().movePicker).toBeUndefined();
-    } else expect(move).not.toHaveAttribute('data-disabled');
+    } else {
+      expect(move).not.toHaveAttribute('data-disabled');
+      expect(move).not.toHaveAttribute('aria-description');
+      expect(move.parentElement).not.toHaveAttribute('title');
+    }
     expect(
       screen.queryByRole('menuitem', { name: 'cloud:new_folder' }),
     ).not.toBeInTheDocument();
