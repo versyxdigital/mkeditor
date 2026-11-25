@@ -1,5 +1,14 @@
-import { promises as fs } from 'fs';
-import { basename, dirname, isAbsolute, join } from 'path';
+import {
+  promises as fs,
+  lstatSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  renameSync,
+  linkSync,
+  unlinkSync,
+} from 'fs';
+import { basename, dirname, isAbsolute, join, relative, sep } from 'path';
 import { randomUUID } from 'crypto';
 import { shell, type BrowserWindow } from 'electron';
 import { AppStorage } from './AppStorage';
@@ -201,6 +210,40 @@ export class WorkspaceFiles {
       );
     const root = AppStorage.getWorkspaceRoot();
     const prepared: Array<WorkspaceTextChange & { staged?: string }> = [];
+    if (!root)
+      throw new WorkspaceToolError(
+        'no_workspace',
+        'Open a workspace folder first.',
+      );
+    type DirectoryIdentity = ReturnType<
+      typeof AppStorage.verifyWorkspaceDirectory
+    >;
+    const directories = new Map<string, DirectoryIdentity>();
+    directories.set(root, AppStorage.verifyWorkspaceDirectory(root, root));
+    const verifyParent = (
+      path: string,
+      phase: 'capture' | 'stage' | 'commit',
+    ) => {
+      AppStorage.verifyWorkspaceDirectory(root, root, directories.get(root));
+      let directory = root;
+      for (const part of relative(root, dirname(path))
+        .split(sep)
+        .filter(Boolean)) {
+        directory = join(directory, part);
+        const expected = directories.get(directory);
+        if (!lstatSync(directory, { throwIfNoEntry: false })) {
+          if (phase === 'capture' && !expected) return;
+          if (phase !== 'stage' || expected)
+            throw new Error(`Workspace directory disappeared: ${directory}`);
+          // One component at a time: recursive mkdir could traverse a replaced ancestor.
+          mkdirSync(directory);
+        }
+        directories.set(
+          directory,
+          AppStorage.verifyWorkspaceDirectory(directory, root, expected),
+        );
+      }
+    };
     const seen = new Set<string>();
     let bytes = 0;
     for (const change of changes) {
@@ -222,6 +265,7 @@ export class WorkspaceFiles {
           'Text batches are limited to 32 MiB and cannot contain binary data.',
         );
       const path = await this.resolve(change.path);
+      verifyParent(path, 'capture');
       if (change.expected === null)
         for (const name of path
           .slice(root!.length)
@@ -258,18 +302,28 @@ export class WorkspaceFiles {
     const written: typeof prepared = [];
     try {
       for (const change of prepared) {
-        await fs.mkdir(dirname(change.path), { recursive: true });
-        await this.resolve(change.path);
-        change.staged = join(
-          dirname(change.path),
-          `.mkeditor-write-${randomUUID()}`,
-        );
-        await fs.writeFile(change.staged, change.content, {
+        const path = await this.resolve(change.path);
+        if (workspacePathKey(path) !== workspacePathKey(change.path))
+          throw new WorkspaceToolError(
+            'stale_plan',
+            'Batch destination changed.',
+          );
+        // Recheck recorded directory identities and stage without an async gap.
+        verifyParent(path, 'stage');
+        const current = lstatSync(path, { throwIfNoEntry: false });
+        if (
+          current?.isSymbolicLink() ||
+          (change.expected !== null && !current?.isFile())
+        )
+          throw new WorkspaceToolError(
+            'stale_plan',
+            `File changed during the batch: ${path}`,
+          );
+        change.staged = join(dirname(path), `.mkeditor-write-${randomUUID()}`);
+        writeFileSync(change.staged, change.content, {
           flag: 'wx',
           encoding: 'utf8',
-          ...(change.expected === null
-            ? {}
-            : { mode: (await fs.stat(change.path)).mode }),
+          ...(change.expected === null ? {} : { mode: current!.mode }),
         });
       }
       for (const change of prepared) {
@@ -278,34 +332,63 @@ export class WorkspaceFiles {
             'workspace_changed',
             'Workspace changed during the batch.',
           );
-        await this.resolve(change.path);
-        const current = await this.stat(change.path);
+        const path = await this.resolve(change.path);
+        if (workspacePathKey(path) !== workspacePathKey(change.path))
+          throw new WorkspaceToolError(
+            'stale_plan',
+            'Batch destination changed.',
+          );
+        verifyParent(path, 'commit');
+        const current = lstatSync(path, { throwIfNoEntry: false });
         if (
           change.expected === null
-            ? current !== null
-            : !current ||
-              (await this.readText(change.path)).content !== change.expected
+            ? Boolean(current)
+            : !current?.isFile() ||
+              current.isSymbolicLink() ||
+              current.size > 4 * 1024 * 1024 ||
+              readFileSync(path, 'utf8') !== change.expected
         )
           throw new WorkspaceToolError(
             'stale_plan',
             `File changed during the batch: ${change.path}`,
           );
+        const staged = lstatSync(change.staged!);
+        if (
+          !staged.isFile() ||
+          staged.isSymbolicLink() ||
+          staged.size !== Buffer.byteLength(change.content) ||
+          !readFileSync(change.staged!).equals(Buffer.from(change.content))
+        )
+          throw new WorkspaceToolError(
+            'stale_plan',
+            'Staged content changed during the batch.',
+          );
         if (change.expected === null) {
-          await fs.link(change.staged!, change.path); // Atomic create without overwriting a concurrent new file.
-          await fs.unlink(change.staged!);
-        } else await fs.rename(change.staged!, change.path);
+          linkSync(change.staged!, path); // Atomic create without overwriting a concurrent new file.
+          written.push(change);
+          unlinkSync(change.staged!);
+        } else {
+          renameSync(change.staged!, path);
+          written.push(change);
+        }
         change.staged = undefined;
-        written.push(change);
       }
     } catch (error) {
       const notRestored: string[] = [];
       for (const change of written.reverse()) {
         try {
           // Never roll back over a concurrent external edit.
-          if ((await this.readText(change.path)).content !== change.content)
+          verifyParent(change.path, 'commit');
+          const current = lstatSync(change.path, { throwIfNoEntry: false });
+          if (
+            !current?.isFile() ||
+            current.isSymbolicLink() ||
+            current.size > 4 * 1024 * 1024 ||
+            readFileSync(change.path, 'utf8') !== change.content
+          )
             throw new Error('File changed externally.', { cause: error });
-          if (change.expected === null) await fs.unlink(change.path);
-          else await AppStorage.writeTextFile(change.path, change.expected);
+          if (change.expected === null) unlinkSync(change.path);
+          else writeFileSync(change.path, change.expected, 'utf8');
         } catch {
           notRestored.push(change.path);
         }
@@ -318,7 +401,15 @@ export class WorkspaceFiles {
       throw error;
     } finally {
       for (const change of prepared)
-        if (change.staged) await fs.rm(change.staged, { force: true });
+        if (change.staged) {
+          try {
+            verifyParent(change.path, 'commit');
+            if (lstatSync(change.staged, { throwIfNoEntry: false }))
+              unlinkSync(change.staged);
+          } catch {
+            // Never clean up through a replaced parent; preserve the original failure.
+          }
+        }
     }
     for (const parent of new Set(
       prepared.map((change) => dirname(change.path)),

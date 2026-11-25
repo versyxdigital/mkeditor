@@ -1,9 +1,10 @@
 import { promises as fs } from 'fs';
-import { join } from 'path';
+import { basename, dirname, join } from 'path';
 import { tmpdir } from 'os';
 import { shell, type BrowserWindow } from 'electron';
 import { AppStorage } from '../src/app/lib/AppStorage';
 import { WorkspaceFiles } from '../src/app/lib/WorkspaceFiles';
+import { createDirectoryLink } from './utils/directoryLink';
 import type { PathOperationInput } from '../src/app/interfaces/WorkspaceTools';
 import {
   resolveAgentPath,
@@ -219,15 +220,18 @@ it('uses segment boundaries and portable validation in shared paths', () => {
 it('rolls back a bulk write when a later atomic replacement fails', async () => {
   await fs.writeFile(join(root, 'a.md'), 'A');
   await fs.writeFile(join(root, 'b.md'), 'B');
-  const rename = fs.rename;
-  jest.spyOn(fs, 'rename').mockImplementation(async (source, destination) => {
-    if (
-      String(source).includes('.mkeditor-write-') &&
-      destination === join(root, 'b.md')
-    )
-      throw Object.assign(new Error('denied'), { code: 'EACCES' });
-    return rename(source, destination);
-  });
+  const nativeFs = jest.requireActual('fs') as typeof import('fs');
+  const rename = nativeFs.renameSync;
+  jest
+    .spyOn(nativeFs, 'renameSync')
+    .mockImplementation((source, destination) => {
+      if (
+        String(source).includes('.mkeditor-write-') &&
+        destination === join(root, 'b.md')
+      )
+        throw Object.assign(new Error('denied'), { code: 'EACCES' });
+      return rename(source, destination);
+    });
   await expect(
     files.request({
       action: 'write-batch',
@@ -244,6 +248,161 @@ it('rolls back a bulk write when a later atomic replacement fails', async () => 
       name.startsWith('.mkeditor-write-'),
     ),
   ).toEqual([]);
+});
+
+describe.each(['create', 'replace'] as const)(
+  'batch %s parent integrity',
+  (operation) => {
+    it.each(['stage', 'commit'] as const)(
+      'rejects a parent junction swap after %s validation without any outside write',
+      async (phase) => {
+        const nativeFs = jest.requireActual('fs') as typeof import('fs');
+        const outside = await fs.realpath(
+          await fs.mkdtemp(join(tmpdir(), 'mkeditor-batch-outside-')),
+        );
+        const parent = join(root, 'parent');
+        const parked = join(root, 'parked');
+        const target = join(parent, 'note.md');
+        await fs.mkdir(parent);
+        if (operation === 'replace') await fs.writeFile(target, 'original');
+        await fs.writeFile(join(outside, 'note.md'), 'outside document');
+        let ready = false;
+        let swapped = false;
+        let stagingName: string | undefined;
+        const outsideWrites: string[] = [];
+        const recordWrite = (path: unknown) => {
+          if (
+            typeof path === 'string' &&
+            nativeFs.realpathSync.native(dirname(path)) === outside
+          )
+            outsideWrites.push(path);
+          if (
+            phase === 'commit' &&
+            typeof path === 'string' &&
+            path.includes('.mkeditor-write-')
+          ) {
+            stagingName = basename(path);
+            ready = true;
+          }
+        };
+        const write = fs.writeFile.bind(fs);
+        jest.spyOn(fs, 'writeFile').mockImplementation(async (...args) => {
+          recordWrite(args[0]);
+          return write(...args);
+        });
+        const writeSync = nativeFs.writeFileSync;
+        jest.spyOn(nativeFs, 'writeFileSync').mockImplementation((...args) => {
+          recordWrite(args[0]);
+          return writeSync(...args);
+        });
+        const read = fs.readFile.bind(fs);
+        jest.spyOn(fs, 'readFile').mockImplementation(async (...args) => {
+          const content = await read(...args);
+          if (
+            phase === 'stage' &&
+            operation === 'replace' &&
+            args[0] === target
+          )
+            ready = true;
+          return content;
+        });
+        const stat = fs.lstat.bind(fs);
+        jest.spyOn(fs, 'lstat').mockImplementation(async (...args) => {
+          try {
+            return await stat(...args);
+          } finally {
+            if (
+              phase === 'stage' &&
+              operation === 'create' &&
+              args[0] === target
+            )
+              ready = true;
+          }
+        });
+        const validate = AppStorage.assertInWorkspace.bind(AppStorage);
+        jest
+          .spyOn(AppStorage, 'assertInWorkspace')
+          .mockImplementation(async (...args) => {
+            const canonical = await validate(...args);
+            if (ready && !swapped && args[0] === target) {
+              swapped = true;
+              await fs.rename(parent, parked);
+              createDirectoryLink(outside, parent);
+              // Cleanup must not follow the junction and remove an unrelated file.
+              if (stagingName)
+                writeSync(
+                  join(outside, stagingName),
+                  'outside staging sentinel',
+                );
+            }
+            return canonical;
+          });
+        try {
+          await expect(
+            files.request({
+              action: 'write-batch',
+              changes: [
+                {
+                  path: target,
+                  expected: operation === 'create' ? null : 'original',
+                  content: 'batch content',
+                },
+              ],
+            }),
+          ).rejects.toThrow();
+          expect(swapped).toBe(true);
+          expect(outsideWrites).toEqual([]);
+          expect(await fs.readFile(join(outside, 'note.md'), 'utf8')).toBe(
+            'outside document',
+          );
+          expect((await fs.readdir(outside)).sort()).toEqual(
+            ['note.md', ...(stagingName ? [stagingName] : [])].sort(),
+          );
+          if (stagingName)
+            expect(await fs.readFile(join(outside, stagingName), 'utf8')).toBe(
+              'outside staging sentinel',
+            );
+          if (operation === 'replace')
+            expect(await fs.readFile(join(parked, 'note.md'), 'utf8')).toBe(
+              'original',
+            );
+        } finally {
+          await fs.rm(outside, { recursive: true, force: true });
+        }
+      },
+    );
+  },
+);
+it('rejects replacement of a parent by a different ordinary directory', async () => {
+  const parent = join(root, 'parent');
+  const target = join(parent, 'note.md');
+  await fs.mkdir(parent);
+  await fs.writeFile(target, 'original');
+  const validate = AppStorage.assertInWorkspace.bind(AppStorage);
+  let validations = 0;
+  jest
+    .spyOn(AppStorage, 'assertInWorkspace')
+    .mockImplementation(async (...args) => {
+      const canonical = await validate(...args);
+      // Preparation validates once directly and once when reading the original.
+      if (args[0] === target && ++validations === 3) {
+        await fs.rename(parent, join(root, 'parked'));
+        await fs.mkdir(parent);
+        await fs.writeFile(target, 'original');
+      }
+      return canonical;
+    });
+  await expect(
+    files.request({
+      action: 'write-batch',
+      changes: [{ path: target, expected: 'original', content: 'changed' }],
+    }),
+  ).rejects.toThrow('Workspace directory changed');
+  expect(await fs.readFile(target, 'utf8')).toBe('original');
+  expect(await fs.readFile(join(root, 'parked', 'note.md'), 'utf8')).toBe(
+    'original',
+  );
+  expect(await fs.readdir(parent)).toEqual(['note.md']);
 });
 it('handles cross-device moves with staged copy and trash removal of the original', async () => {
   await fs.writeFile(join(root, 'a.md'), 'source');

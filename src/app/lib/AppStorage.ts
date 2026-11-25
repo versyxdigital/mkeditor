@@ -3,6 +3,7 @@ import {
   readFileSync,
   realpathSync,
   statSync,
+  lstatSync,
   promises as fs,
   constants as fsConstants,
 } from 'fs';
@@ -141,6 +142,35 @@ export class AppStorage {
 
   static getWorkspaceRoot(): string | null {
     return AppStorage.workspaceRoot;
+  }
+
+  /** Synchronous guard for a canonical directory immediately before mutation. */
+  static verifyWorkspaceDirectory(
+    directory: string,
+    root: string,
+    expected?: { dev: number; ino: number; birthtimeMs: number },
+  ): { dev: number; ino: number; birthtimeMs: number } {
+    if (AppStorage.workspaceRoot !== root)
+      throw new Error('Workspace changed during the batch.');
+    const canonical = realpathSync.native(directory);
+    const rel = relative(root, canonical);
+    const stat = lstatSync(directory);
+    if (
+      relative(directory, canonical) !== '' ||
+      rel === '..' ||
+      rel.startsWith('..' + sep) ||
+      isAbsolute(rel) ||
+      stat.isSymbolicLink() ||
+      !stat.isDirectory() ||
+      (expected &&
+        (stat.dev !== expected.dev ||
+          stat.ino !== expected.ino ||
+          stat.birthtimeMs !== expected.birthtimeMs))
+    )
+      throw new Error(
+        `Workspace directory changed or is symbolic: ${directory}`,
+      );
+    return { dev: stat.dev, ino: stat.ino, birthtimeMs: stat.birthtimeMs };
   }
 
   /** Filename metadata for references, independent of the explorer's lazy/filter state. */
