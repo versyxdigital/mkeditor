@@ -596,6 +596,7 @@
     "toggle_assistant_tooltip": "Basculer l'assistant IA"
   },
   "notifications": {
+    "move_cross_device_conflict": "Le déplacement entre disques n’a pas pu être terminé en toute sécurité. Les deux copies ont été conservées.",
     "unable_export_preview": "Impossible d’exporter l’aperçu",
     "unable_save_markdown": "Impossible d’enregistrer le markdown",
     "exported_html_success": "Aperçu exporté en HTML",

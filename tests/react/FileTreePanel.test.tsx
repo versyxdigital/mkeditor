@@ -3,6 +3,13 @@ import { act, fireEvent } from '@testing-library/react';
 
 import { FileTreePanel } from '../../src/browser/react/components/FileTreePanel';
 import type { TreeNode } from '../../src/browser/core/FileTreeManager';
+import { sonnerToast } from '../../src/browser/notify';
+
+jest.mock('../../src/browser/notify', () => ({ sonnerToast: jest.fn() }));
+jest.mock('../../src/browser/i18n', () => ({
+  t: (key: string) => key,
+  normalizeLanguage: (language: string) => language,
+}));
 import {
   renderWithProviders,
   fakeFileManager,
@@ -239,6 +246,34 @@ function fakeBridgeManager(
 }
 
 describe('<FileTreePanel> — drag-and-drop moves', () => {
+  it('explains a cross-device conflict after a drop without reporting a successful move', async () => {
+    const bm = fakeBridgeManager({ ok: false, error: 'cross_device_conflict' });
+    const { container } = renderWithProviders(<FileTreePanel />, {
+      managers: {
+        fileManager: fakeFileManager() as never,
+        fileTreeManager: fakeFileTreeManager({
+          nodes: tree,
+          treeRoot: '/root',
+        }) as never,
+        bridgeManager: bm as never,
+      },
+    });
+    const source = container.querySelector('li[data-path="/root/notes.md"]')!;
+    const target = container.querySelector('li[data-path="/root/docs"]')!;
+    const transfer = makeDataTransfer();
+    await act(async () => {
+      fireEvent.dragStart(source, { dataTransfer: transfer });
+      fireEvent.drop(target, { dataTransfer: transfer });
+    });
+    expect(bm.moveItem).toHaveBeenCalledWith(
+      '/root/notes.md',
+      '/root/docs/notes.md',
+    );
+    expect(sonnerToast).toHaveBeenCalledWith(
+      'error',
+      'notifications:move_cross_device_conflict',
+    );
+  });
   // Each directory carries at least one .md descendant so the
   // default `md`-only file-explorer filter doesn't sweep the rows
   // out of the rendered tree before we can target them.

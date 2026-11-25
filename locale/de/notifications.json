@@ -1,4 +1,5 @@
 {
+  "move_cross_device_conflict": "Das Verschieben zwischen Laufwerken konnte nicht sicher abgeschlossen werden. Beide Kopien wurden beibehalten.",
   "unable_export_preview": "Vorschau kann nicht exportiert werden",
   "unable_save_markdown": "Markdown kann nicht gespeichert werden",
   "exported_html_success": "Vorschau als HTML exportiert",

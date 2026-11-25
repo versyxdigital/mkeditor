@@ -596,6 +596,7 @@
     "toggle_assistant_tooltip": "AI 어시스턴트 전환"
   },
   "notifications": {
+    "move_cross_device_conflict": "드라이브 간 이동을 안전하게 완료할 수 없습니다. 두 복사본을 모두 보존했습니다.",
     "unable_export_preview": "미리보기를 내보낼 수 없습니다",
     "unable_save_markdown": "Markdown을 저장할 수 없습니다",
     "exported_html_success": "미리보기가 HTML로 내보내졌습니다",

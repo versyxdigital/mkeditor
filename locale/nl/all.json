@@ -596,6 +596,7 @@
     "toggle_assistant_tooltip": "AI-assistent omschakelen"
   },
   "notifications": {
+    "move_cross_device_conflict": "De verplaatsing tussen schijven kon niet veilig worden voltooid. Beide kopieën zijn behouden.",
     "unable_export_preview": "Voorbeeld kan niet worden geëxporteerd",
     "unable_save_markdown": "Markdown kan niet worden opgeslagen",
     "exported_html_success": "Voorbeeld geëxporteerd naar HTML",

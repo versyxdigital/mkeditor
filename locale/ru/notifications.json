@@ -1,4 +1,5 @@
 {
+  "move_cross_device_conflict": "Не удалось безопасно завершить перемещение между дисками. Обе копии сохранены.",
   "unable_export_preview": "Не удалось экспортировать предварительный просмотр",
   "unable_save_markdown": "Не удалось сохранить Markdown",
   "exported_html_success": "Предпросмотр экспортирован в HTML",

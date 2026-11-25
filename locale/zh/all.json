@@ -596,6 +596,7 @@
     "toggle_assistant_tooltip": "切换 AI 助手"
   },
   "notifications": {
+    "move_cross_device_conflict": "无法安全完成跨驱动器移动。两个副本均已保留。",
     "unable_export_preview": "无法导出预览",
     "unable_save_markdown": "无法保存 Markdown",
     "exported_html_success": "预览已导出为 HTML",

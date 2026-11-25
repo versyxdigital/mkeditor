@@ -130,7 +130,12 @@ export const FileTreePanel: React.FC = () => {
       if (!result.ok) {
         const key =
           MOVE_ERROR_KEYS[result.error] ?? 'notifications:move_failed';
-        sonnerToast('error', `${t(key)} — ${result.error}`);
+        sonnerToast(
+          'error',
+          result.error === 'cross_device_conflict'
+            ? t(key)
+            : `${t(key)} — ${result.error}`,
+        );
       }
     },
     [bridgeManager, treeRoot, t],
@@ -700,6 +705,7 @@ const MKED_DRAG_MIME = 'application/x-mked-path';
  * surfaced from main).
  */
 const MOVE_ERROR_KEYS: Record<string, string> = {
+  cross_device_conflict: 'notifications:move_cross_device_conflict',
   destination_same_as_source: 'notifications:move_same_source',
   destination_inside_source: 'notifications:move_into_self_refused',
   destination_exists: 'notifications:move_collision',

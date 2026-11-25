@@ -1,8 +1,8 @@
 /**
  * `AppStorage.moveItem` — drag-and-drop / Move-to support.
  *
- * Real-tmpdir tests (no fs mocking) so the rename + EXDEV fallback
- * path matches OS behaviour. A fake BrowserWindow captures
+ * Real temporary files exercise mutations; fault injection forces EXDEV
+ * and edits after copying. A fake BrowserWindow captures
  * `webContents.send` calls so we can assert the side-effect events
  * (`from:folder:opened` for both ends, `from:path:renamed` for tabs).
  */
@@ -14,6 +14,9 @@ import {
   mkdirSync,
   readdirSync,
   realpathSync,
+  readFileSync,
+  renameSync,
+  promises as fs,
 } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -47,8 +50,93 @@ function withTempRoot<T>(fn: (root: string) => Promise<T>): Promise<T> {
 
 describe('AppStorage.moveItem', () => {
   afterEach(() => {
+    jest.restoreAllMocks();
+    jest.restoreAllMocks();
     AppStorage.setWorkspaceRoot(null);
   });
+
+  it.each([
+    'file-edit',
+    'file-replacement',
+    'folder-edit',
+    'folder-add',
+    'unchanged',
+  ] as const)(
+    'retains both copies on EXDEV, including a late %s, without retargeting tabs',
+    async (change) => {
+      await withTempRoot(async (root) => {
+        AppStorage.setWorkspaceRoot(root);
+        mkdirSync(join(root, 'destination'));
+        const folder = change.startsWith('folder');
+        const source = join(root, folder ? 'source' : 'source.md');
+        const destination = join(
+          root,
+          'destination',
+          folder ? 'source' : 'source.md',
+        );
+        if (folder) mkdirSync(source);
+        const sourceFile = folder ? join(source, 'note.md') : source;
+        const destinationFile = folder
+          ? join(destination, 'note.md')
+          : destination;
+        writeFileSync(sourceFile, 'copied version');
+        const guard = AppStorage.workspaceMutationGuard();
+        jest.spyOn(AppStorage, 'workspaceMutationGuard').mockReturnValue(guard);
+        const rename = guard.rename.bind(guard);
+        const renameCall = jest
+          .spyOn(guard, 'rename')
+          .mockImplementation((from, to) => {
+            if (from === source && to === destination)
+              throw Object.assign(new Error('different device'), {
+                code: 'EXDEV',
+              });
+            return rename(from, to);
+          });
+        const copy = guard.copy.bind(guard);
+        jest.spyOn(guard, 'copy').mockImplementation(async (from, to) => {
+          await copy(from, to);
+          if (from !== source) return;
+          if (change === 'file-replacement') {
+            renameSync(sourceFile, join(root, 'parked-original.md'));
+            writeFileSync(sourceFile, 'replacement document');
+          } else if (change === 'folder-add')
+            writeFileSync(join(source, 'new.md'), 'late addition');
+          else if (change !== 'unchanged')
+            writeFileSync(sourceFile, 'newer edits');
+        });
+        const remove = jest.spyOn(fs, 'rm');
+        const grant = jest.spyOn(AppStorage, 'moveFileAuthorization');
+        const { context, sent } = fakeWindow();
+        expect(await AppStorage.moveItem(context, source, destination)).toEqual(
+          { ok: false, error: 'cross_device_conflict' },
+        );
+        expect(renameCall).toHaveBeenCalledWith(source, destination);
+        expect(readFileSync(destinationFile, 'utf8')).toBe('copied version');
+        expect(readFileSync(sourceFile, 'utf8')).toBe(
+          change === 'file-replacement'
+            ? 'replacement document'
+            : change === 'file-edit' || change === 'folder-edit'
+              ? 'newer edits'
+              : 'copied version',
+        );
+        if (change === 'folder-add')
+          expect(readFileSync(join(source, 'new.md'), 'utf8')).toBe(
+            'late addition',
+          );
+        expect(remove).not.toHaveBeenCalled();
+        expect(grant).not.toHaveBeenCalled();
+        expect(
+          sent.some((message) => message.channel === 'from:path:renamed'),
+        ).toBe(false);
+        expect(
+          sent
+            .filter((message) => message.channel === 'from:folder:opened')
+            .map((message) => (message.payload as { path: string }).path)
+            .sort(),
+        ).toEqual([root, join(root, 'destination')].sort());
+      });
+    },
+  );
 
   it('moves a file from one folder to another and refreshes both parents', async () => {
     await withTempRoot(async (root) => {

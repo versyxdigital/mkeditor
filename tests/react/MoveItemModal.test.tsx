@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
+import { sonnerToast } from '../../src/browser/notify';
 
 import { MoveItemModal } from '../../src/browser/react/components/modals/MoveItemModal';
 import type { TreeNode } from '../../src/browser/core/FileTreeManager';
@@ -102,6 +103,18 @@ function renderModal(opts: {
 }
 
 describe('<MoveItemModal>', () => {
+  it('explains that both copies were retained after a cross-device conflict and keeps the dialog open', async () => {
+    const bm = fakeBridgeManager({ ok: false, error: 'cross_device_conflict' });
+    renderModal({ sourcePath: '/root/docs/x.md', bm });
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('move-item-confirm')),
+    );
+    expect(sonnerToast).toHaveBeenCalledWith(
+      'error',
+      'notifications:move_cross_device_conflict',
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
   it('renders the source path and the workspace root + immediate folders', () => {
     renderModal({ sourcePath: '/root/notes.md' });
     expect(screen.getByTestId('move-item-source-path').textContent).toBe(

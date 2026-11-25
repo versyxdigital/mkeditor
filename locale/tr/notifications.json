@@ -1,4 +1,5 @@
 {
+  "move_cross_device_conflict": "Sürücüler arasındaki taşıma güvenli bir şekilde tamamlanamadı. Her iki kopya da korundu.",
   "unable_export_preview": "Önizleme dışa aktarılamıyor",
   "unable_save_markdown": "Markdown kaydedilemiyor",
   "exported_html_success": "Önizleme HTML olarak dışa aktarıldı",

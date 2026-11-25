@@ -1,4 +1,5 @@
 {
+  "move_cross_device_conflict": "Não foi possível concluir a movimentação entre unidades com segurança. Ambas as cópias foram mantidas.",
   "unable_export_preview": "Não foi possível exportar a prévia",
   "unable_save_markdown": "Não foi possível salvar o markdown",
   "exported_html_success": "Prévia exportada para HTML",

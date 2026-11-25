@@ -1,4 +1,5 @@
 {
+  "move_cross_device_conflict": "Impossibile completare in sicurezza lo spostamento tra unità. Entrambe le copie sono state conservate.",
   "unable_export_preview": "Impossibile esportare l’anteprima",
   "unable_save_markdown": "Impossibile salvare il markdown",
   "exported_html_success": "Anteprima esportata in HTML",

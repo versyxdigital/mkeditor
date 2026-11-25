@@ -99,7 +99,9 @@ export const MoveItemModal: React.FC = () => {
     if (!result.ok) {
       sonnerToast(
         'error',
-        `${t('notifications:move_failed')} — ${result.error}`,
+        result.error === 'cross_device_conflict'
+          ? t('notifications:move_cross_device_conflict')
+          : `${t('notifications:move_failed')} — ${result.error}`,
       );
       return;
     }

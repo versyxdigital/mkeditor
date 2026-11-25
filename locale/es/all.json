@@ -596,6 +596,7 @@
     "toggle_assistant_tooltip": "Alternar asistente de IA"
   },
   "notifications": {
+    "move_cross_device_conflict": "No se pudo completar de forma segura el traslado entre unidades. Se conservaron ambas copias.",
     "unable_export_preview": "No se puede exportar la vista previa",
     "unable_save_markdown": "No se puede guardar el markdown",
     "exported_html_success": "Vista previa exportada a HTML",

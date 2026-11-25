@@ -1,4 +1,5 @@
 {
+  "move_cross_device_conflict": "ドライブ間の移動を安全に完了できませんでした。両方のコピーを保持しました。",
   "unable_export_preview": "プレビューをエクスポートできません",
   "unable_save_markdown": "Markdown を保存できません",
   "exported_html_success": "プレビューを HTML にエクスポートしました",

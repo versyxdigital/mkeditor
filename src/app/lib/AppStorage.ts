@@ -1088,9 +1088,9 @@ export class AppStorage {
    *     (refuses `mv /a/b /a/b/sub` and self-into-self).
    *
    * Writes:
-   *   - Uses `fs.rename` (atomic on-volume). Falls back to
-   *     `fs.cp({recursive:true}) + fs.rm({recursive:true})` when
-   *     `rename` throws `EXDEV` (cross-volume move).
+   *   - Uses an atomic rename on-volume. On EXDEV, copies without
+   *     deleting the source and returns cross_device_conflict. A portable
+   *     copy/check/delete cannot exclude an edit before source removal.
    *
    * Effects:
    *   - Emits `from:folder:opened` for BOTH the source-parent and
@@ -1109,12 +1109,15 @@ export class AppStorage {
     | { ok: false; error: string }
   > {
     try {
+      const guard = AppStorage.workspaceMutationGuard();
       const safeSrc = await AppStorage.assertInWorkspace(srcPath, {
         mustExist: true,
       });
+      guard.capture(safeSrc);
       const safeDst = await AppStorage.assertInWorkspace(dstPath, {
         mustExist: false,
       });
+      guard.capture(safeDst);
 
       // Refuse no-op moves so we don't emit churn for nothing.
       if (safeSrc === safeDst) {
@@ -1154,46 +1157,23 @@ export class AppStorage {
         if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
       }
 
-      // Try the atomic rename first. Cross-volume moves throw
-      // EXDEV; fall back to a recursive copy + delete so the user
-      // can still drag a file across drives within a workspace.
+      // A cross-volume copy has no atomic unchanged-source deletion. Retain
+      // both locations rather than deleting edits made during or after copying.
       try {
-        await fs.rename(safeSrc, safeDst);
+        guard.rename(safeSrc, safeDst);
       } catch (err) {
         const code = (err as NodeJS.ErrnoException).code;
         if (code !== 'EXDEV') throw err;
-        await fs.cp(safeSrc, safeDst, {
-          recursive: true,
-          force: false,
-          errorOnExist: true,
-        });
-        await fs.rm(safeSrc, { recursive: true, force: true });
+        await guard.copy(safeSrc, safeDst);
+        await AppStorage.refreshMoveParents(context, safeSrc, safeDst);
+        return { ok: false, error: 'cross_device_conflict' };
       }
 
       AppStorage.moveFileAuthorization(context, safeSrc, safeDst);
 
       // Refresh both ends of the move. Source-parent loses the
       // entry; dest-parent gains it.
-      const srcParent = dirname(safeSrc);
-      try {
-        const srcTree = await AppStorage.readDirectory(srcParent);
-        context.webContents.send('from:folder:opened', {
-          path: srcParent,
-          tree: srcTree,
-        });
-      } catch {
-        // Source parent might no longer be readable (deleted out
-        // from under us) — non-fatal; the move itself succeeded.
-      }
-      try {
-        const dstTree = await AppStorage.readDirectory(dstParent);
-        context.webContents.send('from:folder:opened', {
-          path: dstParent,
-          tree: dstTree,
-        });
-      } catch {
-        // ditto
-      }
+      await AppStorage.refreshMoveParents(context, safeSrc, safeDst);
 
       // Update any open tabs backed by the moved file (or by
       // descendants of a moved folder). FileManager already
@@ -1209,6 +1189,21 @@ export class AppStorage {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return { ok: false, error: message };
+    }
+  }
+
+  private static async refreshMoveParents(
+    context: BrowserWindow,
+    source: string,
+    destination: string,
+  ): Promise<void> {
+    for (const path of new Set([dirname(source), dirname(destination)])) {
+      try {
+        const tree = await AppStorage.readDirectory(path);
+        context.webContents.send('from:folder:opened', { path, tree });
+      } catch {
+        // Keep the mutation result even if an explorer refresh fails.
+      }
     }
   }
 

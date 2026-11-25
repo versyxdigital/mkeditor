@@ -70,6 +70,7 @@ Runs Node. Owns:
   - `session.json` — tabs, active tab, workspace folder, per-tab cursor / scroll / folding (atomic tmp + rename writes via [AppSession](../src/app/lib/AppSession.ts)).
   - `assistant.json` — AI Assistant non-secret config (`enabled`, `model`, `baseUrl`) + persisted conversation history via [AssistantConfig](../src/app/lib/AssistantConfig.ts), with the `keys` section managed by [AssistantKeyStore](../src/app/lib/AssistantKeyStore.ts) (Electron `safeStorage`-encrypted; plaintext keys never cross IPC).
 - File system access for the editor: open/save dialogs, open path, directory tree, create/rename/delete file or folder, properties.
+- Explorer moves use verified canonical parents. On `EXDEV`, `AppStorage.moveItem` copies through file descriptors, retains the source and returns `cross_device_conflict`; it cannot atomically exclude an edit between copying and source removal. Both locations refresh, tabs and save authorizations stay at the source, and the localized error explains that both copies were kept.
 - HTML export (writes the renderer-built HTML to disk) and PDF export (offscreen `BrowserWindow.printToPDF`).
 - `mked://` custom protocol: registered as privileged in [main.ts](../src/app/main.ts:52-63); on a request, [AppBridge.handleMkedUrl](../src/app/lib/AppBridge.ts:257) parses `mked://open?path=…` and routes through `AppStorage.openActiveFile`.
 - Auto-update polling via `electron-updater`. Update events propagate as `from:notification:display` toasts with i18n keys.

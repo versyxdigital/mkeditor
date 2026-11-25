@@ -1,4 +1,5 @@
 {
+  "move_cross_device_conflict": "Couldn’t safely finish the move across drives. Both copies were kept.",
   "unable_export_preview": "Unable to export preview",
   "unable_save_markdown": "Unable to save markdown",
   "exported_html_success": "Preview exported to HTML",
