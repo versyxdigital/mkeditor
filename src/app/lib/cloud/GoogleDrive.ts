@@ -99,6 +99,16 @@ const production: DriveEndpoints = {
   api: 'https://www.googleapis.com/drive/v3/',
 };
 
+function hasExactScope(
+  scopes: string | readonly string[] | undefined,
+  expected: string,
+): boolean {
+  if (typeof scopes === 'string') {
+    return scopes.split(/\s+/).includes(expected);
+  }
+  return scopes?.includes(expected) === true;
+}
+
 export class GoogleDrive implements CloudProvider {
   readonly provider = 'google-drive' as const;
   readonly organization = this;
@@ -106,7 +116,7 @@ export class GoogleDrive implements CloudProvider {
     return editing ? [DRIVE_SCOPE, DRIVE_WRITE_SCOPE] : [DRIVE_SCOPE];
   }
   canWrite(tokens: DriveTokens): boolean {
-    return tokens.scopes?.includes(DRIVE_WRITE_SCOPE) === true;
+    return hasExactScope(tokens.scopes, DRIVE_WRITE_SCOPE);
   }
   async createdBy(
     access: string,
