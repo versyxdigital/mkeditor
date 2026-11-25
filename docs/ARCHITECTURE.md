@@ -333,6 +333,7 @@ When `settings.scrollsync` is true and the editor scrolls:
 
 - [FileManager](../src/browser/core/FileManager.ts) captures model identity, content, and alternative-version ID, then sends `to:file:save` with `{ content, file, openFile: false, requestId }`.
 - `AppBridge` awaits the actual write and replies on `from:file:save-result` with `{ requestId, ok, path?, cancelled?, error? }`. Legacy uncorrelated callers remain supported. `AppStorage.writeTextFile` serializes menu and AI writes by canonical destination.
+- `AppStorage` keeps canonical save destinations per window in main. Native opens, successful native Save As selections, verified local session restore and workspace-checked opens grant access; renderer path strings alone do not. An ordinary save to an unrecognized destination uses the native save dialog, and cancellation writes nothing. Grants follow successful main-process renames and moves, including folder descendants. Native-opened files remain saveable outside the workspace.
 - The renderer updates only the captured model's saved baseline after acknowledgement. Edits made during the write stay dirty; late replies cannot reverse a rename. Save-and-close/workspace Save all preserve buffers on cancellation, failure, timeout, or additional edits.
 - Web uses the same request/result contract through `WebFileBridge` and acknowledges only after the writable stream closes. Successful direct AI writes record their captured saved version through `FileManager.recordSavedVersion`.
 

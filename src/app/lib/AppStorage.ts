@@ -26,6 +26,65 @@ export class AppStorage {
   /** The active file path */
   private static activeFilePath: string | null = null;
   private static readonly textWrites = new Map<string, Promise<void>>();
+  private static readonly saveDestinations = new WeakMap<
+    BrowserWindow,
+    Set<string>
+  >();
+
+  private static savePathKey(path: string): string {
+    return process.platform === 'win32' ? path.toLowerCase() : path;
+  }
+
+  private static canonicalSavePath(path: string): string {
+    if (typeof path !== 'string' || !isAbsolute(path) || path.includes('\0'))
+      throw new Error('Invalid save destination');
+    try {
+      return realpathSync.native(path);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      return join(realpathSync.native(dirname(path)), basename(path));
+    }
+  }
+
+  /** Main-only grant after a native open/selection, checked workspace open or restore. */
+  static authorizeFile(context: BrowserWindow, path: string): void {
+    const canonical = realpathSync.native(path);
+    let destinations = AppStorage.saveDestinations.get(context);
+    if (!destinations) {
+      destinations = new Set();
+      AppStorage.saveDestinations.set(context, destinations);
+    }
+    destinations.add(AppStorage.savePathKey(canonical));
+  }
+
+  private static isSaveAuthorized(
+    context: BrowserWindow,
+    canonical: string,
+  ): boolean {
+    return (
+      AppStorage.saveDestinations
+        .get(context)
+        ?.has(AppStorage.savePathKey(canonical)) ?? false
+    );
+  }
+
+  /** Preserve grants for open documents when main successfully moves their backing paths. */
+  static moveFileAuthorization(
+    context: BrowserWindow,
+    source: string,
+    destination: string,
+  ): void {
+    const grants = AppStorage.saveDestinations.get(context);
+    if (!grants) return;
+    const from = AppStorage.savePathKey(source);
+    const to = AppStorage.savePathKey(destination);
+    for (const path of [...grants]) {
+      if (path === from || path.startsWith(from + sep)) {
+        grants.delete(path);
+        grants.add(to + path.slice(from.length));
+      }
+    }
+  }
 
   /** Serialize menu and tool writes to the same canonical file. */
   static async writeTextFile(
@@ -341,6 +400,7 @@ export class AppStorage {
     // shipped the full path as `filename` on POSIX systems.
     const filename = file ? (file.split(/[\\/]/).pop() ?? '') : '';
     const content = file ? readFileSync(file, { encoding: 'utf-8' }) : '';
+    if (file) AppStorage.authorizeFile(context, file);
 
     AppStorage.activeFilePath = file;
 
@@ -420,13 +480,24 @@ export class AppStorage {
 
     try {
       let filePath = options.filePath;
-      if (!filePath) {
+      let destination: string | undefined;
+      if (filePath) {
+        try {
+          destination = AppStorage.canonicalSavePath(filePath);
+        } catch {
+          // Unavailable or new destinations still require a native selection.
+        }
+      }
+      if (!destination || !AppStorage.isSaveAuthorized(context, destination)) {
         const selection = await dialog.showSaveDialog(context, config);
         if (selection.canceled || !selection.filePath) {
           return { ok: false, cancelled: true };
         }
         filePath = selection.filePath;
+        destination = AppStorage.canonicalSavePath(filePath);
       }
+      if (!filePath || !destination)
+        throw new Error('Invalid save destination');
       if (options.excludedPaths?.length) {
         const canonical = (path: string) => {
           let absolute = resolve(path);
@@ -447,10 +518,11 @@ export class AppStorage {
         }
       }
       await AppStorage.writeTextFile(
-        filePath,
+        destination,
         options.data,
         options.encoding ?? 'utf-8',
       );
+      AppStorage.authorizeFile(context, destination);
       context.webContents.send('from:notification:display', {
         status: 'success',
         key: successAction,
@@ -577,6 +649,10 @@ export class AppStorage {
           tree,
         });
       } else if (stats.isFile()) {
+        const canonical = await fs.realpath(filePath);
+        if (!AppStorage.isSaveAuthorized(context, canonical)) {
+          await AppStorage.assertInWorkspace(filePath);
+        }
         AppStorage.setActiveFile(context, filePath);
       } else {
         throw new Error('unsupported');
@@ -866,6 +942,8 @@ export class AppStorage {
       }
       const newPath = join(parent, name);
       if (newPath === path) return;
+      const source = realpathSync.native(path);
+      const destination = AppStorage.canonicalSavePath(newPath);
       try {
         await fs.lstat(newPath);
         const caseOnlySelf =
@@ -876,6 +954,7 @@ export class AppStorage {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       }
       await fs.rename(path, newPath);
+      AppStorage.moveFileAuthorization(context, source, destination);
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
       context.webContents.send('from:path:renamed', {
@@ -998,6 +1077,8 @@ export class AppStorage {
         });
         await fs.rm(safeSrc, { recursive: true, force: true });
       }
+
+      AppStorage.moveFileAuthorization(context, safeSrc, safeDst);
 
       // Refresh both ends of the move. Source-parent loses the
       // entry; dest-parent gains it.

@@ -107,10 +107,19 @@ export class AppBridge {
     );
   }
 
-  restoreSession(enabled: boolean): Promise<SessionRestoreEnvelope> {
-    return enabled
-      ? this.recovery.restore(AppSession.load())
-      : Promise.resolve({ session: null, missing: [], contents: {} });
+  async restoreSession(enabled: boolean): Promise<SessionRestoreEnvelope> {
+    const envelope = enabled
+      ? await this.recovery.restore(AppSession.load())
+      : { session: null, missing: [], contents: {} };
+    for (const path of Object.keys(envelope.contents)) {
+      try {
+        AppStorage.authorizeFile(this.context, path);
+      } catch {
+        // A file can disappear after its contents were read. Restore the draft;
+        // saving it will require a native destination selection.
+      }
+    }
+    return envelope;
   }
   flushSession(): Promise<boolean> {
     const id = `session-flush-${++this.flushSequence}`;
@@ -1003,7 +1012,7 @@ export class AppBridge {
       const parsed = new URL(url);
       if (parsed.hostname === 'open') {
         const path = parsed.searchParams.get('path');
-        AppStorage.openActiveFile(this.context, path);
+        if (path) void AppStorage.openPath(this.context, path);
       }
     } catch {
       this.providers.logger?.log.error(

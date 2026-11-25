@@ -623,6 +623,13 @@ export class WorkspaceFiles {
   }
 
   private async refresh(plan: PathOperationPlan): Promise<void> {
+    if (plan.destination && ['move', 'rename'].includes(plan.operation)) {
+      AppStorage.moveFileAuthorization(
+        this.context,
+        plan.source,
+        plan.destination,
+      );
+    }
     if (plan.destination && plan.overwrittenFiles > 0)
       this.context.webContents.send('from:path:deleted', {
         path: plan.destination,

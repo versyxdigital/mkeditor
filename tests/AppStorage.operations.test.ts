@@ -44,13 +44,15 @@ describe('AppStorage document operations', () => {
       release = resolve;
     });
     const actual = fs.writeFile.bind(fs);
+    const context = fakeWindow();
+    AppStorage.setActiveFile(context, target);
     const writes = jest
       .spyOn(fs, 'writeFile')
       .mockImplementationOnce(async (...args) => {
         await gate;
         return actual(...args);
       });
-    const menu = AppStorage.saveFile(fakeWindow(), {
+    const menu = AppStorage.saveFile(context, {
       filePath: target,
       data: 'menu',
       encoding: 'utf-8',
@@ -230,6 +232,10 @@ describe('AppStorage document operations', () => {
 
   it('reports a failed write without a success event or opening a file', async () => {
     const context = fakeWindow();
+    (dialog.showSaveDialog as jest.Mock).mockResolvedValue({
+      canceled: false,
+      filePath: join(root, 'missing', 'note.md'),
+    });
     const result = await AppStorage.saveFile(context, {
       data: 'unsaved',
       filePath: join(root, 'missing', 'note.md'),

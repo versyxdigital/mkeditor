@@ -160,7 +160,7 @@ export class AppMenu {
     switch (commandId) {
       case 'open-log': {
         const logpath = this.providers.logger?.logpath;
-        if (logpath) AppStorage.openPath(this.context, logpath);
+        if (logpath) AppStorage.openActiveFile(this.context, logpath);
         return;
       }
       case 'toggle-devtools':
