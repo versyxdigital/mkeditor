@@ -232,9 +232,8 @@ describe('AppSession.save', () => {
     });
   });
 
-  it('replaces a pre-existing session.json atomically (rename swaps the inode)', () => {
+  it('atomically replaces an existing session and writes the current schema', () => {
     withTempHome((tmpHome) => {
-      if (process.platform === 'win32') return; // inode semantics differ on NTFS
       const dir = normalize(tmpHome + '/.mkeditor/');
       const finalPath = dir + 'session.json';
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -248,14 +247,17 @@ describe('AppSession.save', () => {
       const beforeIno = lstatSync(finalPath).ino;
 
       const AppSession = loadAppSession(tmpHome);
-      AppSession.save(validPayload);
+      expect(AppSession.save(validPayload)).toBe(true);
 
-      // rename replaces the directory entry with the tmp file's inode.
-      const afterIno = lstatSync(finalPath).ino;
-      expect(afterIno).not.toBe(beforeIno);
+      // POSIX rename swaps the inode; NTFS has different inode semantics.
+      // The saved-content and schema checks below run on every platform.
+      if (process.platform !== 'win32') {
+        const afterIno = lstatSync(finalPath).ino;
+        expect(afterIno).not.toBe(beforeIno);
+      }
       expect(
         JSON.parse(readFileSync(finalPath, { encoding: 'utf-8' })),
-      ).toEqual(validPayload);
+      ).toEqual({ ...validPayload, version: 3 });
     });
   });
 
@@ -305,7 +307,7 @@ describe('AppSession.save', () => {
     withTempHome((tmpHome) => {
       const AppSession = loadAppSession(tmpHome);
       // Forced bogus version on input — save() should normalise to the
-      // current canonical SCHEMA_VERSION (2 since AI Assistant P2).
+      // current canonical SCHEMA_VERSION (3 since remote session recovery).
       AppSession.save({
         ...validPayload,
         version: 999,
