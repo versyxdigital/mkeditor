@@ -6,7 +6,7 @@ Contirbutions to MKEditor are welcomed. This document outlines how to build the 
 
 If you would like to build from source, please follow the steps below:
 
-Use Node.js 22.13 or later in the 22.x line, or Node.js 24 or later; CI runs Node.js 22. Dependency installations should use the checked-in lockfile. Fully quit a running development instance before updating Electron: Windows locks its installed runtime files while the app is open. Electron downloads its native runtime on first launch; `npm exec --no -- install-electron` can prepare it explicitly.
+Use Node.js 24.x. The `.nvmrc` file selects this major version for local version managers, CI and release builds. Dependency installations should use the checked-in lockfile. Fully quit a running development instance before updating Electron: Windows locks its installed runtime files while the app is open. Electron downloads its native runtime on first launch; `npm exec --no -- install-electron` can prepare it explicitly.
 
 1. Clone the repository:
 
@@ -126,8 +126,16 @@ The default run uses a local provider fixture and an isolated OS-encrypted store
   ```
 - The pre-commit hook runs the suite for you on every commit. The
   CI workflow (`.github/workflows/tests.yml`) re-runs the same
-  checks plus `build-editor` and `build-app` to catch
+  checks on Windows and Ubuntu, plus `build-editor` and `build-app` to catch
   webpack/tsc errors that the unit tests miss.
+- Every test must reach an assertion. Do not return early when a fixture cannot
+  be created: fail the test or use a portable fixture. Directory-link tests use
+  Windows junctions so administrator privileges are not required.
+- `npm test` first runs `test:audit`, which rejects skipped, focused, placeholder
+  and expected-failure declarations, and unawaited `resolves`/`rejects` assertions.
+  Jest also fails tests that execute no assertions. Test examples in strings and
+  comments are allowed. See the [test audit](docs/TEST_AUDIT.md) for findings and
+  the distinction between mocked platform branches and native integration checks.
 
 ## AI Usage Policy
 

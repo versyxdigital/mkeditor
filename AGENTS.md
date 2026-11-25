@@ -118,7 +118,7 @@ When implementing changes, preserve these priorities:
 
 ## Validation and delivery
 
-Use the Node/npm toolchain in [package.json](package.json) and [.github/workflows/tests.yml](.github/workflows/tests.yml) (CI uses Node 22). Install locked dependencies with `npm ci` when needed.
+Use the Node/npm toolchain in [package.json](package.json) and [.github/workflows/tests.yml](.github/workflows/tests.yml) (Node 24.x, selected by [.nvmrc](.nvmrc)). Install locked dependencies with `npm ci` when needed.
 
 | Purpose                       | Command                                                         |
 | ----------------------------- | --------------------------------------------------------------- |

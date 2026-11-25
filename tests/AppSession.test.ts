@@ -4,7 +4,7 @@
  * We point AppSession at a temporary directory by stubbing `os.homedir`
  * before requiring the module, since the class freezes its paths at
  * module load. Each test gets a fresh tmp dir and reloads the module
- * via `jest.isolateModules` so the static paths re-resolve.
+ * after `jest.resetModules` so the static paths re-resolve.
  *
  * `fs` is mocked module-wide for tests that need to assert call order
  * or simulate failures (destructured imports otherwise capture the
@@ -68,6 +68,14 @@ function loadAppSession(tmpHome: string) {
   const mod = require('../src/app/lib/AppSession');
   return mod.AppSession as typeof import('../src/app/lib/AppSession').AppSession;
 }
+
+beforeEach(() => {
+  // resetModules alone preserves doMock factories. Failure fixtures must not
+  // replace real filesystem calls in whichever test happens to run next.
+  jest.dontMock('fs');
+  jest.dontMock('os');
+  jest.resetModules();
+});
 
 describe('AppSession.load', () => {
   it('returns null when the session file is missing', () => {
@@ -372,8 +380,7 @@ describe('AppSession.buildRestoreEnvelope', () => {
 
   it('drops missing real-file tabs from the envelope and lists them under `missing`', () => {
     withTempHome((tmpHome) => {
-      // requireActual sidesteps any lingering jest.doMock('fs', ...)
-      // installed by earlier tests in the file.
+      // Fixture files use the real filesystem even in failure-injection tests.
       const fs = jest.requireActual('fs') as typeof import('fs');
       const realFile = normalize(tmpHome + '/exists.md');
       fs.writeFileSync(realFile, 'real body', 'utf-8');

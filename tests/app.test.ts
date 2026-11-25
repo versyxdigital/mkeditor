@@ -123,15 +123,40 @@ let startupWarnings: unknown[][];
 beforeAll(() => {
   const warning = jest.spyOn(console, 'warn').mockImplementation(() => {});
   require('../src/app/main');
-  const openFile = app.on.mock.calls.find((c: any) => c[0] === 'open-file')[1];
+  startupWarnings = [...warning.mock.calls];
+  warning.mockRestore();
+});
+
+beforeEach(() => {
+  const constructors = BrowserWindow as unknown as jest.Mock;
+  const previous = constructors.mock.results.at(-1)?.value;
+  previous?.on.mock.calls.find(
+    ([event]: [string]) => event === 'closed',
+  )?.[1]();
+  constructors.mockClear();
+  (AppBridge as unknown as jest.Mock).mockClear();
+  (nativeTheme.on as jest.Mock).mockClear();
+  (AppStorage.openActiveFile as jest.Mock).mockClear();
+  (AppStorage.offerWorkspaceRoot as jest.Mock)
+    .mockReset()
+    .mockReturnValue(true);
+  (AppSession.load as jest.Mock).mockReset().mockReturnValue(null);
+  (AppSession.buildRestoreEnvelope as jest.Mock).mockReset().mockReturnValue({
+    session: null,
+    missing: [],
+    contents: {},
+  });
+  const openFile = app.on.mock.calls.find(
+    ([event]: [string]) => event === 'open-file',
+  )[1];
   app.isReady.mockReturnValueOnce(false);
   openFile({ preventDefault: jest.fn() }, '/notes/queued.md');
   windowsBeforeReady = (BrowserWindow as unknown as jest.Mock).mock.calls
     .length;
-  const readyHandler = app.on.mock.calls.find((c: any) => c[0] === 'ready')[1];
+  const readyHandler = app.on.mock.calls.find(
+    ([event]: [string]) => event === 'ready',
+  )[1];
   readyHandler();
-  startupWarnings = [...warning.mock.calls];
-  warning.mockRestore();
 });
 
 describe('Electron main app', () => {

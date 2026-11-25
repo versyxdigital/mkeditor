@@ -3,7 +3,7 @@
   "productName": "MKEditor",
   "version": "5.0.0",
   "engines": {
-    "node": "^22.13.0 || >=24"
+    "node": "^24.0.0"
   },
   "license": "MIT",
   "author": "Chris Rowles <christopher.rowles@outlook.com>",
@@ -14,6 +14,8 @@
     "prettier-check": "prettier . --check",
     "prettier-fix": "prettier . --write",
     "lint": "eslint src",
+    "pretest": "node ./scripts/audit-tests.cjs",
+    "test:audit": "node ./scripts/audit-tests.cjs",
     "test": "jest",
     "prebuild": "node -p \"\\\"export const APP_VERSION = '\\\" + require('./package.json').version + \\\"';\\\"\" > src/browser/version.ts",
     "build-editor": "npm run prebuild && node ./scripts/combine-locales.mjs && webpack --config webpack.config.js",

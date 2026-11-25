@@ -41,12 +41,12 @@ describe('AppStorage.assertInWorkspace', () => {
     ).rejects.toThrow(/No workspace is open/);
   });
 
-  it('rejects an empty / non-string path', async () => {
+  it.each(['', null, 42, {}])('rejects an invalid path: %p', async (path) => {
     await withTempRoot(async (root) => {
       AppStorage.setWorkspaceRoot(root);
-      await expect(AppStorage.assertInWorkspace('')).rejects.toThrow(
-        /Invalid path/,
-      );
+      await expect(
+        AppStorage.assertInWorkspace(path as unknown as string),
+      ).rejects.toThrow(/Invalid path/);
     });
   });
 
@@ -56,28 +56,21 @@ describe('AppStorage.assertInWorkspace', () => {
       writeFileSync(file, 'hi');
       AppStorage.setWorkspaceRoot(root);
       const safe = await AppStorage.assertInWorkspace(file);
-      // The returned path is realpath-canonicalised — on platforms
-      // where the tmpdir root is itself a symlink (macOS
-      // /var → /private/var) both sides resolve so we compare
-      // suffixes rather than equality.
-      expect(safe.endsWith('notes.md')).toBe(true);
+      expect(safe).toBe(await fs.realpath(file));
     });
   });
 
   it('rejects a path outside the workspace (parent-traversal via `..`)', async () => {
-    await withTempRoot(async (root) => {
+    await withTempRoot(async (parent) => {
+      const root = join(parent, 'workspace');
+      mkdirSync(root);
       AppStorage.setWorkspaceRoot(root);
-      // ../escape would land in the tmpdir parent — outside the
-      // workspace boundary.
+      // The sibling is outside the workspace but inside this private fixture.
       const escapeTarget = join(root, '..', 'escape.md');
       writeFileSync(escapeTarget, 'leaked');
-      try {
-        await expect(
-          AppStorage.assertInWorkspace(escapeTarget),
-        ).rejects.toThrow(/outside the workspace/);
-      } finally {
-        rmSync(escapeTarget, { force: true });
-      }
+      await expect(AppStorage.assertInWorkspace(escapeTarget)).rejects.toThrow(
+        /outside the workspace/,
+      );
     });
   });
 
@@ -119,13 +112,13 @@ describe('AppStorage.assertInWorkspace', () => {
     await withTempRoot(async (root) => {
       AppStorage.setWorkspaceRoot(root);
       const target = join(root, 'new-subdir', 'fresh.md');
-      // Parent doesn't exist either — assertInWorkspace falls back
-      // to lexical scope check when realpath(parent) ENOENTs. The
-      // handler's mkdir -p creates the chain.
+      // Missing parents must still be resolved against the canonical root.
       const safe = await AppStorage.assertInWorkspace(target, {
         mustExist: false,
       });
-      expect(safe.endsWith(join('new-subdir', 'fresh.md'))).toBe(true);
+      expect(safe).toBe(
+        join(await fs.realpath(root), 'new-subdir', 'fresh.md'),
+      );
     });
   });
 
@@ -226,7 +219,7 @@ describe('AppStorage.assertInWorkspace', () => {
       try {
         AppStorage.setWorkspaceRoot(linkRoot);
         const safe = await AppStorage.assertInWorkspace(file);
-        expect(safe.endsWith('inside.md')).toBe(true);
+        expect(safe).toBe(await fs.realpath(file));
       } finally {
         rmSync(linkRoot, { force: true });
         rmSync(dirname(linkRoot), { recursive: true, force: true });
@@ -245,7 +238,7 @@ describe('AppStorage.assertInWorkspace', () => {
       writeFileSync(file, 'hi');
       AppStorage.setWorkspaceRoot(root);
       const safe = await AppStorage.assertInWorkspace(file);
-      expect(safe.endsWith(join('..config', 'note.md'))).toBe(true);
+      expect(safe).toBe(await fs.realpath(file));
     });
   });
 
