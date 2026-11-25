@@ -199,11 +199,7 @@ describe('PasteImageHandler', () => {
   afterEach(() => {
     while (cleanups.length > 0) {
       const fn = cleanups.pop();
-      try {
-        fn?.();
-      } catch {
-        // detach is best-effort during teardown
-      }
+      fn?.();
     }
   });
 

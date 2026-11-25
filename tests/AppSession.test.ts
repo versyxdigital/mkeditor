@@ -12,7 +12,7 @@
  * no-op against AppSession's own calls).
  */
 
-import { mkdtempSync, rmSync, existsSync, readFileSync, lstatSync } from 'fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, normalize } from 'path';
 import type { SessionPayload } from '../src/app/interfaces/Session';
@@ -244,17 +244,11 @@ describe('AppSession.save', () => {
         JSON.stringify({ version: 1, tabs: [], activeFile: null }),
         'utf-8',
       );
-      const beforeIno = lstatSync(finalPath).ino;
-
       const AppSession = loadAppSession(tmpHome);
       expect(AppSession.save(validPayload)).toBe(true);
 
-      // POSIX rename swaps the inode; NTFS has different inode semantics.
-      // The saved-content and schema checks below run on every platform.
-      if (process.platform !== 'win32') {
-        const afterIno = lstatSync(finalPath).ino;
-        expect(afterIno).not.toBe(beforeIno);
-      }
+      // Check the observable replacement contract on NTFS and POSIX alike.
+      // The next test verifies that replacement goes through tmp + rename.
       expect(
         JSON.parse(readFileSync(finalPath, { encoding: 'utf-8' })),
       ).toEqual({ ...validPayload, version: 3 });
@@ -316,6 +310,29 @@ describe('AppSession.save', () => {
       const file = normalize(tmpHome + '/.mkeditor/session.json');
       const written = JSON.parse(readFileSync(file, { encoding: 'utf-8' }));
       expect(written.version).toBe(3);
+    });
+  });
+
+  it('retains the previous session and removes the staged file when replacement fails', () => {
+    withTempHome((tmpHome) => {
+      const fs = jest.requireActual('fs') as typeof import('fs');
+      const dir = normalize(tmpHome + '/.mkeditor/');
+      const finalPath = dir + 'session.json';
+      const previous = JSON.stringify(validV1Payload);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(finalPath, previous, 'utf8');
+      jest.doMock('fs', () => ({
+        ...fs,
+        renameSync: () => {
+          throw Object.assign(new Error('replacement denied'), {
+            code: 'EACCES',
+          });
+        },
+      }));
+      const AppSession = loadAppSession(tmpHome);
+      expect(AppSession.save(validPayload)).toBe(false);
+      expect(fs.readFileSync(finalPath, 'utf8')).toBe(previous);
+      expect(fs.existsSync(finalPath + '.tmp')).toBe(false);
     });
   });
 

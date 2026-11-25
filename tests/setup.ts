@@ -1,5 +1,10 @@
 import '@testing-library/jest-dom';
 
+// A test that returns early or never reaches its checks must not count as passing.
+beforeEach(() => {
+  expect.hasAssertions();
+});
+
 // jsdom (as of the version jest pins) doesn't expose the WHATWG stream
 // globals that the Vercel AI SDK relies on for SSE parsing. Bridge them
 // from Node's `stream/web` so any test that imports through

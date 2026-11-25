@@ -117,32 +117,36 @@ async function drainLinkOperations() {
   for (let i = 0; i < 8; i++) await Promise.resolve();
 }
 
+let windowsBeforeReady: number;
+let startupWarnings: unknown[][];
+
+beforeAll(() => {
+  const warning = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  require('../src/app/main');
+  const openFile = app.on.mock.calls.find((c: any) => c[0] === 'open-file')[1];
+  app.isReady.mockReturnValueOnce(false);
+  openFile({ preventDefault: jest.fn() }, '/notes/queued.md');
+  windowsBeforeReady = (BrowserWindow as unknown as jest.Mock).mock.calls
+    .length;
+  const readyHandler = app.on.mock.calls.find((c: any) => c[0] === 'ready')[1];
+  readyHandler();
+  startupWarnings = [...warning.mock.calls];
+  warning.mockRestore();
+});
+
 describe('Electron main app', () => {
   it('creates main window on ready', () => {
-    const warning = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    require('../src/app/main');
-    const openFile = app.on.mock.calls.find(
-      (c: any) => c[0] === 'open-file',
-    )[1];
-    app.isReady.mockReturnValueOnce(false);
-    openFile({ preventDefault: jest.fn() }, '/notes/queued.md');
-    expect(BrowserWindow).not.toHaveBeenCalled();
-    const readyHandler = app.on.mock.calls.find(
-      (c: any) => c[0] === 'ready',
-    )[1];
-    readyHandler();
+    expect(windowsBeforeReady).toBe(0);
     expect(BrowserWindow).toHaveBeenCalled();
     expect(app.on).toHaveBeenCalledWith('ready', expect.any(Function));
-    expect(warning).toHaveBeenCalledWith(
+    expect(startupWarnings).toContainEqual([
       'Unable to truncate the previous MKEditor log.',
       expect.any(Error),
-    );
-    warning.mockRestore();
+    ]);
   });
 
   it('subscribes to nativeTheme.on("updated") so live OS theme switches propagate without a relaunch', () => {
-    // The 'ready' handler in the first test created the window and
-    // ran `main()`, which registers the listener. Verify it landed.
+    // The suite setup ran main(), which registers the listener.
     expect(nativeTheme.on).toHaveBeenCalledWith(
       'updated',
       expect.any(Function),
@@ -365,23 +369,26 @@ describe('Electron main app', () => {
     });
   });
 
-  it('hides the menu bar on non-darwin (frameless window + setMenuBarVisibility(false)) so the in-window TitleBar is the only menu UI but accelerators still fire', () => {
+  it('uses the correct native menu and window chrome for the host platform', () => {
     // Regression: setting the application menu to `null` on Win/Linux
     // (previous behaviour) killed Electron's accelerator dispatch
     // entirely, so the keybindings the in-window TitleBar advertises
     // had no effect. The fix installs the menu but suppresses the
     // bar UI — verified here via the two surfaces involved.
-    // (Mock's process.platform is whatever Jest is running on; on
-    // non-darwin we should see both signals, on darwin neither.)
-    if (process.platform === 'darwin') return;
     const ctorOpts = (BrowserWindow as unknown as jest.Mock).mock.calls[0]?.[0];
-    expect(ctorOpts).toMatchObject({
-      frame: false,
-      autoHideMenuBar: true,
-    });
+    expect(ctorOpts).toMatchObject(
+      process.platform === 'darwin'
+        ? {
+            titleBarStyle: 'hiddenInset',
+            trafficLightPosition: { x: 12, y: 12 },
+          }
+        : { frame: false, autoHideMenuBar: true },
+    );
     const winInstance = (BrowserWindow as unknown as jest.Mock).mock.results[0]
       ?.value;
-    expect(winInstance?.setMenuBarVisibility).toHaveBeenCalledWith(false);
+    expect(winInstance?.setMenuBarVisibility.mock.calls).toEqual(
+      process.platform === 'darwin' ? [] : [[false]],
+    );
   });
 
   it('waits for one checkpoint when closing, keeps the window after failure and permits a later successful close', async () => {
@@ -412,10 +419,50 @@ describe('Electron main app', () => {
     await drainLinkOperations();
     expect(win.close).toHaveBeenCalledTimes(1);
   });
+
+  it.each(['win32', 'linux', 'darwin'] as const)(
+    'exercises %s window chrome regardless of the test host',
+    (platform) => {
+      const original = Object.getOwnPropertyDescriptor(process, 'platform')!;
+      try {
+        Object.defineProperty(process, 'platform', {
+          ...original,
+          value: platform,
+        });
+        const ready = app.on.mock.calls.find(
+          ([event]: [string]) => event === 'ready',
+        )[1];
+        ready();
+        const options = (BrowserWindow as unknown as jest.Mock).mock.calls.at(
+          -1,
+        )![0];
+        const window = (BrowserWindow as unknown as jest.Mock).mock.results.at(
+          -1,
+        )!.value;
+        expect(options).toMatchObject(
+          platform === 'darwin'
+            ? {
+                titleBarStyle: 'hiddenInset',
+                trafficLightPosition: { x: 12, y: 12 },
+              }
+            : { frame: false, autoHideMenuBar: true },
+        );
+        expect(window.setMenuBarVisibility.mock.calls).toEqual(
+          platform === 'darwin' ? [] : [[false]],
+        );
+      } finally {
+        Object.defineProperty(process, 'platform', original);
+      }
+    },
+  );
 });
 
 it('removes the old window protocol route before a later window can register it again', () => {
-  const win = (BrowserWindow as unknown as jest.Mock).mock.results[0].value;
+  const constructors = BrowserWindow as unknown as jest.Mock;
+  const win = constructors.mock.results.at(-1)!.value;
+  const windowsBefore = constructors.mock.calls.length;
+  const routesBefore = (protocol.handle as jest.Mock).mock.calls.length;
+  (protocol.unhandle as jest.Mock).mockClear();
   const closed = win.on.mock.calls.find(
     ([event]: [string]) => event === 'closed',
   )[1];
@@ -425,6 +472,6 @@ it('removes the old window protocol route before a later window can register it 
     ([event]: [string]) => event === 'activate',
   )[1];
   activate();
-  expect((BrowserWindow as unknown as jest.Mock).mock.calls).toHaveLength(2);
-  expect(protocol.handle).toHaveBeenCalledTimes(2);
+  expect(constructors.mock.calls).toHaveLength(windowsBefore + 1);
+  expect(protocol.handle).toHaveBeenCalledTimes(routesBefore + 1);
 });

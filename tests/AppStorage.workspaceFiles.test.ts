@@ -4,12 +4,12 @@ import {
   writeFileSync,
   renameSync,
   rmSync,
-  symlinkSync,
   promises as fs,
 } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { AppStorage } from '../src/app/lib/AppStorage';
+import { createDirectoryLink } from './utils/directoryLink';
 
 let root: string;
 beforeEach(() => {
@@ -84,26 +84,8 @@ it('does not follow directory links outside the workspace or through cycles', as
   try {
     writeFileSync(join(outside, 'private.md'), 'private');
     writeFileSync(join(root, 'visible.md'), 'visible');
-    try {
-      symlinkSync(
-        outside,
-        join(root, 'escape'),
-        process.platform === 'win32' ? 'junction' : 'dir',
-      );
-      symlinkSync(
-        root,
-        join(root, 'loop'),
-        process.platform === 'win32' ? 'junction' : 'dir',
-      );
-    } catch (error) {
-      if (
-        ['EPERM', 'EACCES'].includes(
-          (error as NodeJS.ErrnoException).code ?? '',
-        )
-      )
-        return;
-      throw error;
-    }
+    createDirectoryLink(outside, join(root, 'escape'));
+    createDirectoryLink(root, join(root, 'loop'));
     expect(await AppStorage.listWorkspaceFiles(root)).toEqual([
       join(root, 'visible.md'),
     ]);
