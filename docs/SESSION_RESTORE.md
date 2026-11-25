@@ -6,6 +6,8 @@ Read first: [../AGENTS.md](../AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Current desktop remote recovery (v3)
 
+External local deletion or replacement retains each open model as an untitled recovery draft. Its text is persisted through the existing `untitledContent` field, so no session schema change is needed. Verified filesystem renames update tab paths and the workspace root before checkpointing. Undo history remains available in the running editor; the existing session restore preserves text and view state across restarts.
+
 Session v3 adds account-bound remote tab snapshots alongside the existing local/untitled session. `FileManager` captures current text, saved baseline, dirty state, view state, an edit sequence and any in-flight save snapshot. Remote typing uses the usual debounce plus a bounded checkpoint interval; desktop sends at most one checkpoint at a time and coalesces later edits. Existing v1/v2 sessions remain readable, and web continues restoring local tabs without accepting remote content.
 
 `CloudSessionRecovery` coordinates the ordinary `AppSession` file and `CloudRecoveryStore`. The plaintext session writer rejects remote tabs. Remote text and the durable cloud-operation journal share an atomically replaced, OS-encrypted `cloud-recovery.bin`; plaintext fallback is unavailable. The encrypted generation is authoritative while it contains remote tabs. Local-only checkpoints and session clearing preserve ordering across the two files.

@@ -62,6 +62,14 @@ This document describes how MKEditor is put together internally: how the two exe
 
 ### Main process (`src/app/`)
 
+`AppBridge` owns a window-scoped `LocalFileWatcher` for local desktop files. The renderer publishes loaded explorer directories and open local tab paths through `to:files:watch`; main accepts only the selected workspace and previously authorized files. Native directory events are debounced and reconciled against lossless filesystem identities, with focus reconciliation as a fallback. Scans are bounded and do not recurse into unopened repository folders. Watch handles and subscriptions are released on workspace changes, tab closure and window disposal.
+
+On Windows, native subtree subscriptions replace separate descendant watch handles, which would otherwise block renaming an ancestor folder. Event filtering still limits reconciliation to loaded folders and open files. Other platforms watch the relevant directories individually without a recursive scan.
+
+`from:files:changed` carries directory listings, verified renames and missing paths. Listings preserve already loaded subtrees. Verified renames migrate models, undo history, view state, explorer expansion and native save grants. Deleted, replaced or ambiguous open paths become dirty untitled drafts using the existing session format; Save As chooses their next destination. Native mutations suspend reconciliation, and committed workspace batch writes refresh known file identities so MKEditor does not mistake its own atomic writes for external replacements. Ordinary saves open existing files without creation and verify the opened file identity before writing.
+
+This watches local desktop file structure. It does not automatically replace editor text when another application edits a file in place. Browser filesystem access retains its existing behavior.
+
 Runs Node. Owns:
 
 - `BrowserWindow` lifecycle, single-instance lock, OS file associations (`.md`), tray, app menu.

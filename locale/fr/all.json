@@ -634,7 +634,11 @@
     "move_into_self_refused": "Impossible de déplacer un dossier dans lui-même",
     "move_same_source": "Déjà à cet emplacement",
     "move_collision": "Un fichier ou dossier portant ce nom existe déjà",
-    "move_parent_missing": "Le dossier de destination n'existe pas"
+    "move_parent_missing": "Le dossier de destination n'existe pas",
+    "external_draft_name": "{{name}} (récupéré)",
+    "external_files_recovered": "Des fichiers ont été supprimés ou remplacés sur le disque. Leur texte est conservé dans des onglets non enregistrés.",
+    "external_file_missing_save": "Le fichier d’origine est introuvable ou a été remplacé. Votre texte reste ouvert ; utilisez Enregistrer sous pour en garder une copie.",
+    "filesystem_watch_limit": "Certains dossiers dépassent la limite d’actualisation automatique. Rouvrez l’espace de travail pour les actualiser."
   },
   "sidebar": {
     "explorer": "Explorateur",

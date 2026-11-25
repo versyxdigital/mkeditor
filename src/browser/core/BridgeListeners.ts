@@ -34,6 +34,8 @@ import { sonnerToast } from '../notify';
 import { showPropertiesExternal } from '../react/contexts/PropertiesContext';
 import { basename } from '../util';
 import { t, whenLanguageReady } from '../i18n';
+import type { LocalFilesChanged } from '../../app/interfaces/LocalFiles';
+import { remapLocalPath } from '../../app/shared/remapLocalPath';
 
 /**
  * Register bridge channel listeners.
@@ -204,6 +206,46 @@ export function registerBridgeListeners(
     for (const tab of files.getSnapshot().tabs) {
       if (isPathWithinTree(tab.path, path)) void files.closeTab(tab.path);
     }
+  });
+
+  bridge.receive('from:files:changed', (change: LocalFilesChanged) => {
+    if (change.root !== tree.treeRoot) return;
+    let recovered = 0;
+    for (const { oldPath, newPath } of change.renames) {
+      for (const path of [...files.models.keys()]) {
+        if (!isPathWithinTree(path, oldPath)) continue;
+        const target = remapLocalPath(path, oldPath, newPath);
+        if (files.models.has(target))
+          recovered += files.retainMissingFile(path) ? 1 : 0;
+        else files.renameTab(path, target, basename(target));
+      }
+      manager.assistantManager?.renameMentionPaths(oldPath, newPath);
+    }
+    tree.followExternalRenames(change.renames);
+    for (const missing of change.missing) {
+      manager.assistantManager?.removeMentionPaths(missing);
+      for (const path of [...files.models.keys()]) {
+        if (isPathWithinTree(path, missing))
+          recovered += files.retainMissingFile(path) ? 1 : 0;
+      }
+    }
+    for (const listing of change.directories.sort(
+      (a, b) => a.path.length - b.path.length,
+    )) {
+      tree.buildFileTree(listing.tree, listing.path, true);
+    }
+    if (change.rootMissing) {
+      tree.clearTree();
+      bridge.send('to:workspace:set', { root: null });
+    }
+    files.scheduleSessionSave();
+    if (recovered)
+      sonnerToast(
+        'warning',
+        t('notifications:external_files_recovered', { count: recovered }),
+      );
+    if (change.truncated)
+      sonnerToast('warning', t('notifications:filesystem_watch_limit'));
   });
 
   // Enable access to the monaco editor command palette.

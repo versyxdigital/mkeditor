@@ -26,6 +26,12 @@ import type {
 } from '../interfaces/Storage';
 import { WORKSPACE_EXTENSIONS_DOTTED } from '../shared/fileExtensions';
 import { WorkspaceMutationGuard } from './WorkspaceMutationGuard';
+import { remapLocalPath } from '../shared/remapLocalPath';
+import {
+  localFileIdentity,
+  sameLocalFile,
+  type LocalFileIdentity,
+} from './LocalFileWatcher';
 
 export const WORKSPACE_LISTING_LIMITS = {
   files: 5000,
@@ -51,6 +57,10 @@ export class AppStorage {
     BrowserWindow,
     Set<string>
   >();
+  private static readonly saveIdentities = new WeakMap<
+    BrowserWindow,
+    Map<string, LocalFileIdentity>
+  >();
 
   private static savePathKey(path: string): string {
     return process.platform === 'win32' ? path.toLowerCase() : path;
@@ -68,14 +78,67 @@ export class AppStorage {
   }
 
   /** Main-only grant after a native open/selection, checked workspace open or restore. */
-  static authorizeFile(context: BrowserWindow, path: string): void {
+  static authorizeFile(
+    context: BrowserWindow,
+    path: string,
+    committed = false,
+    writtenIdentity?: LocalFileIdentity,
+  ): void {
     const canonical = realpathSync.native(path);
+    const observed = localFileIdentity(statSync(canonical, { bigint: true }));
+    if (writtenIdentity && !sameLocalFile(writtenIdentity, observed))
+      throw Object.assign(new Error('The written file was replaced.'), {
+        code: 'ESTALE',
+      });
     let destinations = AppStorage.saveDestinations.get(context);
     if (!destinations) {
       destinations = new Set();
       AppStorage.saveDestinations.set(context, destinations);
     }
     destinations.add(AppStorage.savePathKey(canonical));
+    let identities = AppStorage.saveIdentities.get(context);
+    if (!identities) {
+      identities = new Map();
+      AppStorage.saveIdentities.set(context, identities);
+    }
+    const identity = writtenIdentity ?? observed;
+    const previous =
+      identities.get(AppStorage.savePathKey(resolve(path))) ??
+      identities.get(AppStorage.savePathKey(canonical));
+    identities.set(
+      AppStorage.savePathKey(canonical),
+      !committed && previous ? previous : identity,
+    );
+    identities.set(
+      AppStorage.savePathKey(resolve(path)),
+      !committed && previous ? previous : identity,
+    );
+  }
+
+  static savedFileIdentity(
+    context: BrowserWindow,
+    path: string,
+  ): LocalFileIdentity | undefined {
+    return AppStorage.saveIdentities
+      .get(context)
+      ?.get(AppStorage.savePathKey(resolve(path)));
+  }
+
+  static refreshWrittenFile(
+    context: BrowserWindow,
+    path: string,
+    writtenIdentity?: LocalFileIdentity,
+  ): void {
+    try {
+      const canonical = realpathSync.native(path);
+      if (
+        AppStorage.isSaveAuthorized(context, resolve(path)) &&
+        AppStorage.canReadWorkspaceDirectory(canonical)
+      )
+        AppStorage.authorizeFile(context, path, true, writtenIdentity);
+    } catch {
+      /* A concurrent replacement is reconciled by the watcher. */
+    }
   }
 
   private static isSaveAuthorized(
@@ -89,7 +152,84 @@ export class AppStorage {
     );
   }
 
-  /** Preserve grants for open documents when main successfully moves their backing paths. */
+  /** Watch access is restricted to files already opened or selected natively. */
+  static canWatchFile(context: BrowserWindow, path: string): boolean {
+    if (typeof path !== 'string' || !isAbsolute(path) || path.includes('\0'))
+      return false;
+    if (AppStorage.isSaveAuthorized(context, resolve(path))) return true;
+    try {
+      return AppStorage.isSaveAuthorized(
+        context,
+        AppStorage.canonicalSavePath(path),
+      );
+    } catch {
+      return AppStorage.isSaveAuthorized(context, resolve(path));
+    }
+  }
+
+  static revokeFileAuthorization(context: BrowserWindow, source: string): void {
+    const from = AppStorage.savePathKey(resolve(source));
+    const grants = AppStorage.saveDestinations.get(context);
+    for (const path of grants ?? []) {
+      if (path === from || path.startsWith(from + sep)) {
+        grants!.delete(path);
+        AppStorage.saveIdentities.get(context)?.delete(path);
+      }
+    }
+  }
+
+  /** Only native identity evidence may relocate an existing grant or workspace. */
+  static followWatchedRename(
+    context: BrowserWindow,
+    source: string,
+    destination: string,
+    expected: LocalFileIdentity,
+  ): boolean {
+    try {
+      const target = realpathSync.native(destination);
+      const stat = lstatSync(destination, { bigint: true });
+      if (
+        relative(resolve(destination), target) !== '' ||
+        stat.isSymbolicLink() ||
+        !sameLocalFile(expected, localFileIdentity(stat))
+      )
+        return false;
+      const root = AppStorage.workspaceRoot;
+      const inside = (path: string) => {
+        if (!root) return false;
+        const rel = relative(root, path);
+        return (
+          rel === '' ||
+          (!isAbsolute(rel) && rel !== '..' && !rel.startsWith('..' + sep))
+        );
+      };
+      if (root && relative(root, resolve(source)) === '') {
+        if (relative(dirname(root), dirname(target)) !== '') return false;
+        AppStorage.workspaceRoot = target;
+      } else if (
+        !(inside(source) && inside(target)) &&
+        !(
+          AppStorage.canWatchFile(context, source) &&
+          relative(dirname(source), dirname(target)) === ''
+        )
+      )
+        return false;
+      AppStorage.moveFileAuthorization(context, source, target);
+      if (
+        AppStorage.activeFilePath === resolve(source) ||
+        AppStorage.activeFilePath?.startsWith(resolve(source) + sep)
+      )
+        AppStorage.activeFilePath = remapLocalPath(
+          AppStorage.activeFilePath,
+          source,
+          target,
+        );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   static moveFileAuthorization(
     context: BrowserWindow,
     source: string,
@@ -97,12 +237,16 @@ export class AppStorage {
   ): void {
     const grants = AppStorage.saveDestinations.get(context);
     if (!grants) return;
-    const from = AppStorage.savePathKey(source);
-    const to = AppStorage.savePathKey(destination);
+    const from = AppStorage.savePathKey(resolve(source));
+    const to = AppStorage.savePathKey(resolve(destination));
+    const identities = AppStorage.saveIdentities.get(context);
     for (const path of [...grants]) {
       if (path === from || path.startsWith(from + sep)) {
         grants.delete(path);
         grants.add(to + path.slice(from.length));
+        const identity = identities?.get(path);
+        identities?.delete(path);
+        if (identity) identities?.set(to + path.slice(from.length), identity);
       }
     }
   }
@@ -112,6 +256,8 @@ export class AppStorage {
     path: string,
     content: string,
     encoding: BufferEncoding = 'utf-8',
+    existingOnly = false,
+    expected?: LocalFileIdentity,
   ): Promise<void> {
     let key = resolve(path);
     try {
@@ -129,7 +275,23 @@ export class AppStorage {
     const previous = AppStorage.textWrites.get(key) ?? Promise.resolve();
     const write = previous
       .catch(() => {})
-      .then(() => fs.writeFile(path, content, { encoding }));
+      .then(async () => {
+        if (!existingOnly) return fs.writeFile(path, content, { encoding });
+        // Open without O_CREAT so deletion cannot recreate the old pathname.
+        const handle = await fs.open(path, 'r+');
+        try {
+          const stat = await handle.stat({ bigint: true });
+          if (expected && !sameLocalFile(expected, localFileIdentity(stat))) {
+            throw Object.assign(new Error('The original file was replaced.'), {
+              code: 'ESTALE',
+            });
+          }
+          await fs.writeFile(handle, content, { encoding });
+          await handle.truncate(Buffer.byteLength(content, encoding));
+        } finally {
+          await handle.close();
+        }
+      });
     AppStorage.textWrites.set(key, write);
     try {
       await write;
@@ -565,9 +727,13 @@ export class AppStorage {
       ],
     };
 
+    let savingOriginal = false;
     try {
       let filePath = options.filePath;
       let destination: string | undefined;
+      let selectedDestination = false;
+      const previouslyAuthorized =
+        filePath && AppStorage.canWatchFile(context, filePath);
       if (filePath) {
         try {
           destination = AppStorage.canonicalSavePath(filePath);
@@ -576,12 +742,19 @@ export class AppStorage {
         }
       }
       if (!destination || !AppStorage.isSaveAuthorized(context, destination)) {
+        if (previouslyAuthorized && !destination) {
+          savingOriginal = true;
+          throw Object.assign(new Error('The original file is missing.'), {
+            code: 'ENOENT',
+          });
+        }
         const selection = await dialog.showSaveDialog(context, config);
         if (selection.canceled || !selection.filePath) {
           return { ok: false, cancelled: true };
         }
         filePath = selection.filePath;
         destination = AppStorage.canonicalSavePath(filePath);
+        selectedDestination = true;
       }
       if (!filePath || !destination)
         throw new Error('Invalid save destination');
@@ -604,12 +777,23 @@ export class AppStorage {
           throw new Error('Destination is already open in another tab');
         }
       }
+      savingOriginal = !selectedDestination && Boolean(options.filePath);
+      const expected = savingOriginal
+        ? (AppStorage.saveIdentities
+            .get(context)
+            ?.get(AppStorage.savePathKey(resolve(options.filePath!))) ??
+          AppStorage.saveIdentities
+            .get(context)
+            ?.get(AppStorage.savePathKey(destination)))
+        : undefined;
       await AppStorage.writeTextFile(
         destination,
         options.data,
         options.encoding ?? 'utf-8',
+        savingOriginal,
+        expected,
       );
-      AppStorage.authorizeFile(context, destination);
+      AppStorage.authorizeFile(context, destination, true, expected);
       context.webContents.send('from:notification:display', {
         status: 'success',
         key: successAction,
@@ -621,11 +805,25 @@ export class AppStorage {
     } catch (err) {
       context.webContents.send('from:notification:display', {
         status: 'error',
-        key: errorAction,
+        key:
+          savingOriginal &&
+          ['ENOENT', 'ENOTDIR', 'ESTALE'].includes(
+            (err as NodeJS.ErrnoException).code ?? '',
+          )
+            ? 'notifications:external_file_missing_save'
+            : errorAction,
       });
       return {
         ok: false,
-        error: err instanceof Error ? err.message : String(err),
+        error:
+          savingOriginal &&
+          ['ENOENT', 'ENOTDIR', 'ESTALE'].includes(
+            (err as NodeJS.ErrnoException).code ?? '',
+          )
+            ? 'file_missing'
+            : err instanceof Error
+              ? err.message
+              : String(err),
       };
     }
   }

@@ -634,7 +634,11 @@
     "move_into_self_refused": "Een map kan niet in zichzelf worden verplaatst",
     "move_same_source": "Al op die locatie",
     "move_collision": "Een bestand of map met die naam bestaat al",
-    "move_parent_missing": "Doelmap bestaat niet"
+    "move_parent_missing": "Doelmap bestaat niet",
+    "external_draft_name": "{{name}} (hersteld)",
+    "external_files_recovered": "Bestanden zijn op de schijf verwijderd of vervangen. Hun tekst blijft bewaard in niet-opgeslagen tabbladen.",
+    "external_file_missing_save": "Het oorspronkelijke bestand ontbreekt of is vervangen. Je tekst staat nog open; gebruik Opslaan als om een kopie te bewaren.",
+    "filesystem_watch_limit": "Sommige mappen overschrijden de limiet voor automatisch vernieuwen. Open de werkruimte opnieuw om ze te vernieuwen."
   },
   "sidebar": {
     "explorer": "Verkenner",

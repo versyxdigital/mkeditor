@@ -34,5 +34,9 @@
   "move_into_self_refused": "Can't move a folder into itself",
   "move_same_source": "Already in that location",
   "move_collision": "A file or folder with that name already exists",
-  "move_parent_missing": "Destination folder doesn't exist"
+  "move_parent_missing": "Destination folder doesn't exist",
+  "external_draft_name": "{{name}} (recovered)",
+  "external_files_recovered": "Files were removed or replaced on disk. Their text is kept in unsaved tabs.",
+  "external_file_missing_save": "The original file is missing or was replaced. Your text is still open; use Save As to save a copy.",
+  "filesystem_watch_limit": "Some folders exceed the automatic refresh limit. Reopen the workspace to refresh them."
 }

@@ -36,6 +36,87 @@ describe('AppStorage document operations', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
+  it('does not recreate an opened file deleted before a save', async () => {
+    const target = join(root, 'deleted.md');
+    writeFileSync(target, 'original');
+    const context = fakeWindow();
+    AppStorage.setActiveFile(context, target);
+    await fs.unlink(target);
+    const result = await AppStorage.saveFile(context, {
+      filePath: target,
+      data: 'draft',
+      encoding: 'utf8',
+      openFile: false,
+    });
+    expect(result).toMatchObject({ ok: false, error: 'file_missing' });
+    expect(existsSync(target)).toBe(false);
+  });
+
+  it('rejects a replacement arriving between save validation and opening the destination', async () => {
+    const target = join(root, 'replaced.md');
+    const originalPath = join(root, 'original.md');
+    writeFileSync(target, 'original');
+    const context = fakeWindow();
+    AppStorage.setActiveFile(context, target);
+    const open = fs.open.bind(fs);
+    jest.spyOn(fs, 'open').mockImplementationOnce(async (...args) => {
+      await fs.rename(target, originalPath);
+      await fs.writeFile(target, 'another application wrote this');
+      return open(...args);
+    });
+    const result = await AppStorage.saveFile(context, {
+      filePath: target,
+      data: 'stale draft',
+      encoding: 'utf8',
+      openFile: false,
+    });
+    expect(result).toMatchObject({ ok: false, error: 'file_missing' });
+    expect(readFileSync(target, 'utf8')).toBe('another application wrote this');
+    expect(readFileSync(originalPath, 'utf8')).toBe('original');
+  });
+
+  it('truncates a shorter Unicode save after writing the existing file', async () => {
+    const target = join(root, 'shorter.md');
+    writeFileSync(target, 'a much longer original document');
+    const context = fakeWindow();
+    AppStorage.setActiveFile(context, target);
+    await expect(
+      AppStorage.saveFile(context, {
+        filePath: target,
+        data: '你好',
+        encoding: 'utf8',
+        openFile: false,
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(readFileSync(target, 'utf8')).toBe('你好');
+  });
+
+  it('does not acknowledge a replacement arriving after the original write completes', async () => {
+    const target = join(root, 'after-write.md');
+    const moved = join(root, 'original-written.md');
+    writeFileSync(target, 'original');
+    const context = fakeWindow();
+    AppStorage.setActiveFile(context, target);
+    const write = AppStorage.writeTextFile.bind(AppStorage);
+    jest
+      .spyOn(AppStorage, 'writeTextFile')
+      .mockImplementationOnce(async (...args) => {
+        await write(...args);
+        await fs.rename(target, moved);
+        await fs.writeFile(target, 'external replacement');
+      });
+    await expect(
+      AppStorage.saveFile(context, {
+        filePath: target,
+        data: 'user edit',
+        encoding: 'utf8',
+        openFile: false,
+      }),
+    ).resolves.toMatchObject({ ok: false, error: 'file_missing' });
+    expect(readFileSync(moved, 'utf8')).toBe('user edit');
+    expect(readFileSync(target, 'utf8')).toBe('external replacement');
+  });
+
   it.each([false, true])(
     'creates and refreshes the explorer with openFile=%s',
     async (openFile) => {
@@ -75,12 +156,17 @@ describe('AppStorage document operations', () => {
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
+    let began!: () => void;
+    const started = new Promise<void>((resolve) => {
+      began = resolve;
+    });
     const actual = fs.writeFile.bind(fs);
     const context = fakeWindow();
     AppStorage.setActiveFile(context, target);
     const writes = jest
       .spyOn(fs, 'writeFile')
       .mockImplementationOnce(async (...args) => {
+        began();
         await gate;
         return actual(...args);
       });
@@ -90,7 +176,7 @@ describe('AppStorage document operations', () => {
       encoding: 'utf-8',
       openFile: false,
     });
-    for (let i = 0; i < 4; i++) await Promise.resolve();
+    await started;
     const tool = AppStorage.writeTextFile(target, 'tool');
     for (let i = 0; i < 4; i++) await Promise.resolve();
     expect(writes).toHaveBeenCalledTimes(1);

@@ -1,6 +1,7 @@
 import * as React from 'react';
+import { remapLocalPath } from '../../../app/shared/remapLocalPath';
 
-import type { TreeNode } from '../../core/FileTreeManager';
+import { isPathWithinTree, type TreeNode } from '../../core/FileTreeManager';
 import type { WebFileBridge } from '../../core/WebFileBridge';
 import {
   getContextMenuItems,
@@ -45,7 +46,7 @@ import {
  */
 export const FileTreePanel: React.FC = () => {
   const { mode, fileTreeManager, fileManager, bridgeManager } = useManagers();
-  const { nodes, treeRoot } = useFileTree();
+  const { nodes, treeRoot, pathRenames } = useFileTree();
   const { activeFile } = useFiles();
   const { openModal } = useModals();
   const { sidebarOpen, setSidebarOpen, toggleSidebar } = useUIState();
@@ -154,6 +155,21 @@ export const FileTreePanel: React.FC = () => {
   const [expandedPaths, setExpandedPaths] = React.useState<Set<string>>(
     () => new Set(),
   );
+  React.useEffect(() => {
+    if (!pathRenames) return;
+    setExpandedPaths(
+      (previous) =>
+        new Set(
+          [...previous].map((path) => {
+            for (const change of pathRenames) {
+              if (isPathWithinTree(path, change.oldPath))
+                path = remapLocalPath(path, change.oldPath, change.newPath);
+            }
+            return path;
+          }),
+        ),
+    );
+  }, [pathRenames]);
   const [contextNode, setContextNode] = React.useState<TreeNode | null>(null);
 
   /**

@@ -12,6 +12,7 @@ import { basename, dirname, isAbsolute, join, relative, sep } from 'path';
 import { randomUUID } from 'crypto';
 import { shell, type BrowserWindow } from 'electron';
 import { AppStorage } from './AppStorage';
+import { localFileIdentity, type LocalFileIdentity } from './LocalFileWatcher';
 import type { WorkspaceMutationGuard } from './WorkspaceMutationGuard';
 import { runWorkspaceRegex } from './workspaceRegex';
 import type {
@@ -212,6 +213,7 @@ export class WorkspaceFiles {
       );
     const root = AppStorage.getWorkspaceRoot();
     const prepared: Array<WorkspaceTextChange & { staged?: string }> = [];
+    const stagedIdentities = new Map<string, LocalFileIdentity>();
     if (!root)
       throw new WorkspaceToolError(
         'no_workspace',
@@ -327,6 +329,10 @@ export class WorkspaceFiles {
           encoding: 'utf8',
           ...(change.expected === null ? {} : { mode: current!.mode }),
         });
+        stagedIdentities.set(
+          change.path,
+          localFileIdentity(lstatSync(change.staged, { bigint: true })),
+        );
       }
       for (const change of prepared) {
         if (root !== AppStorage.getWorkspaceRoot())
@@ -413,6 +419,12 @@ export class WorkspaceFiles {
           }
         }
     }
+    for (const change of prepared)
+      AppStorage.refreshWrittenFile(
+        this.context,
+        change.path,
+        stagedIdentities.get(change.path),
+      );
     for (const parent of new Set(
       prepared.map((change) => dirname(change.path)),
     )) {

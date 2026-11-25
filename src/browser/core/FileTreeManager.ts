@@ -1,5 +1,7 @@
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
 import type { WorkspaceFileListing } from '../../app/interfaces/Storage';
+import type { LocalPathRename } from '../../app/interfaces/LocalFiles';
+import { remapLocalPath } from '../../app/shared/remapLocalPath';
 
 /**
  * A plain data node in the file explorer tree. Mirrors what main process
@@ -22,6 +24,7 @@ export interface FileTreeSnapshot {
   treeRoot: string | null;
   nodes: TreeNode[];
   fileListingRevision: number;
+  pathRenames?: LocalPathRename[];
 }
 
 const EMPTY_SNAPSHOT: FileTreeSnapshot = {
@@ -182,6 +185,7 @@ export class FileTreeManager {
       // Consumers memoize derived filtering by the nodes array identity.
       // Mutating children without replacing this array leaves that UI stale.
       nodes: [...this.snapshot.nodes],
+      pathRenames: this.snapshot.pathRenames,
     };
     this.listeners.forEach((l) => l());
   }
@@ -199,10 +203,26 @@ export class FileTreeManager {
    * @param parentPath - the directory being populated (equal to `treeRoot`
    *   for the initial root load, or a subdirectory for lazy loads)
    */
-  public buildFileTree(tree: unknown[], parentPath: string) {
+  public buildFileTree(
+    tree: unknown[],
+    parentPath: string,
+    preserveLoaded = false,
+  ) {
     this.invalidateFileListing();
     const validated = validateNodes(tree);
-    const sorted = sortNodes(validated);
+    const sorted = sortNodes(validated).map((node) => {
+      const previous = preserveLoaded
+        ? this.directoryIndex.get(node.path)
+        : undefined;
+      return previous?.loaded && node.type === 'directory'
+        ? {
+            ...node,
+            loaded: true,
+            children: previous.children,
+            hasChildren: previous.hasChildren,
+          }
+        : node;
+    });
 
     if (!this.treeRoot || parentPath === this.treeRoot) {
       // Root populate (or replace). Reset the directory index.
@@ -215,6 +235,7 @@ export class FileTreeManager {
         treeRoot: this.treeRoot,
         nodes: rooted,
         fileListingRevision: this.fileListingRevision,
+        pathRenames: this.snapshot.pathRenames,
       };
       this.listeners.forEach((l) => l());
       return;
@@ -275,6 +296,38 @@ export class FileTreeManager {
       }
     }
     return this.treeRoot;
+  }
+
+  public followExternalRenames(changes: LocalPathRename[]): void {
+    if (!changes.length) return;
+    const remap = (path: string) => {
+      for (const change of changes) {
+        if (isPathWithinTree(path, change.oldPath))
+          path = remapLocalPath(path, change.oldPath, change.newPath);
+      }
+      return path;
+    };
+
+    const rewrite = (node: TreeNode): TreeNode => {
+      const path = remap(node.path);
+      return {
+        ...node,
+        path,
+        name: path.split(/[/\\]/).pop() ?? node.name,
+        children: node.children?.map(rewrite),
+      };
+    };
+    this.directoryIndex.clear();
+    if (this.treeRoot) this.treeRoot = remap(this.treeRoot);
+    this.snapshot = {
+      ...this.snapshot,
+      nodes: this.snapshot.nodes.map((node) =>
+        this.registerNode(this.cloneNode(rewrite(node))),
+      ),
+      pathRenames: changes,
+    };
+    this.invalidateFileListing();
+    this.emitChange();
   }
 
   /**

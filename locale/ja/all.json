@@ -634,7 +634,11 @@
     "move_into_self_refused": "フォルダを自分自身の中に移動することはできません",
     "move_same_source": "既にその場所にあります",
     "move_collision": "同じ名前のファイルまたはフォルダが既に存在します",
-    "move_parent_missing": "移動先のフォルダが存在しません"
+    "move_parent_missing": "移動先のフォルダが存在しません",
+    "external_draft_name": "{{name}}（復元済み）",
+    "external_files_recovered": "ディスク上のファイルが削除または置換されました。テキストは未保存のタブに保持されています。",
+    "external_file_missing_save": "元のファイルが見つからないか、置換されています。テキストは開いたままです。「名前を付けて保存」でコピーを保存してください。",
+    "filesystem_watch_limit": "一部のフォルダーは自動更新の上限を超えています。ワークスペースを開き直して更新してください。"
   },
   "sidebar": {
     "explorer": "エクスプローラー",

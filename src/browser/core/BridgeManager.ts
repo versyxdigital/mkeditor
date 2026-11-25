@@ -8,7 +8,7 @@ import { AssistantTools } from './AssistantTools';
 import { AssistantContextSource } from './AssistantContextSource';
 import { registerBridgeListeners } from './BridgeListeners';
 import { FileManager } from './FileManager';
-import { FileTreeManager } from './FileTreeManager';
+import { FileTreeManager, type TreeNode } from './FileTreeManager';
 import { CloudManager } from './CloudManager';
 
 /**
@@ -131,6 +131,60 @@ export class BridgeManager {
    */
   public provide<T>(provider: string, instance: T) {
     this.providers[provider] = instance;
+  }
+
+  /** Desktop-only subscriptions; the composition root owns their lifetime. */
+  public startLocalFileWatching(): () => void {
+    let signature = '';
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const publish = () => {
+      timer = undefined;
+      const { treeRoot, nodes } = this.fileTreeManager.getSnapshot();
+      const directories: string[] = [];
+      const visit = (children: TreeNode[]) => {
+        for (const node of children) {
+          if (node.type !== 'directory' || !node.loaded) continue;
+          directories.push(node.path);
+          if (node.children) visit(node.children);
+        }
+      };
+      visit(nodes);
+      const request = {
+        root: treeRoot,
+        directories,
+        files: this.fileManager
+          .getSnapshot()
+          .tabs.filter(
+            (tab) =>
+              !tab.remote &&
+              tab.kind !== 'diff' &&
+              !tab.path.startsWith('untitled-'),
+          )
+          .map((tab) => tab.path),
+      };
+      const next = JSON.stringify(request);
+      if (signature !== next) {
+        signature = next;
+        this.bridge.send('to:files:watch', request);
+      }
+    };
+
+    const schedule = () => {
+      if (!timer) timer = setTimeout(publish, 30);
+    };
+    const offFiles = this.fileManager.on('change', schedule);
+    const offTree = this.fileTreeManager.on('change', schedule);
+    schedule();
+    return () => {
+      offFiles();
+      offTree();
+      if (timer) clearTimeout(timer);
+      this.bridge.send('to:files:watch', {
+        root: null,
+        directories: [],
+        files: [],
+      });
+    };
   }
 
   /**

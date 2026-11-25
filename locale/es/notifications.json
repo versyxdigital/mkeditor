@@ -34,5 +34,9 @@
   "move_into_self_refused": "No se puede mover una carpeta dentro de sí misma",
   "move_same_source": "Ya está en esa ubicación",
   "move_collision": "Ya existe un archivo o carpeta con ese nombre",
-  "move_parent_missing": "La carpeta de destino no existe"
+  "move_parent_missing": "La carpeta de destino no existe",
+  "external_draft_name": "{{name}} (recuperado)",
+  "external_files_recovered": "Se eliminaron o reemplazaron archivos en el disco. Su texto se conserva en pestañas sin guardar.",
+  "external_file_missing_save": "El archivo original no existe o fue reemplazado. El texto sigue abierto; usa Guardar como para guardar una copia.",
+  "filesystem_watch_limit": "Algunas carpetas superan el límite de actualización automática. Vuelve a abrir el espacio de trabajo para actualizarlas."
 }

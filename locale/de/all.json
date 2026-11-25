@@ -634,7 +634,11 @@
     "move_into_self_refused": "Ein Ordner kann nicht in sich selbst verschoben werden",
     "move_same_source": "Bereits an diesem Ort",
     "move_collision": "Eine Datei oder ein Ordner mit diesem Namen existiert bereits",
-    "move_parent_missing": "Zielordner existiert nicht"
+    "move_parent_missing": "Zielordner existiert nicht",
+    "external_draft_name": "{{name}} (wiederhergestellt)",
+    "external_files_recovered": "Dateien wurden auf dem Datenträger entfernt oder ersetzt. Ihr Text bleibt in ungespeicherten Tabs erhalten.",
+    "external_file_missing_save": "Die ursprüngliche Datei fehlt oder wurde ersetzt. Ihr Text ist noch geöffnet. Speichern Sie eine Kopie mit „Speichern unter“.",
+    "filesystem_watch_limit": "Einige Ordner überschreiten das Limit für automatische Aktualisierungen. Öffnen Sie den Arbeitsbereich erneut, um sie zu aktualisieren."
   },
   "sidebar": {
     "explorer": "Explorer",

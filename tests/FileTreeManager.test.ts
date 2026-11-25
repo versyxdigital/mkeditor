@@ -155,6 +155,60 @@ describe('FileTreeManager.addFileToTree — missing-ancestor recovery', () => {
 });
 
 describe('FileTreeManager refresh and containment integrity', () => {
+  it('preserves loaded children during a watcher refresh and remaps the whole tree on rename', () => {
+    const { bridge } = makeBridge();
+    const tree = new FileTreeManager(bridge, () => {});
+    tree.buildFileTree(
+      [
+        {
+          type: 'directory',
+          path: '/workspace/a',
+          name: 'a',
+          loaded: true,
+          children: [
+            { type: 'file', path: '/workspace/a/note.md', name: 'note.md' },
+          ],
+        },
+      ],
+      '/workspace',
+    );
+    tree.buildFileTree(
+      [
+        {
+          type: 'directory',
+          path: '/workspace/a',
+          name: 'a',
+          hasChildren: true,
+        },
+        { type: 'file', path: '/workspace/new.md', name: 'new.md' },
+      ],
+      '/workspace',
+      true,
+    );
+    expect(tree.getSnapshot().nodes[0].loaded).toBe(true);
+    expect(tree.getSnapshot().nodes[0].children?.[0].path).toBe(
+      '/workspace/a/note.md',
+    );
+    tree.followExternalRenames([
+      { oldPath: '/workspace/a', newPath: '/workspace/renamed' },
+    ]);
+    expect(tree.getSnapshot().nodes[0].children?.[0].path).toBe(
+      '/workspace/renamed/note.md',
+    );
+    tree.buildFileTree(
+      [
+        {
+          type: 'file',
+          path: '/workspace/renamed/latest.md',
+          name: 'latest.md',
+        },
+      ],
+      '/workspace/renamed',
+      true,
+    );
+    expect(tree.getSnapshot().nodes[0].children?.[0].name).toBe('latest.md');
+  });
+
   it('ignores sibling paths that merely share the workspace string prefix', () => {
     const { bridge, sent } = makeBridge();
     const tree = new FileTreeManager(bridge, () => {});

@@ -634,7 +634,11 @@
     "move_into_self_refused": "폴더를 자신 안으로 이동할 수 없습니다",
     "move_same_source": "이미 해당 위치에 있습니다",
     "move_collision": "같은 이름의 파일 또는 폴더가 이미 있습니다",
-    "move_parent_missing": "대상 폴더가 존재하지 않습니다"
+    "move_parent_missing": "대상 폴더가 존재하지 않습니다",
+    "external_draft_name": "{{name}} (복구됨)",
+    "external_files_recovered": "디스크에서 파일이 삭제되거나 교체되었습니다. 텍스트는 저장하지 않은 탭에 보관됩니다.",
+    "external_file_missing_save": "원본 파일이 없거나 교체되었습니다. 텍스트는 계속 열려 있습니다. 다른 이름으로 저장을 사용해 사본을 저장하세요.",
+    "filesystem_watch_limit": "일부 폴더가 자동 새로 고침 한도를 초과했습니다. 작업 공간을 다시 열어 새로 고침하세요."
   },
   "sidebar": {
     "explorer": "탐색기",

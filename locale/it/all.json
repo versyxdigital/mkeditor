@@ -634,7 +634,11 @@
     "move_into_self_refused": "Impossibile spostare una cartella in se stessa",
     "move_same_source": "Già in quella posizione",
     "move_collision": "Esiste già un file o una cartella con quel nome",
-    "move_parent_missing": "La cartella di destinazione non esiste"
+    "move_parent_missing": "La cartella di destinazione non esiste",
+    "external_draft_name": "{{name}} (recuperato)",
+    "external_files_recovered": "Alcuni file sono stati rimossi o sostituiti sul disco. Il loro testo è conservato in schede non salvate.",
+    "external_file_missing_save": "Il file originale non esiste o è stato sostituito. Il testo è ancora aperto; usa Salva con nome per salvarne una copia.",
+    "filesystem_watch_limit": "Alcune cartelle superano il limite di aggiornamento automatico. Riapri l’area di lavoro per aggiornarle."
   },
   "sidebar": {
     "explorer": "Esplora",

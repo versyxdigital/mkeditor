@@ -1022,6 +1022,29 @@ export class FileManager {
     return count;
   }
 
+  /** Keep a deleted/replaced file's model and undo stack as a recoverable draft. */
+  public retainMissingFile(path: string): string | null {
+    const tab = this.tabs.get(path);
+    const model = this.models.get(path);
+    if (!tab || !model || tab.remote || path.startsWith('untitled-'))
+      return null;
+    let draft: string;
+    do {
+      draft = `untitled-${this.untitledCounter++}`;
+    } while (this.models.has(draft));
+    this.renameTab(
+      path,
+      draft,
+      t('notifications:external_draft_name', { name: tab.name }),
+    );
+    this.originals.set(draft, '');
+    this.baselineVersions.set(draft, -1);
+    this.dirtyByPath.set(draft, true);
+    this.emitChange();
+    this.scheduleSessionSave();
+    return draft;
+  }
+
   /**
    * Seed an initial `untitled-N` tab from the supplied content. Used in
    * web mode at boot so the navbar/title bar reflect the current Monaco
@@ -1431,6 +1454,8 @@ export class FileManager {
       // A rename/move performed while the write was pending owns the live
       // path. A late acknowledgement for the old path cannot undo it or
       // claim the new path was written.
+      if (result.error === 'file_missing' && path === pending.path)
+        this.retainMissingFile(path);
       pending.resolve(false);
       return;
     }

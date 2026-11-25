@@ -41,6 +41,8 @@ import { normalizeLanguage } from '../util';
 import { CloudService } from './cloud/CloudService';
 import { CloudStore } from './cloud/CloudStore';
 import { CloudSessionRecovery } from './cloud/CloudSessionRecovery';
+import { LocalFileWatcher } from './LocalFileWatcher';
+import type { LocalWatchRequest } from '../interfaces/LocalFiles';
 /**
  * AppBridge
  */
@@ -82,6 +84,10 @@ export class AppBridge {
   private disposed = false;
   private assistantConfigPush = 0;
   private registered = false;
+  private localWatcher?: LocalFileWatcher;
+  private readonly refreshLocalFiles = () => {
+    void this.localWatcher?.refresh().catch(() => {});
+  };
   private cloud: CloudService | null = null;
   private readonly recovery = new CloudSessionRecovery();
   private flushSequence = 0;
@@ -175,6 +181,32 @@ export class AppBridge {
   register() {
     if (this.registered || this.disposed) return;
     this.registered = true;
+    this.localWatcher = new LocalFileWatcher({
+      workspaceRoot: () => AppStorage.getWorkspaceRoot(),
+
+      canWatchFile: (path) => AppStorage.canWatchFile(this.context, path),
+
+      fileIdentity: (path) => AppStorage.savedFileIdentity(this.context, path),
+
+      rename: (source, destination, identity) =>
+        AppStorage.followWatchedRename(
+          this.context,
+          source,
+          destination,
+          identity,
+        ),
+
+      missing: (path) => AppStorage.revokeFileAuthorization(this.context, path),
+
+      changed: (change) => {
+        if (!this.disposed && !this.context.isDestroyed())
+          this.context.webContents.send('from:files:changed', change);
+      },
+    });
+    this.context.on?.('focus', this.refreshLocalFiles);
+    this.on('to:files:watch', async (_event, input: LocalWatchRequest) => {
+      await this.localWatcher?.update(input);
+    });
 
     this.cloud = new CloudService(
       new CloudStore(),
@@ -731,7 +763,8 @@ export class AppBridge {
     // Acknowledge adoption only for roots offered by a native picker or
     // main's restore envelope. The renderer cannot choose the boundary.
     this.on('to:workspace:set', (_e, payload: { root: string | null }) => {
-      AppStorage.adoptWorkspaceRoot(payload?.root);
+      if (AppStorage.adoptWorkspaceRoot(payload?.root))
+        this.localWatcher?.invalidate();
     });
 
     // ---- AI Assistant ----------------------------------------------
@@ -868,7 +901,20 @@ export class AppBridge {
     const handler = (event: IpcMainEvent, ...args: unknown[]) => {
       if (event.sender.id !== this.context.webContents.id) return;
       try {
-        Promise.resolve(fn(event, ...args)).catch((err) => {
+        const run = () => fn(event, ...args);
+        const mutation = [
+          'to:file:save',
+          'to:file:saveas',
+          'to:file:create',
+          'to:folder:create',
+          'to:file:rename',
+          'to:file:delete',
+        ].includes(channel);
+        Promise.resolve(
+          mutation && this.localWatcher
+            ? this.localWatcher.duringMutation(run)
+            : run(),
+        ).catch((err) => {
           this.providers.logger?.log.error(`IPC ${channel} failed`, err);
         });
       } catch (err) {
@@ -917,7 +963,18 @@ export class AppBridge {
       if (event.sender.id !== this.context.webContents.id) {
         throw new Error(`IPC ${channel}: sender mismatch`);
       }
-      return fn(event, ...args);
+      const run = () => fn(event, ...args);
+      return this.localWatcher &&
+        [
+          'mked:fs:savefile',
+          'mked:fs:createfile',
+          'mked:fs:createfolder',
+          'mked:fs:moveitem',
+          'mked:fs:pasteimage',
+          'mked:fs:workspace-operation',
+        ].includes(channel)
+        ? this.localWatcher.duringMutation(run)
+        : run();
     });
     this.invokeChannels.push(channel);
   }
@@ -930,6 +987,8 @@ export class AppBridge {
     this.sessionFlushes.clear();
     if (this.disposed) return;
     this.disposed = true;
+    this.localWatcher?.dispose();
+    this.context.removeListener?.('focus', this.refreshLocalFiles);
     this.cloud?.dispose();
     for (const { channel, handler } of this.listeners) {
       ipcMain.removeListener(channel, handler);

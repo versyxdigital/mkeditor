@@ -244,6 +244,8 @@ function onEditorReadyInner() {
   );
   bridgeManager.provide('commands', editorManager.providers.commands);
   editorManager.provide('bridge', bridgeManager);
+  if (mode === 'desktop')
+    editorManager.registerCleanup(bridgeManager.startLocalFileWatching());
 
   // Let FileManager honour the user's `sessionRestore` setting.
   bridgeManager.fileManager.setSessionEnabledGetter(

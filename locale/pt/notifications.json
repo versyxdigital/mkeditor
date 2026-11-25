@@ -34,5 +34,9 @@
   "move_into_self_refused": "Não é possível mover uma pasta para dentro de si mesma",
   "move_same_source": "Já está nesse local",
   "move_collision": "Já existe um arquivo ou pasta com esse nome",
-  "move_parent_missing": "A pasta de destino não existe"
+  "move_parent_missing": "A pasta de destino não existe",
+  "external_draft_name": "{{name}} (recuperado)",
+  "external_files_recovered": "Foram removidos ou substituídos ficheiros no disco. O texto foi mantido em separadores não guardados.",
+  "external_file_missing_save": "O ficheiro original não existe ou foi substituído. O texto continua aberto; use Guardar como para guardar uma cópia.",
+  "filesystem_watch_limit": "Algumas pastas excedem o limite de atualização automática. Reabra a área de trabalho para as atualizar."
 }

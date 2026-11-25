@@ -34,5 +34,9 @@
   "move_into_self_refused": "Bir klasör kendi içine taşınamaz",
   "move_same_source": "Zaten o konumda",
   "move_collision": "Bu adda bir dosya veya klasör zaten var",
-  "move_parent_missing": "Hedef klasör mevcut değil"
+  "move_parent_missing": "Hedef klasör mevcut değil",
+  "external_draft_name": "{{name}} (kurtarıldı)",
+  "external_files_recovered": "Dosyalar diskten kaldırıldı veya değiştirildi. Metinleri kaydedilmemiş sekmelerde korunuyor.",
+  "external_file_missing_save": "Özgün dosya yok veya değiştirildi. Metniniz hâlâ açık; bir kopyasını kaydetmek için Farklı Kaydet’i kullanın.",
+  "filesystem_watch_limit": "Bazı klasörler otomatik yenileme sınırını aşıyor. Yenilemek için çalışma alanını yeniden açın."
 }

@@ -91,6 +91,87 @@ function setup() {
   return { fm, mk, bridge, add, lastSave };
 }
 
+describe('external local file changes', () => {
+  it('keeps a missing file as the same dirty model and restores its text as a draft', () => {
+    const { fm, add } = setup();
+    const model = add('/workspace/note.md', 'saved');
+    model.setValue('unsaved text');
+    const version = model.getAlternativeVersionId();
+    const draft = fm.retainMissingFile('/workspace/note.md')!;
+    expect(draft).toMatch(/^untitled-/);
+    expect(fm.models.get(draft)).toBe(model);
+    expect(model.getAlternativeVersionId()).toBe(version);
+    expect(fm.getSnapshot().tabs[0].dirty).toBe(true);
+    const saved = fm.serializeSession();
+    expect(saved.tabs[0]).toMatchObject({
+      path: draft,
+      untitledContent: 'unsaved text',
+    });
+    const restored = setup().fm;
+    restored.restoreSession({ session: saved, missing: [], contents: {} });
+    expect(restored.models.get(draft)?.getValue()).toBe('unsaved text');
+  });
+
+  it('uses Save As for a retained draft and ignores an old pending save acknowledgement', async () => {
+    const { fm, add, lastSave } = setup();
+    const model = add('/workspace/note.md', 'saved');
+    model.setValue('unsaved');
+    const pending = fm.saveTab('/workspace/note.md');
+    const request = lastSave();
+    const draft = fm.retainMissingFile('/workspace/note.md')!;
+    fm.onSaveResult({
+      requestId: request.requestId,
+      ok: true,
+      path: '/workspace/note.md',
+    });
+    await expect(pending).resolves.toBe(false);
+    expect(fm.models.get(draft)).toBe(model);
+    const saveAs = fm.saveTab(draft);
+    const next = lastSave();
+    expect(next.file).toBeUndefined();
+    fm.onSaveResult({ requestId: next.requestId, ok: false, cancelled: true });
+    await expect(saveAs).resolves.toBe(false);
+    expect(fm.getSnapshot().tabs[0].dirty).toBe(true);
+  });
+
+  it('follows a verified folder rename without overwriting a tab already at the target', () => {
+    const { fm, mk, add, bridge } = setup();
+    const original = add('/workspace/old/note.md', 'original');
+    original.setValue('draft');
+    const other = add('/workspace/new/note.md', 'other tab');
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    bridge.receive.mockImplementation(
+      (channel: string, handler: (...args: unknown[]) => void) => {
+        handlers.set(channel, handler);
+      },
+    );
+    const tree = new FileTreeManager(bridge, () => {});
+    tree.buildFileTree([], '/workspace');
+    registerBridgeListeners(
+      bridge,
+      mk as never,
+      new EditorDispatcher(),
+      {} as never,
+      fm,
+      tree,
+      {} as never,
+    );
+    handlers.get('from:files:changed')!({
+      root: '/workspace',
+      renames: [{ oldPath: '/workspace/old', newPath: '/workspace/new' }],
+      missing: [],
+      directories: [],
+      truncated: false,
+    });
+    expect(fm.models.get('/workspace/new/note.md')).toBe(other);
+    expect([...fm.models.values()]).toContain(original);
+    expect(
+      fm.getSnapshot().tabs.find((tab) => tab.path.startsWith('untitled-'))
+        ?.dirty,
+    ).toBe(true);
+  });
+});
+
 function remoteEditing(provider?: 'google-drive' | 'dropbox') {
   const setupResult = setup();
   const document = {
