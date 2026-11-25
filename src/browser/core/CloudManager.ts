@@ -922,6 +922,8 @@ export class CloudManager {
     const connection = this.snapshot.connections.find(
       (entry) => entry.id === this.snapshot.workspace,
     )!;
+    // Dropbox cannot atomically bind a move to the checked source revision.
+    if (connection.provider === 'dropbox') return false;
     const tab = [...this.files.tabs.values()].find(
       (tab) =>
         tab.remote?.connectionId === connection.id &&

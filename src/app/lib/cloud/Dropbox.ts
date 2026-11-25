@@ -144,10 +144,15 @@ export class Dropbox implements CloudProvider {
     },
     prepareCreate: (access, folderId, name, operationId) =>
       this.prepareCreation(access, folderId, name, operationId, 'folder'),
-    prepareMove: (access, id, source, destination) =>
-      this.prepareMove(access, id, source, destination),
-    move: (access, id, source, destination, validator, authorize) =>
-      this.move(access, id, source, destination, validator, authorize),
+    // move_v2 has no atomic source-ID/revision/location precondition. Path
+    // moves can affect replacements; ID moves can follow an unchecked relocation.
+    // Retain read-only organization methods for recovering older pending moves.
+    prepareMove: async () => {
+      throw new CloudError('unsupported');
+    },
+    move: async () => {
+      throw new CloudError('unsupported');
+    },
     createFolder: (access, id, folderId, name, operationId, authorize) =>
       this.createFolder(access, id, folderId, name, operationId, authorize),
   };
@@ -814,90 +819,6 @@ export class Dropbox implements CloudProvider {
       // The folder may exist even if adding its recovery marker was interrupted.
       throw new CloudError('unconfirmed');
     }
-  }
-  private async prepareMove(
-    access: string,
-    id: string,
-    sourceFolderId: string,
-    folderId: string,
-  ) {
-    if (!/^id:[^/\\\s]+$/.test(id)) throw new CloudError('configuration');
-    const meta = await this.metadata(access, id);
-    if (this.item(meta, 'root').kind !== 'markdown' || !meta.rev)
-      throw new CloudError('unsupported');
-    if (meta.sharing_info?.read_only) throw new CloudError('permission');
-    const source = await this.parent(access, meta);
-    const destination = await this.metadata(access, folderId);
-    if (destination['.tag'] !== 'folder') throw new CloudError('unsupported');
-    if (destination.sharing_info?.read_only) throw new CloudError('permission');
-    if (source !== sourceFolderId || source === destination.id)
-      throw new CloudError('conflict');
-    const path =
-      destination.id === 'root'
-        ? `/${meta.name}`
-        : `${destination.id}/${meta.name}`;
-    try {
-      await this.metadata(access, path);
-      throw new CloudError('duplicate');
-    } catch (error) {
-      if (!(error instanceof CloudError) || error.code !== 'missing')
-        throw error;
-    }
-    return { source, destination: destination.id, validator: `"${meta.rev}"` };
-  }
-  private async move(
-    access: string,
-    id: string,
-    source: string,
-    destination: string,
-    validator: string,
-    authorize: () => void,
-  ): Promise<void> {
-    const current = await this.prepareMove(access, id, source, destination);
-    if (current.validator !== validator) throw new CloudError('conflict');
-    const meta = await this.metadata(access, id);
-    if (
-      `"${meta.rev}"` !== validator ||
-      (await this.parent(access, meta)) !== source
-    )
-      throw new CloudError('conflict');
-    const sourcePath = meta.path_lower ?? meta.path_display;
-    if (!sourcePath?.startsWith('/')) throw new CloudError('conflict');
-    authorize();
-    // Bind the move to the location just checked. A stable ID would follow a
-    // concurrent relocation and move the document again from an unchecked folder.
-    // Dropbox still has no revision-conditional move; remote text is retained.
-    let response: unknown;
-    try {
-      response = await this.rpc(
-        access,
-        'files/move_v2',
-        {
-          from_path: sourcePath,
-          to_path:
-            destination === 'root'
-              ? `/${meta.name}`
-              : `${destination}/${meta.name}`,
-          autorename: false,
-          allow_ownership_transfer: false,
-        },
-        false,
-      );
-    } catch (error) {
-      if (error instanceof CloudError && error.code === 'missing')
-        throw new CloudError('conflict');
-      if (error instanceof CloudError) throw error;
-      throw new CloudError('unconfirmed');
-    }
-    let moved: Metadata;
-    try {
-      moved = parseMetadata(
-        z.object({ metadata: z.unknown() }).parse(response).metadata,
-      );
-    } catch {
-      throw new CloudError('unconfirmed');
-    }
-    if (moved.id !== id) throw new CloudError('conflict');
   }
   async create(
     access: string,

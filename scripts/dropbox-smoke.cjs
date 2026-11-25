@@ -379,12 +379,12 @@ async function crash() {
     },
   );
   await step(
-    'Create a folder and move a dirty Dropbox document through the context menu',
+    'Create a folder, decline document moves and preserve the dirty draft',
     async () => {
       const folderName = resume
         ? `Moved documents ${Date.now()}`
         : 'Moved documents';
-      await edit('# UnsavedDropboxMoveDraft');
+      await edit('# UnsavedDropboxOrganizationDraft');
       await creationMenu();
       await page
         .getByRole('menuitem', { name: labels.new_folder, exact: true })
@@ -398,22 +398,13 @@ async function crash() {
         .locator('#sidebar')
         .getByRole('button', { name: documentName, exact: true })
         .click({ button: 'right' });
-      await page
-        .getByRole('menuitem', { name: labels.move_to, exact: true })
-        .click();
-      const dialog = page.getByRole('dialog', {
-        name: labels.move_to,
-        exact: true,
-      });
-      assert.equal(await dialog.locator('img[src="./dropbox.svg"]').count(), 1);
-      await dialog.getByRole('button', { name: rootName, exact: true }).click();
-      await dialog
-        .getByRole('button', { name: folderName, exact: true })
-        .click();
-      await dialog
-        .getByRole('button', { name: labels.move_here, exact: true })
-        .click();
-      await dialog.waitFor({ state: 'hidden' });
+      assert.equal(
+        await page
+          .getByRole('menuitem', { name: labels.move_to, exact: true })
+          .isEnabled(),
+        false,
+      );
+      await page.keyboard.press('Escape');
       assert.equal((await identity()).path, document.path);
       assert.equal(
         await page
@@ -425,16 +416,11 @@ async function crash() {
         document.id,
         '# DropboxSmokeSaved\n\nWritten through MKEditor.',
       );
-      await folder.click();
-      await page
-        .locator('#sidebar')
-        .getByRole('button', { name: documentName, exact: true })
-        .waitFor();
       await save();
       await saved();
-      await verify(document.id, '# UnsavedDropboxMoveDraft');
+      await verify(document.id, '# UnsavedDropboxOrganizationDraft');
       await page.screenshot({
-        path: path.join(profile, 'dropbox-moved-document.png'),
+        path: path.join(profile, 'dropbox-organization.png'),
       });
     },
   );

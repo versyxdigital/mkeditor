@@ -927,7 +927,7 @@ test.each<CloudProviderId>(['google-drive', 'dropbox'])(
   },
 );
 
-test.each<CloudProviderId>(['google-drive', 'dropbox'])(
+test.each<CloudProviderId>(['google-drive'])(
   '%s move picker filters documents, paginates folders and leaves Explorer in place',
   async (provider) => {
     const { manager, requests, respond, state } = organizing(provider);
@@ -964,7 +964,7 @@ test.each<CloudProviderId>(['google-drive', 'dropbox'])(
   },
 );
 
-test.each<CloudProviderId>(['google-drive', 'dropbox'])(
+test.each<CloudProviderId>(['google-drive'])(
   '%s move uses the captured item and destination, and finishes through FileManager',
   async (provider) => {
     const { manager, files, requests, respond, state } = organizing(provider);
@@ -1008,6 +1008,18 @@ test.each<CloudProviderId>(['google-drive', 'dropbox'])(
     manager.dispose();
   },
 );
+
+test('Dropbox moves stay disabled while folder creation remains available', async () => {
+  const { manager, requests } = organizing('dropbox');
+  const count = requests.length;
+  expect(manager.canMove(movable)).toBe(false);
+  expect(manager.canOrganize()).toBe(true);
+  manager.startMove(movable);
+  await manager.confirmMove();
+  expect(manager.getSnapshot().movePicker).toBeUndefined();
+  expect(requests).toHaveLength(count);
+  manager.dispose();
+});
 
 test('a closed or disconnected picker ignores late folder replies and read-only items cannot move', async () => {
   const { manager, requests, respond, state, push } = organizing();

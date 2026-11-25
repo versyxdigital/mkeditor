@@ -955,9 +955,13 @@ test.each<CloudProviderId>(['google-drive', 'dropbox'])(
     expect(
       await screen.findByRole('menuitem', { name: 'cloud:open' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('menuitem', { name: 'cloud:move_to' }),
-    ).not.toHaveAttribute('data-disabled');
+    const move = screen.getByRole('menuitem', { name: 'cloud:move_to' });
+    if (provider === 'dropbox') {
+      expect(move).toHaveAttribute('data-disabled');
+      fireEvent.click(move);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(manager.getSnapshot().movePicker).toBeUndefined();
+    } else expect(move).not.toHaveAttribute('data-disabled');
     expect(
       screen.queryByRole('menuitem', { name: 'cloud:new_folder' }),
     ).not.toBeInTheDocument();
@@ -990,7 +994,7 @@ test.each<CloudProviderId>(['google-drive', 'dropbox'])(
   },
 );
 
-test.each<CloudProviderId>(['google-drive', 'dropbox'])(
+test.each<CloudProviderId>(['google-drive'])(
   '%s Move to picker browses folders without changing Explorer and cancellation does not move',
   async (provider) => {
     const { manager, bridge, state, listeners } =

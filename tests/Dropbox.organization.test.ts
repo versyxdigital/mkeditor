@@ -83,7 +83,7 @@ const restart = () => {
   service = construct();
 };
 
-test('creates folders through the shared service, deduplicates requests and moves a document by ID', async () => {
+test('creates folders and deduplicates requests while declining unsafe document moves', async () => {
   const identity = await connection();
   const command = {
     action: 'createFolder' as const,
@@ -112,13 +112,18 @@ test('creates folders through the shared service, deduplicates requests and move
     sourceFolderId: 'root',
     folderId: created.item!.id,
   };
-  const moved = success(await request(move));
-  expect(moved).toMatchObject({
-    item: { id: 'id:markdown', parents: [created.item!.id] },
-    previousValidator: '"000000001"',
+  expect(await request(move)).toMatchObject({
+    ok: false,
+    error: 'unsupported',
   });
-  expect(success(await request(move)).item).toEqual(moved.item);
-  expect(fixture.state.moves).toBe(1);
+  expect(await request(move)).toMatchObject({
+    ok: false,
+    error: 'unsupported',
+  });
+  expect(fixture.state.moves).toBe(0);
+  expect(
+    success(await request({ action: 'state' })).state.pendingOperations ?? [],
+  ).toEqual([]);
   expect(fixture.files.get('id:markdown')!.content).toBe('# Dropbox notes');
   expect(fixture.state.writes).toBe(0);
   const marker = fixture.state.requests.find(
@@ -127,9 +132,8 @@ test('creates folders through the shared service, deduplicates requests and move
   expect(marker?.root).toBe('{".tag":"home"}');
 });
 
-test('a lost move response survives restart, blocks saves and checks location without replaying the move', async () => {
+test('an older pending move remains recoverable after restart without replaying a move', async () => {
   const identity = await connection();
-  fixture.state.loseMoveReply = true;
   const move = {
     action: 'move' as const,
     ...identity,
@@ -138,13 +142,24 @@ test('a lost move response survives restart, blocks saves and checks location wi
     sourceFolderId: 'root',
     folderId: 'id:docs',
   };
-  expect(await request(move)).toMatchObject({
-    ok: false,
-    error: 'unconfirmed',
-  });
+  // Seed an older release's journal; current releases must never perform this move.
+  await new CloudRecoveryStore(join(directory, 'recovery.bin')).saveOperations([
+    {
+      provider: 'dropbox',
+      kind: 'move',
+      ...identity,
+      operationId: move.operationId,
+      itemId: move.itemId,
+      sourceFolderId: move.sourceFolderId,
+      folderId: move.folderId,
+      fingerprint: JSON.stringify(move),
+      previousValidator: '"000000001"',
+    },
+  ]);
+  fixture.files.get('id:markdown')!.path = '/Documents/notes.md';
   restart();
   expect(
-    success(await request({ action: 'state' })).state.pendingOperations,
+    success(await request({ action: 'state' })).state.pendingOperations ?? [],
   ).toContainEqual(
     expect.objectContaining({
       provider: 'dropbox',
@@ -166,99 +181,58 @@ test('a lost move response survives restart, blocks saves and checks location wi
     await request({
       action: 'reconcileItem',
       ...identity,
-      operationId: 'lost-move',
+      operationId: move.operationId,
     }),
   );
   expect(checked.item?.parents).toEqual(['id:docs']);
-  expect(fixture.state.moves).toBe(1);
+  expect(fixture.state.moves).toBe(0);
+  expect(fixture.state.writes).toBe(0);
   expect(fixture.files.get('id:markdown')!.content).toBe('# Dropbox notes');
 });
 
-test.each(['elsewhere', 'destination', 'missing'] as const)(
-  'a write-time source relocation (%s) is a conflict and cannot be adopted from the final destination',
-  async (location) => {
-    const identity = await connection();
-    fixture.state.beforeWrite = () => {
-      if (location === 'missing') fixture.files.delete('id:markdown');
-      else
-        fixture.files.get('id:markdown')!.path =
-          location === 'destination'
-            ? '/Documents/notes.md'
-            : '/Elsewhere/notes.md';
-    };
-    expect(
-      await request({
-        action: 'move',
-        ...identity,
-        operationId: 'stale-source',
-        itemId: 'id:markdown',
-        sourceFolderId: 'root',
-        folderId: 'id:docs',
-      }),
-    ).toMatchObject({ ok: false, error: 'conflict' });
-    expect(
-      fixture.state.requests.find((entry) => entry.route === 'files/move_v2')
-        ?.body,
-    ).toMatchObject({
-      from_path: '/notes.md',
-      to_path: 'id:docs/notes.md',
-      autorename: false,
-      allow_ownership_transfer: false,
-    });
-    expect(fixture.state.moves).toBe(0);
-    if (location !== 'missing') {
-      expect(fixture.files.get('id:markdown')!.content).toBe('# Dropbox notes');
-      expect(fixture.files.get('id:markdown')!.path).toBe(
-        location === 'destination'
-          ? '/Documents/notes.md'
-          : '/Elsewhere/notes.md',
+test.each(['replacement', 'relocation', 'revision'] as const)(
+  'declines a move after a concurrent source %s without sending any mutation',
+  async (change) => {
+    const organization = adapter.organization;
+    const opened = await adapter.read('access', 'id:markdown', true);
+    if (change === 'revision')
+      fixture.externalEdit('id:markdown', 'external edit');
+    else fixture.files.get('id:markdown')!.path = '/Elsewhere/notes.md';
+    if (change === 'replacement')
+      fixture.files.set('id:replacement', {
+        id: 'id:replacement',
+        name: 'notes.md',
+        path: '/notes.md',
+        content: 'different document',
+        revision: 1,
+      });
+    const before = [...fixture.files].map(([id, file]) => [id, { ...file }]);
+    const requests = fixture.state.requests.length;
+    const authorize = jest.fn();
+    await expect(
+      organization.move(
+        'access',
+        'id:markdown',
+        'root',
+        'id:docs',
+        opened.item.validator!,
+        authorize,
+      ),
+    ).rejects.toMatchObject({ code: 'unsupported' });
+    expect(authorize).not.toHaveBeenCalled();
+    expect(fixture.state.requests).toHaveLength(requests);
+    expect(fixture.state.moves + fixture.state.writes).toBe(0);
+    expect([...fixture.files].map(([id, file]) => [id, { ...file }])).toEqual(
+      before,
+    );
+    if (change === 'replacement') {
+      expect(fixture.files.get('id:replacement')!.path).toBe('/notes.md');
+      expect(fixture.files.get('id:replacement')!.content).toBe(
+        'different document',
       );
     }
-    restart();
-    expect(
-      await request({
-        action: 'reconcileItem',
-        ...identity,
-        operationId: 'stale-source',
-      }),
-    ).toMatchObject({ ok: false, error: 'not_applied' });
-    expect(fixture.state.moves).toBe(0);
   },
 );
-
-test('a replacement at the validated source path cannot be accepted as the expected document', async () => {
-  const identity = await connection();
-  fixture.state.beforeWrite = () => {
-    fixture.files.get('id:markdown')!.path = '/Elsewhere/notes.md';
-    fixture.files.set('id:replacement', {
-      id: 'id:replacement',
-      name: 'notes.md',
-      path: '/notes.md',
-      content: 'different document',
-      revision: 1,
-    });
-  };
-  expect(
-    await request({
-      action: 'move',
-      ...identity,
-      operationId: 'replaced-source',
-      itemId: 'id:markdown',
-      sourceFolderId: 'root',
-      folderId: 'id:docs',
-    }),
-  ).toMatchObject({ ok: false, error: 'conflict' });
-  expect(fixture.files.get('id:markdown')!.path).toBe('/Elsewhere/notes.md');
-  expect(fixture.files.get('id:markdown')!.content).toBe('# Dropbox notes');
-  restart();
-  expect(
-    await request({
-      action: 'reconcileItem',
-      ...identity,
-      operationId: 'replaced-source',
-    }),
-  ).toMatchObject({ ok: false, error: 'not_applied' });
-});
 
 test('a folder whose creation reply was lost is never adopted without an ownership marker or recreated automatically', async () => {
   const identity = await connection();
@@ -369,98 +343,54 @@ test('folder creation resolves the selected parent ID again after it is renamed'
   ).toBe(true);
 });
 
-test('moves preserve a remote edit made during the move and reject a stale subsequent save', async () => {
-  const organization = adapter.organization;
-  const prepared = await organization.prepareMove(
-    'access',
-    'id:markdown',
-    'root',
-    'id:docs',
-  );
-  fixture.state.beforeWrite = () =>
-    fixture.externalEdit('id:markdown', 'concurrent remote text');
-  await organization.move(
-    'access',
-    'id:markdown',
-    prepared.source,
-    prepared.destination,
-    prepared.validator,
-    () => {},
-  );
-  expect(
-    (await organization.inspectItem('access', 'id:markdown')).validator,
-  ).toBe('"000000002"');
-  expect(fixture.files.get('id:markdown')!.content).toBe(
-    'concurrent remote text',
-  );
-  await expect(
-    adapter.update(
-      'access',
-      'id:markdown',
-      prepared.validator,
-      'stale local text',
-      () => {},
-    ),
-  ).rejects.toMatchObject({ code: 'conflict' });
-  expect(fixture.state.writes).toBe(0);
-});
-
-test('a write-time destination collision leaves both files unchanged', async () => {
-  const organization = adapter.organization;
-  const prepared = await organization.prepareMove(
-    'access',
-    'id:markdown',
-    'root',
-    'id:docs',
-  );
-  fixture.state.beforeWrite = () =>
-    fixture.files.set('id:other', {
-      id: 'id:other',
-      path: '/Documents/notes.md',
+test('a replacement scheduled after source validation cannot be moved by a request', async () => {
+  const identity = await connection();
+  const replace = jest.fn(() => {
+    fixture.files.get('id:markdown')!.path = '/Elsewhere/notes.md';
+    fixture.files.set('id:replacement', {
+      id: 'id:replacement',
       name: 'notes.md',
-      content: 'other document',
+      path: '/notes.md',
+      content: 'replacement document',
       revision: 1,
     });
-  await expect(
-    organization.move(
-      'access',
-      'id:markdown',
-      prepared.source,
-      prepared.destination,
-      prepared.validator,
-      () => {},
-    ),
-  ).rejects.toMatchObject({ code: 'duplicate' });
+  });
+  // The fixture executes this immediately before move_v2 resolves from_path.
+  // Checking the returned ID would already be too late to protect the replacement.
+  fixture.state.beforeWrite = replace;
+  expect(
+    await request({
+      action: 'move',
+      ...identity,
+      operationId: 'write-time-replacement',
+      itemId: 'id:markdown',
+      sourceFolderId: 'root',
+      folderId: 'id:docs',
+    }),
+  ).toMatchObject({ ok: false, error: 'unsupported' });
+  expect(replace).not.toHaveBeenCalled();
+  expect(
+    fixture.state.requests.some((entry) => entry.route === 'files/move_v2'),
+  ).toBe(false);
+  expect(fixture.state.moves + fixture.state.writes).toBe(0);
   expect(fixture.files.get('id:markdown')!.path).toBe('/notes.md');
-  expect(fixture.files.get('id:other')!.content).toBe('other document');
-  expect(fixture.state.moves).toBe(0);
+  expect(fixture.files.get('id:markdown')!.content).toBe('# Dropbox notes');
 });
 
-test('a changed source or a denied destination is rejected before any move', async () => {
-  const organization = adapter.organization;
-  const prepared = await organization.prepareMove(
-    'access',
-    'id:markdown',
-    'root',
-    'id:docs',
-  );
-  fixture.externalEdit('id:markdown', 'new revision');
+test('move preparation is unsupported and read-only destinations still reject folder creation', async () => {
+  const requests = fixture.state.requests.length;
   await expect(
-    organization.move(
+    adapter.organization.prepareMove(
       'access',
       'id:markdown',
-      prepared.source,
-      prepared.destination,
-      prepared.validator,
-      () => {},
+      'root',
+      'id:docs',
     ),
-  ).rejects.toMatchObject({ code: 'conflict' });
+  ).rejects.toMatchObject({ code: 'unsupported' });
+  expect(fixture.state.requests).toHaveLength(requests);
   fixture.files.get('id:docs')!.readOnly = true;
   await expect(
-    organization.prepareMove('access', 'id:markdown', 'root', 'id:docs'),
-  ).rejects.toMatchObject({ code: 'permission' });
-  await expect(
-    organization.prepareCreate('access', 'id:docs', 'Drafts', 'folder'),
+    adapter.organization.prepareCreate('access', 'id:docs', 'Drafts', 'folder'),
   ).rejects.toMatchObject({ code: 'permission' });
   expect(fixture.state.moves + fixture.state.folderCreates).toBe(0);
 });

@@ -9,13 +9,13 @@ Dropbox is a desktop storage provider alongside Google Drive. Connect in **Setti
 - Creation uses a folder-ID-relative path, no-overwrite mode and an app-owned operation property. This property lets MKEditor identify the result after a lost response. Unknown outcomes are checked without replaying uploads.
 - Tab order, active document, drafts and view state use the same OS-encrypted recovery store as Drive. Restoring checks the matching account before another save and never uploads a draft automatically.
 - Local copies and remote Save As use the normal local editor/save flow. Saving a copy to Dropbox does not mark the source tab saved.
-- Create folders from the Explorer context menu or its actions menu. Right-click a Markdown document and choose **Move to…** to pick another folder in the same connection. Open tabs retain their text, undo history and unsaved changes.
+- Create folders from the Explorer context menu or its actions menu. Document moves are disabled because Dropbox cannot atomically enforce the checked source identity, location and revision.
 
 Supported content is UTF-8 Markdown up to 4 MiB. Personal accounts and the member's home area of a Dropbox team account use the user API; mounted shared folders follow the account's permissions. Team administration, separate team-space browsing, Dropbox Paper conversion, moving folders, rename, delete and synchronization remain outside this adapter's current scope.
 
 Folder creation uses [`create_folder_v2`](https://docs.dropboxapi.com/dropbox-api/api-reference/user-endpoints/files/create-folder-v-2) with automatic renaming disabled, then adds an app-owned marker to the acknowledged folder ID. A lost creation reply before the marker was written remains unconfirmed; MKEditor does not adopt an unmarked same-name folder or automatically repeat creation. Confirmed markers allow read-only reconciliation after restart.
 
-Document moves use [`move_v2`](https://docs.dropboxapi.com/dropbox-api/api-reference/user-endpoints/files/move-v-2), with a stable source ID, no automatic renaming and no ownership transfer. Dropbox does not offer a revision condition on moves. MKEditor checks the source revision and destination first, moves metadata without uploading text, and retains the editor's original content baseline when a remote edit occurs during the move. Existing encrypted recovery records and per-file save/move serialization cover uncertain outcomes without replaying moves.
+Dropbox's [`move_v2`](https://docs.dropboxapi.com/dropbox-api/api-reference/user-endpoints/files/move-v-2) has no source revision or location precondition. A path-based move could move a replacement file; an ID-based move could follow an unchecked relocation. MKEditor therefore declines move preparation and execution without sending a mutation. Older pending move records remain available for read-only reconciliation after restart; they are never replayed.
 
 ## Maintainer app registration
 
@@ -51,7 +51,7 @@ The environment value takes precedence. `build-app` writes the registration only
 
 ## Validation
 
-After `npm run build-all`, run `npm run test:dropbox-smoke`. It uses the production renderer, adapter, connection store and recovery components with a local HTTP fixture and an isolated profile. It covers connection/upgrade, create/save/readback, the save toast, folder creation, moving an open draft without losing edits, conflict preservation, lost acknowledgements, encrypted draft restart, forced termination/offline recovery and token refresh/disconnect. Adapter and service tests also cover folder ownership markers, interrupted organization requests and duplicate destinations.
+After `npm run build-all`, run `npm run test:dropbox-smoke`. It uses the production renderer, adapter, connection store and recovery components with a local HTTP fixture and an isolated profile. It covers connection/upgrade, create/save/readback, the save toast, folder creation, disabled move controls with draft preservation, conflict preservation, lost acknowledgements, encrypted draft restart, forced termination/offline recovery and token refresh/disconnect. Adapter and service tests also cover folder ownership markers, interrupted folder requests, declined moves, concurrent source replacements and recovery of older pending moves.
 
 `npm run test:dropbox-live` requires interactive Dropbox consent. It creates a uniquely named `000 MKEditor …` folder and changes only documents it creates there. The folder is retained for inspection. Live mode does not inject connection failures or capture browser consent pages. Reports and screenshots are written under `out/drive-smoke/dropbox-*/`; do not publish the credential/profile files.
 
