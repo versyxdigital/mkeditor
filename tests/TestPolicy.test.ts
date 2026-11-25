@@ -91,6 +91,12 @@ describe('test policy', () => {
         file.endsWith('/requireAssertions.cjs'),
       );
       expect(assertionGuard).toBeDefined();
+      if (!assertionGuard)
+        throw new Error('Assertion guard is not configured.');
+      const assertionGuardPath = resolve(
+        root,
+        assertionGuard.replace(/^<rootDir>[\\/]/, ''),
+      );
       // Jest resolves roots to native paths; Windows TEMP may contain an 8.3 alias.
       const directory = realpathSync.native(
         mkdtempSync(join(tmpdir(), 'mkeditor-test-policy-')),
@@ -113,12 +119,14 @@ describe('test policy', () => {
             `--colors=${colors}`,
             '--config',
             JSON.stringify({
-              rootDir: root,
+              // The checkout and Windows TEMP may be on different drives.
+              // Keep discovery within the temporary project itself.
+              rootDir: directory,
               roots: [directory],
               testMatch: ['**/assertions.test.cjs'],
               testEnvironment: 'node',
               transform: {},
-              setupFilesAfterEnv: [assertionGuard],
+              setupFilesAfterEnv: [assertionGuardPath],
               cache: false,
             }),
             '--json',
