@@ -179,6 +179,7 @@ export class CommandProvider {
    * @param content - the content to manipulate
    */
   private executeEdit(content: string) {
+    if (this.mkeditor.getRawOptions?.().readOnly) return;
     this.mkeditor.executeEdits(null, [
       {
         range: this.getRange(),

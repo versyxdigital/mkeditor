@@ -5,9 +5,10 @@ import {
   Separator,
   type GroupImperativeHandle,
   type PanelImperativeHandle,
-  type PanelSize,
 } from 'react-resizable-panels';
 import { Toaster } from 'sonner';
+import { DocumentStatus } from './components/DocumentStatus';
+import { useTranslation } from './hooks/useTranslation';
 
 import {
   ManagersProvider,
@@ -43,7 +44,10 @@ import {
   registerPropertiesShower,
   useProperties,
 } from './contexts/PropertiesContext';
-import { SettingsContextProvider } from './contexts/SettingsContext';
+import {
+  SettingsContextProvider,
+  useSettings,
+} from './contexts/SettingsContext';
 import { ExportSettingsContextProvider } from './contexts/ExportSettingsContext';
 import { AssistantContextProvider } from './contexts/AssistantContext';
 import { Navbar } from './components/Navbar';
@@ -100,6 +104,7 @@ const MoveItemModal = React.lazy(() =>
 );
 
 import './styles/tailwind.css';
+import { RemoteDocumentNotice } from './components/cloud/RemoteDocumentNotice';
 
 export interface AppProps {
   initialManagers: Managers;
@@ -171,14 +176,10 @@ export const App: React.FC<AppProps> = ({
                               workspaceGroupRef={workspaceGroupRef}
                             />
                             <BottomToolbarRight />
+                            <DocumentStatus />
                             <LazyModals />
                             <ConfirmToolCall />
-                            <Toaster
-                              position="bottom-right"
-                              richColors
-                              closeButton
-                              theme="system"
-                            />
+                            <AppToaster />
                           </FileTreeProvider>
                         </FilesProvider>
                       </UIStateProvider>
@@ -191,6 +192,26 @@ export const App: React.FC<AppProps> = ({
         </ExportSettingsContextProvider>
       </SettingsContextProvider>
     </ManagersProvider>
+  );
+};
+
+/** Notifications follow the selected application theme, including manual overrides. */
+const AppToaster: React.FC = () => {
+  const { settings } = useSettings();
+  return (
+    <Toaster
+      position="bottom-right"
+      richColors
+      closeButton
+      theme={settings.effectiveDarkmode ? 'dark' : 'light'}
+      toastOptions={{
+        style: {
+          fontFamily: 'var(--font-interface)',
+          borderRadius: 'var(--radius-floating)',
+          boxShadow: 'var(--shadow-floating)',
+        },
+      }}
+    />
   );
 };
 
@@ -214,8 +235,7 @@ const MenuActionBridge: React.FC = () => {
             // the P8 Help → Configure AI Providers menu item that
             // opens Settings on a specific tab.
             const payload = action.payload as
-              | ModalKey
-              | { modal: ModalKey; tab?: 'general' | 'assistant' };
+              ModalKey | { modal: ModalKey; tab?: 'general' | 'assistant' };
             if (typeof payload === 'string') {
               openModal(payload);
             } else if (payload && typeof payload.modal === 'string') {
@@ -437,6 +457,7 @@ export const Shell: React.FC<{
     setRightSidebarSize,
   } = useUIState();
   const { mode } = useManagers();
+  const { t } = useTranslation();
   // AI Assistant is desktop-only. On web the assistant pane is not
   // rendered at all — see the Decisions table in
   // docs/AI_ASSISTANT.md for the rationale (no localStorage key
@@ -460,15 +481,11 @@ export const Shell: React.FC<{
     else if (!rightSidebarOpen && !panel.isCollapsed()) panel.collapse();
   }, [rightSidebarOpen, showAssistant]);
 
-  // Push every drag tick into UIStateContext so the size persists
-  // through the session save pipeline (debounced 300ms by
-  // FileManager.scheduleSessionSave). The panel reports size as a
-  // percentage of the outer Group, matching how we persist it. We
-  // suppress zero-size events fired while the panel is collapsed so
-  // collapsing doesn't clobber the user's last-chosen expanded size.
-  const handleAssistantResize = React.useCallback(
-    (panelSize: PanelSize) => {
-      const size = panelSize.asPercentage;
+  // Persist settled layouts instead of re-rendering the shell and changing
+  // panel defaults on every pointer move. Collapsing retains the last width.
+  const handleLayoutChanged = React.useCallback(
+    (layout: Record<string, number>) => {
+      const size = layout['assistant-pane'];
       if (size > 0 && size !== rightSidebarSize) {
         setRightSidebarSize(size);
       }
@@ -477,30 +494,59 @@ export const Shell: React.FC<{
   );
 
   return (
-    <Group orientation="horizontal" id="mkeditor-layout">
+    <Group
+      orientation="horizontal"
+      id="mkeditor-layout"
+      resizeTargetMinimumSize={{ fine: 18, coarse: 28 }}
+      onLayoutChanged={handleLayoutChanged}
+    >
       <Panel
         id="sidebar-pane"
+        className="thin-scrollbars"
         panelRef={sidebarPanelRef}
         collapsible
-        defaultSize="15%"
-        minSize="10%"
+        defaultSize="240px"
+        minSize="180px"
+        maxSize="360px"
       >
         <Sidebar />
       </Panel>
       <Separator className="gutter sidebar-gutter-horizontal" />
       <Panel id="workspace-pane">
-        <Workspace groupRef={workspaceGroupRef} onEditorReady={onEditorReady} />
+        <div className="flex h-full min-h-0 min-w-0 flex-col">
+          <RemoteDocumentNotice />
+          <div className="min-h-0 min-w-0 flex-1">
+            <Workspace
+              groupRef={workspaceGroupRef}
+              onEditorReady={onEditorReady}
+            />
+          </div>
+        </div>
       </Panel>
       {showAssistant && (
         <>
-          <Separator className="gutter sidebar-gutter-horizontal" />
+          <Separator
+            aria-label={t('assistant:resize_sidebar')}
+            data-testid="assistant-resizer"
+            className="assistant-resizer relative z-10 flex w-2 shrink-0 touch-none cursor-col-resize items-center justify-center bg-border/50 outline-none transition-colors hover:bg-primary/40 focus-visible:bg-primary/40 focus-visible:ring-1 focus-visible:ring-primary"
+          >
+            {/* Keep near-edge pointer events owned by this separator rather
+                than the editor's nested panel group. */}
+            <span
+              aria-hidden="true"
+              className="absolute inset-y-0 -inset-x-[5px]"
+            />
+            <span
+              aria-hidden="true"
+              className="h-8 w-0.5 rounded-full bg-muted-foreground/60"
+            />
+          </Separator>
           <Panel
             id="assistant-pane"
             panelRef={assistantPanelRef}
             collapsible
             defaultSize={`${rightSidebarSize}%`}
             minSize="15%"
-            onResize={handleAssistantResize}
           >
             <AssistantSidebar />
           </Panel>

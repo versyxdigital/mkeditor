@@ -1,0 +1,14 @@
+{
+  "title": "{{provider}} verbinden",
+  "openai_description": "Gebruik je ChatGPT-abonnement of een API-sleutel om te chatten.",
+  "api_description": "Voeg een API-sleutel toe om met {{provider}} te chatten.",
+  "api_option": "Een API-sleutel gebruiken",
+  "api_help": "API-gebruik wordt apart door {{provider}} gefactureerd.",
+  "use_saved_key": "Opgeslagen API-sleutel gebruiken",
+  "use_plan": "Verbonden ChatGPT-account gebruiken",
+  "save": "Opslaan en verbinden",
+  "saving": "Verbinding opslaan…",
+  "save_failed": "De API-sleutel kon niet veilig worden opgeslagen. Probeer het opnieuw.",
+  "updating": "Verbinding bijwerken…",
+  "anthropic_subscription_note": "Claude-abonnementen dekken het gebruik in MKEditor niet. Verbind met een Anthropic-API-sleutel; API-gebruik wordt apart gefactureerd."
+}

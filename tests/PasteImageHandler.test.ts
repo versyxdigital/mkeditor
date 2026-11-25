@@ -40,6 +40,8 @@ function makeFakeEditor(opts: { container?: HTMLElement } = {}) {
   const executeEdits = jest.fn();
   const focus = jest.fn();
   let textFocus = true;
+  let version = 1;
+  const model = { getVersionId: jest.fn(() => version) };
   return {
     container,
     inner,
@@ -47,12 +49,17 @@ function makeFakeEditor(opts: { container?: HTMLElement } = {}) {
     setSelection,
     executeEdits,
     focus,
+    model,
+    setVersion: (next: number) => {
+      version = next;
+    },
     setTextFocus: (v: boolean) => {
       textFocus = v;
     },
     api: {
       getDomNode: jest.fn(() => container),
       getSelection: jest.fn(() => selection),
+      getModel: jest.fn(() => model),
       executeEdits,
       setSelection,
       focus,
@@ -131,6 +138,11 @@ function pngFile(bytes = [0x89, 0x50, 0x4e, 0x47]): File {
 /* -------------------------------------------------------------------- */
 
 describe('relativePath', () => {
+  it('treats Windows directory segments case-insensitively', () => {
+    expect(
+      relativePath('C:/WORK/Notes', 'c:/work/notes/assets/image.png'),
+    ).toBe('./assets/image.png');
+  });
   it('builds a sibling path with the markdown ./-prefix convention', () => {
     expect(relativePath('C:/work', 'C:/work/cover.png')).toBe('./cover.png');
   });
@@ -187,11 +199,7 @@ describe('PasteImageHandler', () => {
   afterEach(() => {
     while (cleanups.length > 0) {
       const fn = cleanups.pop();
-      try {
-        fn?.();
-      } catch {
-        // detach is best-effort during teardown
-      }
+      fn?.();
     }
   });
 
@@ -311,7 +319,7 @@ describe('PasteImageHandler', () => {
     );
   });
 
-  it('handles multiple images in a single paste, one insertion each', async () => {
+  it('inserts multiple images together instead of nesting them inside the first alt text', async () => {
     const ed = makeFakeEditor();
     const writer = jest
       .fn()
@@ -330,7 +338,87 @@ describe('PasteImageHandler', () => {
     ]);
     await new Promise((r) => setTimeout(r, 0));
     expect(writer).toHaveBeenCalledTimes(2);
-    expect(ed.executeEdits).toHaveBeenCalledTimes(2);
+    expect(ed.executeEdits).toHaveBeenCalledTimes(1);
+    expect(ed.executeEdits.mock.calls[0][1][0].text).toBe(
+      '![](./assets/a.png)\n![](./assets/b.png)',
+    );
+  });
+
+  it('does not insert a delayed image link into a different tab', async () => {
+    const ed = makeFakeEditor();
+    let path = '/work/source.md';
+    const fileManager = { getActiveEditablePath: jest.fn(() => path) };
+    let finish!: (value: { ok: true; path: string }) => void;
+    const writer = jest.fn(
+      () =>
+        new Promise<{ ok: true; path: string }>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    attachAndTrack(
+      new PasteImageHandler(
+        ed.api,
+        fileManager as never,
+        makeFakeSettingsProvider(),
+        writer,
+      ),
+    );
+    dispatchPaste(ed.inner, [
+      { kind: 'file', type: 'image/png', file: pngFile() },
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    path = '/work/other.md';
+    finish({ ok: true, path: '/work/assets/image.png' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(ed.executeEdits).not.toHaveBeenCalled();
+  });
+
+  it('does not replace text edited while a clipboard image was saving', async () => {
+    const ed = makeFakeEditor();
+    const writer = jest.fn(async () => {
+      ed.setVersion(2);
+      return { ok: true as const, path: '/work/assets/image.png' };
+    });
+    attachAndTrack(
+      new PasteImageHandler(
+        ed.api,
+        makeFakeFileManager('/work/source.md'),
+        makeFakeSettingsProvider(),
+        writer,
+      ),
+    );
+    dispatchPaste(ed.inner, [
+      { kind: 'file', type: 'image/png', file: pngFile() },
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(ed.executeEdits).not.toHaveBeenCalled();
+  });
+
+  it('uses the original paste position and escapes parentheses in Markdown paths', async () => {
+    const ed = makeFakeEditor();
+    const writer = jest.fn(async () => {
+      ed.selection.startColumn = 40;
+      ed.selection.endColumn = 40;
+      return { ok: true as const, path: '/work/assets (notes)/image.png' };
+    });
+    attachAndTrack(
+      new PasteImageHandler(
+        ed.api,
+        makeFakeFileManager('/work/source.md'),
+        makeFakeSettingsProvider(),
+        writer,
+      ),
+    );
+    dispatchPaste(ed.inner, [
+      { kind: 'file', type: 'image/png', file: pngFile() },
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(ed.executeEdits.mock.calls[0][1][0]).toEqual(
+      expect.objectContaining({
+        range: expect.objectContaining({ startColumn: 5 }),
+        text: '![](./assets%20%28notes%29/image.png)',
+      }),
+    );
   });
 
   it('detach() unbinds the paste listener', async () => {

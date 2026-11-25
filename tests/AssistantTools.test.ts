@@ -24,6 +24,7 @@ interface FakePosition {
 }
 
 interface FakeModel {
+  getAlternativeVersionId: jest.Mock;
   getValue: jest.Mock;
   getLineCount: jest.Mock;
   getLineMaxColumn: jest.Mock;
@@ -36,6 +37,7 @@ interface FakeModel {
 function makeModel(content: string, eol: '\n' | '\r\n' = '\n'): FakeModel {
   const lines = content.split(/\r?\n/);
   return {
+    getAlternativeVersionId: jest.fn(() => 1),
     getValue: jest.fn(() => content),
     getLineCount: jest.fn(() => lines.length),
     getLineMaxColumn: jest.fn(
@@ -118,6 +120,7 @@ function makeBridgeManager(
   const changeListeners = new Set<() => void>();
 
   const fileManager = {
+    recordSavedVersion: jest.fn(),
     activeFile: opts.activeFile ?? null,
     models,
     // Mirror the real FileManager accessor. Defaults to the
@@ -227,12 +230,32 @@ function makeBridgeManager(
 }
 
 describe('AssistantTools — catalog metadata', () => {
-  it('describe() returns 11 tool descriptors (the documented catalog)', () => {
+  it('describe() registers existing and workspace tool descriptors together', () => {
     const bm = makeBridgeManager();
     const tools = new AssistantTools(bm as never);
     const names = tools.describe().map((d) => d.name);
     expect(names.sort()).toEqual(
       [
+        'move_path',
+        'rename_path',
+        'copy_path',
+        'delete_path',
+        'path_info',
+        'search_files',
+        'find_and_replace',
+        'update_links',
+        'check_links',
+        'get_outline',
+        'get_open_tabs',
+        'save_file',
+        'close_tab',
+        'append_to_file',
+        'edit_lines',
+        'word_count',
+        'create_from_template',
+        'get_settings',
+        'set_setting',
+        'export_html',
         'create_file',
         'create_folder',
         'edit_file',
@@ -946,6 +969,12 @@ describe('AssistantTools — write-class execution', () => {
     await tools.execute('write_file', { path: '/x.md', content: 'new' });
     expect(model.setValue).toHaveBeenCalledWith('new');
     expect(saveFile).toHaveBeenCalledWith('/x.md', 'new');
+    expect(bm.fileManager.recordSavedVersion).toHaveBeenCalledWith(
+      '/x.md',
+      model,
+      'new',
+      1,
+    );
   });
 
   it('write_file throws when mked.saveFile reports a failure (so the agent hears about it, not a misleading ok)', async () => {
@@ -1739,5 +1768,137 @@ describe('AssistantTools — error paths', () => {
     await expect(
       tools.execute('insert_at_cursor', { content: 'X' }),
     ).rejects.toThrow(/No cursor/);
+  });
+});
+
+describe('AssistantTools execution boundary regressions', () => {
+  it.each(['constructor', '__proto__', 'toString', 'hasOwnProperty'])(
+    'rejects inherited tool name %s everywhere',
+    async (name) => {
+      const tools = new AssistantTools(makeBridgeManager() as never);
+      expect(tools.hasTool(name)).toBe(false);
+      expect(tools.classify(name)).toBe('unknown');
+      expect(tools.buildPreview(name, {})).toBeNull();
+      await expect(
+        tools.getFullPreviewContent(name, {}, 'after'),
+      ).resolves.toBeUndefined();
+      await expect(tools.execute(name, {})).rejects.toThrow('Unknown tool');
+    },
+  );
+
+  it.each([
+    null,
+    [],
+    { path: '/x.md', content: 42 },
+    { path: '/x.md' },
+    { path: '/x.md', content: 'ok', extra: true },
+  ])('validates write arguments before changing models: %j', async (args) => {
+    const model = makeModel('original');
+    const bm = makeBridgeManager({ models: new Map([['/x.md', model]]) });
+    const tools = new AssistantTools(bm as never);
+    await expect(tools.execute('write_file', args)).rejects.toThrow(
+      /argument/i,
+    );
+    expect(model.setValue).not.toHaveBeenCalled();
+    expect(bm.bridge.send).not.toHaveBeenCalled();
+    expect(tools.buildPreview('write_file', args)).toBeNull();
+  });
+
+  it('shows dollar replacement sequences literally in both edit previews', async () => {
+    const bm = makeBridgeManager({
+      models: new Map([['/x.md', makeModel('before target after')]]),
+    });
+    const tools = new AssistantTools(bm as never);
+    const args = { path: '/x.md', oldText: 'target', newText: "$& $$ $` $'" };
+    expect(tools.buildPreview('edit_file', args)?.after).toBe(
+      'before ' + args.newText + ' after',
+    );
+    await expect(
+      tools.getFullPreviewContent('edit_file', args, 'after'),
+    ).resolves.toBe('before ' + args.newText + ' after');
+  });
+
+  it('rejects overlapping edit matches without changing the document', async () => {
+    const bm = makeBridgeManager({
+      models: new Map([['/x.md', makeModel('aaa')]]),
+    });
+    const tools = new AssistantTools(bm as never);
+    const args = { path: '/x.md', oldText: 'aa', newText: 'X' };
+    await expect(tools.execute('edit_file', args)).rejects.toThrow(
+      'multiple places',
+    );
+    expect(bm.mkeditor.executeEdits).not.toHaveBeenCalled();
+    await expect(
+      tools.getFullPreviewContent('edit_file', args, 'after'),
+    ).resolves.toBe('aaa');
+  });
+});
+
+describe('AssistantTools confirmation target regressions', () => {
+  it.each(['replace_selection', 'insert_at_cursor'])(
+    'does not let %s modify a remote document programmatically',
+    async (name) => {
+      const bm = makeBridgeManager();
+      Object.assign(bm.fileManager, {
+        getActiveDocumentPath: () => 'cloud-drive://connection/account/file',
+      });
+      const tools = new AssistantTools(bm as never);
+      await expect(
+        tools.execute(name, { content: 'replacement' }),
+      ).rejects.toThrow();
+      expect(bm.mkeditor.executeEdits).not.toHaveBeenCalled();
+    },
+  );
+  it.each(['replace_selection', 'insert_at_cursor'])(
+    'rejects %s when another tab becomes active before confirmation',
+    async (name) => {
+      const bm = makeBridgeManager({
+        activeFile: '/a.md',
+        cursorPosition: { lineNumber: 1, column: 1 },
+        selection: {
+          startLineNumber: 1,
+          startColumn: 1,
+          endLineNumber: 1,
+          endColumn: 2,
+        },
+      });
+      let active = '/a.md';
+      const model = { getValueInRange: () => 'a' };
+      bm.mkeditor.getModel.mockImplementation(() => model);
+      bm.fileManager.getActiveEditablePath.mockImplementation(() => active);
+      const tools = new AssistantTools(bm as never);
+      const args = { content: 'replacement' };
+      expect(tools.buildPreview(name, args)).not.toBeNull();
+      active = '/b.md';
+      await expect(tools.execute(name, args)).rejects.toThrow(
+        'Editor target changed',
+      );
+      expect(bm.mkeditor.executeEdits).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects a confirmed replacement when selected content changed during the wait', async () => {
+    const bm = makeBridgeManager({
+      selection: {
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: 1,
+        endColumn: 2,
+      },
+    });
+    let selected = 'old';
+    bm.mkeditor.getModel.mockImplementation(() => ({
+      getValueInRange: () => selected,
+    }));
+    const model = bm.mkeditor.getModel();
+    bm.mkeditor.getModel.mockReturnValue(model);
+    const tools = new AssistantTools(bm as never);
+    const args = { content: 'replacement' };
+    tools.buildPreview('replace_selection', args);
+    selected = 'user edit';
+    await expect(tools.execute('replace_selection', args)).rejects.toThrow(
+      'Editor target changed',
+    );
+    expect(bm.mkeditor.executeEdits).not.toHaveBeenCalled();
   });
 });

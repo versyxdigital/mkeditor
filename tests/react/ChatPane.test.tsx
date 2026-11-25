@@ -9,10 +9,21 @@
  */
 
 import * as React from 'react';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import {
+  act,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { AssistantManager } from '../../src/browser/core/AssistantManager';
+import { useAssistantChat } from '../../src/browser/react/contexts/AssistantContext';
+import { DEFAULT_PROVIDER_CONFIG } from '../../src/app/interfaces/Assistant';
 
 import { ChatPane } from '../../src/browser/react/components/assistant/ChatPane';
-import { fakeAssistantManager, renderWithProviders } from '../utils/render';
+import { renderWithProviders } from '../utils/render';
+import { connectedAssistant as fakeAssistantManager } from '../fixtures/connectedAssistant';
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string, vars?: Record<string, unknown>) =>
@@ -88,7 +99,188 @@ function snapshotWith(opts: {
 }
 
 describe('<ChatPane> — input + send', () => {
-  it('renders messages from the conversation', () => {
+  it('keeps the typed end visible without resetting reading position on expansion', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    const input = screen.getByTestId('chat-input') as HTMLTextAreaElement;
+    // jsdom has no layout: supply a text area whose content exceeds its view.
+    Object.defineProperties(input, {
+      scrollHeight: { configurable: true, value: 800 },
+      clientHeight: { configurable: true, value: 80 },
+      offsetHeight: { configurable: true, value: 82 },
+    });
+    input.focus();
+    const draft = 'Long draft\n'.repeat(30);
+    fireEvent.change(input, {
+      target: {
+        value: draft,
+        selectionStart: draft.length,
+        selectionEnd: draft.length,
+      },
+    });
+    expect(input.scrollTop + input.clientHeight).toBeGreaterThanOrEqual(
+      input.scrollHeight,
+    );
+    input.scrollTop = 120;
+    fireEvent.click(
+      screen.getByRole('button', { name: 'assistant-chat:expand_input' }),
+    );
+    expect(input.scrollTop).toBe(120);
+    expect(input).toHaveValue(draft);
+  });
+
+  it('expands and collapses the composer without losing the draft or selection', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    const input = screen.getByTestId('chat-input') as HTMLTextAreaElement;
+    const draft = 'First paragraph\n\nSecond paragraph with more details.';
+    fireEvent.change(input, { target: { value: draft } });
+    input.setSelectionRange(6, 15);
+    const expand = screen.getByRole('button', {
+      name: 'assistant-chat:expand_input',
+    });
+    expect(expand).toHaveAttribute('aria-controls', input.id);
+    fireEvent.click(expand);
+    expect(
+      screen.getByRole('button', { name: 'assistant-chat:collapse_input' }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(input).toHaveValue(draft);
+    expect(input).toHaveFocus();
+    expect([input.selectionStart, input.selectionEnd]).toEqual([6, 15]);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'assistant-chat:collapse_input' }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'assistant-chat:expand_input' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+    expect(input).toHaveValue(draft);
+    expect(am.startCall).not.toHaveBeenCalled();
+  });
+
+  it('sends the complete expanded draft and returns the composer to compact mode', async () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    const draft = Array.from({ length: 20 }, (_, i) => `Requirement ${i}`).join(
+      '\n',
+    );
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: draft },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'assistant-chat:expand_input' }),
+    );
+    fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() =>
+      expect(am.startCall).toHaveBeenCalledWith(
+        'anthropic',
+        conv.id,
+        draft,
+        null,
+      ),
+    );
+    expect(screen.getByTestId('chat-input')).toHaveValue('');
+    expect(
+      screen.getByRole('button', { name: 'assistant-chat:expand_input' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('keeps the latest conversation draft separate when switching before unmount', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    const second = { ...conv, id: 'conv-2' };
+    am.getDraft.mockImplementation((_provider, id) =>
+      id === second.id ? 'second stored draft' : '',
+    );
+    const { rerender, unmount } = renderWithProviders(
+      <ChatPane provider="anthropic" conversation={conv} />,
+      {
+        managers: { assistantManager: am as never },
+      },
+    );
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: 'first current draft' },
+    });
+    rerender(<ChatPane provider="anthropic" conversation={second} />);
+    expect(am.setDraft).toHaveBeenCalledWith(
+      'anthropic',
+      'conv-1',
+      'first current draft',
+    );
+    expect(screen.getByTestId('chat-input')).toHaveValue('second stored draft');
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: 'second current draft' },
+    });
+    unmount();
+    expect(am.setDraft).toHaveBeenLastCalledWith(
+      'anthropic',
+      'conv-2',
+      'second current draft',
+    );
+  });
+
+  it('does not send while an IME composition is using Enter to confirm text', () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: 'composing' },
+    });
+    fireEvent.keyDown(screen.getByTestId('chat-input'), {
+      key: 'Enter',
+      isComposing: true,
+    });
+    expect(am.contextFor).not.toHaveBeenCalled();
+    expect(screen.getByTestId('chat-input')).toHaveValue('composing');
+  });
+
+  it('retains a newly typed draft and prevents a second send while context is still loading', async () => {
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    let finish!: (value: null) => void;
+    am.contextFor.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: 'first' },
+    });
+    fireEvent.click(screen.getByTestId('chat-send'));
+    fireEvent.change(screen.getByTestId('chat-input'), {
+      target: { value: 'next draft' },
+    });
+    fireEvent.keyDown(screen.getByTestId('chat-input'), { key: 'Enter' });
+    expect(am.contextFor).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('chat-send')).toBeDisabled();
+    await act(async () => {
+      finish(null);
+    });
+    expect(am.startCall).toHaveBeenCalledTimes(1);
+    expect(am.startCall).toHaveBeenCalledWith(
+      'anthropic',
+      'conv-1',
+      'first',
+      null,
+    );
+    expect(screen.getByTestId('chat-input')).toHaveValue('next draft');
+  });
+
+  it('renders messages from the conversation', async () => {
     const { conv, snapshot } = snapshotWith({
       messages: [
         { id: 'm1', role: 'user', content: 'hello', status: 'complete' },
@@ -101,6 +293,10 @@ describe('<ChatPane> — input + send', () => {
     });
     expect(screen.getByText('hello')).toBeInTheDocument();
     expect(screen.getByText('world')).toBeInTheDocument();
+    // Allow the lazy Markdown renderer to publish its ready notification.
+    await act(async () => {
+      await Promise.resolve();
+    });
   });
 
   it('Send button is disabled when the input is empty', () => {
@@ -125,9 +321,8 @@ describe('<ChatPane> — input + send', () => {
     const input = screen.getByTestId('chat-input');
     fireEvent.change(input, { target: { value: '  hi there  ' } });
     fireEvent.click(screen.getByTestId('chat-send'));
-    // Input clears synchronously (we capture text up-front before the
-    // await) so this assertion can stay sync.
-    expect((input as HTMLTextAreaElement).value).toBe('');
+    // Keep the draft until the manager accepts the send, so losing a
+    // connection during context gathering cannot discard it.
     await waitFor(() =>
       expect(am.startCall).toHaveBeenCalledWith(
         'anthropic',
@@ -136,6 +331,7 @@ describe('<ChatPane> — input + send', () => {
         null,
       ),
     );
+    expect((input as HTMLTextAreaElement).value).toBe('');
   });
 
   it('Enter (without Shift) sends; Shift+Enter does not send', async () => {
@@ -162,7 +358,7 @@ describe('<ChatPane> — input + send', () => {
 });
 
 describe('<ChatPane> — send/stop toggle', () => {
-  it('shows Stop button (not Send) when this conversation has an in-flight call', () => {
+  it('shows an accessible icon-only Stop control when a call is in flight', () => {
     const { conv, snapshot } = snapshotWith({
       inflightCallId: 'chat-x',
       messages: [
@@ -180,7 +376,10 @@ describe('<ChatPane> — send/stop toggle', () => {
       managers: { assistantManager: am as never },
     });
     expect(screen.queryByTestId('chat-send')).toBeNull();
-    expect(screen.getByTestId('chat-stop')).toBeInTheDocument();
+    const stop = screen.getByRole('button', { name: 'assistant-chat:stop' });
+    expect(stop).toHaveAttribute('title', 'assistant-chat:stop');
+    expect(stop.textContent).toBe('');
+    expect(stop.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
   });
 
   it('clicking Stop fires cancelCall with the in-flight callId', () => {
@@ -200,27 +399,162 @@ describe('<ChatPane> — send/stop toggle', () => {
     renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
       managers: { assistantManager: am as never },
     });
-    fireEvent.click(screen.getByTestId('chat-stop'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'assistant-chat:stop' }),
+    );
     expect(am.cancelCall).toHaveBeenCalledWith('chat-x');
   });
 });
 
-describe('<ChatPane> — model editor', () => {
-  it('blur on the model input fires setConversationModel with the typed value', () => {
+beforeAll(() => {
+  Element.prototype.scrollIntoView = jest.fn();
+  Element.prototype.hasPointerCapture = jest.fn(() => false);
+  Element.prototype.setPointerCapture = jest.fn();
+  Element.prototype.releasePointerCapture = jest.fn();
+});
+
+describe('<ChatPane> — model and thinking dropdowns', () => {
+  it('keeps both accessible dropdowns after the message input in the composer', () => {
     const { conv, snapshot } = snapshotWith({ messages: [] });
     const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
     renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
       managers: { assistantManager: am as never },
     });
-    const modelInput = screen.getByLabelText(
-      'assistant-chat:model_aria',
-    ) as HTMLInputElement;
-    fireEvent.change(modelInput, { target: { value: 'claude-opus-4-7' } });
-    fireEvent.blur(modelInput);
+    const controls = screen.getByTestId('chat-composer-controls');
+    expect(
+      within(controls).getByRole('combobox', {
+        name: 'assistant-chat:model_aria',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(controls).getByLabelText('assistant-settings:thinking_label'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('chat-input').compareDocumentPosition(controls) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('selects a readable model and commits its API ID immediately', async () => {
+    const user = userEvent.setup();
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    renderWithProviders(<ChatPane provider="anthropic" conversation={conv} />, {
+      managers: { assistantManager: am as never },
+    });
+    const modelSelect = screen.getByRole('combobox', {
+      name: 'assistant-chat:model_aria',
+    });
+    expect(modelSelect).toHaveTextContent('Sonnet 4.6');
+    await user.click(modelSelect);
+    await user.click(screen.getByRole('option', { name: 'Sonnet 5.5' }));
     expect(am.setConversationModel).toHaveBeenCalledWith(
       'anthropic',
       'conv-1',
-      'claude-opus-4-7',
+      'claude-sonnet-5-5',
+    );
+  });
+
+  it('sends the selected model and thinking level through the real manager and persists the conversation choice', async () => {
+    const user = userEvent.setup();
+    const bridge = { send: jest.fn(), receive: jest.fn() };
+    const manager = new AssistantManager(bridge, { disablePacedReveal: true });
+    manager.setConfigFromServer({
+      encryptionAvailable: true,
+      config: {
+        anthropic: {
+          ...DEFAULT_PROVIDER_CONFIG.anthropic,
+          enabled: true,
+          hasKey: true,
+          thinkingLevel: 'low',
+        },
+        openai: { ...DEFAULT_PROVIDER_CONFIG.openai, hasKey: false },
+        ollama: { ...DEFAULT_PROVIDER_CONFIG.ollama, hasKey: false },
+      },
+    });
+    const id = manager.createConversation('anthropic');
+    const Probe = () => {
+      const { chat } = useAssistantChat();
+      return (
+        <ChatPane
+          provider="anthropic"
+          conversation={chat.conversations.anthropic.find(
+            (conv) => conv.id === id,
+          )!}
+        />
+      );
+    };
+    const { unmount } = renderWithProviders(<Probe />, {
+      managers: { assistantManager: manager },
+    });
+    expect(
+      screen.getByLabelText('assistant-settings:thinking_label'),
+    ).toHaveTextContent('assistant-settings:thinking_low');
+    await user.click(
+      screen.getByRole('combobox', { name: 'assistant-chat:model_aria' }),
+    );
+    await user.click(screen.getByRole('option', { name: 'Sonnet 5.5' }));
+    await user.click(
+      screen.getByLabelText('assistant-settings:thinking_label'),
+    );
+    expect(
+      screen.queryByRole('option', {
+        name: 'assistant-settings:thinking_none',
+      }),
+    ).toBeNull();
+    await user.click(
+      screen.getByRole('option', { name: 'assistant-settings:thinking_xhigh' }),
+    );
+    expect(
+      screen.getByRole('combobox', { name: 'assistant-chat:model_aria' }),
+    ).toHaveTextContent('Sonnet 5.5');
+    await user.type(screen.getByTestId('chat-input'), 'Hello');
+    await user.click(screen.getByTestId('chat-send'));
+    await waitFor(() =>
+      expect(bridge.send).toHaveBeenCalledWith(
+        'to:ai:chat',
+        expect.objectContaining({
+          model: 'claude-sonnet-5-5',
+          thinkingLevel: 'xhigh',
+        }),
+      ),
+    );
+    expect(manager.serialize()!.conversations.anthropic[0]).toEqual(
+      expect.objectContaining({
+        model: 'claude-sonnet-5-5',
+        thinkingLevel: 'xhigh',
+      }),
+    );
+    const request = bridge.send.mock.calls.find(
+      ([channel]) => channel === 'to:ai:chat',
+    )![1];
+    act(() => manager.onChatDone(request.callId));
+    unmount();
+    manager.flushPersist();
+  });
+
+  it('populates the Ollama chat dropdown from installed models', async () => {
+    const user = userEvent.setup();
+    const { conv, snapshot } = snapshotWith({ messages: [] });
+    const am = fakeAssistantManager({ initialChatSnapshot: snapshot });
+    am.refreshOllamaModels.mockResolvedValue(['qwen3:8b', 'llama3.2']);
+    renderWithProviders(
+      <ChatPane
+        provider="ollama"
+        conversation={{ ...conv, providerId: 'ollama', model: 'llama3.2' }}
+      />,
+      {
+        managers: { assistantManager: am as never },
+      },
+    );
+    await user.click(
+      screen.getByRole('combobox', { name: 'assistant-chat:model_aria' }),
+    );
+    await user.click(await screen.findByRole('option', { name: 'qwen3:8b' }));
+    expect(am.setConversationModel).toHaveBeenCalledWith(
+      'ollama',
+      conv.id,
+      'qwen3:8b',
     );
   });
 });
@@ -361,6 +695,10 @@ describe('<ChatPane> — P6 context chips + token estimate', () => {
       getSnapshot: jest.fn(() => treeSnapshot),
       on: jest.fn(() => () => {}),
       requestDirectoryContents: jest.fn(),
+      listWorkspaceFiles: jest.fn(async () => ({
+        paths: ['/w/notes.md'],
+        truncated: false,
+      })),
       treeRoot: '/w',
     };
     const { conv, snapshot } = snapshotWith({ messages: [] });
@@ -376,7 +714,7 @@ describe('<ChatPane> — P6 context chips + token estimate', () => {
     fireEvent.change(input, { target: { value: 'summarise @no' } });
     expect(screen.getByTestId('mention-picker')).toBeInTheDocument();
     // Click the option.
-    fireEvent.click(screen.getByTestId('mention-option-/w/notes.md'));
+    fireEvent.click(await screen.findByTestId('mention-option-/w/notes.md'));
     expect(am.addMention).toHaveBeenCalledWith(
       'anthropic',
       'conv-1',
@@ -399,6 +737,10 @@ describe('<ChatPane> — P6 context chips + token estimate', () => {
       getSnapshot: jest.fn(() => treeSnapshot),
       on: jest.fn(() => () => {}),
       requestDirectoryContents: jest.fn(),
+      listWorkspaceFiles: jest.fn(async () => ({
+        paths: ['/w/a.md'],
+        truncated: false,
+      })),
       treeRoot: '/w',
     };
     const { conv, snapshot } = snapshotWith({ messages: [] });
@@ -412,6 +754,7 @@ describe('<ChatPane> — P6 context chips + token estimate', () => {
     const input = screen.getByTestId('chat-input');
     fireEvent.change(input, { target: { value: '@a' } });
     expect(screen.getByTestId('mention-picker')).toBeInTheDocument();
+    await screen.findByTestId('mention-option-/w/a.md');
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
     // Picker handles the Enter; startCall should NOT have been
     // fired from ChatPane's onKeyDown (the picker's window-level

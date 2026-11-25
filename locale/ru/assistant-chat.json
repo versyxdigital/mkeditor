@@ -32,5 +32,11 @@
   "mention_picker_aria": "Выбрать файл для упоминания",
   "mention_picker_empty": "Нет подходящих файлов",
   "hide_conversations_aria": "Скрыть список разговоров",
-  "show_conversations_aria": "Показать список разговоров"
+  "show_conversations_aria": "Показать список разговоров",
+  "expand_input": "Развернуть поле сообщения",
+  "collapse_input": "Свернуть поле сообщения",
+  "mention_picker_loading": "Загрузка файлов рабочей области…",
+  "mention_picker_error": "Не удалось загрузить файлы рабочей области.",
+  "copy_code": "Копировать код",
+  "copy_failed": "Не удалось скопировать код."
 }

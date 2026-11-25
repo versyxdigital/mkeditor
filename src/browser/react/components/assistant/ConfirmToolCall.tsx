@@ -32,7 +32,10 @@ export const ConfirmToolCall: React.FC = () => {
         if (!o) resolve(false);
       }}
     >
-      <DialogContent aria-describedby={undefined} className="max-w-[640px]">
+      <DialogContent
+        aria-describedby={undefined}
+        className="thin-scrollbars max-w-[640px]"
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon name="exclamation-circle" />
@@ -97,6 +100,7 @@ const PREVIEW_KIND_LABEL: Record<
   string
 > = {
   create: 'assistant-tools:preview_create',
+  operation: 'assistant-tools:preview_write',
   write: 'assistant-tools:preview_write',
   edit: 'assistant-tools:preview_edit',
   replace: 'assistant-tools:preview_replace',
@@ -116,7 +120,7 @@ const PreviewBlock: React.FC<{
       data-testid="tool-confirm-preview"
     >
       <p className="text-xs font-semibold">
-        {t(headingKey, { path: preview.path ?? '' })}
+        {preview.summary ?? t(headingKey, { path: preview.path ?? '' })}
         {preview.detail ? ` · ${preview.detail}` : ''}
       </p>
       {preview.before !== undefined && (
@@ -124,7 +128,7 @@ const PreviewBlock: React.FC<{
           <p className="text-xs text-muted-foreground">
             {t('assistant-tools:preview_before')}
           </p>
-          <pre className="max-h-40 overflow-auto rounded border border-red-400/40 bg-red-50 p-2 text-xs text-red-900 dark:border-red-400/30 dark:bg-red-950/40 dark:text-red-200">
+          <pre className="whitespace-pre-wrap rounded border border-destructive/30 bg-destructive/10 p-2 text-xs text-foreground [overflow-wrap:anywhere]">
             {preview.before}
           </pre>
         </div>
@@ -133,7 +137,7 @@ const PreviewBlock: React.FC<{
         <p className="text-xs text-muted-foreground">
           {t('assistant-tools:preview_after')}
         </p>
-        <pre className="max-h-60 overflow-auto rounded border border-emerald-400/40 bg-emerald-50 p-2 text-xs text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-950/40 dark:text-emerald-200">
+        <pre className="whitespace-pre-wrap rounded border border-success/30 bg-success/10 p-2 text-xs text-foreground [overflow-wrap:anywhere]">
           {preview.after}
         </pre>
       </div>
@@ -148,7 +152,7 @@ const ArgsBlock: React.FC<{ args: unknown }> = ({ args }) => {
       <p className="text-xs text-muted-foreground">
         {t('assistant-tools:args_label')}
       </p>
-      <pre className="max-h-40 overflow-auto rounded border border-border bg-muted p-2 text-xs">
+      <pre className="whitespace-pre-wrap rounded border border-border bg-muted p-2 text-xs [overflow-wrap:anywhere]">
         {JSON.stringify(args, null, 2)}
       </pre>
     </div>

@@ -24,6 +24,10 @@ jest.mock('../src/app/lib/AppStorage', () => ({
   AppStorage: {
     getActiveFilePath: jest.fn(() => '/abs/active.md'),
     setWorkspaceRoot: jest.fn(),
+    listWorkspaceFiles: jest.fn(async () => ({
+      paths: ['/workspace/poems/one.md'],
+      truncated: false,
+    })),
   },
 }));
 
@@ -35,6 +39,7 @@ jest.mock('../src/app/lib/assistantStoreFile', () => ({
 import { ipcMain } from 'electron';
 import { AppBridge } from '../src/app/lib/AppBridge';
 import { AppSession } from '../src/app/lib/AppSession';
+import { AppStorage } from '../src/app/lib/AppStorage';
 
 type Listener = (...args: unknown[]) => void;
 
@@ -101,6 +106,46 @@ beforeEach(() => {
 });
 
 describe('AppBridge — sender-scoped IPC handlers', () => {
+  it('awaits sanitized config and drops stale or disposed-window pushes', async () => {
+    const context = makeContext(),
+      bridge = new AppBridge(context as never, true);
+    let resolveFirst!: (value: unknown) => void;
+    const first = new Promise((resolve) => {
+      resolveFirst = resolve;
+    });
+    const current = {
+      config: { anthropic: { hasKey: true } },
+      encryptionAvailable: true,
+    };
+    const buildSanitizedConfig = jest
+      .fn()
+      .mockReturnValueOnce(first)
+      .mockResolvedValue(current);
+    bridge.provide('assistant', { buildSanitizedConfig });
+    const pending = bridge.pushAssistantConfig();
+    await bridge.pushAssistantConfig();
+    expect(context.webContents.send).toHaveBeenCalledWith(
+      'from:ai:config',
+      current,
+    );
+    resolveFirst({
+      config: { anthropic: { hasKey: false } },
+      encryptionAvailable: true,
+    });
+    await pending;
+    expect(context.webContents.send).toHaveBeenCalledTimes(1);
+    let resolveClosed!: (value: unknown) => void;
+    buildSanitizedConfig.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveClosed = resolve;
+      }),
+    );
+    const afterClose = bridge.pushAssistantConfig();
+    context.fireOnce('closed');
+    resolveClosed(current);
+    await afterClose;
+    expect(context.webContents.send).toHaveBeenCalledTimes(1);
+  });
   it('ignores fire-and-forget channels from a foreign sender', () => {
     const ctx = makeContext();
     new AppBridge(ctx as never, true);
@@ -149,6 +194,33 @@ describe('AppBridge — sender-scoped IPC handlers', () => {
     expect(() =>
       handler({ sender: { id: 999 } } as never, '/abs/foo/bar.md'),
     ).toThrow(/sender mismatch/);
+  });
+  it('scopes workspace operations to the owning window and preserves error codes', async () => {
+    const context = makeContext();
+    new AppBridge(context as never, true);
+    const request = findHandleHandler('mked:fs:workspace-operation');
+    expect(() =>
+      request(fakeEvent(999), { action: 'info', path: 'note.md' }),
+    ).toThrow(/sender mismatch/);
+    expect(await request(fakeEvent(), { action: 'unknown' })).toMatchObject({
+      ok: false,
+      error: 'invalid_arguments',
+    });
+  });
+
+  it('scopes the independent workspace inventory to its owning sender', async () => {
+    const ctx = makeContext();
+    new AppBridge(ctx as never, true);
+    const handler = findHandleHandler('mked:fs:listworkspacefiles');
+    expect(() => handler(fakeEvent(999), '/workspace')).toThrow(
+      /sender mismatch/,
+    );
+    expect(AppStorage.listWorkspaceFiles).not.toHaveBeenCalled();
+    expect(await handler(fakeEvent(), '/workspace')).toEqual({
+      paths: ['/workspace/poems/one.md'],
+      truncated: false,
+    });
+    expect(AppStorage.listWorkspaceFiles).toHaveBeenCalledWith('/workspace');
   });
 
   it('honours owning-sender invoke calls', () => {

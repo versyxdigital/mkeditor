@@ -1,5 +1,11 @@
-import { streamText, tool, jsonSchema, stepCountIs } from 'ai';
-import type { LanguageModel, ModelMessage, Tool, ToolSet } from 'ai';
+import { streamText, tool, jsonSchema, isStepCount } from 'ai';
+import type {
+  LanguageModel,
+  ModelMessage,
+  SystemModelMessage,
+  Tool,
+  ToolSet,
+} from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOllama } from 'ollama-ai-provider-v2';
@@ -21,6 +27,10 @@ import type {
 } from '../interfaces/Assistant';
 import { AssistantKeyStore } from './AssistantKeyStore';
 import { AssistantConfig } from './AssistantConfig';
+import { ChatGptAuth } from './ChatGptAuth';
+import { ChatGptAuthError } from './ChatGptOAuth';
+import type { ChatGptCommand } from '../interfaces/ChatGpt';
+import { getThinkingProviderOptions } from '../shared/assistantModels';
 
 /**
  * Factory hooks for the SDK's per-provider model constructors. Exposed
@@ -29,6 +39,7 @@ import { AssistantConfig } from './AssistantConfig';
  * the defaults.
  */
 export interface ProviderModelFactories {
+  chatgpt?: (accessToken: string, modelId: string) => LanguageModel;
   openai: (apiKey: string, modelId: string) => LanguageModel;
   anthropic: (apiKey: string, modelId: string) => LanguageModel;
   ollama: (baseURL: string, modelId: string) => LanguageModel;
@@ -43,6 +54,12 @@ const DEFAULT_FACTORIES: ProviderModelFactories = {
 /** Per-callId in-flight state retained between turns of a tool loop. */
 interface CallState {
   request: ChatRequest;
+  /** Billing choice stays fixed for every step of this call. */
+  chatgpt: boolean;
+  /** Keep the allocation stable across every step of this call's tool loop. */
+  ollamaContextLength?: number;
+  /** System turns from the request (the renderer's shared-context block), sent as `instructions`. */
+  instructions: SystemModelMessage[];
   /** Conversation history we've accumulated, including assistant + tool messages from previous turns. */
   messages: ModelMessage[];
   /** Tool calls emitted in the most recent assistant turn that are still awaiting external results. */
@@ -83,6 +100,8 @@ export class AppAssistant {
   private context: BrowserWindow;
   private factories: ProviderModelFactories;
   private calls = new Map<string, CallState>();
+  private chatgpt: ChatGptAuth;
+  private authConfigPush = 0;
 
   constructor(
     context: BrowserWindow,
@@ -90,6 +109,34 @@ export class AppAssistant {
   ) {
     this.context = context;
     this.factories = factories;
+    this.chatgpt = new ChatGptAuth(
+      () => {
+        void this.pushAuthConfig();
+      },
+      () => {
+        for (const [id, call] of this.calls) {
+          if (call.request.provider === 'openai') {
+            this.cancel(id);
+            this.sendError(id, {
+              code: 'cancelled',
+              message: 'Authentication changed',
+            });
+          }
+        }
+      },
+    );
+    if (this.chatgpt.usesPlan()) void this.chatgpt.loadModels();
+  }
+
+  async chatGptCommand(command: ChatGptCommand): Promise<void> {
+    await this.chatgpt.command(command);
+  }
+
+  private async pushAuthConfig(): Promise<void> {
+    const revision = ++this.authConfigPush;
+    const config = await this.buildSanitizedConfig();
+    if (revision === this.authConfigPush)
+      this.safeSend('from:ai:config', config);
   }
 
   /**
@@ -110,9 +157,23 @@ export class AppAssistant {
       this.cancel(request.callId);
     }
 
+    // The SDK rejects system messages inside `messages`, so split them
+    // out and pass them through `instructions` instead.
+    const chatgpt = request.provider === 'openai' && this.chatgpt.usesPlan();
+    const modelMessages = AppAssistant.toModelMessages(
+      request.messages,
+      chatgpt,
+    );
     const state: CallState = {
       request,
-      messages: AppAssistant.toModelMessages(request.messages),
+      chatgpt,
+      ...(request.provider === 'ollama'
+        ? { ollamaContextLength: AssistantConfig.load().ollama.contextLength }
+        : {}),
+      instructions: modelMessages.filter(
+        (m): m is SystemModelMessage => m.role === 'system',
+      ),
+      messages: modelMessages.filter((m) => m.role !== 'system'),
       pending: new Map(),
       toolResults: new Map(),
       abortController: new AbortController(),
@@ -150,6 +211,13 @@ export class AppAssistant {
     }
     this.calls.delete(callId);
     return true;
+  }
+
+  /** Abort upstream work when the owning window is destroyed. */
+  dispose(): void {
+    this.authConfigPush++;
+    this.chatgpt.dispose();
+    for (const callId of this.calls.keys()) this.cancel(callId);
   }
 
   /**
@@ -217,22 +285,29 @@ export class AppAssistant {
    * `from:ai:config`. Folds key-presence flags in from `AssistantKeyStore`.
    * Never includes a key value.
    */
-  buildSanitizedConfig() {
+  async buildSanitizedConfig() {
+    const [encryptionAvailable, anthropicHasKey, openaiHasKey] =
+      await Promise.all([
+        AssistantKeyStore.isEncryptionAvailable(),
+        AssistantKeyStore.hasKey('anthropic'),
+        AssistantKeyStore.hasKey('openai'),
+      ]);
     const config = AssistantConfig.load();
     return {
+      chatgpt: this.chatgpt.snapshot(),
       config: {
         anthropic: {
           ...config.anthropic,
-          hasKey: AssistantKeyStore.hasKey('anthropic'),
+          hasKey: anthropicHasKey,
         },
         openai: {
           ...config.openai,
-          hasKey: AssistantKeyStore.hasKey('openai'),
+          hasKey: openaiHasKey,
         },
         // Ollama doesn't carry a key; carried as `hasKey: false` for symmetry.
         ollama: { ...config.ollama, hasKey: false as const },
       },
-      encryptionAvailable: AssistantKeyStore.isEncryptionAvailable(),
+      encryptionAvailable,
     };
   }
 
@@ -245,65 +320,115 @@ export class AppAssistant {
    * pure result-collector and the IPC handler can't trigger a race.
    */
   private async runTurn(state: CallState): Promise<void> {
+    if (state.cancelled || this.calls.get(state.request.callId) !== state)
+      return;
     const { request } = state;
     let model: LanguageModel;
     try {
-      model = this.buildModel(request.provider, request.model);
+      model = await this.buildModel(
+        request.provider,
+        request.model,
+        state.chatgpt,
+      );
     } catch (err) {
-      this.sendError(request.callId, AppAssistant.mapError(err));
-      this.calls.delete(request.callId);
+      if (state.cancelled || this.calls.get(request.callId) !== state) return;
+      this.sendError(request.callId, AppAssistant.mapError(err, state.chatgpt));
+      this.finishCall(state);
       return;
     }
-
-    const tools = AppAssistant.buildToolSet(request.tools ?? []);
+    if (state.cancelled || this.calls.get(request.callId) !== state) return;
 
     let result;
     try {
+      const tools = AppAssistant.buildToolSet(
+        request.tools ?? [],
+        state.chatgpt,
+      );
+      const thinking = getThinkingProviderOptions(
+        request.provider,
+        request.model,
+        request.thinkingLevel,
+      );
       result = streamText({
         model,
+        ...(state.chatgpt
+          ? { include: { rawChunks: true }, maxRetries: 0 }
+          : {}),
+        providerOptions: state.ollamaContextLength
+          ? { ollama: { options: { num_ctx: state.ollamaContextLength } } }
+          : state.chatgpt
+            ? {
+                ...thinking,
+                openai: {
+                  ...thinking?.openai,
+                  store: false,
+                  systemMessageMode: 'developer',
+                },
+              }
+            : thinking,
+        ...(state.instructions.length > 0
+          ? { instructions: state.instructions }
+          : {}),
         messages: state.messages,
         tools,
         abortSignal: state.abortController.signal,
         // We drive the loop externally; stop the SDK after the first model call.
-        stopWhen: stepCountIs(1),
+        stopWhen: isStepCount(1),
         // Honoured by both real providers; ignored by mock SDKs in tests.
-        ...(request.maxOutputTokens !== undefined
+        ...(!state.chatgpt && request.maxOutputTokens !== undefined
           ? { maxOutputTokens: request.maxOutputTokens }
           : {}),
       });
     } catch (err) {
-      this.sendError(request.callId, AppAssistant.mapError(err));
-      this.calls.delete(request.callId);
+      this.sendError(request.callId, AppAssistant.mapError(err, state.chatgpt));
+      this.finishCall(state);
       return;
     }
 
     let aborted = false;
+    let subscriptionCompleted = false;
+    const subscriptionTools: ChatToolCallEvent[] = [];
     try {
-      for await (const part of result.fullStream) {
+      for await (const part of result.stream) {
         if (state.cancelled) {
           aborted = true;
           break;
         }
         switch (part.type) {
+          case 'raw':
+            if (
+              state.chatgpt &&
+              typeof part.rawValue === 'object' &&
+              part.rawValue !== null &&
+              'type' in part.rawValue &&
+              part.rawValue.type === 'response.completed'
+            )
+              subscriptionCompleted = true;
+            break;
           case 'text-delta':
             this.sendChunk({ callId: request.callId, text: part.text });
             break;
           case 'tool-call': {
             state.pending.set(part.toolCallId, { toolName: part.toolName });
-            this.sendToolCall({
+            const event: ChatToolCallEvent = {
               callId: request.callId,
               toolCallId: part.toolCallId,
               toolName: part.toolName,
               arguments: part.input,
-            });
+            };
+            if (state.chatgpt) subscriptionTools.push(event);
+            else this.sendToolCall(event);
             break;
           }
           case 'abort':
             aborted = true;
             break;
           case 'error':
-            this.sendError(request.callId, AppAssistant.mapError(part.error));
-            this.calls.delete(request.callId);
+            this.sendError(
+              request.callId,
+              AppAssistant.mapError(part.error, state.chatgpt),
+            );
+            this.finishCall(state);
             return;
           default:
             // text-start/end, reasoning-*, source, file, raw, start-step,
@@ -314,15 +439,41 @@ export class AppAssistant {
 
       if (aborted || state.cancelled) {
         // Cancellation is silent — the renderer knows it cancelled.
-        this.calls.delete(request.callId);
+        this.finishCall(state);
         return;
+      }
+
+      if (state.chatgpt) {
+        const reason = await result.finishReason;
+        if (state.cancelled) {
+          this.finishCall(state);
+          return;
+        }
+        if (
+          !subscriptionCompleted ||
+          (reason !== 'stop' && reason !== 'tool-calls')
+        ) {
+          this.sendError(request.callId, {
+            code: 'unknown',
+            message: 'ChatGPT response did not complete',
+          });
+          this.finishCall(state);
+          return;
+        }
+        // Usage failures can arrive after tool output. Release document tools
+        // only once the subscription response has actually completed.
+        for (const event of subscriptionTools) this.sendToolCall(event);
       }
 
       // Append the assistant message (with any tool calls) to the
       // running history so the next turn has full context. This MUST
       // happen before we push the tool message — Anthropic rejects a
       // tool_result block that has no preceding tool_use.
-      const responseMessages = (await result.response).messages;
+      const responseMessages = await result.responseMessages;
+      if (state.cancelled) {
+        this.finishCall(state);
+        return;
+      }
       for (const m of responseMessages) {
         state.messages.push(m as ModelMessage);
       }
@@ -339,7 +490,7 @@ export class AppAssistant {
         }
         // The chat may have been cancelled while we awaited the user.
         if (state.cancelled) {
-          this.calls.delete(request.callId);
+          this.finishCall(state);
           return;
         }
         // Append a tool message containing every result.
@@ -367,6 +518,18 @@ export class AppAssistant {
 
       const usage = await result.usage;
       const finishReason = await result.finishReason;
+      if (state.chatgpt && finishReason !== 'stop') {
+        this.sendError(request.callId, {
+          code: 'unknown',
+          message: 'ChatGPT response did not complete',
+        });
+        this.finishCall(state);
+        return;
+      }
+      if (state.cancelled) {
+        this.finishCall(state);
+        return;
+      }
       this.sendDone({
         callId: request.callId,
         usage: {
@@ -376,19 +539,39 @@ export class AppAssistant {
         },
         finishReason,
       });
-      this.calls.delete(request.callId);
+      this.finishCall(state);
     } catch (err) {
       if (state.cancelled) {
-        this.calls.delete(request.callId);
+        this.finishCall(state);
         return;
       }
-      this.sendError(request.callId, AppAssistant.mapError(err));
-      this.calls.delete(request.callId);
+      this.sendError(request.callId, AppAssistant.mapError(err, state.chatgpt));
+      this.finishCall(state);
+    }
+  }
+
+  /** A cancelled run must never remove a replacement with the same callId. */
+  private finishCall(state: CallState): void {
+    if (this.calls.get(state.request.callId) === state) {
+      this.calls.delete(state.request.callId);
     }
   }
 
   /** Construct (or rebuild on-demand) the SDK client for a provider. */
-  private buildModel(provider: ProviderId, modelId: string): LanguageModel {
+  private async buildModel(
+    provider: ProviderId,
+    modelId: string,
+    chatgpt = false,
+  ): Promise<LanguageModel> {
+    if (provider === 'openai' && chatgpt) {
+      const token = await this.chatgpt.accessToken(true);
+      return this.factories.chatgpt
+        ? this.factories.chatgpt(token, modelId)
+        : createOpenAI({
+            apiKey: token,
+            baseURL: 'https://api.openai.com/v1',
+          }).responses(modelId);
+    }
     if (provider === 'ollama') {
       const cfg = AssistantConfig.load().ollama;
       // `ollama-ai-provider-v2` builds chat URLs as `${baseURL}/chat`,
@@ -401,7 +584,7 @@ export class AppAssistant {
       return this.factories.ollama(apiBase, modelId);
     }
     const apiProvider = provider as ApiProviderId;
-    const key = AssistantKeyStore.getKey(apiProvider);
+    const key = await AssistantKeyStore.getKey(apiProvider);
     if (!key) {
       throw new MissingKeyError(apiProvider);
     }
@@ -426,6 +609,13 @@ export class AppAssistant {
     callId: string,
     payload: Omit<ChatErrorEvent, 'callId'>,
   ): void {
+    if (
+      payload.code === 'chatgpt_auth' &&
+      (payload.message === 'sign_in_required' ||
+        payload.message === 'permission_required')
+    ) {
+      this.chatgpt.requireConnection(payload.message);
+    }
     this.safeSend('from:ai:error', { callId, ...payload });
   }
 
@@ -445,9 +635,29 @@ export class AppAssistant {
 
   // ---- Conversions --------------------------------------------------
 
-  /** Wire-message → SDK ModelMessage. v6's role taxonomy aligns 1:1. */
-  private static toModelMessages(messages: ChatMessage[]): ModelMessage[] {
+  /** Translate wire text and historical tool requests/results into native SDK parts. */
+  private static toModelMessages(
+    messages: ChatMessage[],
+    chatgpt = false,
+  ): ModelMessage[] {
     return messages.map((m) => {
+      if (m.role === 'assistant' && m.toolCalls?.length) {
+        return {
+          role: 'assistant',
+          content: [
+            ...(m.content ? [{ type: 'text' as const, text: m.content }] : []),
+            ...m.toolCalls.map((call) => ({
+              type: 'tool-call' as const,
+              toolCallId: call.toolCallId,
+              toolName: call.toolName,
+              input: call.arguments,
+              ...(chatgpt
+                ? { providerOptions: { openai: { namespace: 'mkeditor' } } }
+                : {}),
+            })),
+          ],
+        } satisfies ModelMessage;
+      }
       if (m.role === 'tool') {
         return {
           role: 'tool',
@@ -466,11 +676,26 @@ export class AppAssistant {
   }
 
   /** ToolDescriptor[] → SDK ToolSet, with no execute (external loop). */
-  private static buildToolSet(descriptors: ToolDescriptor[]): ToolSet {
+  private static buildToolSet(
+    descriptors: ToolDescriptor[],
+    chatgpt = false,
+  ): ToolSet {
     const set: Record<string, Tool> = {};
     for (const d of descriptors) {
       set[d.name] = tool({
         description: d.description,
+        ...(chatgpt
+          ? {
+              providerOptions: {
+                openai: {
+                  namespace: {
+                    name: 'mkeditor',
+                    description: 'MKEditor document tools',
+                  },
+                },
+              },
+            }
+          : {}),
         inputSchema: jsonSchema(
           d.parameters as Parameters<typeof jsonSchema>[0],
         ),
@@ -494,7 +719,13 @@ export class AppAssistant {
    * checks before regex) and specific-first (key/rate before the
    * broader 401 / 429 fallbacks).
    */
-  private static mapError(err: unknown): Omit<ChatErrorEvent, 'callId'> {
+  private static mapError(
+    err: unknown,
+    chatgpt = false,
+  ): Omit<ChatErrorEvent, 'callId'> {
+    if (err instanceof ChatGptAuthError) {
+      return { code: 'chatgpt_auth', message: err.code };
+    }
     if (err instanceof MissingKeyError) {
       return { code: 'missing_key', message: `No key set for ${err.provider}` };
     }
@@ -509,6 +740,36 @@ export class AppAssistant {
     // Parse the inner message and prefer it for both code-matching
     // and the renderer's `errorMessage` detail.
     const apiErr = AppAssistant.toApiCallError(err);
+    const detail = err instanceof Error ? err.message : String(err);
+    const providerCode =
+      typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      typeof err.code === 'string'
+        ? err.code
+        : '';
+    const providerStatus =
+      typeof err === 'object' && err !== null && 'statusCode' in err
+        ? err.statusCode
+        : undefined;
+    if (
+      /subscription_sharing_usage_limit_exceeded/.test(
+        (apiErr?.responseBody ?? '') + detail + providerCode,
+      ) ||
+      (chatgpt && providerStatus === 429)
+    ) {
+      return {
+        code: 'chatgpt_usage_limit',
+        message: 'ChatGPT usage limit reached',
+      };
+    }
+    if (
+      chatgpt &&
+      (providerStatus === 401 ||
+        providerCode === 'subscription_sharing_invalid_user')
+    ) {
+      return { code: 'chatgpt_auth', message: 'sign_in_required' };
+    }
     let message = err instanceof Error ? err.message : String(err);
     if (apiErr) {
       const inner = AppAssistant.parseUpstreamError(apiErr.responseBody);
@@ -550,7 +811,8 @@ export class AppAssistant {
       /\bcontext[_\s-]?(?:length|window).+(?:exceed|too)/.test(lowered) ||
       /\bmaximum context length\b/.test(lowered) ||
       /\btoo many tokens\b/.test(lowered) ||
-      /\bprompt is too long\b/.test(lowered)
+      /\bprompt is too long\b/.test(lowered) ||
+      /\bprompt is longer than the context length\b/.test(lowered)
     ) {
       return { code: 'context_window_exceeded', message };
     }

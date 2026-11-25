@@ -1,4 +1,5 @@
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
+import type { WorkspaceFileListing } from '../../app/interfaces/Storage';
 
 /**
  * A plain data node in the file explorer tree. Mirrors what main process
@@ -20,9 +21,15 @@ export interface TreeNode {
 export interface FileTreeSnapshot {
   treeRoot: string | null;
   nodes: TreeNode[];
+  fileListingRevision: number;
 }
 
-const EMPTY_SNAPSHOT: FileTreeSnapshot = { treeRoot: null, nodes: [] };
+const EMPTY_SNAPSHOT: FileTreeSnapshot = {
+  treeRoot: null,
+  nodes: [],
+  fileListingRevision: 0,
+};
+const EMPTY_LISTING: WorkspaceFileListing = { paths: [], truncated: false };
 
 /**
  * Handle the file explorer tree.
@@ -46,6 +53,14 @@ export class FileTreeManager {
 
   /** Change listeners. */
   private listeners = new Set<() => void>();
+  private fileListingRevision = 0;
+  private fileListing: {
+    root: string;
+    revision: number;
+    pending: boolean;
+    promise: Promise<WorkspaceFileListing>;
+    paths?: string[];
+  } | null = null;
 
   /**
    * Create a new file tree manager instance.
@@ -56,7 +71,88 @@ export class FileTreeManager {
   constructor(
     private bridge: ContextBridgeAPI,
     private openFileFromPath: (path: string) => void,
+    private loadWorkspaceFiles?: (
+      root: string,
+    ) => Promise<WorkspaceFileListing>,
   ) {}
+
+  /** Read-only workspace inventory. Never loads or expands explorer nodes. */
+  public listWorkspaceFiles(refresh = false): Promise<WorkspaceFileListing> {
+    const root = this.treeRoot;
+    if (!root) return Promise.resolve(EMPTY_LISTING);
+    const load = this.loadWorkspaceFiles;
+    if (!load)
+      return Promise.reject(
+        new Error('Workspace file listing is unavailable.'),
+      );
+    const previous = this.fileListing;
+    if (
+      previous?.root === root &&
+      previous.pending &&
+      previous.revision !== this.fileListingRevision
+    ) {
+      const refreshAfter = () =>
+        this.treeRoot === root ? this.listWorkspaceFiles(false) : EMPTY_LISTING;
+      return previous.promise.then(refreshAfter, refreshAfter);
+    }
+    if (
+      previous?.root === root &&
+      previous.revision === this.fileListingRevision &&
+      (!refresh || previous.pending)
+    )
+      return previous.promise;
+    const revision = this.fileListingRevision;
+    const listing = {
+      root,
+      revision,
+      pending: true,
+      paths: previous?.root === root ? previous.paths : undefined,
+      promise: Promise.resolve(EMPTY_LISTING),
+    };
+    listing.promise = Promise.resolve()
+      .then(() => load(root))
+      .then(({ paths, truncated }) => {
+        if (this.treeRoot !== root || this.fileListingRevision !== revision)
+          return EMPTY_LISTING;
+        const next = [
+          ...new Set(
+            paths.filter(
+              (path) =>
+                typeof path === 'string' && isPathWithinTree(path, root),
+            ),
+          ),
+        ].sort();
+        listing.paths =
+          listing.paths?.length === next.length &&
+          listing.paths.every((path, i) => path === next[i])
+            ? listing.paths
+            : next;
+        return { paths: listing.paths, truncated };
+      })
+      .catch((error) => {
+        if (this.fileListing === listing) this.fileListing = null;
+        throw error;
+      })
+      .finally(() => {
+        listing.pending = false;
+      });
+    this.fileListing = listing;
+    return listing.promise;
+  }
+
+  private invalidateFileListing(): void {
+    this.fileListingRevision++;
+  }
+
+  public workspaceFilesChanged(...paths: string[]): void {
+    if (
+      !this.treeRoot ||
+      !paths.some((path) => isPathWithinTree(path, this.treeRoot!))
+    )
+      return;
+    this.invalidateFileListing();
+    this.emitChange();
+  }
 
   // ---------------------------------------------------------------------
   // Observable surface
@@ -82,7 +178,10 @@ export class FileTreeManager {
     // possible so React reconciliation is stable.
     this.snapshot = {
       treeRoot: this.treeRoot,
-      nodes: this.snapshot.nodes,
+      fileListingRevision: this.fileListingRevision,
+      // Consumers memoize derived filtering by the nodes array identity.
+      // Mutating children without replacing this array leaves that UI stale.
+      nodes: [...this.snapshot.nodes],
     };
     this.listeners.forEach((l) => l());
   }
@@ -101,6 +200,7 @@ export class FileTreeManager {
    *   for the initial root load, or a subdirectory for lazy loads)
    */
   public buildFileTree(tree: unknown[], parentPath: string) {
+    this.invalidateFileListing();
     const validated = validateNodes(tree);
     const sorted = sortNodes(validated);
 
@@ -111,7 +211,11 @@ export class FileTreeManager {
       const rooted = sorted.map((node) =>
         this.registerNode(this.cloneNode(node)),
       );
-      this.snapshot = { treeRoot: this.treeRoot, nodes: rooted };
+      this.snapshot = {
+        treeRoot: this.treeRoot,
+        nodes: rooted,
+        fileListingRevision: this.fileListingRevision,
+      };
       this.listeners.forEach((l) => l());
       return;
     }
@@ -126,7 +230,7 @@ export class FileTreeManager {
       // root, which is always known) and ask main to repopulate
       // that subtree — the missing intermediate directory will
       // appear in the refreshed listing.
-      if (parentPath.startsWith(this.treeRoot)) {
+      if (isPathWithinTree(parentPath, this.treeRoot)) {
         const ancestor = this.findKnownAncestor(parentPath);
         if (ancestor) this.requestDirectoryContents(ancestor);
       }
@@ -136,11 +240,18 @@ export class FileTreeManager {
     // Lazy-load completed: replace children, mark loaded, and emit. If
     // the directory turned out empty, flip hasChildren=false so the
     // chevron disappears.
+    // A refreshed subtree can remove/rename directories. Drop descendants
+    // from the index so future replies cannot mutate detached old nodes.
+    for (const path of this.directoryIndex.keys()) {
+      if (path !== parentPath && isPathWithinTree(path, parentPath)) {
+        this.directoryIndex.delete(path);
+      }
+    }
     target.children = sorted.map((node) =>
       this.registerNode(this.cloneNode(node)),
     );
     target.loaded = true;
-    if (target.children.length === 0) target.hasChildren = false;
+    target.hasChildren = target.children.length > 0;
     this.emitChange();
   }
 
@@ -150,7 +261,7 @@ export class FileTreeManager {
    * root. Returns null only when `path` is outside the workspace.
    */
   private findKnownAncestor(path: string): string | null {
-    if (!this.treeRoot || !path.startsWith(this.treeRoot)) return null;
+    if (!this.treeRoot || !isPathWithinTree(path, this.treeRoot)) return null;
     const sep = this.treeRoot.includes('\\') ? '\\' : '/';
     let current = path;
     // Strip one segment at a time. Bounded by the root check
@@ -168,11 +279,16 @@ export class FileTreeManager {
 
   /**
    * Insert a single file node under its parent directory in the existing
-   * tree. Called when `from:file:opened` carries a real file path inside
-   * the current root.
+   * tree. Called when `from:file:opened` or a successful save result
+   * carries a real file path inside the current root.
    */
   public addFileToTree(path: string) {
-    if (!this.treeRoot || !path.startsWith(this.treeRoot)) return;
+    if (
+      !this.treeRoot ||
+      !isPathWithinTree(path, this.treeRoot) ||
+      path === this.treeRoot
+    )
+      return;
 
     const sep = this.treeRoot.includes('\\') ? '\\' : '/';
     const segments = path.split(/[/\\]/);
@@ -197,6 +313,7 @@ export class FileTreeManager {
         return;
       }
       if (!dir.children) dir.children = [];
+      dir.hasChildren = true;
       children = dir.children;
     }
     if (!children) return;
@@ -208,6 +325,7 @@ export class FileTreeManager {
 
     // Insert preserving directory-first / alpha-name ordering.
     const insertAt = findInsertIndex(children, node);
+    this.invalidateFileListing();
     children.splice(insertAt, 0, node);
 
     this.emitChange();
@@ -236,10 +354,16 @@ export class FileTreeManager {
    * empty-state UI. Used by the web "Disconnect folder" action.
    */
   public clearTree(): void {
+    this.invalidateFileListing();
+    this.fileListing = null;
     this.treeRoot = null;
     this.openingFolder = false;
     this.directoryIndex = new Map();
-    this.snapshot = { treeRoot: null, nodes: [] };
+    this.snapshot = {
+      treeRoot: null,
+      nodes: [],
+      fileListingRevision: this.fileListingRevision,
+    };
     this.listeners.forEach((l) => l());
   }
 
@@ -254,7 +378,11 @@ export class FileTreeManager {
       path: node.path,
       hasChildren: node.hasChildren,
       loaded: node.loaded,
-      children: node.children,
+      children: Array.isArray(node.children)
+        ? sortNodes(validateNodes(node.children)).map((child) =>
+            this.registerNode(this.cloneNode(child)),
+          )
+        : undefined,
     };
   }
 
@@ -309,4 +437,20 @@ function findInsertIndex(children: TreeNode[], node: TreeNode): number {
     }
   }
   return children.length;
+}
+
+/** Segment-aware containment for OS and virtual explorer paths. */
+export function isPathWithinTree(path: string, root: string): boolean {
+  const normalize = (value: string) =>
+    value.replace(/\\/g, '/').replace(/\/+$/, '') || '/';
+  let candidate = normalize(path);
+  let parent = normalize(root);
+  if (/^[a-z]:/i.test(parent)) {
+    candidate = candidate.toLowerCase();
+    parent = parent.toLowerCase();
+  }
+  return (
+    candidate === parent ||
+    candidate.startsWith(parent.endsWith('/') ? parent : parent + '/')
+  );
 }

@@ -32,5 +32,11 @@
   "mention_picker_aria": "Elegir un archivo para mencionar",
   "mention_picker_empty": "Sin archivos coincidentes",
   "hide_conversations_aria": "Ocultar lista de conversaciones",
-  "show_conversations_aria": "Mostrar lista de conversaciones"
+  "show_conversations_aria": "Mostrar lista de conversaciones",
+  "expand_input": "Expandir cuadro de mensaje",
+  "collapse_input": "Contraer cuadro de mensaje",
+  "mention_picker_loading": "Cargando archivos del espacio de trabajo…",
+  "mention_picker_error": "No se pudieron cargar los archivos del espacio de trabajo.",
+  "copy_code": "Copiar código",
+  "copy_failed": "No se pudo copiar el código."
 }

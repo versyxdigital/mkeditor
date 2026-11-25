@@ -6,8 +6,20 @@
 #preview {
   height: 100%;
   overflow-y: auto;
-  padding-bottom: 44px !important;
-  background-color: #fff;
+  padding: clamp(24px, 4vw, 48px);
+  background-color: var(--bg-preview);
+  color: var(--text-primary);
+  font-size: 16px;
+  line-height: 1.7;
+
+  #preview-content {
+    width: 100%;
+    max-width: 760px;
+    margin-inline: auto;
+    &.container-fluid {
+      max-width: none;
+    }
+  }
 
   // Thin scrollbar — always visible. Overrides the global 10 px rule
   // in `index.scss` for this pane only.
@@ -18,11 +30,11 @@
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.25);
+    background: var(--text-muted);
     border-radius: 3px;
     transition: background-color 150ms ease-in-out;
   }
   &::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--text-secondary);
   }
 }

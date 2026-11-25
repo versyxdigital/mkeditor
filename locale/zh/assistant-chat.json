@@ -32,5 +32,11 @@
   "mention_picker_aria": "选择要提及的文件",
   "mention_picker_empty": "没有匹配的文件",
   "hide_conversations_aria": "隐藏对话列表",
-  "show_conversations_aria": "显示对话列表"
+  "show_conversations_aria": "显示对话列表",
+  "expand_input": "展开消息输入框",
+  "collapse_input": "收起消息输入框",
+  "mention_picker_loading": "正在加载工作区文件…",
+  "mention_picker_error": "无法加载工作区文件。",
+  "copy_code": "复制代码",
+  "copy_failed": "无法复制代码。"
 }

@@ -2,6 +2,8 @@ import * as React from 'react';
 
 import { useTranslation } from '../hooks/useTranslation';
 import { FileTreePanel } from './FileTreePanel';
+import { CloudExplorer } from './cloud/CloudExplorer';
+import { useCloud } from '../hooks/useCloud';
 
 /**
  * File explorer sidebar. React-rendered `<FileTreePanel>`, subscribes
@@ -10,11 +12,12 @@ import { FileTreePanel } from './FileTreePanel';
  */
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation();
+  const { state } = useCloud();
 
   return (
-    <div id="sidebar" className="flex h-full flex-col p-3">
+    <div id="sidebar" className="flex h-full min-w-0 flex-col px-2 py-2">
       <div className="explorer-title">{t('sidebar:explorer')}</div>
-      <FileTreePanel />
+      {state.workspace === 'local' ? <FileTreePanel /> : <CloudExplorer />}
     </div>
   );
 };

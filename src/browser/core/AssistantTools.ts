@@ -1,4 +1,13 @@
 import type { BridgeManager } from './BridgeManager';
+import { isRemotePath } from '../../app/interfaces/Cloud';
+import { t } from '../i18n';
+import { workspaceToolCatalog } from './WorkspaceToolCatalog';
+import { WorkspaceToolFiles } from './WorkspaceToolFiles';
+import {
+  resolveAgentPath,
+  validateWorkspaceName,
+  WorkspaceToolError,
+} from '../../app/shared/workspacePaths';
 import type {
   ToolConfirmPreview,
   ToolDescriptor,
@@ -30,7 +39,12 @@ export interface ToolExecutor {
   /** Returns descriptors ready for shipping to the SDK via `ChatRequest.tools`. */
   describe(): ToolDescriptor[];
   /** Returns 'read' (auto-execute) / 'write' (confirm) / 'unknown'. */
-  classify(name: string): ToolClass;
+  classify(name: string, args?: unknown): ToolClass;
+  requiresConfirmation?(name: string, args: unknown): boolean;
+  preparePreview?(
+    name: string,
+    args: unknown,
+  ): Promise<ToolConfirmPreview | null>;
   /** Build the confirm-dialog preview for write-class tools. */
   buildPreview(name: string, args: unknown): ToolConfirmPreview | null;
   /**
@@ -54,10 +68,26 @@ export interface ToolExecutor {
 /*  Internal tool registry                                                */
 /* -------------------------------------------------------------------- */
 
-interface ToolSpec {
+export interface ToolSpec {
   description: string;
-  parameters: object; // JSON Schema
+  parameters: {
+    type: 'object';
+    properties: Record<
+      string,
+      {
+        type?: string;
+        description?: string;
+        items?: unknown;
+        [key: string]: unknown;
+      }
+    >;
+    required?: string[];
+    additionalProperties: false;
+  };
   toolClass: ToolClass;
+  classifyArgs?(args: unknown): ToolClass;
+  alwaysConfirm?: boolean;
+  prepare?(args: unknown, ctx: ToolContext): Promise<ToolConfirmPreview>;
   execute(args: unknown, ctx: ToolContext): Promise<unknown>;
   preview?(args: unknown, ctx: ToolContext): ToolConfirmPreview;
   /**
@@ -79,8 +109,15 @@ interface ToolSpec {
 }
 
 /** Cross-cutting deps each tool needs. */
-interface ToolContext {
+export interface ToolContext {
   bridge: BridgeManager;
+  workspace: WorkspaceToolFiles;
+}
+
+function assertLocalSelection(ctx: ToolContext): void {
+  if (isRemotePath(ctx.bridge.fileManager.getActiveDocumentPath?.())) {
+    throw new Error(t('cloud:read_only_reason'));
+  }
 }
 
 /**
@@ -142,7 +179,7 @@ export function buildEditContextSnippet(
   if (idx < 0) return null;
 
   // Mirror execute's uniqueness check.
-  const secondIdx = fileText.indexOf(oldText, idx + oldText.length);
+  const secondIdx = fileText.indexOf(oldText, idx + 1);
   if (secondIdx >= 0) return null;
 
   // Split for line-based slicing. Source is LF-normalised above so
@@ -171,7 +208,7 @@ export function buildEditContextSnippet(
   const before = snippetLines.join('\n');
   // The match is guaranteed to occur exactly once in `fileText`; the
   // sliced snippet contains it once too. Single-shot replace.
-  const after = before.replace(oldText, newText);
+  const after = before.replace(oldText, () => newText);
 
   const truncated = contextStart > 0 || contextEnd < totalLines - 1;
   // `detail` reports the LINES BEING EDITED — single line if the
@@ -515,16 +552,25 @@ function joinUnderRoot(root: string, rel: string): string {
  * should have already guarded against that via the in-memory
  * editor edit, but we throw here so a misuse surfaces clearly.
  */
-async function awaitedSaveFile(path: string, content: string): Promise<void> {
+async function awaitedSaveFile(
+  ctx: ToolContext,
+  path: string,
+  content: string,
+): Promise<void> {
   const mked = window.mked;
   if (!mked?.saveFile) {
     throw new Error(
       'saveFile: main-process bridge unavailable (web mode); writing files is desktop-only.',
     );
   }
+  const model = ctx.bridge.fileManager.models.get(path);
+  const version = model?.getAlternativeVersionId();
   const result = await mked.saveFile(path, content);
   if (!result.ok) {
     throw new Error(`Failed to save ${path}: ${result.error}`);
+  }
+  if (model && version !== undefined) {
+    ctx.bridge.fileManager.recordSavedVersion(path, model, content, version);
   }
 }
 
@@ -536,11 +582,12 @@ async function awaitedSaveFile(path: string, content: string): Promise<void> {
  * in the project but only used in P1's main-process AppAssistant).
  */
 const CATALOG: Record<string, ToolSpec> = {
+  ...workspaceToolCatalog,
   // ---- READ-class -------------------------------------------------
 
   read_file: {
     description:
-      'Read the full text content of a file in the workspace. Does NOT open a tab — reads directly from disk (or from the open buffer if you happen to have it open already, so unsaved edits are captured). Use freely for context-gathering. Prefer absolute paths or paths returned verbatim from list_files; relative paths are resolved against the workspace root. NOTE: this is for files only. To enumerate a directory, use `list_files` with a `subpath` argument; passing a directory path here will return an error.',
+      'Read a workspace file without opening a tab; open buffers take precedence so unsaved edits are included. Optional startLine/endLine select a 1-based inclusive range; omitting both returns the full file unchanged. Prefer exact paths returned by list_files. Use list_files or path_info for directories, get_outline for headings, and search_files to locate text.',
     parameters: {
       type: 'object',
       properties: {
@@ -549,25 +596,63 @@ const CATALOG: Record<string, ToolSpec> = {
           description:
             'Absolute path (e.g. C:\\foo\\bar.md or /Users/foo/bar.md) — preferred. Workspace-relative paths are also accepted and resolved via the file tree.',
         },
+        startLine: { type: 'integer', minimum: 1 },
+        endLine: { type: 'integer', minimum: 1 },
       },
       required: ['path'],
       additionalProperties: false,
     },
     toolClass: 'read',
     async execute(args, ctx) {
-      const { path: input } = args as { path: string };
+      const {
+        path: input,
+        startLine,
+        endLine,
+      } = args as { path: string; startLine?: number; endLine?: number };
       const path = resolveWorkspacePath(ctx, input);
+      const ranged = (content: string, lineCount: number) => {
+        if (startLine === undefined && endLine === undefined)
+          return { path, content, lineCount };
+        const lines = content.split(/\r\n|\r|\n/),
+          start = startLine ?? 1,
+          end = endLine ?? lines.length;
+        if (
+          start < 1 ||
+          end < start ||
+          start > lines.length ||
+          end > lines.length
+        )
+          throw new WorkspaceToolError(
+            'invalid_range',
+            `Line range must be within 1–${lines.length}.`,
+          );
+        return {
+          path,
+          content: lines
+            .slice(start - 1, end)
+            .join(
+              content.includes('\r\n')
+                ? '\r\n'
+                : content.includes('\r')
+                  ? '\r'
+                  : '\n',
+            ),
+          lineCount,
+          startLine: start,
+          endLine: end,
+        };
+      };
+      if (window.mked?.workspaceOperation) {
+        const file = await ctx.workspace.read(path);
+        return ranged(file.content, file.content.split(/\r\n|\r|\n/).length);
+      }
       const fm = ctx.bridge.fileManager;
       // Fast path: file is already open as a tab. Read from the live
       // Monaco model so any unsaved edits the user has typed are
       // included — and we avoid an unnecessary disk hit.
       const openModel = fm.models.get(path);
       if (openModel) {
-        return {
-          path,
-          content: openModel.getValue(),
-          lineCount: openModel.getLineCount(),
-        };
+        return ranged(openModel.getValue(), openModel.getLineCount());
       }
       // File not open. Read directly from disk via the mked invoke
       // helper — this is what keeps tab-spam down: every read used to
@@ -581,7 +666,7 @@ const CATALOG: Record<string, ToolSpec> = {
       }
       try {
         const { content, lineCount } = await mked.readFile(path);
-        return { path, content, lineCount };
+        return ranged(content, lineCount);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         throw new Error(`read_file: failed to read ${path}: ${message}`, {
@@ -699,7 +784,10 @@ const CATALOG: Record<string, ToolSpec> = {
         root: scope ?? ftm.getSnapshot().treeRoot,
         paths,
         directories,
-        truncated: paths.length >= MAX_FILES || directories.length >= MAX_DIRS,
+        truncated:
+          paths.length >= MAX_FILES ||
+          directories.length >= MAX_DIRS ||
+          loadCount >= MAX_LOADS,
       };
     },
   },
@@ -847,7 +935,7 @@ const CATALOG: Record<string, ToolSpec> = {
       // Await the disk write so a failure (read-only fs, permission
       // denied, etc.) surfaces to the agent instead of returning a
       // misleading `ok: true`.
-      await awaitedSaveFile(path, content);
+      await awaitedSaveFile(ctx, path, content);
       return { ok: true, path };
     },
   },
@@ -955,8 +1043,9 @@ const CATALOG: Record<string, ToolSpec> = {
       // on Accept), surface the unchanged content so the diff renders
       // honestly — no fake replacement. The Accept path will then
       // throw the same "oldText not found" the user expects.
-      return before.includes(needle)
-        ? before.replace(needle, replacement)
+      const first = before.indexOf(needle);
+      return needle && first >= 0 && before.indexOf(needle, first + 1) < 0
+        ? before.replace(needle, () => replacement)
         : before;
     },
     async execute(args, ctx) {
@@ -1003,7 +1092,7 @@ const CATALOG: Record<string, ToolSpec> = {
           `edit_file: oldText not found in ${path}. The text must appear verbatim (whitespace and punctuation matter). Pass enough surrounding context to be unique.`,
         );
       }
-      const secondIdx = haystack.indexOf(needle, firstIdx + needle.length);
+      const secondIdx = haystack.indexOf(needle, firstIdx + 1);
       if (secondIdx >= 0) {
         throw new Error(
           `edit_file: oldText matched multiple places in ${path}. Include more surrounding context so the match is unique.`,
@@ -1026,7 +1115,7 @@ const CATALOG: Record<string, ToolSpec> = {
       // Await the disk write — the in-memory edit succeeded so the
       // user sees the change, but the agent must hear about a save
       // failure rather than getting `ok: true`.
-      await awaitedSaveFile(path, model.getValue());
+      await awaitedSaveFile(ctx, path, model.getValue());
       return { ok: true, path };
     },
   },
@@ -1185,6 +1274,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const editor = ctx.bridge.mkeditor;
       const selection = editor.getSelection();
       if (!selection) throw new Error('No selection to replace');
+      assertLocalSelection(ctx);
       editor.executeEdits('assistant-tool-replace_selection', [
         {
           range: selection,
@@ -1198,7 +1288,7 @@ const CATALOG: Record<string, ToolSpec> = {
       // already filters out untitled-, so no extra guard is needed.
       const path = ctx.bridge.fileManager.getActiveEditablePath();
       if (path) {
-        await awaitedSaveFile(path, editor.getValue());
+        await awaitedSaveFile(ctx, path, editor.getValue());
       }
       return { ok: true };
     },
@@ -1234,6 +1324,7 @@ const CATALOG: Record<string, ToolSpec> = {
       const editor = ctx.bridge.mkeditor;
       const position = editor.getPosition();
       if (!position) throw new Error('No cursor position');
+      assertLocalSelection(ctx);
       editor.executeEdits('assistant-tool-insert_at_cursor', [
         {
           range: {
@@ -1251,7 +1342,7 @@ const CATALOG: Record<string, ToolSpec> = {
       // accessor already filters out untitled- ids.
       const path = ctx.bridge.fileManager.getActiveEditablePath();
       if (path) {
-        await awaitedSaveFile(path, editor.getValue());
+        await awaitedSaveFile(ctx, path, editor.getValue());
       }
       return { ok: true };
     },
@@ -1275,13 +1366,51 @@ const CATALOG: Record<string, ToolSpec> = {
  */
 export class AssistantTools implements ToolExecutor {
   private readonly ctx: ToolContext;
+  private readonly approvalTargets = new WeakMap<object, () => boolean>();
 
   constructor(bridge: BridgeManager) {
-    this.ctx = { bridge };
+    this.ctx = { bridge, workspace: new WorkspaceToolFiles(bridge, truncate) };
   }
 
   hasTool(name: string): boolean {
-    return name in CATALOG;
+    return Object.prototype.hasOwnProperty.call(CATALOG, name);
+  }
+
+  private getSpec(name: string): ToolSpec | undefined {
+    return this.hasTool(name) ? CATALOG[name] : undefined;
+  }
+
+  /** Provider schema metadata cannot replace validation at execution time. */
+  private validateArguments(spec: ToolSpec, args: unknown): void {
+    if (typeof args !== 'object' || args === null || Array.isArray(args)) {
+      throw new Error('Tool arguments must be an object');
+    }
+    const values = args as Record<string, unknown>;
+    for (const key of spec.parameters.required ?? []) {
+      if (!Object.prototype.hasOwnProperty.call(values, key)) {
+        throw new Error(`Missing required tool argument: ${key}`);
+      }
+    }
+    for (const [key, value] of Object.entries(values)) {
+      if (
+        !Object.prototype.hasOwnProperty.call(spec.parameters.properties, key)
+      ) {
+        throw new Error(`Unknown tool argument: ${key}`);
+      }
+      const type = spec.parameters.properties[key].type;
+      const valid =
+        type === 'array'
+          ? Array.isArray(value) && value.every((v) => typeof v === 'string')
+          : type === 'integer'
+            ? Number.isSafeInteger(value)
+            : type === 'object'
+              ? value !== null &&
+                typeof value === 'object' &&
+                !Array.isArray(value)
+              : !type || typeof value === type;
+      if (!valid)
+        throw new Error(`Invalid tool argument: ${key} must be a ${type}`);
+    }
   }
 
   describe(): ToolDescriptor[] {
@@ -1292,14 +1421,78 @@ export class AssistantTools implements ToolExecutor {
     }));
   }
 
-  classify(name: string): ToolClass {
-    return CATALOG[name]?.toolClass ?? 'unknown';
+  classify(name: string, args?: unknown): ToolClass {
+    const spec = this.getSpec(name);
+    return spec?.classifyArgs && args
+      ? spec.classifyArgs(args)
+      : (spec?.toolClass ?? 'unknown');
+  }
+
+  requiresConfirmation(name: string, args: unknown): boolean {
+    return (
+      this.classify(name, args) === 'write' &&
+      this.getSpec(name)?.alwaysConfirm === true
+    );
+  }
+
+  async preparePreview(
+    name: string,
+    args: unknown,
+  ): Promise<ToolConfirmPreview | null> {
+    const spec = this.getSpec(name);
+    if (!spec) throw new UnknownToolError(name);
+    if (['replace_selection', 'insert_at_cursor'].includes(name))
+      assertLocalSelection(this.ctx);
+    this.validateArguments(spec, args);
+    return spec.prepare
+      ? spec.prepare(args, this.ctx)
+      : this.buildPreview(name, args);
   }
 
   buildPreview(name: string, args: unknown): ToolConfirmPreview | null {
-    const spec = CATALOG[name];
+    const spec = this.getSpec(name);
     if (!spec || !spec.preview) return null;
     try {
+      this.validateArguments(spec, args);
+      if (name === 'replace_selection' || name === 'insert_at_cursor') {
+        const editor = this.ctx.bridge.mkeditor;
+        const model = editor.getModel();
+        const path = this.ctx.bridge.fileManager.getActiveEditablePath();
+        const rangeKey = () => {
+          const range = editor.getSelection();
+          return range
+            ? [
+                range.startLineNumber,
+                range.startColumn,
+                range.endLineNumber,
+                range.endColumn,
+              ].join(':')
+            : null;
+        };
+        const positionKey = () => {
+          const position = editor.getPosition();
+          return position ? `${position.lineNumber}:${position.column}` : null;
+        };
+        const selection = editor.getSelection();
+        const before =
+          selection && model ? model.getValueInRange(selection) : null;
+        const range = rangeKey();
+        const position = positionKey();
+        // A confirmation authorises the previewed target, not whichever tab or
+        // selection happens to be active when the user eventually accepts.
+        this.approvalTargets.set(
+          args as object,
+          () =>
+            editor.getModel() === model &&
+            this.ctx.bridge.fileManager.getActiveEditablePath() === path &&
+            (name === 'replace_selection'
+              ? rangeKey() === range &&
+                (selection && model
+                  ? model.getValueInRange(selection)
+                  : null) === before
+              : positionKey() === position),
+        );
+      }
       return spec.preview(args, this.ctx);
     } catch {
       // Preview is best-effort; if it fails (e.g. model not yet open)
@@ -1313,14 +1506,61 @@ export class AssistantTools implements ToolExecutor {
     args: unknown,
     side: 'before' | 'after',
   ): Promise<string | undefined> {
-    const spec = CATALOG[name];
+    const spec = this.getSpec(name);
     if (!spec || !spec.getFullContent) return undefined;
+    this.validateArguments(spec, args);
     return spec.getFullContent(args, this.ctx, side);
   }
 
   async execute(name: string, args: unknown): Promise<unknown> {
-    const spec = CATALOG[name];
+    const spec = this.getSpec(name);
     if (!spec) throw new UnknownToolError(name);
+    if (['replace_selection', 'insert_at_cursor'].includes(name))
+      assertLocalSelection(this.ctx);
+    this.validateArguments(spec, args);
+    // Native validation runs even for already-open buffers, which otherwise skip
+    // disk IPC. The original tools retain their established resolution behaviour.
+    if (
+      window.mked?.workspaceOperation &&
+      !Object.prototype.hasOwnProperty.call(workspaceToolCatalog, name)
+    ) {
+      const values = args as Record<string, unknown>;
+      for (const key of ['path', 'subpath'])
+        if (typeof values[key] === 'string') {
+          resolveAgentPath(this.ctx.workspace.root(), values[key]);
+          await this.ctx.workspace.resolve(values[key]);
+        }
+      if (
+        [
+          'get_active_file',
+          'get_selection',
+          'replace_selection',
+          'insert_at_cursor',
+        ].includes(name)
+      ) {
+        const active = this.ctx.bridge.fileManager.getActiveEditablePath();
+        if (active) await this.ctx.workspace.resolve(active);
+      }
+      if (name === 'create_file' || name === 'create_folder') {
+        const path = resolveAgentPath(
+          this.ctx.workspace.root(),
+          values.path as string,
+        );
+        for (const part of path
+          .replace(/\\/g, '/')
+          .slice(this.ctx.workspace.root().replace(/\\/g, '/').length)
+          .split('/')
+          .filter(Boolean))
+          validateWorkspaceName(part);
+      }
+    }
+    const approvedTarget = this.approvalTargets.get(args as object);
+    this.approvalTargets.delete(args as object);
+    if (approvedTarget && !approvedTarget()) {
+      throw new Error(
+        'Editor target changed since the tool preview. Request a new tool call.',
+      );
+    }
     return spec.execute(args, this.ctx);
   }
 }

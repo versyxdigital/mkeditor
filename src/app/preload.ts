@@ -13,6 +13,7 @@ import type { LogLevel } from './interfaces/Logging';
 // Can be sent from the renderer process and
 // received by the main process
 const senderWhitelist = [
+  'to:cloud:request',
   'to:title:set',
   'to:editor:state',
   'to:settings:save',
@@ -47,6 +48,7 @@ const senderWhitelist = [
   'to:ai:cancel',
   'to:ai:tool-result',
   'to:ai:config:get',
+  'to:ai:chatgpt',
   'to:ai:config:set',
   'to:ai:key:set',
   'to:ai:key:clear',
@@ -59,9 +61,13 @@ const senderWhitelist = [
 // Can be sent from the main process and received
 // by the renderer process
 const receiverWhitelist = [
+  'from:cloud:result',
+  'from:cloud:state',
   'from:theme:set',
   'from:settings:set',
   'from:session:restore',
+  'from:session:saved',
+  'from:session:cleared',
   'from:session:flush-request',
   'from:file:new',
   'from:file:open',
@@ -70,11 +76,13 @@ const receiverWhitelist = [
   'from:file:opened',
   'from:file:save',
   'from:file:saveas',
+  'from:file:save-result',
   'from:modal:open',
   'from:command:palette',
   'from:notification:display',
   'from:path:properties',
   'from:path:renamed',
+  'from:path:deleted',
   'from:i18n:set',
   'from:window:state',
   // AI Assistant — streaming chunks / tool calls / done / error / config
@@ -83,6 +91,7 @@ const receiverWhitelist = [
   'from:ai:done',
   'from:ai:error',
   'from:ai:config',
+  'from:ai:key:result',
   'from:ai:ollama:models',
   // AI Assistant — conversation persistence
   'from:ai:conversations',
@@ -162,6 +171,16 @@ contextBridge.exposeInMainWorld('mked', {
       content: string;
       lineCount: number;
     }>,
+  listWorkspaceFiles: (root: string) =>
+    ipcRenderer.invoke('mked:fs:listworkspacefiles', root) as Promise<
+      import('./interfaces/Storage').WorkspaceFileListing
+    >,
+  workspaceOperation: (
+    request: import('./interfaces/WorkspaceTools').WorkspaceRequest,
+  ) =>
+    ipcRenderer.invoke('mked:fs:workspace-operation', request) as Promise<
+      import('./interfaces/WorkspaceTools').WorkspaceResponse
+    >,
   /**
    * Write `content` to an existing or new file at `path`. Resolves
    * with `{ok: true, path}` on success or `{ok: false, error}` on

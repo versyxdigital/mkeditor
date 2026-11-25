@@ -32,5 +32,11 @@
   "mention_picker_aria": "Вибрати файл для згадки",
   "mention_picker_empty": "Немає відповідних файлів",
   "hide_conversations_aria": "Сховати список розмов",
-  "show_conversations_aria": "Показати список розмов"
+  "show_conversations_aria": "Показати список розмов",
+  "expand_input": "Розгорнути поле повідомлення",
+  "collapse_input": "Згорнути поле повідомлення",
+  "mention_picker_loading": "Завантаження файлів робочої області…",
+  "mention_picker_error": "Не вдалося завантажити файли робочої області.",
+  "copy_code": "Копіювати код",
+  "copy_failed": "Не вдалося скопіювати код."
 }

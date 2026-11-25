@@ -9,6 +9,7 @@ import { AssistantContextSource } from './AssistantContextSource';
 import { registerBridgeListeners } from './BridgeListeners';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
+import { CloudManager } from './CloudManager';
 
 /**
  * Bridge handler.
@@ -48,6 +49,7 @@ export class BridgeManager {
    * `onConfigPush` handler.
    */
   public assistantManager: AssistantManager;
+  public cloudManager: CloudManager;
 
   /** Window-control state. Mutated by `BridgeListeners.from:window:state`
    *  on every main-process maximize / unmaximize event. React's
@@ -74,10 +76,17 @@ export class BridgeManager {
       this.mkeditor,
       this.dispatcher,
     );
-    this.fileTreeManager = new FileTreeManager(this.bridge, (path) =>
-      this.fileManager.openFileFromPath(path),
+    this.fileTreeManager = new FileTreeManager(
+      this.bridge,
+      (path) => this.fileManager.openFileFromPath(path),
+      async (root) => {
+        if (!window.mked?.listWorkspaceFiles)
+          throw new Error('Workspace file listing is unavailable.');
+        return window.mked.listWorkspaceFiles(root);
+      },
     );
     this.assistantManager = new AssistantManager(this.bridge);
+    this.cloudManager = new CloudManager(this.bridge, this.fileManager);
     // Hand the tool catalog to the manager. The executor needs the
     // BridgeManager instance (it reaches into FileManager /
     // FileTreeManager / EditorManager through there), so it's
@@ -323,17 +332,13 @@ export class BridgeManager {
   }
 
   public menuFileSave(): void {
-    // Delegate to FileManager so every save path (toolbar button,
-    // menu accelerator Ctrl+S, native macOS menu, in-window
-    // TitleBar) clears the tab's unsaved-changes dot via the same
-    // `markTabClean` call. Previously this branch duplicated the
-    // body but skipped `markTabClean`, so the file was saved on
-    // disk while the dot stayed lit.
+    // FileManager clears the dirty baseline only after the correlated
+    // filesystem acknowledgement, including saves from every menu surface.
     this.fileManager.saveContentToFile();
   }
 
   public menuFileSaveAs(): void {
-    this.bridge.send('to:file:saveas', this.mkeditor.getValue());
+    void this.fileManager.saveContentToFile(true);
   }
 
   public menuFolderOpen(): void {

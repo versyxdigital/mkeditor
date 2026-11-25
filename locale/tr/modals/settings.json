@@ -37,5 +37,10 @@
   "tab_assistant": "AI Sağlayıcıları",
   "paste_images": "Yapıştırılan görseller",
   "paste_images_directory_label": "Yapıştırılan görsel klasörü",
-  "paste_images_directory_help": "Göreceli yollar (örn. './assets') etkin Markdown dosyasının klasörüne göre çözümlenir. Mutlak yollar açık çalışma alanı içinde olmalıdır."
+  "paste_images_directory_help": "Göreceli yollar (örn. './assets') etkin Markdown dosyasının klasörüne göre çözümlenir. Mutlak yollar açık çalışma alanı içinde olmalıdır.",
+  "nav_editor": "Düzenleyici",
+  "nav_preview": "Önizleme",
+  "nav_workspace": "Dosyalar ve çalışma alanı",
+  "darkmode_label": "Koyu tema",
+  "changes_apply_immediately": "Değişiklikler hemen uygulanır."
 }

@@ -40,7 +40,11 @@ export const assistantStoreDir = (): string => APP_PATH;
 
 const fallback = (): AssistantStoreFile => ({
   version: ASSISTANT_STORE_VERSION,
-  providers: DEFAULT_PROVIDER_CONFIG,
+  providers: {
+    anthropic: { ...DEFAULT_PROVIDER_CONFIG.anthropic },
+    openai: { ...DEFAULT_PROVIDER_CONFIG.openai },
+    ollama: { ...DEFAULT_PROVIDER_CONFIG.ollama },
+  },
   keys: {},
 });
 

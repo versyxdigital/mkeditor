@@ -77,6 +77,7 @@ const ipcMain = {
 const protocol = {
   registerSchemesAsPrivileged: jest.fn(),
   handle: jest.fn(),
+  unhandle: jest.fn(),
 };
 
 // safeStorage mock — used by AssistantKeyStore.
@@ -84,6 +85,14 @@ const protocol = {
 // per-suite. The defaults give a working round-trip via base64 + a
 // fixed prefix so jest.requireActual paths still behave sanely.
 const safeStorage = {
+  getSelectedStorageBackend: jest.fn(() => 'gnome_libsecret'),
+  isAsyncEncryptionAvailable: jest.fn(async () => true),
+  encryptStringAsync: jest.fn(async (s) => Buffer.from('ENC:' + s, 'utf-8')),
+  decryptStringAsync: jest.fn(async (buf) => {
+    const text = buf.toString('utf-8');
+    if (!text.startsWith('ENC:')) throw new Error('bad ciphertext');
+    return { result: text.slice(4), shouldReEncrypt: false };
+  }),
   isEncryptionAvailable: jest.fn(() => true),
   encryptString: jest.fn((s) => Buffer.from('ENC:' + s, 'utf-8')),
   decryptString: jest.fn((buf) => {

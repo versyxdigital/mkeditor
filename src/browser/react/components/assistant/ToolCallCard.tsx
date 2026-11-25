@@ -20,18 +20,16 @@ import { InsertPreview } from './InsertPreview';
  * States (`invocation.status`):
  *   - `pending-confirm`: waiting on the user (the confirm dialog is
  *     open elsewhere). Small muted card with a "waiting" hint.
- *   - `executing`: tool is running. Animated dot, no expand affordance.
+ *   - `executing`: tool is running, with a pulsing status indicator.
  *   - `succeeded`: collapsed by default; expandable to show args + the
- *     returned result (serialised JSON, truncated to a reasonable
- *     height).
- *   - `failed`: red border + error code + expandable detail.
+ *     returned result, with wrapping text and expandable excerpts.
+ *   - `failed`: error status + error code + expandable detail.
  *
- * Stateless — `<ChatPane>` re-renders us each chunk via the manager's
- * snapshot, so the visual updates automatically as the status flows
- * through the lifecycle.
+ * The manager owns execution state; local state only controls disclosure.
  */
-/** Character threshold above which the result `<pre>` collapses behind a "Show more" toggle. */
+/** Bound initial excerpts by both characters and lines, without nested scrolling. */
 const RESULT_TRUNCATE_AT = 1000;
+const PREVIEW_LINES = 18;
 
 export const ToolCallCard: React.FC<{ invocation: ToolInvocation }> = ({
   invocation,
@@ -40,8 +38,16 @@ export const ToolCallCard: React.FC<{ invocation: ToolInvocation }> = ({
   const { chat, manager } = useAssistantChat();
   const [expanded, setExpanded] = React.useState(false);
   const [resultExpanded, setResultExpanded] = React.useState(false);
-
-  const stateClass = STATUS_CLASS[invocation.status];
+  const [argsExpanded, setArgsExpanded] = React.useState(false);
+  const detailsId = React.useId();
+  const args = invocation.arguments;
+  const path =
+    args &&
+    typeof args === 'object' &&
+    'path' in args &&
+    typeof args.path === 'string'
+      ? args.path
+      : undefined;
 
   // "Retry" button on a failed card. The original SDK loop has long
   // since closed, so retry isn't an SDK-level replay; we pipeline a
@@ -87,25 +93,42 @@ export const ToolCallCard: React.FC<{ invocation: ToolInvocation }> = ({
     <div
       data-testid={`tool-call-${invocation.toolCallId}`}
       data-status={invocation.status}
-      className={cn('mt-2 rounded border px-2 py-1.5 text-xs', stateClass)}
+      className="mt-2 min-w-0 max-w-full rounded-lg border border-border bg-editor text-xs text-foreground"
     >
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2 text-left"
+        className="flex w-full min-w-0 items-center gap-2.5 rounded-lg px-3 py-2.5 text-left hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         aria-expanded={expanded}
+        aria-controls={detailsId}
         aria-label={t('assistant-tools:toggle_card', {
           toolName: invocation.toolName,
         })}
       >
-        <Icon
-          name={expanded ? 'chevron-down' : 'chevron-right'}
-          className="text-xs"
-        />
-        <span className="font-mono text-xs">{invocation.toolName}</span>
-        <span className="ml-auto flex items-center gap-1 text-xs">
+        <Icon name="terminal" className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span
+            className="truncate font-mono text-xs font-medium"
+            title={invocation.toolName}
+          >
+            {invocation.toolName}
+          </span>
+          {path && (
+            <span
+              className="truncate text-[11px] text-muted-foreground"
+              title={path}
+            >
+              {path}
+            </span>
+          )}
+        </span>
+        <span className="ml-auto shrink-0 text-[11px]">
           <StatusBadge status={invocation.status} />
         </span>
+        <Icon
+          name={expanded ? 'chevron-down' : 'chevron-right'}
+          className="h-2.5 w-2.5 text-muted-foreground"
+        />
       </button>
 
       {pending && (
@@ -119,26 +142,30 @@ export const ToolCallCard: React.FC<{ invocation: ToolInvocation }> = ({
       )}
 
       {expanded && (
-        <div className="mt-2 flex flex-col gap-2 border-t border-current/20 pt-2">
-          <div>
-            <p className="text-xs font-semibold opacity-80">
-              {t('assistant-tools:args_label')}
-            </p>
-            <pre className="max-h-32 overflow-auto rounded border border-current/20 bg-background/40 p-1.5 text-xs">
-              {JSON.stringify(invocation.arguments, null, 2)}
-            </pre>
-          </div>
+        <div
+          id={detailsId}
+          className="flex min-w-0 flex-col gap-3 border-t border-subtle p-3"
+        >
+          <ToolTextBlock
+            label={t('assistant-tools:args_label')}
+            text={formatResult(invocation.arguments)}
+            expanded={argsExpanded}
+            onToggle={() => setArgsExpanded((v) => !v)}
+            testId="tool-args-toggle"
+          />
           {invocation.status === 'succeeded' &&
             invocation.result !== undefined && (
-              <ResultBlock
-                resultText={formatResult(invocation.result)}
+              <ToolTextBlock
+                label={t('assistant-tools:result_label')}
+                text={formatResult(invocation.result)}
                 expanded={resultExpanded}
                 onToggle={() => setResultExpanded((v) => !v)}
+                testId="tool-result-toggle"
               />
             )}
           {invocation.status === 'failed' && (
-            <div>
-              <p className="text-xs font-semibold opacity-80">
+            <div className="rounded-md bg-destructive/10 p-3 text-destructive [overflow-wrap:anywhere]">
+              <p className="mb-1 text-[11px] font-medium">
                 {t('assistant-tools:error_label')}
               </p>
               <p className="text-xs">
@@ -151,16 +178,18 @@ export const ToolCallCard: React.FC<{ invocation: ToolInvocation }> = ({
                   prompts the agent to try the call again. Disabled
                   when the chat is mid-stream (a tool-call retry
                   collides with whatever's currently streaming). */}
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant="outline"
                 onClick={handleRetry}
                 disabled={!manager || Object.keys(chat.inflight).length > 0}
-                className="mt-1 inline-flex items-center gap-1 rounded border border-current/30 px-2 py-0.5 text-xs hover:bg-current/10 disabled:opacity-50"
+                className="mt-2 gap-1"
                 data-testid={`tool-call-retry-${invocation.toolCallId}`}
               >
                 <Icon name="refresh" />
                 <span>{t('assistant-tools:retry')}</span>
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -221,10 +250,11 @@ const InlineConfirm: React.FC<{
   );
 
   return (
-    <div className="mt-2 flex flex-col gap-2 border-t border-current/20 pt-2">
-      {preview && preview.path ? (
-        <p className="break-all text-xs font-semibold opacity-80">
-          {t(PREVIEW_KIND_LABEL[preview.kind], { path: preview.path })}
+    <div className="mx-3 flex min-w-0 flex-col gap-3 border-t border-subtle pt-3">
+      {preview && (preview.path || preview.summary) ? (
+        <p className="break-all text-xs font-medium text-muted-foreground">
+          {preview.summary ??
+            t(PREVIEW_KIND_LABEL[preview.kind], { path: preview.path })}
           {preview.detail ? ` · ${preview.detail}` : ''}
         </p>
       ) : null}
@@ -238,7 +268,7 @@ const InlineConfirm: React.FC<{
       ) : null}
       {/* Sticky footer — Accept / Reject. Stays visible even when the
           diff editor scrolls inside its own height cap. */}
-      <div className="sticky bottom-0 -mx-2 flex items-center justify-end gap-2 border-t border-current/20 bg-inherit px-2 py-1.5">
+      <div className="sticky bottom-0 -mx-3 flex items-center justify-end gap-2 rounded-b-lg border-t border-subtle bg-editor px-3 py-2">
         <Button
           type="button"
           size="sm"
@@ -267,6 +297,7 @@ const PREVIEW_KIND_LABEL: Record<
   string
 > = {
   create: 'assistant-tools:preview_create',
+  operation: 'assistant-tools:preview_write',
   write: 'assistant-tools:preview_write',
   edit: 'assistant-tools:preview_edit',
   replace: 'assistant-tools:preview_replace',
@@ -292,6 +323,7 @@ const EXPANDABLE_SIDES: Record<
   replace: { before: false, after: true },
   create: { before: false, after: true },
   insert: { before: false, after: true },
+  operation: { before: false, after: false },
 };
 
 /**
@@ -311,7 +343,7 @@ function useInlineConfirmContent(
   blockProps?: React.ComponentProps<typeof InsertPreview>;
 } {
   return React.useMemo(() => {
-    if (!preview) return {};
+    if (!preview || preview.kind === 'operation') return {};
     const expandable = EXPANDABLE_SIDES[preview.kind];
     const buildFetcher = (
       side: 'before' | 'after',
@@ -362,77 +394,92 @@ const StatusBadge: React.FC<{ status: ToolInvocation['status'] }> = ({
     return (
       <span
         aria-label={t('assistant-tools:status_executing')}
-        className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-current"
-      />
+        className="inline-flex items-center gap-1.5 text-muted-foreground"
+      >
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+        {t('assistant-tools:status_executing')}
+      </span>
     );
   }
-  return <span>{t(`assistant-tools:status_${status}`)}</span>;
+  return (
+    <span
+      className={cn('inline-flex items-center gap-1.5', STATUS_COLOR[status])}
+    >
+      <Icon
+        name={status === 'succeeded' ? 'check' : 'exclamation-circle'}
+        className="h-3 w-3"
+      />
+      {t(`assistant-tools:status_${status}`)}
+    </span>
+  );
 };
 
-const STATUS_CLASS: Record<ToolInvocation['status'], string> = {
-  'pending-confirm':
-    'border-amber-400/40 bg-amber-50 text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/40 dark:text-amber-200',
-  executing: 'border-border bg-muted text-foreground',
-  succeeded:
-    'border-emerald-400/40 bg-emerald-50 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-950/40 dark:text-emerald-200',
-  failed:
-    'border-red-400/40 bg-red-50 text-red-900 dark:border-red-400/30 dark:bg-red-950/40 dark:text-red-200',
+const STATUS_COLOR: Record<ToolInvocation['status'], string> = {
+  'pending-confirm': 'text-warning',
+  executing: 'text-muted-foreground',
+  succeeded: 'text-success',
+  failed: 'text-destructive',
 };
 
 function formatResult(result: unknown): string {
+  if (typeof result === 'string') return result;
   try {
-    return JSON.stringify(result, null, 2);
+    return JSON.stringify(result, null, 2) ?? String(result);
   } catch {
     return String(result);
   }
 }
 
 /**
- * Result `<pre>` with a P8 "Show more" toggle. Short results render
- * uncapped; long ones (>RESULT_TRUNCATE_AT chars) collapse to the
- * leading slice plus a count-aware "Show more" button. Click expands;
- * a second click re-collapses. Keeps a long agent stdout from
- * dominating the chat scroll.
+ * Arguments/results wrap within the card and use the chat's own scroll.
+ * Large payloads start as bounded excerpts; expanding reveals the full
+ * text without clipping or adding a nested scroll region.
  */
-const ResultBlock: React.FC<{
-  resultText: string;
+const ToolTextBlock: React.FC<{
+  label: string;
+  text: string;
   expanded: boolean;
   onToggle: () => void;
-}> = ({ resultText, expanded, onToggle }) => {
+  testId: string;
+}> = ({ label, text, expanded, onToggle, testId }) => {
   const { t } = useTranslation();
-  const truncated = resultText.length > RESULT_TRUNCATE_AT && !expanded;
-  const shown = truncated
-    ? resultText.slice(0, RESULT_TRUNCATE_AT)
-    : resultText;
-  const hiddenChars = truncated ? resultText.length - RESULT_TRUNCATE_AT : 0;
+  const contentId = React.useId();
+  const excerpt = text
+    .slice(0, RESULT_TRUNCATE_AT)
+    .split('\n', PREVIEW_LINES + 1)
+    .slice(0, PREVIEW_LINES)
+    .join('\n');
+  const canExpand = excerpt.length < text.length;
+  const truncated = canExpand && !expanded;
+  const shown = truncated ? excerpt : text;
+  const hiddenChars = text.length - excerpt.length;
   return (
-    <div>
-      <p className="text-xs font-semibold opacity-80">
-        {t('assistant-tools:result_label')}
+    <div className="min-w-0">
+      <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">
+        {label}
       </p>
       <pre
-        className={cn(
-          'overflow-auto rounded border border-current/20 bg-background/40 p-1.5 text-xs',
-          // Cap height only while truncated — once the user clicks
-          // "Show more" they want to read the whole thing.
-          truncated && 'max-h-40',
-          expanded && 'max-h-96',
-        )}
+        id={contentId}
+        className="m-0 min-w-0 whitespace-pre-wrap rounded-md bg-sidebar px-3 py-2 font-mono text-[11px] leading-5 text-foreground [overflow-wrap:anywhere]"
       >
         {shown}
         {truncated ? '\n…' : ''}
       </pre>
-      {(truncated || expanded) && resultText.length > RESULT_TRUNCATE_AT && (
-        <button
+      {canExpand && (
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={onToggle}
-          className="mt-1 text-xs underline opacity-80 hover:opacity-100"
-          data-testid="tool-result-toggle"
+          className="mt-1 h-6 px-2 text-xs text-muted-foreground"
+          data-testid={testId}
+          aria-expanded={expanded}
+          aria-controls={contentId}
         >
           {truncated
             ? t('assistant-tools:show_more', { chars: hiddenChars })
             : t('assistant-tools:show_less')}
-        </button>
+        </Button>
       )}
     </div>
   );

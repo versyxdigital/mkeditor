@@ -1,12 +1,48 @@
-import { editor } from 'monaco-editor';
+import type { editor } from 'monaco-editor';
+import { applyEditorTheme } from '../editorTheme';
 import type {
   EditorSettings,
   EditorSettingsSnapshot,
   SettingsFile,
 } from '../../interfaces/Editor';
 import { settings } from '../../config';
+import { logger } from '../../util';
 
 type PersistHandler = (next: Partial<SettingsFile>) => void;
+
+function normalizeSettings(value: unknown): EditorSettings {
+  const next: EditorSettings = {
+    ...settings,
+    fileExplorer: { extensions: [...settings.fileExplorer.extensions] },
+    pasteImages: { ...settings.pasteImages },
+  };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return next;
+  const stored = value as Partial<EditorSettings>;
+  const booleanKeys = [
+    'autoindent',
+    'darkmode',
+    'wordwrap',
+    'whitespace',
+    'minimap',
+    'systemtheme',
+    'scrollsync',
+    'sessionRestore',
+  ] as const;
+  for (const key of booleanKeys) {
+    if (typeof stored[key] === 'boolean') next[key] = stored[key];
+  }
+  if (typeof stored.locale === 'string' && stored.locale)
+    next.locale = stored.locale;
+  if (Array.isArray(stored.fileExplorer?.extensions)) {
+    next.fileExplorer.extensions = stored.fileExplorer.extensions.filter(
+      (extension): extension is string => typeof extension === 'string',
+    );
+  }
+  if (typeof stored.pasteImages?.directory === 'string') {
+    next.pasteImages.directory = stored.pasteImages.directory;
+  }
+  return next;
+}
 
 /**
  * Settings data + IPC owner. The provider exposes a stable
@@ -24,7 +60,7 @@ export class SettingsProvider {
   private mkeditor: editor.IStandaloneCodeEditor;
 
   /** Editor settings */
-  private currentSettings: EditorSettings = { ...settings };
+  private currentSettings: EditorSettings = normalizeSettings(null);
 
   /** Stable snapshot returned by getSnapshot — rebuilt only on emit. */
   private snapshot: EditorSettingsSnapshot = {
@@ -107,7 +143,7 @@ export class SettingsProvider {
   }
 
   public setSettings(next: EditorSettings) {
-    this.currentSettings = { ...next };
+    this.currentSettings = normalizeSettings(next);
     this.applyAll();
     this.emit();
   }
@@ -120,11 +156,11 @@ export class SettingsProvider {
   }
 
   public getDefaultSettings() {
-    return settings;
+    return normalizeSettings(null);
   }
 
   public setDefaultSettings() {
-    this.currentSettings = { ...settings };
+    this.currentSettings = normalizeSettings(null);
   }
 
   // ---------------------------------------------------------------------
@@ -197,30 +233,13 @@ export class SettingsProvider {
   }
 
   private loadSettingsFromLocalStorage() {
-    const storage = localStorage.getItem('mkeditor-settings');
-    if (!storage) {
-      this.setDefaultSettings();
-      this.updateSettingsInLocalStorage();
-      return;
-    }
     try {
-      const parsed = JSON.parse(storage) as Partial<EditorSettings> | null;
-      if (typeof parsed !== 'object' || parsed === null) {
-        // Corrupted shape — reset to defaults + persist.
-        this.setDefaultSettings();
+      const storage = localStorage.getItem('mkeditor-settings');
+      const parsed: unknown = storage ? JSON.parse(storage) : null;
+      this.currentSettings = normalizeSettings(parsed);
+      if (JSON.stringify(parsed) !== JSON.stringify(this.currentSettings)) {
         this.updateSettingsInLocalStorage();
-        return;
       }
-      // Merge stored values onto current defaults so any new fields added
-      // in later versions (e.g. `sessionRestore` in 3.8) inherit their
-      // default rather than landing as `undefined` and breaking React
-      // controls / the gate getter. Stored values still take precedence
-      // for every key the user has actually customised.
-      this.currentSettings = { ...settings, ...parsed };
-      // If the merge filled in any missing keys, persist the upgraded
-      // shape so future loads don't repeat the work.
-      const upgraded = Object.keys(settings).some((k) => !(k in parsed));
-      if (upgraded) this.updateSettingsInLocalStorage();
     } catch {
       this.setDefaultSettings();
       this.updateSettingsInLocalStorage();
@@ -228,10 +247,14 @@ export class SettingsProvider {
   }
 
   private updateSettingsInLocalStorage() {
-    localStorage.setItem(
-      'mkeditor-settings',
-      JSON.stringify(this.currentSettings),
-    );
+    try {
+      localStorage.setItem(
+        'mkeditor-settings',
+        JSON.stringify(this.currentSettings),
+      );
+    } catch (error) {
+      logger.warn('Unable to persist editor settings', error);
+    }
   }
 
   public setPersistHandler(fn: PersistHandler | null) {
@@ -261,7 +284,7 @@ export class SettingsProvider {
   public setTheme() {
     const effective = this.effectiveDarkmode();
     document.body.setAttribute('data-theme', effective ? 'dark' : 'light');
-    editor.setTheme(effective ? 'vs-dark' : 'vs');
+    applyEditorTheme(effective);
     return this;
   }
 

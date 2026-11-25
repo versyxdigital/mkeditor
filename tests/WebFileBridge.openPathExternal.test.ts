@@ -43,17 +43,53 @@ function captureNotifications(
 
 describe('WebFileBridge — to:shell:openpath', () => {
   const originalCreate = URL.createObjectURL;
+  const originalRevoke = URL.revokeObjectURL;
   const originalOpen = window.open;
 
   beforeEach(() => {
     // jsdom doesn't implement URL.createObjectURL by default.
     (URL.createObjectURL as unknown) = jest.fn(() => 'blob:fake-url');
-    (window.open as unknown) = jest.fn();
+    (URL.revokeObjectURL as unknown) = jest.fn();
+    (window.open as unknown) = jest.fn(() => ({}));
   });
 
   afterEach(() => {
     URL.createObjectURL = originalCreate;
+    URL.revokeObjectURL = originalRevoke;
     window.open = originalOpen;
+    jest.useRealTimers();
+  });
+
+  it('releases an external blob URL after the viewer has had time to load', async () => {
+    jest.useFakeTimers();
+    const bridge = new WebFileBridge();
+    (bridge as unknown as { handles: Map<string, unknown> }).handles.set(
+      '/work/cover.png',
+      fakeFileHandle(),
+    );
+    bridge.send('to:shell:openpath', { path: '/work/cover.png' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(60_000);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:fake-url');
+  });
+
+  it('releases a blocked popup URL immediately and reports the failure', async () => {
+    (window.open as jest.Mock).mockReturnValue(null);
+    const bridge = new WebFileBridge();
+    const notifications = captureNotifications(bridge);
+    (bridge as unknown as { handles: Map<string, unknown> }).handles.set(
+      '/work/cover.png',
+      fakeFileHandle(),
+    );
+    bridge.send('to:shell:openpath', { path: '/work/cover.png' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:fake-url');
+    expect(notifications).toEqual([
+      { status: 'error', key: 'notifications:unable_open_path' },
+    ]);
   });
 
   it('opens a cached file handle via a blob URL in a new tab', async () => {

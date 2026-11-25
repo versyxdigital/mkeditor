@@ -46,16 +46,26 @@ export function useExpandableContent(
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [fullContent, setFullContent] = React.useState<string | null>(null);
+  const revision = React.useRef(0);
+  const pending = React.useRef(false);
+  const sourceRef = React.useRef(initialContent);
+  sourceRef.current = initialContent;
 
   // Reset when the initial content changes (e.g. one card's
   // confirmation accepted, the next tool's preview lands in the same
   // DOM slot). Otherwise we'd keep showing the previous tool's full
   // content over the new tool's truncated head.
   React.useEffect(() => {
+    revision.current += 1;
+    pending.current = false;
     setIsExpanded(false);
     setIsLoading(false);
     setError(null);
     setFullContent(null);
+    return () => {
+      revision.current += 1;
+      pending.current = false;
+    };
   }, [initialContent]);
 
   // Hold the fetcher in a ref so callers don't need to memoise it.
@@ -67,7 +77,7 @@ export function useExpandableContent(
   }, [fetcher]);
 
   const toggle = React.useCallback(() => {
-    if (!isTruncated) return;
+    if (!isTruncated || pending.current) return;
     if (isExpanded) {
       setIsExpanded(false);
       return;
@@ -81,22 +91,30 @@ export function useExpandableContent(
     }
     setIsLoading(true);
     setError(null);
-    void fetcherRef
-      .current()
+    pending.current = true;
+    const version = revision.current;
+    const source = initialContent;
+    const fetchContent = fetcherRef.current;
+    void Promise.resolve()
+      .then(fetchContent)
       .then((full) => {
+        if (version !== revision.current || source !== sourceRef.current)
+          return;
+        pending.current = false;
         setFullContent(full);
         setIsExpanded(true);
         setIsLoading(false);
       })
       .catch((err: unknown) => {
+        if (version !== revision.current || source !== sourceRef.current)
+          return;
+        pending.current = false;
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
         setIsLoading(false);
       });
-    // No AbortController — these are one-shot IPC round-trips and the
-    // wasted bytes if the component unmounts mid-fetch are negligible.
-    // React 18 swallows setState on unmounted components safely.
-  }, [isTruncated, isExpanded, fullContent]);
+    // IPC reads cannot be aborted, so stale responses are discarded above.
+  }, [isTruncated, isExpanded, fullContent, initialContent]);
 
   const content =
     isExpanded && fullContent !== null ? fullContent : initialContent;

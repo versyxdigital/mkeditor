@@ -37,5 +37,10 @@
   "tab_assistant": "AI-providers",
   "paste_images": "Geplakte afbeeldingen",
   "paste_images_directory_label": "Map voor geplakte afbeeldingen",
-  "paste_images_directory_help": "Relatieve paden (bijv. './assets') worden opgelost ten opzichte van de map van het actieve Markdown-bestand. Absolute paden moeten binnen de geopende workspace blijven."
+  "paste_images_directory_help": "Relatieve paden (bijv. './assets') worden opgelost ten opzichte van de map van het actieve Markdown-bestand. Absolute paden moeten binnen de geopende workspace blijven.",
+  "nav_editor": "Editor",
+  "nav_preview": "Voorbeeld",
+  "nav_workspace": "Bestanden en werkruimte",
+  "darkmode_label": "Donker thema",
+  "changes_apply_immediately": "Wijzigingen worden direct toegepast."
 }

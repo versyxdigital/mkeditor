@@ -1,11 +1,7 @@
 import * as React from 'react';
 
 export type ModalKey =
-  | 'settings'
-  | 'exportSettings'
-  | 'about'
-  | 'shortcuts'
-  | 'moveItem';
+  'settings' | 'exportSettings' | 'about' | 'shortcuts' | 'moveItem';
 
 /**
  * Optional payload openers can hand to `openModal`. The settings
@@ -15,7 +11,7 @@ export type ModalKey =
  * call site.
  */
 export type ModalPayload =
-  | { tab?: 'general' | 'assistant' }
+  | { tab?: 'general' | 'assistant' | 'connections' }
   | { sourcePath: string }
   | null
   | undefined;
@@ -88,8 +84,7 @@ export function useModals(): ModalsState {
  * function ignores undefined payloads cleanly.
  */
 let externalOpenModal:
-  | ((key: ModalKey, payload?: ModalPayload) => void)
-  | null = null;
+  ((key: ModalKey, payload?: ModalPayload) => void) | null = null;
 
 export function registerOpenModal(
   fn: (key: ModalKey, payload?: ModalPayload) => void,

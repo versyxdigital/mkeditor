@@ -290,8 +290,9 @@ export const FileTreePanel: React.FC = () => {
 
   // Apply the extension + search filter to the tree. Files are kept
   // only if their extension is in the active set AND (search empty
-  // OR name matches case-insensitive substring). Directories are kept
-  // only if some descendant survives. When the user is searching, the
+  // OR name matches case-insensitive substring). Empty directories stay
+  // visible without a search; other directories need a surviving or
+  // not-yet-loaded descendant. When the user is searching, the
   // surviving directories must auto-expand so the matches are visible
   // without further clicks — collected in `searchExpansion` and OR'd
   // with the user-driven `expandedPaths` set inside `<NodeRow>`.
@@ -393,8 +394,8 @@ export const FileTreePanel: React.FC = () => {
                   soft tinted bg, coloured left border, uppercase
                   "Warning" label. Body text inherits the sidebar's
                   muted foreground. */}
-              <div className="mt-3 rounded-md border-l-4 border-[#9a6700] bg-[rgba(154,103,0,0.08)] px-3 py-2 dark:bg-[rgba(187,128,9,0.15)]">
-                <div className="mb-1 text-[0.65rem] font-bold uppercase tracking-wider text-[#9a6700]">
+              <div className="mt-3 rounded-md border-l-4 border-warning bg-warning/10 px-3 py-2">
+                <div className="mb-1 text-xs font-semibold text-warning">
                   Warning
                 </div>
                 <div className="text-foreground">
@@ -552,6 +553,19 @@ const NodeRow: React.FC<NodeRowProps> = ({
     >
       <span
         className={`file-name ${isActiveFile ? 'active' : ''} ${muted ? 'text-muted-foreground' : ''}`}
+        role="button"
+        tabIndex={0}
+        aria-label={node.name}
+        aria-current={isActiveFile ? 'page' : undefined}
+        aria-expanded={node.type === 'directory' ? expanded : undefined}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            event.stopPropagation();
+            if (node.type === 'directory') onToggle(node);
+            else onOpen(node.path);
+          }
+        }}
       >
         <span
           className={`mr-1 inline-block text-[0.7em] ${hasChevron ? '' : 'invisible'}`}
@@ -594,7 +608,8 @@ const NodeRow: React.FC<NodeRowProps> = ({
 /**
  * Walk the tree, dropping files whose extension isn't in the active
  * set or whose name doesn't match `searchQuery` (when non-empty), and
- * dropping directories whose entire subtree disappeared as a result.
+ * dropping non-empty directories whose entire subtree disappeared as a
+ * result. Empty directories remain browsable when no search is active.
  */
 export function filterTree(
   nodes: TreeNode[],
@@ -633,7 +648,8 @@ export function filterTree(
         continue;
       }
       // No children loaded yet (or known-empty directory).
-      if (node.hasChildren && !node.loaded) {
+      // Learning that a directory is empty must not remove its row.
+      if (!query || (node.hasChildren && !node.loaded)) {
         out.push(node);
       }
     }

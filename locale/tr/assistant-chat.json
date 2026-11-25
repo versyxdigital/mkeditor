@@ -32,5 +32,11 @@
   "mention_picker_aria": "Bahsedilecek dosyayı seç",
   "mention_picker_empty": "Eşleşen dosya yok",
   "hide_conversations_aria": "Konuşma listesini gizle",
-  "show_conversations_aria": "Konuşma listesini göster"
+  "show_conversations_aria": "Konuşma listesini göster",
+  "expand_input": "Mesaj kutusunu genişlet",
+  "collapse_input": "Mesaj kutusunu daralt",
+  "mention_picker_loading": "Çalışma alanı dosyaları yükleniyor…",
+  "mention_picker_error": "Çalışma alanı dosyaları yüklenemedi.",
+  "copy_code": "Kodu kopyala",
+  "copy_failed": "Kod kopyalanamadı."
 }

@@ -32,5 +32,11 @@
   "mention_picker_aria": "Choisir un fichier à mentionner",
   "mention_picker_empty": "Aucun fichier correspondant",
   "hide_conversations_aria": "Masquer la liste des conversations",
-  "show_conversations_aria": "Afficher la liste des conversations"
+  "show_conversations_aria": "Afficher la liste des conversations",
+  "expand_input": "Agrandir la zone de message",
+  "collapse_input": "Réduire la zone de message",
+  "mention_picker_loading": "Chargement des fichiers de l’espace de travail…",
+  "mention_picker_error": "Impossible de charger les fichiers de l’espace de travail.",
+  "copy_code": "Copier le code",
+  "copy_failed": "Impossible de copier le code."
 }

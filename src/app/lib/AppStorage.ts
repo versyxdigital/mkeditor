@@ -1,11 +1,13 @@
 import { app, dialog, type BrowserWindow } from 'electron';
 import {
-  statSync,
   readFileSync,
-  writeFileSync,
   realpathSync,
+  statSync,
+  lstatSync,
   promises as fs,
+  constants as fsConstants,
 } from 'fs';
+import { randomUUID } from 'crypto';
 import {
   basename,
   join,
@@ -15,8 +17,24 @@ import {
   isAbsolute,
   sep,
 } from 'path';
-import type { SaveFileOptions } from '../interfaces/Storage';
+import type {
+  SaveFileOptions,
+  WorkspaceFileListing,
+} from '../interfaces/Storage';
 import { WORKSPACE_EXTENSIONS_DOTTED } from '../shared/fileExtensions';
+
+export const WORKSPACE_LISTING_LIMITS = {
+  files: 5000,
+  directories: 1000,
+  entries: 20000,
+} as const;
+const EXCLUDED_LISTING_DIRECTORIES = new Set([
+  'node_modules',
+  'dist',
+  'out',
+  'build',
+  'coverage',
+]);
 
 /**
  * AppStorage
@@ -24,6 +42,98 @@ import { WORKSPACE_EXTENSIONS_DOTTED } from '../shared/fileExtensions';
 export class AppStorage {
   /** The active file path */
   private static activeFilePath: string | null = null;
+  private static readonly textWrites = new Map<string, Promise<void>>();
+  private static readonly saveDestinations = new WeakMap<
+    BrowserWindow,
+    Set<string>
+  >();
+
+  private static savePathKey(path: string): string {
+    return process.platform === 'win32' ? path.toLowerCase() : path;
+  }
+
+  private static canonicalSavePath(path: string): string {
+    if (typeof path !== 'string' || !isAbsolute(path) || path.includes('\0'))
+      throw new Error('Invalid save destination');
+    try {
+      return realpathSync.native(path);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      return join(realpathSync.native(dirname(path)), basename(path));
+    }
+  }
+
+  /** Main-only grant after a native open/selection, checked workspace open or restore. */
+  static authorizeFile(context: BrowserWindow, path: string): void {
+    const canonical = realpathSync.native(path);
+    let destinations = AppStorage.saveDestinations.get(context);
+    if (!destinations) {
+      destinations = new Set();
+      AppStorage.saveDestinations.set(context, destinations);
+    }
+    destinations.add(AppStorage.savePathKey(canonical));
+  }
+
+  private static isSaveAuthorized(
+    context: BrowserWindow,
+    canonical: string,
+  ): boolean {
+    return (
+      AppStorage.saveDestinations
+        .get(context)
+        ?.has(AppStorage.savePathKey(canonical)) ?? false
+    );
+  }
+
+  /** Preserve grants for open documents when main successfully moves their backing paths. */
+  static moveFileAuthorization(
+    context: BrowserWindow,
+    source: string,
+    destination: string,
+  ): void {
+    const grants = AppStorage.saveDestinations.get(context);
+    if (!grants) return;
+    const from = AppStorage.savePathKey(source);
+    const to = AppStorage.savePathKey(destination);
+    for (const path of [...grants]) {
+      if (path === from || path.startsWith(from + sep)) {
+        grants.delete(path);
+        grants.add(to + path.slice(from.length));
+      }
+    }
+  }
+
+  /** Serialize menu and tool writes to the same canonical file. */
+  static async writeTextFile(
+    path: string,
+    content: string,
+    encoding: BufferEncoding = 'utf-8',
+  ): Promise<void> {
+    let key = resolve(path);
+    try {
+      key = realpathSync.native(key);
+    } catch {
+      // A new file may still have a symlinked parent. Queue both aliases
+      // under that canonical directory before the first write creates it.
+      try {
+        key = join(realpathSync.native(dirname(key)), basename(key));
+      } catch {
+        /* The eventual write reports a missing/inaccessible parent. */
+      }
+    }
+    if (process.platform === 'win32') key = key.toLowerCase();
+    const previous = AppStorage.textWrites.get(key) ?? Promise.resolve();
+    const write = previous
+      .catch(() => {})
+      .then(() => fs.writeFile(path, content, { encoding }));
+    AppStorage.textWrites.set(key, write);
+    try {
+      await write;
+    } finally {
+      if (AppStorage.textWrites.get(key) === write)
+        AppStorage.textWrites.delete(key);
+    }
+  }
 
   /**
    * The currently-open workspace root, or null when no folder is open.
@@ -43,30 +153,211 @@ export class AppStorage {
    * tree adopts a new root (lazy sub-loads don't touch this).
    */
   private static workspaceRoot: string | null = null;
+  private static offeredWorkspaceRoot: string | null = null;
+  private static restoringWorkspaceRoot: string | null = null;
 
   static getWorkspaceRoot(): string | null {
     return AppStorage.workspaceRoot;
   }
 
+  /** Synchronous guard for a canonical directory immediately before mutation. */
+  static verifyWorkspaceDirectory(
+    directory: string,
+    root: string,
+    expected?: { dev: number; ino: number; birthtimeMs: number },
+  ): { dev: number; ino: number; birthtimeMs: number } {
+    if (AppStorage.workspaceRoot !== root)
+      throw new Error('Workspace changed during the batch.');
+    const canonical = realpathSync.native(directory);
+    const rel = relative(root, canonical);
+    const stat = lstatSync(directory);
+    if (
+      relative(directory, canonical) !== '' ||
+      rel === '..' ||
+      rel.startsWith('..' + sep) ||
+      isAbsolute(rel) ||
+      stat.isSymbolicLink() ||
+      !stat.isDirectory() ||
+      (expected &&
+        (stat.dev !== expected.dev ||
+          stat.ino !== expected.ino ||
+          stat.birthtimeMs !== expected.birthtimeMs))
+    )
+      throw new Error(
+        `Workspace directory changed or is symbolic: ${directory}`,
+      );
+    return { dev: stat.dev, ino: stat.ino, birthtimeMs: stat.birthtimeMs };
+  }
+
+  /** Filename metadata for references, independent of the explorer's lazy/filter state. */
+  static async listWorkspaceFiles(root: string): Promise<WorkspaceFileListing> {
+    const workspace = AppStorage.workspaceRoot;
+    // Directory operations may address the root itself. opendir below still
+    // requires it to exist; the canonical containment check remains enforced.
+    const safeRoot = await AppStorage.assertInWorkspace(root, {
+      mustExist: false,
+    });
+    if (!workspace || safeRoot !== workspace)
+      throw new Error('Workspace changed or invalid workspace root.');
+    const displayRoot = resolve(root);
+    const pending = [displayRoot];
+    const files: string[] = [];
+    let directories = 1;
+    let entries = 0;
+    let truncated = false;
+    const checkWorkspace = () => {
+      if (AppStorage.workspaceRoot !== workspace)
+        throw new Error('Workspace changed during file listing.');
+    };
+    scan: while (pending.length > 0) {
+      checkWorkspace();
+      const directory = pending.pop()!;
+      try {
+        const safe = await AppStorage.assertInWorkspace(directory, {
+          mustExist: false,
+        });
+        checkWorkspace();
+        // Stream entries so a single huge directory cannot allocate an
+        // unbounded array before the traversal budget is checked.
+        const handle = await fs.opendir(safe);
+        for await (const entry of handle) {
+          checkWorkspace();
+          if (++entries > WORKSPACE_LISTING_LIMITS.entries) {
+            truncated = true;
+            break scan;
+          }
+          const path = join(directory, entry.name);
+          if (entry.isDirectory()) {
+            if (
+              entry.name.startsWith('.') ||
+              EXCLUDED_LISTING_DIRECTORIES.has(entry.name.toLowerCase())
+            )
+              continue;
+            if (directories >= WORKSPACE_LISTING_LIMITS.directories) {
+              truncated = true;
+              continue;
+            }
+            directories++;
+            pending.push(path);
+          } else if (entry.isFile()) files.push(path);
+          else if (entry.isSymbolicLink()) {
+            // Include safe file aliases, but never follow directory links
+            // (cycles and paths outside the selected workspace).
+            try {
+              const target = await AppStorage.assertInWorkspace(path);
+              if ((await fs.stat(target)).isFile()) files.push(path);
+            } catch {
+              /* Broken/outside-workspace aliases are not referenceable. */
+            }
+          }
+          if (files.length >= WORKSPACE_LISTING_LIMITS.files) {
+            truncated = true;
+            break scan;
+          }
+        }
+      } catch (error) {
+        checkWorkspace();
+        if (directory === displayRoot) throw error;
+        // A subfolder may disappear or become unreadable during the walk.
+      }
+    }
+    checkWorkspace();
+    return { paths: files.sort(), truncated };
+  }
+
+  /** Offer only directories selected by a native picker or trusted restore. */
+  static offerWorkspaceRoot(root: string, restoring = false): boolean {
+    if (typeof root !== 'string' || !root) return false;
+    try {
+      const canonical = realpathSync.native(resolve(root));
+      if (!statSync(canonical).isDirectory()) return false;
+      if (restoring) AppStorage.restoringWorkspaceRoot = canonical;
+      else AppStorage.offeredWorkspaceRoot = canonical;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Renderer acknowledgement cannot grant access to arbitrary directories. */
+  static adoptWorkspaceRoot(root: unknown): boolean {
+    if (root === null) {
+      AppStorage.setWorkspaceRoot(null);
+      return true;
+    }
+    if (typeof root !== 'string' || !root) return false;
+    try {
+      const canonical = realpathSync.native(resolve(root));
+      if (
+        canonical !== AppStorage.workspaceRoot &&
+        canonical !== AppStorage.offeredWorkspaceRoot &&
+        canonical !== AppStorage.restoringWorkspaceRoot
+      )
+        return false;
+      if (!statSync(canonical).isDirectory()) return false;
+      AppStorage.setWorkspaceRoot(canonical);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Keep unapproved renderer roots out of the next launch's trusted restore. */
+  static getSessionWorkspaceRoot(requested: unknown): string | null {
+    const selected =
+      AppStorage.workspaceRoot ?? AppStorage.restoringWorkspaceRoot;
+    if (!selected) return null;
+    if (typeof requested === 'string' && requested) {
+      try {
+        // Preserve a selected symlink's display path when it still refers
+        // to the same authorised directory.
+        if (realpathSync.native(resolve(requested)) === selected)
+          return requested;
+      } catch {
+        /* Retain the authorised root when a renderer path is stale. */
+      }
+    }
+    return selected;
+  }
+
+  private static canReadWorkspaceDirectory(canonical: string): boolean {
+    if (
+      canonical === AppStorage.offeredWorkspaceRoot ||
+      canonical === AppStorage.restoringWorkspaceRoot
+    )
+      return true;
+    const root = AppStorage.workspaceRoot;
+    if (!root) return false;
+    const rel = relative(root, canonical);
+    return (
+      rel === '' ||
+      (!isAbsolute(rel) && rel !== '..' && !rel.startsWith('..' + sep))
+    );
+  }
+
   /**
    * Set (or clear) the current workspace root. Main normalises with
    * `path.resolve` so trailing slashes / mixed separators are equivalent,
-   * then canonicalises via `fs.realpathSync` so an opened symlinked folder
+   * then canonicalises via `fs.realpathSync.native` so an opened symlinked folder
    * matches the canonical paths derived from `fs.realpath(target)`.
    *
-   * `realpathSync` falls back to the lexical `resolve(root)` if the
+   * Native resolution also expands Windows 8.3 aliases consistently with
+   * `fs.promises.realpath`. The legacy sync API can preserve those aliases.
+   * It falls back to the lexical `resolve(root)` if the
    * directory can't be canonicalised (was just deleted, permission
    * denied, etc.), `assertInWorkspace` then surfaces the real error
    * the next time the user fs-ops against the workspace.
    */
   static setWorkspaceRoot(root: string | null): void {
+    AppStorage.offeredWorkspaceRoot = null;
+    AppStorage.restoringWorkspaceRoot = null;
     if (!root) {
       AppStorage.workspaceRoot = null;
       return;
     }
     const absolute = resolve(root);
     try {
-      AppStorage.workspaceRoot = realpathSync(absolute);
+      AppStorage.workspaceRoot = realpathSync.native(absolute);
     } catch {
       AppStorage.workspaceRoot = absolute;
     }
@@ -75,14 +366,13 @@ export class AppStorage {
   /**
    * Throw if `target` is outside the open workspace (or no workspace
    * is open). Returns the resolved (canonicalised, symlink-followed)
-   * absolute path when the check passes — callers should fs-op on
-   * the returned value, not the input, so symlink escapes can't
-   * race a TOCTOU between this check and the fs call.
+   * absolute path when the check passes. Callers must use the returned
+   * path rather than the original renderer-supplied alias.
    *
    * Pass `mustExist: false` for write/create paths whose target may
-   * not exist yet — the parent directory is canonicalised instead
-   * and the (un-realpath'd) basename is rejoined. The parent itself
-   * MUST exist for that mode; callers can `mkdir -p` separately.
+   * not exist yet. Existing targets are canonicalised too; for a missing
+   * target we resolve the nearest existing ancestor before appending
+   * missing segments. This catches symlinks above missing directories.
    */
   static async assertInWorkspace(
     target: string,
@@ -99,28 +389,32 @@ export class AppStorage {
     }
     let absolute = resolve(target);
     if (opts.mustExist === false) {
-      // For write/create: canonicalise the PARENT (which must exist)
-      // and rejoin the basename. We don't realpath the basename
-      // because the file isn't there yet — a same-named symlink
-      // racing into place between check and write is unlikely in
-      // practice and main would need OS-level atomic ops to prevent.
-      const parent = dirname(absolute);
-      const base = basename(absolute);
-      let canonicalParent: string;
-      try {
-        canonicalParent = await fs.realpath(parent);
-      } catch (err) {
-        const code = (err as NodeJS.ErrnoException).code;
-        if (code === 'ENOENT') {
-          // Parent doesn't exist yet — fall back to lexical
-          // resolution + scope check. mkdir -p in the caller will
-          // create it under the workspace root.
-          canonicalParent = parent;
-        } else {
-          throw err;
+      const missing: string[] = [];
+      let ancestor = absolute;
+      for (;;) {
+        try {
+          absolute = join(await fs.realpath(ancestor), ...missing);
+          break;
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+          // A dangling symlink exists but cannot be canonicalised. Never
+          // treat it as a missing filename and follow it during a write.
+          try {
+            await fs.lstat(ancestor);
+            throw new Error(`Cannot resolve symbolic link: ${ancestor}`, {
+              cause: err,
+            });
+          } catch (statError) {
+            if ((statError as NodeJS.ErrnoException).code !== 'ENOENT') {
+              throw statError;
+            }
+          }
+          const parent = dirname(ancestor);
+          if (parent === ancestor) throw err;
+          missing.unshift(basename(ancestor));
+          ancestor = parent;
         }
       }
-      absolute = join(canonicalParent, base);
     } else {
       try {
         absolute = await fs.realpath(absolute);
@@ -172,6 +466,7 @@ export class AppStorage {
     // shipped the full path as `filename` on POSIX systems.
     const filename = file ? (file.split(/[\\/]/).pop() ?? '') : '';
     const content = file ? readFileSync(file, { encoding: 'utf-8' }) : '';
+    if (file) AppStorage.authorizeFile(context, file);
 
     AppStorage.activeFilePath = file;
 
@@ -224,104 +519,93 @@ export class AppStorage {
    * @param options - save file options
    * @returns
    */
-  static async saveFile(context: BrowserWindow, options: SaveFileOptions) {
-    const config = {
-      title: 'Save file',
-      defaultPath: 'Untitled',
-      buttonLabel: 'Save',
-
-      filters: [
-        { name: 'md', extensions: ['md'] },
-        { name: 'All Files', extensions: ['*'] },
-      ],
-    };
-
-    const isHTMLExport =
-      options.data && options.data.startsWith('<!DOCTYPE html>');
+  static async saveFile(
+    context: BrowserWindow,
+    options: SaveFileOptions,
+  ): Promise<
+    | { ok: true; path: string }
+    | { ok: false; cancelled?: boolean; error?: string }
+  > {
+    const isHTMLExport = options.data.startsWith('<!DOCTYPE html>');
     const errorAction = isHTMLExport
       ? 'notifications:unable_export_preview'
       : 'notifications:unable_save_markdown';
     const successAction = isHTMLExport
       ? 'notifications:exported_html_success'
       : 'notifications:saved_markdown_success';
+    const config = {
+      title: 'Save file',
+      defaultPath: isHTMLExport ? `export-0${options.id}` : 'Untitled',
+      buttonLabel: 'Save',
+      filters: [
+        ...(isHTMLExport ? [{ name: 'html', extensions: ['html'] }] : []),
+        { name: 'md', extensions: ['md'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    };
 
-    if (isHTMLExport) {
-      config.filters.unshift({
-        name: 'html',
-        extensions: ['html'],
-      });
-      config.defaultPath = `export-0${options.id}`;
-    }
-
-    if (options.filePath) {
-      let check;
-
-      try {
-        check = statSync(options.filePath);
-      } catch (err) {
-        const details = err as { code: string };
-        check = details.code || err;
-      }
-
-      if (check !== 'ENOENT') {
+    try {
+      let filePath = options.filePath;
+      let destination: string | undefined;
+      if (filePath) {
         try {
-          writeFileSync(options.filePath, options.data, {
-            encoding: options.encoding ?? 'utf-8',
-          });
-
-          context.webContents.send('from:notification:display', {
-            status: 'success',
-            key: successAction,
-          });
-
-          if (!isHTMLExport && options.openFile !== false) {
-            AppStorage.setActiveFile(context, options.filePath);
-          }
-        } catch (err) {
-          context.webContents.send('from:notification:display', {
-            status: 'error',
-            key: errorAction,
-          });
+          destination = AppStorage.canonicalSavePath(filePath);
+        } catch {
+          // Unavailable or new destinations still require a native selection.
         }
-      } else {
-        context.webContents.send('from:notification:display', {
-          status: 'error',
-          key: errorAction,
-        });
       }
-    } else {
-      dialog
-        .showSaveDialog(context, config)
-        .then(({ filePath }) => {
+      if (!destination || !AppStorage.isSaveAuthorized(context, destination)) {
+        const selection = await dialog.showSaveDialog(context, config);
+        if (selection.canceled || !selection.filePath) {
+          return { ok: false, cancelled: true };
+        }
+        filePath = selection.filePath;
+        destination = AppStorage.canonicalSavePath(filePath);
+      }
+      if (!filePath || !destination)
+        throw new Error('Invalid save destination');
+      if (options.excludedPaths?.length) {
+        const canonical = (path: string) => {
+          let absolute = resolve(path);
           try {
-            writeFileSync(<string>filePath, options.data, {
-              encoding: options.encoding ?? 'utf-8',
-            });
-
-            context.webContents.send('from:notification:display', {
-              status: 'success',
-              key: successAction,
-            });
-
-            if (!isHTMLExport && options.openFile !== false) {
-              AppStorage.setActiveFile(context, filePath);
-            }
-          } catch (err: unknown) {
-            const details = err as { code: string };
-            if (details.code !== 'ENOENT') {
-              context.webContents.send('from:notification:display', {
-                status: 'error',
-                key: 'notifications:generic_error_try_again',
-              });
-            }
+            absolute = realpathSync.native(absolute);
+          } catch {
+            /* New targets need not exist. */
           }
-        })
-        .catch(() => {
-          context.webContents.send('from:notification:display', {
-            status: 'error',
-            key: 'notifications:generic_error_try_again',
-          });
-        });
+          return process.platform === 'win32'
+            ? absolute.toLowerCase()
+            : absolute;
+        };
+        const destination = canonical(filePath);
+        if (
+          options.excludedPaths.some((path) => canonical(path) === destination)
+        ) {
+          throw new Error('Destination is already open in another tab');
+        }
+      }
+      await AppStorage.writeTextFile(
+        destination,
+        options.data,
+        options.encoding ?? 'utf-8',
+      );
+      AppStorage.authorizeFile(context, destination);
+      context.webContents.send('from:notification:display', {
+        status: 'success',
+        key: successAction,
+      });
+      if (!isHTMLExport && options.openFile !== false) {
+        AppStorage.setActiveFile(context, filePath);
+      }
+      return { ok: true, path: filePath };
+    } catch (err) {
+      context.webContents.send('from:notification:display', {
+        status: 'error',
+        key: errorAction,
+      });
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
     }
   }
 
@@ -338,44 +622,33 @@ export class AppStorage {
     offscreen: BrowserWindow,
     options: SaveFileOptions,
   ) {
-    const defaultPath = `pdf-export-${options.id}`;
-    offscreen.setTitle(defaultPath);
-
-    await offscreen.loadURL(
-      `data:text/html;charset=utf-8,${encodeURIComponent(options.data)}`,
-    );
-
-    await offscreen.webContents.executeJavaScript(`
-      (async () => {
-        await document.fonts?.ready;
-        const images = Array.from(document.images).map(img =>
-          img.complete ? Promise.resolve() :
-          new Promise(res => { img.onload = img.onerror = () => res(); })
-        );
-        await Promise.all(images);
-      })();
-    `);
-
-    const pdf = await offscreen.webContents.printToPDF({
-      pageSize: 'A4',
-      printBackground: true,
-      preferCSSPageSize: true,
-    });
-
-    const { filePath } = await dialog.showSaveDialog(context, {
-      filters: [{ name: defaultPath, extensions: ['pdf'] }],
-      defaultPath: `${defaultPath}.pdf`,
-    });
-
-    if (!filePath) {
-      offscreen.destroy();
-      return;
-    }
-
     try {
-      writeFileSync(filePath, pdf, {
-        encoding: options.encoding ?? 'utf-8',
+      const defaultPath = `pdf-export-${options.id}`;
+      offscreen.setTitle(defaultPath);
+      await offscreen.loadURL(
+        `data:text/html;charset=utf-8,${encodeURIComponent(options.data)}`,
+      );
+      await offscreen.webContents.executeJavaScript(`
+        (async () => {
+          await document.fonts?.ready;
+          const images = Array.from(document.images).map(img =>
+            img.complete ? Promise.resolve() :
+            new Promise(res => { img.onload = img.onerror = () => res(); })
+          );
+          await Promise.all(images);
+        })();
+      `);
+      const pdf = await offscreen.webContents.printToPDF({
+        pageSize: 'A4',
+        printBackground: true,
+        preferCSSPageSize: true,
       });
+      const { canceled, filePath } = await dialog.showSaveDialog(context, {
+        filters: [{ name: defaultPath, extensions: ['pdf'] }],
+        defaultPath: `${defaultPath}.pdf`,
+      });
+      if (canceled || !filePath) return;
+      await fs.writeFile(filePath, pdf);
       context.webContents.send('from:notification:display', {
         status: 'success',
         key: 'notifications:exported_pdf_success',
@@ -386,7 +659,7 @@ export class AppStorage {
         key: 'notifications:unable_export_preview',
       });
     } finally {
-      offscreen.destroy();
+      if (!offscreen.isDestroyed()) offscreen.destroy();
     }
   }
 
@@ -397,37 +670,24 @@ export class AppStorage {
    * @returns
    */
   static async showOpenDialog(context: BrowserWindow) {
-    return new Promise((resolve) => {
-      dialog
-        .showOpenDialog({
-          filters: [
-            { name: 'Text Files', extensions: ['html', 'md', 'txt'] },
-            { name: 'All Files', extensions: ['*'] },
-          ],
-          properties: ['openFile'],
-        })
-        .then(({ filePaths }) => {
-          if (filePaths.length === 0) {
-            throw new Error('noselection');
-          }
-
-          const file = AppStorage.setActiveFile(context, filePaths[0]);
-
-          return resolve({
-            file: filePaths[0],
-            filename: file.filename,
-            content: file.content,
-          });
-        })
-        .catch((err) => {
-          if (err.message !== 'noselection') {
-            context.webContents.send('from:notification:display', {
-              status: 'error',
-              key: 'notifications:unable_open_file',
-            });
-          }
-        });
-    });
+    try {
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        filters: [
+          { name: 'Text Files', extensions: ['html', 'md', 'txt'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+        properties: ['openFile'],
+      });
+      if (canceled || filePaths.length === 0) return null;
+      const file = AppStorage.setActiveFile(context, filePaths[0]);
+      return { file: filePaths[0], ...file };
+    } catch {
+      context.webContents.send('from:notification:display', {
+        status: 'error',
+        key: 'notifications:unable_open_file',
+      });
+      return null;
+    }
   }
 
   /**
@@ -445,12 +705,20 @@ export class AppStorage {
 
       const stats = await fs.stat(filePath);
       if (stats.isDirectory()) {
+        const canonical = await fs.realpath(filePath);
+        if (!AppStorage.canReadWorkspaceDirectory(canonical)) {
+          throw new Error('Directory has not been selected as a workspace');
+        }
         const tree = await AppStorage.readDirectory(filePath);
         context.webContents.send('from:folder:opened', {
           path: filePath,
           tree,
         });
       } else if (stats.isFile()) {
+        const canonical = await fs.realpath(filePath);
+        if (!AppStorage.isSaveAuthorized(context, canonical)) {
+          await AppStorage.assertInWorkspace(filePath);
+        }
         AppStorage.setActiveFile(context, filePath);
       } else {
         throw new Error('unsupported');
@@ -458,9 +726,9 @@ export class AppStorage {
     } catch (err) {
       const code = (err as any)?.code || (err as Error).message;
       const key =
-        code == 'EOENT' || code == 'invalidpath'
+        code == 'ENOENT' || code == 'invalidpath'
           ? 'notifications:path_not_exist'
-          : code == 'EACCESS'
+          : code == 'EACCES' || code == 'EPERM'
             ? 'notifications:permission_denied_open_path'
             : 'notifications:unable_open_path';
 
@@ -488,9 +756,13 @@ export class AppStorage {
       }
 
       const tree = await AppStorage.readDirectory(filePaths[0]);
+      if (!AppStorage.offerWorkspaceRoot(filePaths[0])) {
+        throw new Error('Selected directory is unavailable');
+      }
       context.webContents.send('from:folder:opened', {
         path: filePaths[0],
         tree,
+        workspaceChange: true,
       });
       return tree;
     } catch (err) {
@@ -532,8 +804,9 @@ export class AppStorage {
       // "new file" flow and the AI assistant's `create_file` tool
       // route through here. fs.mkdir with `recursive: true` is a
       // no-op when the directory already exists.
-      await fs.mkdir(parent, { recursive: true });
-      await fs.writeFile(file, content, 'utf-8');
+      await fs.mkdir(dirname(file), { recursive: true });
+      // New-file actions must never truncate an existing document.
+      await fs.writeFile(file, content, { encoding: 'utf-8', flag: 'wx' });
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
       // Open the newly-written file as a tab. Inlined here (instead of
@@ -593,21 +866,23 @@ export class AppStorage {
 
       const safeExt = AppStorage.normalizeImageExtension(extension);
       const baseName = AppStorage.buildPastedImageBasename(new Date());
-      const finalName = await AppStorage.allocatePastedImageName(
+      const tmpPath = join(
         safeTargetDir,
-        baseName,
-        safeExt,
+        `.mkeditor-image-${randomUUID()}.tmp`,
       );
-      const finalPath = join(safeTargetDir, finalName);
-
-      // tmp + rename so an interrupted write doesn't leave a
-      // half-written file under the markdown link.
-      const tmpPath = `${finalPath}.tmp-${process.pid}-${Date.now()}`;
-      // Pass through as Buffer.from(...) — the typed-array view that
-      // crossed IPC may be a fresh `Uint8Array` rather than the Node
-      // `Buffer` subclass that `fs.writeFile` prefers.
-      await fs.writeFile(tmpPath, Buffer.from(bytes));
-      await fs.rename(tmpPath, finalPath);
+      let finalPath: string;
+      try {
+        await fs.writeFile(tmpPath, Buffer.from(bytes), { flag: 'wx' });
+        const finalName = await AppStorage.allocatePastedImageName(
+          safeTargetDir,
+          baseName,
+          safeExt,
+          tmpPath,
+        );
+        finalPath = join(safeTargetDir, finalName);
+      } finally {
+        await fs.unlink(tmpPath).catch(() => {});
+      }
 
       // Refresh the file-tree row for the target directory so the
       // newly-written image surfaces in the sidebar.
@@ -663,24 +938,35 @@ export class AppStorage {
     directory: string,
     baseName: string,
     extension: string,
+    tmpPath: string,
   ): Promise<string> {
     const candidate = (n: number) =>
       n === 1 ? `${baseName}.${extension}` : `${baseName}_${n}.${extension}`;
     for (let n = 1; n <= 1000; n++) {
       const name = candidate(n);
       try {
-        await fs.access(join(directory, name));
-        // exists — try the next index
-      } catch {
-        // ENOENT — the slot is free, use this name
+        // Publish complete bytes exclusively. Access followed by rename
+        // allowed simultaneous pastes to overwrite each other's images.
+        try {
+          await fs.link(tmpPath, join(directory, name));
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          if (!['EPERM', 'ENOTSUP', 'EOPNOTSUPP', 'EXDEV'].includes(code ?? ''))
+            throw error;
+          // Removable filesystems may lack hard links. An exclusive copy
+          // still protects existing documents from overwrite.
+          await fs.copyFile(
+            tmpPath,
+            join(directory, name),
+            fsConstants.COPYFILE_EXCL,
+          );
+        }
         return name;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
       }
     }
-    // Pathological: 1000 same-second collisions in one directory.
-    // Fall through with a timestamp+random suffix so we still
-    // succeed instead of throwing into the user's face.
-    const rand = Math.floor(Math.random() * 0xffff).toString(16);
-    return `${baseName}_${Date.now()}-${rand}.${extension}`;
+    throw new Error('Unable to allocate a unique pasted-image filename');
   }
 
   /**
@@ -717,8 +1003,24 @@ export class AppStorage {
   static async renamePath(context: BrowserWindow, path: string, name: string) {
     const parent = dirname(path);
     try {
+      if (!name || name === '.' || name === '..' || /[\\/]/.test(name)) {
+        throw new Error('Invalid file name');
+      }
       const newPath = join(parent, name);
+      if (newPath === path) return;
+      const source = realpathSync.native(path);
+      const destination = AppStorage.canonicalSavePath(newPath);
+      try {
+        await fs.lstat(newPath);
+        const caseOnlySelf =
+          newPath.toLowerCase() === path.toLowerCase() &&
+          (await fs.realpath(newPath)) === (await fs.realpath(path));
+        if (!caseOnlySelf) throw new Error('Destination already exists');
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
       await fs.rename(path, newPath);
+      AppStorage.moveFileAuthorization(context, source, destination);
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
       context.webContents.send('from:path:renamed', {
@@ -820,10 +1122,10 @@ export class AppStorage {
       // overwriting silently. `fs.access` resolves when the path
       // exists, throws ENOENT when it doesn't.
       try {
-        await fs.access(safeDst);
+        await fs.lstat(safeDst);
         return { ok: false, error: 'destination_exists' };
-      } catch {
-        // ENOENT — slot is free, continue.
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
       }
 
       // Try the atomic rename first. Cross-volume moves throw
@@ -834,9 +1136,15 @@ export class AppStorage {
       } catch (err) {
         const code = (err as NodeJS.ErrnoException).code;
         if (code !== 'EXDEV') throw err;
-        await fs.cp(safeSrc, safeDst, { recursive: true });
+        await fs.cp(safeSrc, safeDst, {
+          recursive: true,
+          force: false,
+          errorOnExist: true,
+        });
         await fs.rm(safeSrc, { recursive: true, force: true });
       }
+
+      AppStorage.moveFileAuthorization(context, safeSrc, safeDst);
 
       // Refresh both ends of the move. Source-parent loses the
       // entry; dest-parent gains it.
@@ -885,6 +1193,7 @@ export class AppStorage {
     const parent = dirname(path);
     try {
       await fs.rm(path, { recursive: true, force: true });
+      context.webContents.send('from:path:deleted', { path });
       const tree = await AppStorage.readDirectory(parent);
       context.webContents.send('from:folder:opened', { path: parent, tree });
       context.webContents.send('from:notification:display', {
@@ -931,7 +1240,7 @@ export class AppStorage {
    * @param dir - the directory to read
    * @returns - the directory contents
    */
-  private static async readDirectory(dir: string): Promise<any[]> {
+  static async readDirectory(dir: string): Promise<any[]> {
     const entries = await fs.readdir(dir, { withFileTypes: true });
     const filtered = entries.filter((d) => {
       if (d.isDirectory()) return true;

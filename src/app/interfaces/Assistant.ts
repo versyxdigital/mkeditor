@@ -13,12 +13,17 @@
 /** The three providers the user can connect in v1. */
 export type ProviderId = 'anthropic' | 'openai' | 'ollama';
 
+export type ThinkingLevel =
+  'auto' | 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
 /** Non-secret config shared by the API-key-bearing providers. */
 export interface ApiProviderConfig {
   /** Whether the provider should appear as a tab in the assistant sidebar. */
   enabled: boolean;
   /** Model selected as the default for new conversations. */
   defaultModel: string;
+  /** Omitted on older stores: use the model's own default thinking effort. */
+  thinkingLevel?: ThinkingLevel;
 }
 
 /** Non-secret config for the local-only Ollama provider. */
@@ -27,6 +32,8 @@ export interface OllamaProviderConfig {
   /** Daemon base URL (default `http://localhost:11434`). */
   baseUrl: string;
   defaultModel: string;
+  /** Requested token window; omitted or zero leaves allocation to the daemon. */
+  contextLength?: number;
 }
 
 export interface ProviderConfigMap {
@@ -48,9 +55,11 @@ export interface SanitizedProviderConfig {
 }
 
 export interface ConfigPushPayload {
+  /** Optional on older builds; contains no OAuth credentials. */
+  chatgpt?: import('./ChatGpt').ChatGptSnapshot;
   config: SanitizedProviderConfig;
   /**
-   * `safeStorage.isEncryptionAvailable()` result. When false, the
+   * Resolved `safeStorage.isAsyncEncryptionAvailable()` result. When false, the
    * renderer disables remote providers (Anthropic / OpenAI) so the user
    * isn't prompted for a key we can't safely persist.
    */
@@ -68,6 +77,14 @@ export interface ChatMessage {
   /** Set for role: 'tool' — identifies which call this result satisfies. */
   toolCallId?: string;
   toolName?: string;
+  /** Assistant tool requests; followed by their matching role: 'tool' results. */
+  toolCalls?: ChatToolCall[];
+}
+
+export interface ChatToolCall {
+  toolCallId: string;
+  toolName: string;
+  arguments: unknown;
 }
 
 /**
@@ -102,6 +119,8 @@ export interface ChatRequest {
    * round-trip stays cheap; ordinary chat calls leave it unset.
    */
   maxOutputTokens?: number;
+  /** Provider preference captured when sending; applied only if this model supports it. */
+  thinkingLevel?: ThinkingLevel;
 }
 
 /** Payload of `to:ai:cancel`. */
@@ -131,6 +150,7 @@ export type ConfigSetRequest =
 
 /** Payload of `to:ai:key:set`. */
 export interface KeySetRequest {
+  requestId?: string;
   provider: 'anthropic' | 'openai';
   /**
    * RSA-OAEP (SHA-256) ciphertext of the UTF-8 plaintext API key,
@@ -140,6 +160,12 @@ export interface KeySetRequest {
    * crosses IPC.
    */
   ciphertext: string;
+}
+
+export interface KeySaveResult {
+  requestId: string;
+  provider: ApiProviderId;
+  ok: boolean;
 }
 
 /** Payload of `to:ai:key:clear`. */
@@ -182,6 +208,8 @@ export interface ChatErrorEvent {
   /** Stable code the renderer uses to pick a translated message. */
   code:
     | 'missing_key'
+    | 'chatgpt_auth'
+    | 'chatgpt_usage_limit'
     | 'invalid_key'
     | 'rate_limited'
     | 'context_window_exceeded'
@@ -216,6 +244,8 @@ export interface OllamaModelsEvent {
  * P7) can be migrated rather than dropped.
  */
 export interface AssistantStoreFile {
+  /** Independently validated by ChatGptStore; tokens are safeStorage ciphertext. */
+  chatgpt?: unknown;
   version: 1;
   /**
    * Per-provider non-secret config. Named `providers` to match the
@@ -262,6 +292,7 @@ export interface PersistedConversation {
   providerId: ProviderId;
   title: string;
   model: string;
+  thinkingLevel?: ThinkingLevel;
   messages: PersistedChatMessage[];
   autoAcceptWrites: boolean;
   shareActiveFile: boolean;
@@ -285,6 +316,8 @@ export interface PersistedChatMessage {
    * sense after restart.
    */
   toolCalls?: ToolInvocation[];
+  /** Optional on older stores; preserves text/tool ordering across restarts. */
+  segments?: UiMessageSegment[];
   createdAt: number;
 }
 
@@ -318,10 +351,7 @@ export type ApiProviderId = 'anthropic' | 'openai';
  * `ToolCallRecord` shape in the doc's Persistence Schema).
  */
 export type ChatMessageStatus =
-  | 'streaming'
-  | 'complete'
-  | 'cancelled'
-  | 'failed';
+  'streaming' | 'complete' | 'cancelled' | 'failed';
 
 /**
  * Renderer-side view of a single message in a chat conversation.
@@ -348,8 +378,7 @@ export type ChatMessageStatus =
  * persistence payload).
  */
 export type UiMessageSegment =
-  | { type: 'text'; text: string }
-  | { type: 'tool-call'; toolCallId: string };
+  { type: 'text'; text: string } | { type: 'tool-call'; toolCallId: string };
 
 export interface UiChatMessage {
   id: string;
@@ -392,10 +421,7 @@ export interface UiChatMessage {
  *   tool-result is sent back to the SDK so the model can recover.
  */
 export type ToolInvocationStatus =
-  | 'pending-confirm'
-  | 'executing'
-  | 'succeeded'
-  | 'failed';
+  'pending-confirm' | 'executing' | 'succeeded' | 'failed';
 
 /** A single tool call rendered as a card inside the assistant bubble. */
 export interface ToolInvocation {
@@ -422,7 +448,9 @@ export interface ToolInvocation {
  * untruncated content via `mked:fs:readfile` on demand.
  */
 export interface ToolConfirmPreview {
-  kind: 'edit' | 'write' | 'create' | 'replace' | 'insert';
+  kind: 'edit' | 'write' | 'create' | 'replace' | 'insert' | 'operation';
+  /** Concrete non-diff operation summary (path changes / bulk edits). */
+  summary?: string;
   path?: string;
   /** Text being replaced (undefined for `create` and `insert`). */
   before?: string;
@@ -459,6 +487,8 @@ export interface ChatConversation {
    * through the chat header.
    */
   model: string;
+  /** Optional override; omitted conversations inherit the provider preference. */
+  thinkingLevel?: ThinkingLevel;
   messages: UiChatMessage[];
   /**
    * Per-conversation override for write-class tool confirmations.

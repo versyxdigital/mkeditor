@@ -15,6 +15,7 @@ interface ConversationListProps {
   provider: ProviderId;
   conversations: ChatConversation[];
   activeId: string | null;
+  canCreate?: boolean;
 }
 
 /**
@@ -30,6 +31,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   provider,
   conversations,
   activeId,
+  canCreate = true,
 }) => {
   const { manager } = useAssistantChat();
   const { t } = useTranslation();
@@ -81,7 +83,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
 
   return (
     <div
-      className="flex h-full flex-col border-r border-border"
+      className="flex h-full flex-col border-r border-border text-foreground"
       data-testid="conversation-list"
     >
       <div className="border-b border-border p-1.5">
@@ -91,7 +93,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
           variant="outline"
           className="w-full justify-start"
           onClick={handleNew}
-          disabled={!manager}
+          disabled={!manager || !canCreate}
           data-testid="conversation-new"
         >
           <Icon name="file" />
@@ -117,8 +119,8 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                   className={cn(
                     'group flex items-center gap-1 border-b border-border px-2 py-1.5 text-xs',
                     isActive
-                      ? 'bg-accent text-accent-foreground'
-                      : 'hover:bg-muted',
+                      ? 'bg-active text-foreground'
+                      : 'text-muted-foreground hover:bg-hover hover:text-foreground',
                   )}
                   onClick={() => !isRenaming && handleActivate(conv.id)}
                   onDoubleClick={() => beginRename(conv)}
@@ -134,7 +136,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                         if (e.key === 'Enter') commitRename();
                         else if (e.key === 'Escape') cancelRename();
                       }}
-                      className="flex-1 rounded border border-input bg-background px-1 py-0.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="min-w-0 flex-1 rounded border border-border bg-editor px-1 py-0.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       aria-label={t('assistant-chat:rename_aria')}
                       onClick={(e) => e.stopPropagation()}
                     />

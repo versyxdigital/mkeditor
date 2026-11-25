@@ -37,5 +37,10 @@
   "tab_assistant": "Proveedores de IA",
   "paste_images": "Imágenes pegadas",
   "paste_images_directory_label": "Directorio para imágenes pegadas",
-  "paste_images_directory_help": "Las rutas relativas (p. ej. './assets') se resuelven respecto a la carpeta del archivo Markdown activo. Las rutas absolutas deben estar dentro del workspace abierto."
+  "paste_images_directory_help": "Las rutas relativas (p. ej. './assets') se resuelven respecto a la carpeta del archivo Markdown activo. Las rutas absolutas deben estar dentro del workspace abierto.",
+  "nav_editor": "Editor",
+  "nav_preview": "Vista previa",
+  "nav_workspace": "Archivos y espacio de trabajo",
+  "darkmode_label": "Tema oscuro",
+  "changes_apply_immediately": "Los cambios se aplican de inmediato."
 }

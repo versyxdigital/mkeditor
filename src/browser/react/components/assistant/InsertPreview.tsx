@@ -27,12 +27,6 @@ export interface InsertPreviewProps {
   /** Optional descriptive line — line range / insertion point. */
   detail?: string;
   /**
-   * Pixel cap on the scrollable block. Default 240px so the chat
-   * card stays bounded; longer content gets a vertical scrollbar
-   * inside the block (the surrounding card never grows).
-   */
-  maxHeight?: number;
-  /**
    * Returns the untruncated content. Required when `content` ends
    * with the truncation marker; ignored otherwise. The component
    * doesn't try to derive the full content itself — the caller
@@ -44,7 +38,6 @@ export interface InsertPreviewProps {
 export const InsertPreview: React.FC<InsertPreviewProps> = ({
   content,
   detail,
-  maxHeight = 240,
   fetchFull,
 }) => {
   const { t } = useTranslation();
@@ -68,7 +61,7 @@ export const InsertPreview: React.FC<InsertPreviewProps> = ({
 
   return (
     <div
-      className="rounded border border-border bg-background"
+      className="min-w-0 rounded-md border border-border bg-editor"
       data-testid="insert-preview"
     >
       <div className="flex items-center justify-between border-b border-border px-3 py-1.5 text-xs">
@@ -79,10 +72,7 @@ export const InsertPreview: React.FC<InsertPreviewProps> = ({
           <span className="text-muted-foreground">{detail}</span>
         ) : null}
       </div>
-      <pre
-        className="overflow-auto bg-emerald-50 px-3 py-2 text-xs text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
-        style={{ maxHeight: `${maxHeight}px` }}
-      >
+      <pre className="m-0 whitespace-pre-wrap bg-success/10 px-3 py-2 font-mono text-[11px] leading-5 text-foreground [overflow-wrap:anywhere]">
         {visible}
       </pre>
       {showExpander && (

@@ -7,6 +7,7 @@ import type {
   ProviderId,
 } from '../interfaces/Assistant';
 import { DEFAULT_PROVIDER_CONFIG } from '../interfaces/Assistant';
+import { isThinkingLevel } from '../shared/assistantModels';
 import { loadAssistantStore, writeAssistantStore } from './assistantStoreFile';
 
 /**
@@ -54,6 +55,8 @@ export class AssistantConfig {
    * `from:ai:config` push without re-reading the file.
    */
   static update(request: ConfigSetRequest): ProviderConfigMap | null {
+    if (!request || !AssistantConfig.PROVIDERS.includes(request.provider))
+      return null;
     const store = loadAssistantStore();
     const merged: ProviderConfigMap = {
       ...AssistantConfig.withDefaults(store.providers),
@@ -90,46 +93,67 @@ export class AssistantConfig {
     partial: AssistantStoreFile['providers'],
   ): ProviderConfigMap {
     return {
-      anthropic: {
-        ...DEFAULT_PROVIDER_CONFIG.anthropic,
-        ...(partial.anthropic ?? {}),
-      },
-      openai: {
-        ...DEFAULT_PROVIDER_CONFIG.openai,
-        ...(partial.openai ?? {}),
-      },
-      ollama: {
-        ...DEFAULT_PROVIDER_CONFIG.ollama,
-        ...(partial.ollama ?? {}),
-      },
+      anthropic: AssistantConfig.mergeApi(
+        DEFAULT_PROVIDER_CONFIG.anthropic,
+        partial.anthropic,
+      ),
+      openai: AssistantConfig.mergeApi(
+        DEFAULT_PROVIDER_CONFIG.openai,
+        partial.openai,
+      ),
+      ollama: AssistantConfig.mergeOllama(
+        DEFAULT_PROVIDER_CONFIG.ollama,
+        partial.ollama,
+      ),
     };
   }
 
   private static mergeApi(
     current: ApiProviderConfig,
-    patch: Partial<ApiProviderConfig>,
+    patch: unknown,
   ): ApiProviderConfig {
-    return { ...current, ...AssistantConfig.pickDefined(patch) };
+    const value =
+      typeof patch === 'object' && patch !== null
+        ? (patch as Record<string, unknown>)
+        : {};
+    return {
+      enabled:
+        typeof value.enabled === 'boolean' ? value.enabled : current.enabled,
+      defaultModel:
+        typeof value.defaultModel === 'string' && value.defaultModel.trim()
+          ? value.defaultModel
+          : current.defaultModel,
+      ...(isThinkingLevel(value.thinkingLevel)
+        ? { thinkingLevel: value.thinkingLevel }
+        : current.thinkingLevel !== undefined
+          ? { thinkingLevel: current.thinkingLevel }
+          : {}),
+    };
   }
 
   private static mergeOllama(
     current: OllamaProviderConfig,
-    patch: Partial<OllamaProviderConfig>,
+    patch: unknown,
   ): OllamaProviderConfig {
-    return { ...current, ...AssistantConfig.pickDefined(patch) };
-  }
-
-  /**
-   * Drop keys whose value is `undefined` so the spread doesn't blank
-   * out fields the caller didn't intend to change. (JSON.parse never
-   * produces `undefined` values, but settings UI partial updates can.)
-   */
-  private static pickDefined<T extends object>(patch: T): Partial<T> {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(patch as Record<string, unknown>)) {
-      if (v !== undefined) out[k] = v;
-    }
-    return out as Partial<T>;
+    const value =
+      typeof patch === 'object' && patch !== null
+        ? (patch as Record<string, unknown>)
+        : {};
+    return {
+      ...AssistantConfig.mergeApi(current, value),
+      baseUrl:
+        typeof value.baseUrl === 'string' && value.baseUrl.trim()
+          ? value.baseUrl
+          : current.baseUrl,
+      ...(typeof value.contextLength === 'number' &&
+      Number.isInteger(value.contextLength) &&
+      value.contextLength >= 0 &&
+      value.contextLength <= 1048576
+        ? { contextLength: value.contextLength }
+        : current.contextLength !== undefined
+          ? { contextLength: current.contextLength }
+          : {}),
+    };
   }
 
   // ProviderId re-exported for callers that don't want to depend on

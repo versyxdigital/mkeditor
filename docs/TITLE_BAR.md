@@ -2,7 +2,7 @@
 
 Phased plan for replacing the native window chrome on Windows/Linux with an in-window VSCode-style title bar that hosts the app logo, menu (File / Edit / View / Help), and native window controls — while leaving the native menu bar intact on macOS. The high-level entry in [ROADMAP.md](ROADMAP.md) links here.
 
-Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
+Read first: [../AGENTS.md](../AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Decisions
 
@@ -72,13 +72,7 @@ tests/
 ```ts
 /** Plain string union — avoids importing Electron types so the renderer can use the same file. */
 type MenuRole =
-  | 'undo'
-  | 'redo'
-  | 'cut'
-  | 'copy'
-  | 'paste'
-  | 'togglefullscreen'
-  | 'quit';
+  'undo' | 'redo' | 'cut' | 'copy' | 'paste' | 'togglefullscreen' | 'quit';
 
 type MenuAction =
   | { kind: 'channel'; channel: string; payload?: unknown }

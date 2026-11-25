@@ -32,5 +32,11 @@
   "mention_picker_aria": "언급할 파일 선택",
   "mention_picker_empty": "일치하는 파일 없음",
   "hide_conversations_aria": "대화 목록 숨기기",
-  "show_conversations_aria": "대화 목록 표시"
+  "show_conversations_aria": "대화 목록 표시",
+  "expand_input": "메시지 입력창 펼치기",
+  "collapse_input": "메시지 입력창 접기",
+  "mention_picker_loading": "작업 공간 파일을 불러오는 중…",
+  "mention_picker_error": "작업 공간 파일을 불러오지 못했습니다.",
+  "copy_code": "코드 복사",
+  "copy_failed": "코드를 복사하지 못했습니다."
 }

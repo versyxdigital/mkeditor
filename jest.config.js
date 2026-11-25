@@ -18,6 +18,9 @@ module.exports = {
     '^electron$': '<rootDir>/tests/__mocks__/electron.js',
     '\\.(css|scss|sass)$': '<rootDir>/tests/__mocks__/style.js',
   },
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  setupFilesAfterEnv: [
+    '<rootDir>/tests/requireAssertions.cjs',
+    '<rootDir>/tests/setup.ts',
+  ],
   testMatch: ['<rootDir>/tests/**/*.test.ts', '<rootDir>/tests/**/*.test.tsx'],
 };

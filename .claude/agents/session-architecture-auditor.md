@@ -10,7 +10,7 @@ You audit a session-restore change for architectural rule violations. You do **n
 ## Read first
 
 1. `docs/SESSION_RESTORE.md` — the **Decisions** section and **Cross-cutting Concerns**.
-2. `CLAUDE.md` — the governing rule, IPC contract, and conventions.
+2. `AGENTS.md` — the governing rule, IPC contract, and conventions.
 3. The diff: run the `git diff` command you were briefed with (default `git diff main...HEAD`). Use `git diff --name-only` to scope your greps.
 
 ## The rules (audit each one explicitly)

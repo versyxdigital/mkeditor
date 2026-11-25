@@ -27,6 +27,16 @@ declare global {
       readFile: (
         path: string,
       ) => Promise<{ content: string; lineCount: number }>;
+      listWorkspaceFiles: (
+        root: string,
+      ) => Promise<
+        import('../src/app/interfaces/Storage').WorkspaceFileListing
+      >;
+      workspaceOperation: (
+        request: import('../src/app/interfaces/WorkspaceTools').WorkspaceRequest,
+      ) => Promise<
+        import('../src/app/interfaces/WorkspaceTools').WorkspaceResponse
+      >;
       saveFile: (
         path: string,
         content: string,

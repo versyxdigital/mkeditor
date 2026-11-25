@@ -38,7 +38,7 @@ function fakeSettingsProvider(initial: Partial<EditorSettings> = {}) {
     locale: 'en',
     ...initial,
   };
-  let snapshot: EditorSettings = { ...state };
+  let snapshot = { ...state, effectiveDarkmode: state.darkmode };
   const listeners = new Set<() => void>();
 
   return {
@@ -52,7 +52,7 @@ function fakeSettingsProvider(initial: Partial<EditorSettings> = {}) {
     updateSetting: jest.fn(
       <K extends keyof EditorSettings>(key: K, value: EditorSettings[K]) => {
         state = { ...state, [key]: value };
-        snapshot = { ...state };
+        snapshot = { ...state, effectiveDarkmode: state.darkmode };
         listeners.forEach((l) => l());
       },
     ),
@@ -70,6 +70,66 @@ const OpenSettings: React.FC = () => {
 };
 
 describe('<SettingsModal>', () => {
+  it('keeps appearance and workspace preferences reachable through side navigation', async () => {
+    const settingsProvider = fakeSettingsProvider({
+      systemtheme: true,
+      darkmode: true,
+    });
+    renderWithProviders(
+      <>
+        <OpenSettings />
+        <SettingsModal />
+      </>,
+      {
+        managers: {
+          mode: 'desktop',
+          providers: {
+            bridge: null,
+            commands: null,
+            completion: null,
+            settings: settingsProvider as never,
+            exportSettings: null,
+          },
+        },
+      },
+    );
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.mouseDown(
+      within(dialog).getByRole('tab', { name: 'modals-settings:appearance' }),
+      { button: 0, ctrlKey: false },
+    );
+    const darkmode = within(dialog).getByRole('switch', {
+      name: /darkmode_label/,
+    });
+    expect(darkmode).toBeChecked();
+    expect(darkmode).toBeDisabled();
+    fireEvent.click(
+      within(dialog).getByRole('switch', { name: /systemtheme_label/ }),
+    );
+    expect(darkmode).toBeEnabled();
+    fireEvent.click(darkmode);
+    expect(settingsProvider.updateSetting).toHaveBeenCalledWith(
+      'darkmode',
+      false,
+    );
+    fireEvent.mouseDown(
+      within(dialog).getByRole('tab', {
+        name: 'modals-settings:nav_workspace',
+      }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.change(
+      within(dialog).getByTestId('paste-images-directory-input'),
+      { target: { value: './images' } },
+    );
+    expect(settingsProvider.updateSetting).toHaveBeenCalledWith('pasteImages', {
+      directory: './images',
+    });
+    expect(
+      within(dialog).getByRole('switch', { name: /session_restore_label/ }),
+    ).toBeChecked();
+  });
+
   it('reflects the initial SettingsContext snapshot and updates on toggle', async () => {
     const settingsProvider = fakeSettingsProvider({ autoindent: false });
 
@@ -95,6 +155,10 @@ describe('<SettingsModal>', () => {
     await screen.findByRole('dialog');
 
     const dialog = screen.getByRole('dialog');
+    fireEvent.mouseDown(
+      within(dialog).getByRole('tab', { name: 'modals-settings:nav_editor' }),
+      { button: 0, ctrlKey: false },
+    );
 
     // The autoindent checkbox starts unchecked (radix checkbox uses
     // data-state=unchecked when not checked).
@@ -150,7 +214,7 @@ describe('<SettingsModal>', () => {
         name: 'modals-settings:tab_assistant',
       }),
     ).toBeNull();
-    // General tab is the only one and is selected as fallback.
+    // General is selected as fallback; desktop-only AI remains hidden.
     expect(
       within(dialog).getByRole('tab', {
         name: 'modals-settings:tab_general',
@@ -239,6 +303,10 @@ describe('<SettingsModal>', () => {
     // inside act(...); otherwise its setLocales fires after the test
     // returns and React emits an act() warning.
     const dialog = await screen.findByRole('dialog');
+    fireEvent.mouseDown(
+      within(dialog).getByRole('tab', { name: 'modals-settings:nav_editor' }),
+      { button: 0, ctrlKey: false },
+    );
     const wordwrap = within(dialog).getByRole('checkbox', {
       name: /wordwrap/i,
     });

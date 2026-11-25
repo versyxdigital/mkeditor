@@ -1,6 +1,6 @@
 # MKEditor — Architecture
 
-This document describes how MKEditor is put together internally: how the two execution contexts (Electron main + renderer) interact, what each subsystem owns, and the data flows for the main user journeys (boot, edit/preview, save, open, export, settings change, language change). For a quick orientation see [CLAUDE.md](../CLAUDE.md); for build/run see [CONTRIBUTING.md](../CONTRIBUTING.md).
+This document describes how MKEditor is put together internally: how the two execution contexts (Electron main + renderer) interact, what each subsystem owns, and the data flows for the main user journeys (boot, edit/preview, save, open, export, settings change, language change). For a quick orientation see [AGENTS.md](../AGENTS.md); for build/run see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## 1. High-Level Picture
 
@@ -191,7 +191,7 @@ src/browser/
     │   │                          web renders logo + menus only.
     │   ├── TitleBar.menu.tsx      one Radix DropdownMenu per MenuGroup; items dispatch
     │   │                          through `dispatchMenuActionExternal` (menuDispatch.ts).
-    │   ├── Navbar.tsx             second-row chrome (sidebar toggle, file name, counts,
+    │   ├── Navbar.tsx             second-row chrome (sidebar toggle, file name,
     │   │                          cog, help) — shadcn Tooltip for icon hints
     │   ├── TabBar.tsx             native HTML5 DnD reorder; close button → FileManager
     │   ├── Sidebar.tsx, FileTreePanel.tsx     file explorer
@@ -202,6 +202,7 @@ src/browser/
     │   ├── PreviewPane.tsx        subscribes to editor:render; writes Markdown.render
     │   │                          into #preview-content innerHTML
     │   ├── BottomToolbarRight.tsx darkmode shadcn Switch + build chip → AboutModal
+    │   ├── DocumentStatus.tsx      word/character counts in the combined 38px formatting/status footer
     │   ├── Icon.tsx               FontAwesome SVG wrapper (no MutationObserver)
     │   ├── modals/
     │   │   ├── SettingsModal.tsx       shadcn Switch/Select/Checkbox/Input
@@ -308,13 +309,15 @@ Same as above minus:
 
 1. User types in Monaco.
 2. `onDidChangeModelContent` fires in [EditorManager.watch](../src/browser/core/EditorManager.ts).
-3. Debounced `updateBridgedContent()` runs (~250ms) → desktop sends `to:editor:state` with `hasChanged` boolean; web writes content to `localStorage`.
+3. Debounced `updateBridgedContent()` runs (~250ms). `FileManager` publishes dirty state across all editable tabs so switching to a clean tab cannot disable quit protection. Web content persistence follows the session save pipeline.
 4. `CompletionProvider.autoContinueListMarkers` runs synchronously if Enter was the last key.
 5. `CompletionProvider.suggestOnValidInput` updates active proposal regex if user just typed `:::` or ` ``` `.
-6. `setTimeout(..., 150)` fires `dispatcher.render()`.
-7. `<PreviewPane>` subscribes to `editor:render` and writes `Markdown.render(value)` into `#preview-content.innerHTML`, then calls `refreshLines()` to invalidate the ScrollSync line cache.
+6. A single pending 150ms timer coalesces content-change bursts into `dispatcher.render()` while continuing to refresh during sustained typing. Disposal cancels pending render/bridge timers and listeners.
+7. `<PreviewPane>` subscribes to `editor:render`, reuses rendered HTML while source is unchanged, and replaces preview children only when source or asset context changes. Replacement calls `refreshLines()` to invalidate the ScrollSync line cache.
 8. `useCounts` (in `<Navbar>`) also subscribes to `editor:render` and recomputes word/character counts from the latest editor value.
 9. `LineNumber` extension stamped `class="has-line-data" data-line-start data-line-end` on rendered tokens so ScrollSync can find them.
+
+Mermaid fences retain the code block's source-line attributes and encoded source. `PreviewPane` renders them asynchronously through the shared, lazily loaded `browser/mermaid.ts` renderer, also used by chat. A bounded cache per host reuses unchanged SVGs; source changes, theme changes and unmount abort obsolete work. Scroll mapping is refreshed after diagram layout. The renderer uses strict Mermaid configuration and sanitizes SVG before insertion; invalid definitions remain readable code.
 
 ### 4.4 Scroll sync
 
@@ -322,19 +325,23 @@ When `settings.scrollsync` is true and the editor scrolls:
 
 1. `EditorManager.watch` reads `getVisibleRanges()[0].startLineNumber`.
 2. Calls `ScrollSync(line, dom.preview.wrapper)`.
-3. ScrollSync looks up the cached line elements (rebuilt on demand after a render), interpolates between two adjacent ones, and adjusts `preview.scrollTop`.
+3. ScrollSync searches cached, sorted line elements within the preview using binary search, interpolates between neighbours, and adjusts `preview.scrollTop` using preview-relative coordinates. Assistant-message markers are excluded.
 
 ### 4.5 Save (desktop)
 
-`Ctrl/Cmd+S` → AppMenu sends `from:file:save` with payload `'to:file:save'`.
+`Ctrl/Cmd+S` → AppMenu sends `from:file:save`; the title bar can call the same manager action directly.
 
-- [BridgeListeners](../src/browser/core/BridgeListeners.ts:70) receives this, reads the current model + active file path, and replies on `to:file:save` with `{ content, file }`.
-- `AppBridge` ipc handler calls `AppStorage.saveFile`, which writes the file synchronously and pushes `from:notification:display` (success/error key).
-- The saved path is set as the active file → `from:file:opened` fires → renderer updates tab name + original tracker.
+- [FileManager](../src/browser/core/FileManager.ts) captures model identity, content, and alternative-version ID, then sends `to:file:save` with `{ content, file, openFile: false, requestId }`.
+- `AppBridge` awaits the actual write and replies on `from:file:save-result` with `{ requestId, ok, path?, cancelled?, error? }`. Legacy uncorrelated callers remain supported. `AppStorage.writeTextFile` serializes menu and AI writes by canonical destination.
+- `AppStorage` keeps canonical save destinations per window in main. Native opens, successful native Save As selections, verified local session restore and workspace-checked opens grant access; renderer path strings alone do not. An ordinary save to an unrecognized destination uses the native save dialog, and cancellation writes nothing. Grants follow successful main-process renames and moves, including folder descendants. Native-opened files remain saveable outside the workspace.
+- The renderer updates only the captured model's saved baseline after acknowledgement. Edits made during the write stay dirty; late replies cannot reverse a rename. Save-and-close/workspace Save all preserve buffers on cancellation, failure, timeout, or additional edits.
+- Web uses the same request/result contract through `WebFileBridge` and acknowledges only after the writable stream closes. Successful direct AI writes record their captured saved version through `FileManager.recordSavedVersion`.
 
 ### 4.6 Save As / new untitled
 
-Same chain but with `to:file:saveas` (no path). The user picks a path in the OS dialog; on success it's set as active and a `from:file:opened` is sent back.
+Same acknowledgement chain but with `to:file:saveas` and `{ content, requestId, excludedPaths }`. The picker destination is checked against other open document paths before writing. The result rekeys the captured source model, even if the user switched tabs while the dialog was open; it does not reopen or replace whichever tab happens to be active. Legacy callers may still pass a content string.
+
+Successful `from:file:save-result` acknowledgements also insert the saved path into the current explorer tree through `FileTreeManager.addFileToTree`, since correlated saves do not emit `from:file:opened`. This makes new files visible immediately while preserving loaded subtrees. Failed/cancelled saves do not insert entries; paths outside the current workspace are ignored, and repeated saves do not create duplicates.
 
 ### 4.7 Open file
 
@@ -345,19 +352,21 @@ Same chain but with `to:file:saveas` (no path). The user picks a path in the OS 
 
 ### 4.8 File tree workflow
 
-- User clicks **Open Folder** in the menu or empty-tree context menu → `to:folder:open` → `AppStorage.openDirectory` → `from:folder:opened` with `{ path, tree }`.
+- User clicks **Open Folder** in the menu or empty-tree context menu → `to:folder:open` → native/browser picker → `from:folder:opened` with `{ path, tree, workspaceChange: true }`. Explicit selections require the workspace-switch flow even when different browser folders have the same name. Web stages handles until `to:workspace:set` confirms acceptance. Cancellation preserves the old root; acceptance cancels AI calls before adopting the new root. Unmarked stale listings outside the current root are ignored.
+- Desktop main offers verified roots through `AppStorage.offerWorkspaceRoot` after a native selection or main-generated restore. Renderer acknowledgement can adopt only the current/offered root. Directory requests cannot authorize a root, and session saves cannot persist an unapproved root for the next launch.
 - [FileTreeManager.buildFileTree](../src/browser/core/FileTreeManager.ts) updates its in-memory snapshot when receiving a new root or partial subtree, sorted directories-first by name. Each directory is registered in `directoryMap` so subsequent partial updates can be merged in place. Snapshot emit drives a React re-render via `FileTreeContext`.
 - `<FileTreePanel>` renders the tree from `FileTreeContext`; expand state lives in component-local React state. Lazy-loading fires `fileTreeManager.requestDirectoryContents(path)` on first expand of a `hasChildren && !loaded` directory.
+- Empty directories remain visible when no search is active, including after a lazy load confirms they have no children. Search still hides empty directories, and extension filtering still removes non-empty subtrees with no matching files.
 - Right-click on any row populates `contextNode` from the closest `<li[data-path]>` and feeds it to [getContextMenuItems](../src/browser/core/mappings/explorerContextMenu.ts) inside a single top-level Radix `<ContextMenu>` wrapper. Items depend on whether you clicked empty space, a file, or a folder. Actions translate to `to:file:create`, `to:folder:create`, `to:file:rename`, `to:file:delete`, `to:file:properties`. Prompt + confirm flows go through `promptExternal` / `confirmExternal` (`PromptsContext`).
 - Rename triggers `from:path:renamed` so that any open tab with the old path gets its model re-keyed in [BridgeListeners.ts](../src/browser/core/BridgeListeners.ts).
 
 ### 4.9 Export to HTML / PDF
 
-Both go through [HTMLExporter.generateHTML](../src/browser/core/HTMLExporter.ts:110) which:
+Both use the HTML export pipeline in [HTMLExporter.ts](../src/browser/core/HTMLExporter.ts):
 
 - Parses the preview's outerHTML via `DOMParser`.
 - Strips internal line-tracking attributes (`data-line-start`, `data-line-end`, `has-line-data`).
-- If `withStyles`, injects CDN `<link>`/`<script>` tags for Bootstrap, FontAwesome, highlight.js, KaTeX, plus inline overrides.
+- If `withStyles`, injects the shared Markdown stylesheet plus highlight.js/KaTeX resources and print overrides.
 - Applies `fontSize`, `lineHeight`, `backgroundColor`, `color` from `ExportSettings`.
 
 Desktop:
@@ -370,12 +379,14 @@ Web:
 - HTML: `HTMLExporter.webExport(html, 'text/html', '.html')` → `showSaveFilePicker` (File System Access API).
 - PDF: opens a new window, writes HTML, waits for stylesheets to load, calls `print()`.
 
+`HTMLExporter.prepareHTML` renders diagrams from a detached HTML snapshot before serialization. Exported diagrams are static SVG figures, including their internal vector styles in plain exports; no Mermaid runtime is required. Toolbar and assistant-tool exports await preparation. Browser export opens the picker or print window during the original user action and waits for preparation before writing or printing.
+
 ### 4.10 Settings change
 
 `<SettingsModal>` consumes `SettingsContext` and drives each control through `updateSetting(key, value)`:
 
 1. `updateSetting` writes `currentSettings[key] = value`.
-2. `applyOne(key)` runs the matching side effect — Monaco option update (`autoindent`, `minimap`, `wordwrap`, `whitespace`), `<body data-theme>` flip + `editor.setTheme('vs'|'vs-dark')` for `darkmode`, or `window.setLanguage(...)` for `locale`.
+2. `applyOne(key)` runs the matching side effect — Monaco option update (`autoindent`, `minimap`, `wordwrap`, `whitespace`), `<body data-theme>` flip + the inherited `mkeditor-light`/`mkeditor-dark` Monaco theme for `darkmode`, or `window.setLanguage(...)` for `locale`.
 3. `emit()` rebuilds the snapshot reference and notifies subscribers — `useSyncExternalStore` triggers a React re-render in any consumer of `SettingsContext` (the modal itself, the bottom-toolbar darkmode switch).
 4. `persist()` writes to localStorage (web) or calls the registered `persistHandler` (desktop) which routes to `bridgeManager.saveSettingsToFile` → `to:settings:save` → [AppSettings.saveSettingsToFile](../src/app/lib/AppSettings.ts:161) merges with the existing file, writes, and sends a success toast.
 
@@ -398,7 +409,7 @@ Open tabs, the active tab, and per-tab Monaco view state (cursor, selection, scr
 
 ```ts
 interface SessionPayload {
-  version: 1;
+  version: 1 | 2 | 3;
   tabs: SessionTab[]; // insertion order = tab order
   activeFile: string | null; // must match a tabs[].path or be null
   workspaceRoot: string | null; // desktop only; re-walked on restore
@@ -409,16 +420,17 @@ interface SessionTab {
   name: string;
   viewState: editor.ICodeEditorViewState | null;
   untitledContent?: string; // inlined for untitled only, non-empty
+  remote?: RemoteTabRecovery; // desktop encrypted recovery generation only
 }
 ```
 
-**Save cadence.** Structural-event-driven. [`FileManager.scheduleSessionSave()`](../src/browser/core/FileManager.ts) is a 300 ms debounced trigger called from `addTab`, `closeTab`, `activateFile`, `reorderTabs`, `renameTab`, `replaceUntitled`, and (from [BridgeListeners](../src/browser/core/BridgeListeners.ts)) the first `from:folder:opened` event for a new workspace root. It captures the active tab's current `saveViewState()` at write time (the prior tab's state is already cached on switch-out). No keystroke-level writes — the worst-case crash loss is the active-at-crash tab's cursor position; everything else was captured on the last tab switch.
+**Save cadence.** Local tab/workspace changes use FileManager’s 300 ms debounce. Remote model changes also checkpoint while typing, with a bounded interval. Desktop permits one checkpoint in flight and coalesces newer edits until acknowledgement, preventing a slow disk/keychain from accumulating document snapshots. The active view state is captured at serialization time.
 
 **Workspace root.** `serializeSession` reads `FileTreeManager.treeRoot` through a getter injected by `BridgeManager` (`fileManager.setWorkspaceRootGetter`) — FileManager doesn't take a direct dependency on FileTreeManager. On restore, after `restoreSession` replays tabs, `BridgeListeners` sends `to:file:openpath` for the persisted root; main's `AppStorage.openPath` reads the directory and dispatches the normal `from:folder:opened` which re-populates the tree. A folder that no longer exists is nulled out by `AppSession.buildRestoreEnvelope` before the envelope ships.
 
-**Quit flush.** `app.on('before-quit')` in [main.ts](../src/app/main.ts) sends `from:session:flush-request` to the renderer and waits up to 250 ms for a `to:session:save` ack. The renderer's listener in [BridgeListeners](../src/browser/core/BridgeListeners.ts) calls `serializeSession()` synchronously and ships the result; main hits `AppSession.save()` and lets quit proceed.
+**Quit flush.** Window close and application quit request a correlated FileManager checkpoint. AppBridge acknowledges only after CloudSessionRecovery has committed it. The quit orchestrator maps its logical session ack to this commit signal and waits up to 2.2 seconds alongside assistant flushing. A failed/timed-out checkpoint offers Cancel or explicit Quit anyway; message receipt alone does not prove persistence.
 
-**Restore.** At `did-finish-load`, main calls `AppSession.buildRestoreEnvelope(AppSession.load())` and sends `from:session:restore` with a [`SessionRestoreEnvelope`](../src/app/interfaces/Session.ts):
+**Restore.** At `did-finish-load`, AppBridge asks CloudSessionRecovery to combine the encrypted remote generation with the local AppSession fallback. AppSession filters local filesystem paths; remote identities bypass filesystem reads. The renderer receives the resulting SessionRestoreEnvelope and restores cached models before read-only Drive validation.
 
 ```ts
 interface SessionRestoreEnvelope {
@@ -439,7 +451,7 @@ A legacy `mkeditor-content` localStorage entry (left by pre-session-restore buil
 
 **User opt-out.** `EditorSettings.sessionRestore` (default `true`) gates the whole surface. The composition root injects `FileManager.setSessionEnabledGetter(() => SettingsProvider.getSetting('sessionRestore'))`; when the getter returns `false`, both `scheduleSessionSave` and `restoreSession` short-circuit. The save check runs again at flush time so a toggle-off mid-debounce doesn't sneak a write through. Main process applies the same gate before calling `AppSession.buildRestoreEnvelope` — disabled means an empty envelope, no disk read. The persisted file is intentionally left untouched on disable so a later toggle-on resumes the prior state.
 
-**Clear saved session.** New IPC `to:session:clear` (whitelisted in `preload.ts`) wipes the persisted file. Desktop: `AppSession.clear()` unlinks `session.json` and any leftover `.tmp`. Web: `WebFileBridge.clearSession()` removes the `mkeditor-session` localStorage entry. Both fire `notifications:session_cleared` via the standard `from:notification:display` plumbing. Currently-open tabs are not touched; the next launch starts fresh. Driven by the "Clear saved session" button in the Settings modal, which guards it behind a `confirmExternal` dialog.
+**Clear saved session.** The desktop coordinator clears local session metadata and encrypted draft snapshots while retaining unresolved operation intentions. A clear token prevents stale queued/final checkpoints from repopulating the session; later activity can resume checkpointing. The web bridge removes its localStorage session. Existing open tabs remain available, and the Settings action asks for confirmation.
 
 **IPC channels** (whitelisted in [preload.ts](../src/app/preload.ts)):
 
@@ -489,18 +501,32 @@ Each `MenuItem` carries `{ id, label, accelerator?, darwinAccelerator?, action }
 
 ### 4.14 AI Assistant
 
+**ChatGPT plan access (desktop).** OpenAI's optional subscription connection is owned by [ChatGptAuth](../src/app/lib/ChatGptAuth.ts), [ChatGptOAuth](../src/app/lib/ChatGptOAuth.ts) and [ChatGptStore](../src/app/lib/ChatGptStore.ts). They handle browser OAuth with PKCE and verified identity, account/client registrations, encrypted token sets, serialized renewal, model discovery and revocation. `to:ai:chatgpt` carries account commands through the existing sender-scoped bridge; `from:ai:config` includes sanitized subscription state. `AppAssistant` pins each call to the selected connection method, uses the same SDK/tool-confirmation loop, and never falls back from subscription usage to API billing. The optional `chatgpt` store section is validated independently and preserves older files and unrelated sections. See [the subscription implementation notes](AI_ASSISTANT.md#chatgpt-subscription-access-desktop) for the flow and manual verification requirements.
+
+**Workspace references.** The `@` picker uses `FileTreeManager.listWorkspaceFiles`, backed by the sender-scoped `mked:fs:listworkspacefiles` invoke helper and `AppStorage.listWorkspaceFiles`. This metadata-only inventory covers regular files throughout the active workspace, independent of explorer expansion, open tabs and extension filters. Directory walks use bounded concurrency and enforce the canonical workspace boundary; directory symlinks are not followed. Queries rank the cached inventory locally and display at most 20 matches, without limiting which files can be found. Inventories refresh on open/tree mutations/focus, and every two seconds only while the picker is visible. Overlapping scans coalesce, failed scans can retry, and stale replies after a workspace switch are discarded. File contents are read only after selection. Existing pinned references follow `from:path:renamed` events; `from:path:deleted` removes references to deleted files/folder descendants. Both desktop and web file operations emit deletion notifications; the assistant remains desktop-only.
+
 The right-hand sidebar that hosts per-provider chat surfaces (Anthropic / OpenAI / Ollama), gives an agent first-class read/write access to the workspace, and persists conversations across launches. Full design + per-phase notes: [AI_ASSISTANT.md](AI_ASSISTANT.md).
 
 **Desktop-only.** The assistant is hidden in the web build — the Navbar toggle, the sidebar shell, and the Settings → AI Providers tab all return `null` when `mode === 'web'`. API keys never enter the renderer process in any mode; on desktop they live in an Electron `safeStorage`-encrypted blob.
 
+**Connection readiness.** [assistantConnection.ts](../src/browser/core/assistantConnection.ts) supplies the shared credential-readiness rule to `AssistantManager` and React. Remote provider panes offer connection setup until the selected method is usable. A disconnect replaces the composer while preserving history and drafts; manager guards prevent new sends and cancel in-flight calls and pending confirmations. Inline API-key onboarding waits for the correlated `from:ai:key:result` acknowledgement before selecting API-key mode. Signed-out ChatGPT registrations are retained privately for reauthorization, and their account/usage controls disappear from sanitized UI state.
+
 **Process split.**
 
 - [AppAssistant](../src/app/lib/AppAssistant.ts) (main) owns the Vercel AI SDK instance (`streamText` / `generateText` from `ai` + `@ai-sdk/openai` + `@ai-sdk/anthropic` + `ollama-ai-provider-v2`). It holds the upstream `AbortController`s, maps SDK errors to a `ChatErrorEvent['code']` enum (`missing_key`, `invalid_key`, `rate_limited`, `context_window_exceeded`, `network_error`, `ollama_unreachable`, `model_unsupported_tools`, `cancelled`, `unknown`), and streams chunks back over IPC keyed by call id. For `APICallError` failures the inner upstream message (`{ "error": "…" }` for Ollama, `{ "error": { "message": "…" } }` for OpenAI-shape errors) is parsed out of `responseBody` and forwarded as `ChatErrorEvent.message` so the renderer can render actionable detail beneath the translated code.
-- [AssistantKeyStore](../src/app/lib/AssistantKeyStore.ts) (main) wraps `safeStorage` over the `keys` section of `~/.mkeditor/assistant.json`. Plaintext keys never leave main — sanitized snapshots stripped of `apiKey` are what the renderer sees.
+- [AssistantKeyStore](../src/app/lib/AssistantKeyStore.ts) (main) wraps Electron's async `safeStorage` API over the `keys` section of `~/.mkeditor/assistant.json`. Availability probes share a cached promise; same-provider set/clear operations are serialized, and writes reload the latest store after encryption to preserve concurrent config/conversation updates. Existing encrypted entries remain readable; ciphertext is refreshed when decryption requests re-encryption. Key loading, provider model creation and config pushes await the OS operation, with cancellation and window-lifecycle checks before continuing. Plaintext keys never leave main — sanitized snapshots carry only key-presence booleans.
 - [AssistantConfig](../src/app/lib/AssistantConfig.ts) (main) owns the non-secret half (`enabled`, `model`, `baseUrl`, the conversations array). Atomic tmp + rename writes, debounced 500 ms to coalesce streaming bursts.
 - [AssistantManager](../src/browser/core/AssistantManager.ts) (renderer) owns chat state: provider tabs, conversation lists, in-flight call map, streaming buffers, draft input per tab. Exposes the standard `subscribe(listener)` / `getSnapshot()` pair for `useSyncExternalStore`; never imports React.
-- [AssistantTools](../src/browser/core/AssistantTools.ts) (renderer) is the tool catalog + dispatcher. Tools call directly into [FileManager](../src/browser/core/FileManager.ts) / [FileTreeManager](../src/browser/core/FileTreeManager.ts) / [EditorManager](../src/browser/core/EditorManager.ts) — there is no new IPC surface for tool execution. Write-class tools (`write_file`, `edit_file`, `create_file`, `replace_selection`, `insert_at_cursor`) route through `confirmExternal` first unless the conversation's per-chat "auto-accept writes" toggle is on.
+- [AssistantTools](../src/browser/core/AssistantTools.ts) (renderer) combines the tool catalogs and dispatches through the existing chat/tool-result loop. Buffer and tab changes use [FileManager](../src/browser/core/FileManager.ts), [FileTreeManager](../src/browser/core/FileTreeManager.ts) and [EditorManager](../src/browser/core/EditorManager.ts); native workspace operations use the narrow sender-scoped preload API. Original write tools honour the per-chat auto-accept preference. The expanded destructive/editor-write tools and committed bulk edits always require an inline confirmation with a prepared operation summary. See [Workspace agent tools](WORKSPACE_TOOLS.md).
 - React lives under [src/browser/react/components/AssistantSidebar.tsx](../src/browser/react/components/AssistantSidebar.tsx) and [src/browser/react/components/assistant/](../src/browser/react/components/assistant/). The sidebar reads `useAssistantConfig` (sanitized snapshot) and `useAssistantChat` (live chat state) from [AssistantContext](../src/browser/react/contexts/AssistantContext.tsx).
+
+**Model and thinking settings.** Anthropic and OpenAI settings use readable model names from the shared [assistantModels.ts](../src/app/shared/assistantModels.ts) catalog, with a custom-ID option that preserves models outside the list. The same catalog defines supported thinking levels, checked against the official [Claude model/effort documentation](https://platform.claude.com/docs/en/build-with-claude/effort) and [OpenAI model documentation](https://developers.openai.com/api/docs/models). Keep capabilities alongside IDs when updating the catalog. Ollama continues to discover installed models from its daemon. Default model changes apply to new conversations; existing conversations retain their model override. The optional provider `thinkingLevel` preference applies to future chat messages and is captured in each `ChatRequest`, including subsequent tool turns. Main maps compatible levels to Anthropic adaptive thinking/effort or OpenAI reasoning effort. Unknown models and incompatible conversation overrides use model defaults; connection probes do not inherit the thinking preference. Older stores without the preference also retain model defaults.
+
+The chat composer reuses `ProviderModelSettings` for compact, borderless model and thinking dropdowns below the message input, so readable names, custom IDs, and supported effort levels stay consistent with Settings. Chat changes update that conversation immediately. An optional conversation `thinkingLevel` overrides the provider preference and survives history restore; old conversations inherit the provider setting. Switching to a model that cannot use an explicit conversation level resets that override to the model default. Ollama's chat dropdown discovers installed models when opened and retains a custom-ID fallback. Controls wrap in narrow panes.
+
+**Tool history across messages.** [assistantHistory.ts](../src/app/shared/assistantHistory.ts) rebuilds each conversation's resolved tool calls and results for follow-up requests. `ChatMessage.toolCalls` carries assistant tool requests; matching `role: 'tool'` messages carry their outcomes. `AppAssistant` translates these into native SDK `tool-call`/`tool-result` parts rather than flattening them into prose. Optional persisted message `segments` retain interleaved text/tool ordering. Older stores without ordering metadata replay resolved calls before the assistant's summary. Tool-only replies remain in history; rejected/failed calls retain error outcomes. Cancelled/failed turns retain completed tool work without treating partial text as a completed reply. A streaming turn with resolved calls is saved as cancelled on shutdown so completed actions survive restart; unresolved calls are never replayed or re-executed.
+
+The assistant divider has an eight-pixel visible grip and expanded pointer targets (18 pixels for mouse, 28 for touch), plus keyboard resizing. `Shell` persists nonzero widths through the group's settled `onLayoutChanged` callback rather than updating React state on every drag tick. Collapsing retains the last expanded width.
 
 **Storage.** `~/.mkeditor/assistant.json` is the on-disk file. Shape:
 
@@ -510,34 +536,21 @@ The right-hand sidebar that hosts per-provider chat surfaces (Anthropic / OpenAI
   "providers": {
     "anthropic": {
       "enabled": true,
-      "model": "claude-sonnet-4-6",
-      "apiKey": "<encrypted>"
+      "defaultModel": "claude-sonnet-5-5",
+      "thinkingLevel": "high"
     },
-    "openai": { "enabled": false, "model": "gpt-5", "apiKey": null },
+    "openai": { "enabled": false, "defaultModel": "gpt-5" },
     "ollama": {
       "enabled": true,
-      "model": "llama3.2",
-      "baseUrl": "http://localhost:11434",
-      "apiKey": null
+      "defaultModel": "llama3.2",
+      "baseUrl": "http://localhost:11434"
     }
   },
-  "conversations": [
-    {
-      "id": "conv-…",
-      "provider": "anthropic",
-      "title": "…",
-      "createdAt": 0,
-      "updatedAt": 0,
-      "autoAcceptWrites": false,
-      "messages": [
-        /* UiChatMessage[] */
-      ]
-    }
-  ]
+  "keys": { "anthropic": "<encrypted base64>" }
 }
 ```
 
-The `apiKey` value is a `safeStorage`-encrypted base64 blob. On corrupted decrypt it nulls out the key and disables the provider (rather than throwing on boot).
+The `keys` entries are `safeStorage`-encrypted base64 blobs. Corrupted decrypts are treated as missing keys. The optional `conversations` section contains the `PersistedConversations` object defined in [Assistant.ts](../src/app/interfaces/Assistant.ts); config and key writes preserve this history.
 
 **IPC channels** (whitelisted in [preload.ts](../src/app/preload.ts)). The `:ai:` namespace is the chat/config plane (chosen for brevity — `assistant` reads as a heavier word when scanning IPC tables); `from:assistant:toggle` lives under `:assistant:` because it's a UI-shell event, not a chat-plane message:
 
@@ -565,7 +578,9 @@ The `apiKey` value is a `safeStorage`-encrypted base64 blob. On corrupted decryp
 
 **Menu integration.** [menuModel.ts](../src/app/lib/menuModel.ts) carries `view.assistant.toggle` (`CmdOrCtrl+Shift+A`, fires `from:assistant:toggle`) and `help.assistant.configure` (`channel` action with payload `{ modal: 'settings', tab: 'assistant' }`). [AppMenu.buildTrayContextMenu](../src/app/lib/AppMenu.ts) adds a "Toggle Assistant" entry that fires the same `from:assistant:toggle` channel. `from:assistant:toggle` is handled by [BridgeListeners](../src/browser/core/BridgeListeners.ts) which calls `toggleRightSidebarExternal()` — the module-level seam registered by [UIStateContext](../src/browser/react/contexts/UIStateContext.tsx).
 
-**Tool catalog (v1).** Defined once in [AssistantTools.ts](../src/browser/core/AssistantTools.ts) with JSON Schema parameter descriptors:
+**Tool catalog.** [AssistantTools.ts](../src/browser/core/AssistantTools.ts) combines the original tools below with the path, search/link, editor-state and existing-feature catalogs. See [Workspace agent tools](WORKSPACE_TOOLS.md) for the full 31-tool surface, limits and confirmation rules. Native workspace operations use the sender-scoped `mked:fs:workspace-operation` invoke API, canonical `AppStorage.assertInWorkspace` checks, serialized mutations, staged text writes and OS trash. Destructive operations and committed bulk edits always confirm, including when auto-accept is enabled. Read-only/dry-run tools auto-execute. Asynchronous operation previews provide affected-file and match counts through the existing inline tool card.
+
+The original tool API remains available (with optional line ranges added to `read_file`):
 
 | Tool                | Class | Effect                                             |
 | ------------------- | ----- | -------------------------------------------------- |
@@ -581,6 +596,32 @@ The `apiKey` value is a `safeStorage`-encrypted base64 blob. On corrupted decryp
 | `insert_at_cursor`  | write | Insert at the cursor (confirm gate)                |
 
 Write-class tools render a [ConfirmToolCall](../src/browser/react/components/assistant/ConfirmToolCall.tsx) `AlertDialog` with a diff preview before running, unless the conversation's `autoAcceptWrites` flag is on (default off, per-conversation toggle in the chat header).
+
+### 4.15 Cloud connections (Google Drive and Dropbox)
+
+`CloudProvider` is the main-process adapter contract for authorization, account verification, listings, Markdown reads, conditional writes and creation checks. `CloudService` selects `GoogleDrive` or `Dropbox` from each connection's provider. `BrowserAuthorization` owns the shared one-shot loopback/state/PKCE lifecycle; Google uses an ephemeral port and Dropbox uses its registered fixed callback. Organization is an explicit optional adapter surface, currently implemented by Drive. Shared conformance tests exercise both real adapters through HTTP fixtures.
+
+Dropbox uses a public app key injected into main-process build output. It binds saves to stable IDs and `rev` with strict conflict detection, creates without overwriting, and attaches an app-owned creation marker for lost-response checks. A recovered pending creation may acquire its permanent file ID after verification; FileManager migrates the existing model and baseline without losing newer text. Provider identity is retained in connections, remote tabs and the encrypted journal. Older records with no provider remain Google Drive; their `cloud-drive://` identities are unchanged. Dropbox uses `cloud-dropbox://`. Neither scheme enters local filesystem access or web session persistence. See [Dropbox scope and setup](cloud/dropbox.md).
+
+`CloudManager` publishes per-file opening operations and the current create operation in its renderer snapshot. React renders these as inline progress without blocking document editing. Duplicate opens are suppressed, and account changes discard obsolete opening operations; late responses cannot reopen a cancelled download. Tab icons derive from each tab's remote metadata, independently of the selected Explorer workspace.
+
+The first successful read-only sign-in offers **Enable editing now** or **Later** through the shared prompt seam. The prompt explains the provider's additional permission before starting authorization; Later leaves read-only access intact. `CloudConnection.hasConnected` is saved only after successful sign-in and survives disconnect/restart, so reconnecting does not repeat the introduction. Restoring saved connections does not open a prompt. Connection cards display read-only or editing-enabled access alongside connection status.
+
+Confirmed Markdown creation and copies show a localized success toast through `notify.ts`. Explorer operation errors use the same Sonner seam instead of truncated inline messages. Uncertain creations and moves retain their persistent check actions; checking a creation reports success only after the provider confirms it. Connection settings and the move picker retain their own inline error feedback.
+
+Recovery controls are shown and accepted only when their connection ID and account ID match the connected account selected in Explorer. Switching workspaces or accounts retains pending operations so they can be resolved after returning to their original account.
+
+Drive and Dropbox Explorer context menus provide folder creation and Markdown document moves. `CloudManager` owns the destination picker listing and operation progress; React owns menu presentation. The picker uses the selected connection's brand and root. Main validates the account, grant, source parent and destination, and serializes moves with saves by file identity. Drive uses a conditional metadata-only parent update. Dropbox moves the validated source path without uploading content and checks the returned stable file ID. A missing source or returned-ID mismatch is a conflict, even if another client has moved the expected document to the destination. Dropbox has no conditional move, so concurrent content revisions must not advance a stale editor baseline. `FileManager.moveRemoteDocument` includes the provider in tab identity and preserves the Monaco model and saved baseline. Folder creation uses generated IDs on Drive or acknowledged IDs on Dropbox with operation markers; unmarked Dropbox outcomes remain unconfirmed. Uncertain organization outcomes are checked through `reconcileItem` without replaying writes. The destination picker stays in the same connection; Google shared drives remain read-only.
+
+`AppBridge` owns a sender-scoped `CloudService`. Public `CloudCommand` requests travel on `to:cloud:request`; correlated results and sanitized connection state return through `from:cloud:result` and `from:cloud:state`. `GoogleDrive` performs OAuth code/PKCE with a timed IPv4 loopback callback, account verification, refresh, paginated listings and reads in main. `CloudStore` atomically persists public configuration and OS-encrypted credentials in `~/.mkeditor/connections.json`. Plaintext-equivalent keyring backends disable sign-in. Generation guards prevent pending authentication/refresh work from restoring credentials after disconnect/remove; monotonically numbered public states prevent stale IPC replies from restoring old UI state.
+
+`BridgeManager.cloudManager` owns the renderer snapshot, request correlation and remote browsing. `useCloud` subscribes to it; Settings → Connections, the application toolbar's storage selector and the remote Explorer render it. The web runtime exposes no connection UI or authenticated provider path. Local workspace data stays in the existing file-tree manager when the remote browser is selected.
+
+Main loads the shared Desktop OAuth registration from `src/app/config/googleDrive.json` through `GoogleDriveRegistration`. The default **Connect with Google** action creates and authorizes a connection in one request, then selects its Explorer workspace. Custom client configuration lives under Advanced. Each persisted connection retains its own registration; older connections remain compatible and are never silently migrated to a new OAuth client. Only public Desktop app values are bundled, while user tokens remain OS-encrypted locally. Public availability still depends on Google's app publishing/verification.
+
+`FileManager.openRemoteDocument` keys models by connection, verified Google account and resolved file ID using `cloud-drive://` identities. Tabs focus existing buffers on repeated opens and stay out of local path accessors and filesystem writes. Remote session snapshots use the encrypted recovery store. Read-only connections can be explicitly upgraded through fresh Google consent. Editing also requires current account identity, My Drive permissions and a strong validator. `FileManager` snapshots model contents/version for saves, advances only the acknowledged baseline, retains newer edits, and includes pending/unconfirmed writes in close/quit protection. Cloud operations are injected through `setRemoteOperations`; React renders snapshots. “Edit a local copy” creates a separate dirty untitled model. Assistant selection writes remain blocked for remote documents. Remote previews disable raw HTML and local/relative asset resolution.
+
+`CloudService` serializes writes by document/account, updates by ID using the live-verified v2 multipart `If-Match` protocol and deduplicates operation IDs. Creation pre-generates a file ID and refuses a same-name preflight match. Uncertain responses retain their snapshot and reconcile by ID/content/revision (plus a create marker), without replaying writes. Reload confirms before replacing dirty text and rejects intervening edits; comparison uses ephemeral diff tabs. Prompt callbacks live in the neutral `prompts.ts` seam, re-exported by the existing React context for compatibility. Shared-drive writes remain disabled. Remote drafts and operation intentions are atomically checkpointed in OS-encrypted cloud-recovery.bin. The journal is written before provider mutations and restored without automatic replay. See [setup and limits](cloud/google-drive.md), [decisions](cloud/drive-decisions.md) and [implementation report](cloud/implementation-report.md).
 
 ## 5. Settings Schema
 
@@ -641,7 +682,7 @@ package.json scripts
 ├── build-editor  → prebuild → combine-locales.mjs → webpack
 │                   produces dist/{index.html, mkeditor.bundle.js, mkeditor.bundle.css,
 │                                  favicon.ico, icon.png, locale/, fonts/}
-├── build-app     → compile-app.mjs → tsc src/app/*.ts → dist/app/
+├── build-app     → compile-app.mjs → tsc src/app/*.ts → dist/app/ + injected Google registration
 ├── make-installer→ clean dist + releases → build-editor → build-app → electron-builder
 ├── serve-web     → http-server dist
 ├── serve-app     → electron .   (uses dist/app/main.js as main)
@@ -653,6 +694,8 @@ Webpack config ([webpack.config.js](../webpack.config.js)):
 
 - Single entry: `[src/browser/index.ts, scss/index.scss]`.
 - Monaco bundled via `MonacoWebpackPlugin` with explicit `languages: ['markdown']` and a fixed feature allowlist (no full Monaco footprint).
+- Bare Monaco imports resolve to [src/browser/monaco.ts](../src/browser/monaco.ts), which re-exports the subset API and explicitly registers caret/suggestion controllers absent from Monaco 0.57's subset metadata. The package umbrella entry would otherwise load every language service. Renderer output cleanup removes obsolete chunks while preserving `dist/app/`.
+- The Monaco entry also restores persistent hover/Markdown factories after diff creation and ignores worker failures only when the diff was cancelled or its models were disposed. This prevents closing a diff preview from breaking later completion menus or emitting obsolete computation errors; live worker errors still propagate. [tests/monaco.compatibility.test.ts](../tests/monaco.compatibility.test.ts) covers these version-specific workarounds.
 - CopyWebpackPlugin pulls in icon assets, the HTML view, the `locale/` tree, and KaTeX fonts.
 - HTML minimizer + Terser for production.
 

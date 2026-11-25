@@ -4,6 +4,8 @@ import { useFiles } from '../contexts/FilesContext';
 import { useManagers } from '../contexts/ManagersContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
+import { CloudLogo } from './cloud/CloudBrand';
+import { cloudMessageKey } from '../../cloudLabels';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -92,7 +94,7 @@ export const TabBar: React.FC = () => {
   return (
     <div
       data-testid="editor-tabs-strip"
-      className="flex items-stretch min-h-7 border-b border-border bg-muted/40 select-none"
+      className="flex items-stretch h-9 shrink-0 border-b border-subtle bg-sidebar select-none"
     >
       <ContextMenu>
         <ContextMenuTrigger asChild>
@@ -114,12 +116,12 @@ export const TabBar: React.FC = () => {
                   draggable
                   className={cn(
                     'group relative flex items-center cursor-grab',
-                    'border-r border-border',
+                    'border-r border-subtle',
                     // Active tab "lifts" to the editor's bg; inactive sits
                     // on the muted strip and tints toward bg on hover.
                     isActive
-                      ? 'bg-background text-foreground'
-                      : 'bg-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground',
+                      ? 'bg-editor text-foreground'
+                      : 'bg-transparent text-muted-foreground hover:bg-hover hover:text-foreground',
                     // The 2px primary accent stripe along the top of the
                     // active tab is the main "you are here" cue. A 2px
                     // transparent border on inactive tabs keeps heights
@@ -138,12 +140,30 @@ export const TabBar: React.FC = () => {
                       fileManager?.activateFile(tab.path);
                     }}
                     className={cn(
-                      'block px-3 py-1 whitespace-nowrap no-underline cursor-pointer',
+                      'inline-flex items-center gap-1.5 px-3 py-1 whitespace-nowrap no-underline cursor-pointer',
                       'text-current focus:outline-none text-xs',
                     )}
-                    title={tab.path}
+                    title={
+                      tab.remote
+                        ? `${tab.remote.connectionName} / ${tab.name}`
+                        : tab.path
+                    }
+                    aria-label={
+                      tab.remote
+                        ? t(cloudMessageKey('tab_label', tab.remote.provider), {
+                            name: tab.name,
+                            connection: tab.remote.connectionName,
+                          })
+                        : undefined
+                    }
                   >
-                    {tab.name}
+                    {tab.remote && (
+                      <CloudLogo
+                        provider={tab.remote.provider}
+                        className="h-3.5 w-3.5"
+                      />
+                    )}
+                    <span>{tab.name}</span>
                   </a>
                   <button
                     type="button"
@@ -224,7 +244,7 @@ export const TabBar: React.FC = () => {
         className={cn(
           'flex h-full items-center justify-center px-2',
           'border-t-2 border-t-transparent border-r border-border',
-          'text-muted-foreground hover:bg-background/60 hover:text-foreground',
+          'text-muted-foreground hover:bg-hover hover:text-foreground',
           'focus:outline-none focus-visible:bg-accent',
           'cursor-pointer',
         )}

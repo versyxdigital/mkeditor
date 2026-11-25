@@ -121,6 +121,59 @@ describe('<ToolCallCard>', () => {
     render(<ToolCallCard invocation={invocation({ status: 'succeeded' })} />);
     expect(screen.queryByText('assistant-tools:args_label')).toBeNull();
   });
+
+  it('shows the target path and connects its disclosure to the detail panel', () => {
+    render(
+      <ToolCallCard
+        invocation={invocation({ arguments: { path: '/notes/README.md' } })}
+      />,
+    );
+    const header = screen.getByRole('button');
+    expect(within(header).getByText('/notes/README.md')).toBeInTheDocument();
+    expect(header).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(header);
+    expect(header).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      document.getElementById(header.getAttribute('aria-controls')!),
+    ).toContainElement(screen.getByText('assistant-tools:args_label'));
+  });
+
+  it('expands and collapses large arguments without losing any text', () => {
+    const args = { path: '/notes/test.md', content: '0123456789'.repeat(160) };
+    render(<ToolCallCard invocation={invocation({ arguments: args })} />);
+    fireEvent.click(screen.getByRole('button'));
+    const toggle = screen.getByTestId('tool-args-toggle');
+    const content = document.getElementById(
+      toggle.getAttribute('aria-controls')!,
+    )!;
+    expect(content.textContent!.length).toBeLessThan(
+      JSON.stringify(args, null, 2).length,
+    );
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(content.textContent).toBe(JSON.stringify(args, null, 2));
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(content.textContent).toMatch(/…$/);
+  });
+
+  it('bounds multiline results by lines and reveals the full output on demand', () => {
+    const result = Array.from(
+      { length: 60 },
+      (_, index) => `line ${index}`,
+    ).join('\n');
+    render(<ToolCallCard invocation={invocation({ result })} />);
+    fireEvent.click(screen.getByRole('button'));
+    const toggle = screen.getByTestId('tool-result-toggle');
+    const content = document.getElementById(
+      toggle.getAttribute('aria-controls')!,
+    )!;
+    expect(content.textContent).not.toContain('line 59');
+    fireEvent.click(toggle);
+    expect(content.textContent).toBe(result);
+    fireEvent.click(toggle);
+    expect(content.textContent).not.toContain('line 59');
+  });
 });
 
 /* ---------- Inline confirmation rendering --------------------------- */
@@ -184,7 +237,9 @@ describe('<ToolCallCard> inline confirmation', () => {
     callId: string;
     preview: ToolInvocation['arguments'] extends infer A
       ? {
-          kind: 'edit' | 'write' | 'create' | 'replace' | 'insert';
+          kind:
+            'edit' | 'write' | 'create' | 'replace' | 'insert' | 'operation';
+          summary?: string;
           path?: string;
           before?: string;
           after: string;
@@ -231,6 +286,35 @@ describe('<ToolCallCard> inline confirmation', () => {
     // fetch resolves args.content synchronously.
     expect(stub.dataset.hasFetchOriginal).toBe('true');
     expect(stub.dataset.hasFetchModified).toBe('true');
+  });
+
+  it('shows exact operation and unsaved-change counts without an empty diff', () => {
+    const { fakeAssistantManager } = jest.requireActual('../utils/render');
+    const manager = fakeAssistantManager({
+      initialChatSnapshot: pendingChatSnapshot({
+        toolCallId: 'tc-pending',
+        toolName: 'move_path',
+        callId: 'chat-1',
+        preview: {
+          kind: 'operation',
+          after: '',
+          summary:
+            'Move it/ to mkeditor/it/; 5 files. Update 3 links in 2 files.',
+          detail: 'Unsaved edits in 1 tab will be preserved.',
+        },
+      }),
+    });
+    render(
+      <ToolCallCard
+        invocation={pendingInvocation({ toolName: 'move_path' })}
+      />,
+      { managers: { assistantManager: manager } },
+    );
+    expect(
+      screen.getByText(/5 files\. Update 3 links in 2 files/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Unsaved edits in 1 tab/)).toBeInTheDocument();
+    expect(screen.queryByTestId('inline-diff-preview-stub')).toBeNull();
   });
 
   it('renders the InsertPreview for insert/create kinds', () => {

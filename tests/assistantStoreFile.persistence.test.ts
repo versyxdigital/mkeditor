@@ -109,6 +109,26 @@ describe('assistantStoreFile — P7 persisted conversations', () => {
                   status: 'complete' as const,
                   createdAt: 1,
                 },
+                {
+                  id: 'm-2',
+                  role: 'assistant' as const,
+                  content: 'Done.',
+                  status: 'complete' as const,
+                  createdAt: 2,
+                  toolCalls: [
+                    {
+                      toolCallId: 'create-1',
+                      toolName: 'create_file',
+                      arguments: { path: '/poem.md' },
+                      status: 'succeeded' as const,
+                      result: { ok: true },
+                    },
+                  ],
+                  segments: [
+                    { type: 'tool-call' as const, toolCallId: 'create-1' },
+                    { type: 'text' as const, text: 'Done.' },
+                  ],
+                },
               ],
               autoAcceptWrites: false,
               shareActiveFile: true,

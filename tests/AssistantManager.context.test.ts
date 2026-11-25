@@ -62,6 +62,44 @@ function makeContextProvider(
 }
 
 describe('AssistantManager — contextFor assembly', () => {
+  it('keeps pinned references aligned with file/folder renames and removes deleted descendants', async () => {
+    const { bridge } = makeBridge();
+    const manager = new AssistantManager(bridge, { disablePacedReveal: true });
+    const provider = makeContextProvider({
+      fileContents: new Map([
+        ['/w/poems/one.md', 'old'],
+        ['/w/poems-other/safe.md', 'safe'],
+      ]),
+    });
+    manager.setContextProvider(provider);
+    const a = manager.createConversation('anthropic');
+    const b = manager.createConversation('openai');
+    await manager.addMention('anthropic', a, '/w/poems/one.md');
+    await manager.addMention('anthropic', a, '/w/poems-other/safe.md');
+    await manager.addMention('openai', b, '/w/poems/one.md');
+    manager.renameMentionPaths('/w/poems', '/w/renamed');
+    expect(
+      manager.contextChips('anthropic', a).map((chip) => chip.path),
+    ).toEqual(['/w/renamed/one.md', '/w/poems-other/safe.md']);
+    expect(manager.contextChips('openai', b).map((chip) => chip.path)).toEqual([
+      '/w/renamed/one.md',
+    ]);
+    provider._state.fileContents.delete('/w/poems/one.md');
+    provider._state.fileContents.set('/w/renamed/one.md', 'renamed content');
+    expect((await manager.contextFor('anthropic', a))?.content).toContain(
+      'renamed content',
+    );
+    manager.renameMentionPaths('/w/renamed/one.md', '/w/elsewhere/moved.md');
+    expect(manager.serialize()!.conversations.openai[0].mentions).toEqual([
+      '/w/elsewhere/moved.md',
+    ]);
+    manager.removeMentionPaths('/w/elsewhere');
+    expect(
+      manager.contextChips('anthropic', a).map((chip) => chip.path),
+    ).toEqual(['/w/poems-other/safe.md']);
+    expect(manager.contextChips('openai', b)).toEqual([]);
+    manager.flushPersist();
+  });
   it('returns null when no context provider is set (early boot)', async () => {
     const { bridge } = makeBridge();
     const mgr = new AssistantManager(bridge as never, {
@@ -327,6 +365,48 @@ describe('AssistantManager — contextChips + tokenEstimate', () => {
     expect(chips[0].kind).toBe('active');
   });
 
+  it('includes tool definitions and previous tool results in the token estimate', () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conv = mgr.createConversation('ollama');
+    const empty = mgr.contextTokenEstimate('ollama', conv, '');
+    mgr.setToolExecutor({
+      describe: () => [
+        {
+          name: 'read_file',
+          description: 'Read a file.',
+          parameters: { type: 'object', properties: {} },
+        },
+      ],
+    } as never);
+    const withTools = mgr.contextTokenEstimate('ollama', conv, '');
+    expect(withTools).toBeGreaterThan(empty);
+    const saved = mgr.serialize()!;
+    saved.conversations.ollama[0].messages.push({
+      id: 'prior-tool',
+      role: 'assistant',
+      content: '',
+      status: 'failed',
+      createdAt: Date.now(),
+      toolCalls: [
+        {
+          toolCallId: 'read-1',
+          toolName: 'read_file',
+          arguments: { path: '/w/file.md' },
+          status: 'succeeded',
+          result: { content: 'x'.repeat(8000) },
+        },
+      ],
+    });
+    mgr.restore(saved);
+    expect(mgr.contextTokenEstimate('ollama', conv, '')).toBeGreaterThan(
+      withTools + 2000,
+    );
+    mgr.flushPersist();
+  });
+
   it('tokenEstimate grows monotonically as the draft and mention contents grow', async () => {
     const { bridge } = makeBridge();
     const mgr = new AssistantManager(bridge as never, {
@@ -479,5 +559,93 @@ describe('AssistantManager — startCall integration (P6 system context)', () =>
       messages: Array<{ role: string }>;
     };
     expect(payload.messages.find((m) => m.role === 'system')).toBeUndefined();
+  });
+});
+
+describe('AssistantManager fresh explicit context regressions', () => {
+  it('rehydrates restored mentions and sends current unsaved content', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const cp = makeContextProvider({
+      fileContents: new Map([['/x.md', 'old']]),
+    });
+    mgr.setContextProvider(cp);
+    const conv = mgr.createConversation('anthropic');
+    mgr.setShareActiveFile('anthropic', conv, false);
+    await mgr.addMention('anthropic', conv, '/x.md');
+    const saved = mgr.serialize();
+    mgr.restore(saved);
+    cp._state.fileContents.set('/x.md', 'fresh unsaved edit');
+    expect((await mgr.contextFor('anthropic', conv))?.content).toContain(
+      'fresh unsaved edit',
+    );
+    cp._state.fileContents.delete('/x.md');
+    expect(await mgr.contextFor('anthropic', conv)).toBeNull();
+  });
+
+  it('honours context removal and sharing toggles while mention I/O is pending', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const cp = makeContextProvider({
+      active: { path: '/active.md', content: 'PRIVATE' },
+      fileContents: new Map([['/x.md', 'mention']]),
+    });
+    mgr.setContextProvider(cp);
+    const conv = mgr.createConversation('anthropic');
+    await mgr.addMention('anthropic', conv, '/x.md');
+    let finish!: (result: { content: string }) => void;
+    cp.readFile = () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      });
+    const pending = mgr.contextFor('anthropic', conv);
+    mgr.removeMention('anthropic', conv, '/x.md');
+    mgr.setShareActiveFile('anthropic', conv, false);
+    finish({ content: 'PRIVATE MENTION' });
+    expect(await pending).toBeNull();
+  });
+
+  it('does not resurrect a mention after its conversation is deleted during the read', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const cp = makeContextProvider();
+    let finish!: (result: { content: string }) => void;
+    cp.readFile = () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      });
+    mgr.setContextProvider(cp);
+    const conv = mgr.createConversation('anthropic');
+    const pending = mgr.addMention('anthropic', conv, '/x.md');
+    mgr.deleteConversation('anthropic', conv);
+    finish({ content: 'late document' });
+    await pending;
+    expect(mgr.contextChips('anthropic', conv)).toEqual([]);
+    expect(mgr.serialize()).toBeNull();
+  });
+
+  it('uses a fence wider than arbitrary nested fences', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    mgr.setContextProvider(
+      makeContextProvider({
+        active: {
+          path: '/nested.md',
+          content: '``````md\n```nested```\n``````',
+        },
+      }),
+    );
+    const conv = mgr.createConversation('anthropic');
+    const message = await mgr.contextFor('anthropic', conv);
+    expect(message?.content.startsWith('```````md')).toBe(true);
+    expect(message?.content.endsWith('```````')).toBe(true);
   });
 });

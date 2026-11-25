@@ -1,4 +1,6 @@
 import type { editor } from 'monaco-editor';
+import type { RemoteTabRecovery } from '../../app/interfaces/Cloud';
+import type { SessionRecoveryCopy } from '../../app/interfaces/Session';
 
 /**
  * Persisted session shape (renderer-side view). Wire-compatible with
@@ -10,10 +12,15 @@ import type { editor } from 'monaco-editor';
 export interface SessionPayload {
   /**
    * v1 was the original session-restore shape; v2 added the optional
-   * `assistant` view-state block. Loader accepts either; writer
-   * always stamps the current canonical version.
+   * `assistant` view-state block; v3 adds remote recovery. The loader
+   * accepts all three; the writer stamps the current canonical version.
    */
-  version: 1 | 2;
+  version: 1 | 2 | 3;
+  restoreEnabled?: boolean;
+  flushId?: string;
+  failureCopy?: SessionRecoveryCopy;
+  resumeAfterClear?: string;
+  cloudAcknowledgements?: string[];
   tabs: SessionTab[];
   activeFile: string | null;
   /** Workspace root path (desktop). Null when no folder is open. */
@@ -33,6 +40,7 @@ export interface AssistantViewState {
 }
 
 export interface SessionTab {
+  remote?: RemoteTabRecovery;
   path: string;
   name: string;
   viewState: editor.ICodeEditorViewState | null;
@@ -47,6 +55,7 @@ export interface SessionTab {
  * tabs synchronously.
  */
 export interface SessionRestoreEnvelope {
+  recoveryError?: boolean;
   session: SessionPayload | null;
   missing: string[];
   contents: Record<string, string>;

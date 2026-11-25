@@ -1,14 +1,16 @@
 import * as React from 'react';
+import { isRemotePath } from '../../../app/interfaces/Cloud';
 
 import {
   dirnameOf,
-  isFileSchemeUrl,
-  isPurelyRelativeAssetPath,
+  isLocalAssetPath,
   resolveLocalAssetSrc,
 } from '../../core/resolveLocalAssetSrc';
 import { refreshLines } from '../../extensions/editor/ScrollSync';
 import { sonnerToast } from '../../notify';
 import { logger } from '../../util';
+import { renderMermaidDiagrams } from '../../mermaid';
+import { useSettings } from '../contexts/SettingsContext';
 import { useFiles } from '../contexts/FilesContext';
 import { useFileTree } from '../contexts/FileTreeContext';
 import { useManagers } from '../contexts/ManagersContext';
@@ -18,11 +20,21 @@ import { useTranslation } from '../hooks/useTranslation';
 // language modules — ~400 KB of code that isn't needed until the
 // preview renders its first frame. Dynamic-import it once on mount
 // so it lands in a separate chunk and stays out of the main bundle.
-type MarkdownAPI = typeof import('../../core/Markdown').Markdown;
+type MarkdownAPI = { render: (source: string, remote?: boolean) => string };
 let markdownPromise: Promise<MarkdownAPI> | null = null;
 function loadMarkdown(): Promise<MarkdownAPI> {
   if (!markdownPromise) {
-    markdownPromise = import('../../core/Markdown').then((m) => m.Markdown);
+    markdownPromise = import('../../core/Markdown')
+      .then((m) => ({
+        render: (source: string, remote = false) =>
+          remote
+            ? m.renderAssistantMarkdown(source)
+            : m.Markdown.render(source),
+      }))
+      .catch((error) => {
+        markdownPromise = null;
+        throw error;
+      });
   }
   return markdownPromise;
 }
@@ -45,6 +57,10 @@ export const PreviewPane: React.FC = () => {
   const { activeFile } = useFiles();
   const { treeRoot } = useFileTree();
   const { t } = useTranslation();
+  const {
+    settings: { effectiveDarkmode },
+  } = useSettings();
+  const themeRef = React.useRef(effectiveDarkmode);
   const contentRef = React.useRef<HTMLDivElement>(null);
 
   const activeEditablePath = React.useMemo(
@@ -57,23 +73,67 @@ export const PreviewPane: React.FC = () => {
   // values on every dispatch — without re-running the effect (which
   // would tear down and re-bind the editor:render listener and reload
   // the markdown chunk on every tab switch).
-  const baseInfoRef = React.useRef({ mode, activeEditablePath, treeRoot });
+  const remote = isRemotePath(
+    fileManager?.getActiveDocumentPath?.() ?? activeFile,
+  );
+  const baseInfoRef = React.useRef({
+    mode,
+    activeEditablePath,
+    treeRoot,
+    remote,
+  });
   React.useEffect(() => {
-    baseInfoRef.current = { mode, activeEditablePath, treeRoot };
-  }, [mode, activeEditablePath, treeRoot]);
+    baseInfoRef.current = { mode, activeEditablePath, treeRoot, remote };
+  }, [mode, activeEditablePath, treeRoot, remote]);
 
   React.useEffect(() => {
     let cancelled = false;
     let md: MarkdownAPI | null = null;
+    let lastSource: string | null = null;
+    let lastHtml = '';
+    let lastContext: typeof baseInfoRef.current | null = null;
+    let lastTheme: boolean | null = null;
+    let diagrams: AbortController | null = null;
 
     const render = () => {
       if (!contentRef.current || !md) return;
-      const html = md.render(editorManager?.getValue() ?? '');
-      contentRef.current.innerHTML = '';
-      contentRef.current.appendChild(
-        buildPreviewFragment(html, baseInfoRef.current),
-      );
-      refreshLines();
+      const source = editorManager?.getValue() ?? '';
+      const context = baseInfoRef.current;
+      if (
+        source === lastSource &&
+        context === lastContext &&
+        themeRef.current === lastTheme
+      )
+        return;
+      try {
+        const html =
+          source === lastSource && context.remote === lastContext?.remote
+            ? lastHtml
+            : md.render(source, context.remote);
+        if (source !== lastSource || context !== lastContext) {
+          const fragment = buildPreviewFragment(html, context);
+          contentRef.current.replaceChildren(fragment);
+        }
+        diagrams?.abort();
+        diagrams = new AbortController();
+        const signal = diagrams.signal;
+        lastSource = source;
+        lastHtml = html;
+        lastContext = context;
+        lastTheme = themeRef.current;
+        refreshLines();
+        if (contentRef.current.querySelector('[data-diagram="mermaid"]')) {
+          void renderMermaidDiagrams(
+            contentRef.current,
+            themeRef.current,
+            signal,
+          ).then(() => {
+            if (!signal.aborted) refreshLines();
+          });
+        }
+      } catch (error) {
+        logger.error('PreviewPane.render', error);
+      }
     };
 
     // Load Markdown once, then wire up the render handler. While the
@@ -81,18 +141,26 @@ export const PreviewPane: React.FC = () => {
     // dropped — the catch-up `render()` call after the load handles
     // the initial state, and subsequent edits stay within the editor's
     // debounce window so nothing visible is lost.
-    void loadMarkdown().then((api) => {
-      if (cancelled) return;
-      md = api;
-      render();
-    });
+    void loadMarkdown()
+      .then((api) => {
+        if (cancelled) return;
+        md = api;
+        render();
+      })
+      .catch((error) => logger.error('PreviewPane.loadMarkdown', error));
 
     dispatcher.addEventListener('editor:render', render);
     return () => {
       cancelled = true;
+      diagrams?.abort();
       dispatcher.removeEventListener('editor:render', render);
     };
   }, [dispatcher, editorManager]);
+
+  React.useEffect(() => {
+    themeRef.current = effectiveDarkmode;
+    dispatcher.render();
+  }, [effectiveDarkmode, dispatcher]);
 
   // Re-render the preview whenever the asset base directory changes
   // (new tab opens, workspace folder swapped). Without this, the
@@ -100,7 +168,7 @@ export const PreviewPane: React.FC = () => {
   // URLs would still point at the previous file's directory.
   React.useEffect(() => {
     dispatcher.render();
-  }, [activeEditablePath, treeRoot, dispatcher]);
+  }, [activeEditablePath, treeRoot, remote, dispatcher]);
 
   // Event delegation for the per-codeblock copy button. The button is
   // generated by Markdown.ts inside an innerHTML write, so React can't
@@ -125,7 +193,8 @@ export const PreviewPane: React.FC = () => {
         const text = new TextDecoder().decode(bytes);
         void navigator.clipboard
           .writeText(text)
-          .then(() => sonnerToast('success', t('navbar:code_copied')));
+          .then(() => sonnerToast('success', t('navbar:code_copied')))
+          .catch((error) => logger.error('PreviewPane.copy', error));
       } catch (err) {
         logger?.error('PreviewPane.copy', JSON.stringify(err));
       }
@@ -136,7 +205,7 @@ export const PreviewPane: React.FC = () => {
   }, [t]);
 
   return (
-    <div id="preview" className="flex flex-col split-preview p-3">
+    <div id="preview" className="flex flex-col split-preview">
       <div ref={contentRef} id="preview-content" className="container-fluid" />
     </div>
   );
@@ -158,10 +227,23 @@ function buildPreviewFragment(
     mode: 'web' | 'desktop';
     activeEditablePath: string | null;
     treeRoot: string | null;
+    remote: boolean;
   },
 ): DocumentFragment {
   const template = document.createElement('template');
   template.innerHTML = html;
+
+  if (ctx.remote) {
+    // Never guess local paths for cloud documents. Raw HTML is disabled when
+    // rendering these documents, so only Markdown-generated URLs need handling.
+    for (const node of template.content.querySelectorAll('img[src],a[href]')) {
+      const attribute = node.tagName === 'IMG' ? 'src' : 'href';
+      const value = node.getAttribute(attribute)!;
+      if (isLocalAssetPath(value) || /^mked:/i.test(value))
+        node.removeAttribute(attribute);
+    }
+    return template.content;
+  }
 
   if (ctx.mode !== 'desktop') return template.content;
 
@@ -186,17 +268,10 @@ function buildPreviewFragment(
     });
     if (resolved) {
       img.setAttribute('src', resolved);
-    } else if (!baseDir && isPurelyRelativeAssetPath(src)) {
-      // Transitional render: first paint fires after the markdown
-      // chunk loads but before session restore has propagated the
-      // active file into FilesContext, so we don't yet know which
-      // directory to resolve against. Blank the src so the browser
-      // doesn't 404 against the bundle's `dist/` directory — the
-      // re-render triggered by activeFile/treeRoot landing puts the
-      // correct `file:///…` URL in place a moment later.
-      img.removeAttribute('src');
-    } else if (isFileSchemeUrl(src)) {
-      // Explicit `file://...` URL that the resolver rejected.
+    } else if (isLocalAssetPath(src)) {
+      // Rejected paths must not fall back to browser resolution, which
+      // could load an absolute path outside the workspace. This also
+      // suppresses bundle-relative requests before restore supplies a base.
       img.removeAttribute('src');
     }
   }
@@ -215,8 +290,8 @@ function buildPreviewFragment(
     });
     if (resolved) {
       a.setAttribute('href', resolved);
-    } else if (isFileSchemeUrl(href)) {
-      // Same containment policy as <img>: `file://...`.
+    } else if (isLocalAssetPath(href)) {
+      // Apply the same local-path containment policy as images.
       a.removeAttribute('href');
     }
   }

@@ -4,7 +4,7 @@
  * We point AppSession at a temporary directory by stubbing `os.homedir`
  * before requiring the module, since the class freezes its paths at
  * module load. Each test gets a fresh tmp dir and reloads the module
- * via `jest.isolateModules` so the static paths re-resolve.
+ * after `jest.resetModules` so the static paths re-resolve.
  *
  * `fs` is mocked module-wide for tests that need to assert call order
  * or simulate failures (destructured imports otherwise capture the
@@ -12,7 +12,7 @@
  * no-op against AppSession's own calls).
  */
 
-import { mkdtempSync, rmSync, existsSync, readFileSync, lstatSync } from 'fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, normalize } from 'path';
 import type { SessionPayload } from '../src/app/interfaces/Session';
@@ -68,6 +68,14 @@ function loadAppSession(tmpHome: string) {
   const mod = require('../src/app/lib/AppSession');
   return mod.AppSession as typeof import('../src/app/lib/AppSession').AppSession;
 }
+
+beforeEach(() => {
+  // resetModules alone preserves doMock factories. Failure fixtures must not
+  // replace real filesystem calls in whichever test happens to run next.
+  jest.dontMock('fs');
+  jest.dontMock('os');
+  jest.resetModules();
+});
 
 describe('AppSession.load', () => {
   it('returns null when the session file is missing', () => {
@@ -219,7 +227,7 @@ describe('AppSession.save', () => {
     withTempHome((tmpHome) => {
       const AppSession = loadAppSession(tmpHome);
       AppSession.save(validPayload);
-      expect(AppSession.load()).toEqual(validPayload);
+      expect(AppSession.load()).toEqual({ ...validPayload, version: 3 });
     });
   });
 
@@ -232,9 +240,8 @@ describe('AppSession.save', () => {
     });
   });
 
-  it('replaces a pre-existing session.json atomically (rename swaps the inode)', () => {
+  it('atomically replaces an existing session and writes the current schema', () => {
     withTempHome((tmpHome) => {
-      if (process.platform === 'win32') return; // inode semantics differ on NTFS
       const dir = normalize(tmpHome + '/.mkeditor/');
       const finalPath = dir + 'session.json';
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -245,17 +252,14 @@ describe('AppSession.save', () => {
         JSON.stringify({ version: 1, tabs: [], activeFile: null }),
         'utf-8',
       );
-      const beforeIno = lstatSync(finalPath).ino;
-
       const AppSession = loadAppSession(tmpHome);
-      AppSession.save(validPayload);
+      expect(AppSession.save(validPayload)).toBe(true);
 
-      // rename replaces the directory entry with the tmp file's inode.
-      const afterIno = lstatSync(finalPath).ino;
-      expect(afterIno).not.toBe(beforeIno);
+      // Check the observable replacement contract on NTFS and POSIX alike.
+      // The next test verifies that replacement goes through tmp + rename.
       expect(
         JSON.parse(readFileSync(finalPath, { encoding: 'utf-8' })),
-      ).toEqual(validPayload);
+      ).toEqual({ ...validPayload, version: 3 });
     });
   });
 
@@ -305,7 +309,7 @@ describe('AppSession.save', () => {
     withTempHome((tmpHome) => {
       const AppSession = loadAppSession(tmpHome);
       // Forced bogus version on input — save() should normalise to the
-      // current canonical SCHEMA_VERSION (2 since AI Assistant P2).
+      // current canonical SCHEMA_VERSION (3 since remote session recovery).
       AppSession.save({
         ...validPayload,
         version: 999,
@@ -313,7 +317,30 @@ describe('AppSession.save', () => {
 
       const file = normalize(tmpHome + '/.mkeditor/session.json');
       const written = JSON.parse(readFileSync(file, { encoding: 'utf-8' }));
-      expect(written.version).toBe(2);
+      expect(written.version).toBe(3);
+    });
+  });
+
+  it('retains the previous session and removes the staged file when replacement fails', () => {
+    withTempHome((tmpHome) => {
+      const fs = jest.requireActual('fs') as typeof import('fs');
+      const dir = normalize(tmpHome + '/.mkeditor/');
+      const finalPath = dir + 'session.json';
+      const previous = JSON.stringify(validV1Payload);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(finalPath, previous, 'utf8');
+      jest.doMock('fs', () => ({
+        ...fs,
+        renameSync: () => {
+          throw Object.assign(new Error('replacement denied'), {
+            code: 'EACCES',
+          });
+        },
+      }));
+      const AppSession = loadAppSession(tmpHome);
+      expect(AppSession.save(validPayload)).toBe(false);
+      expect(fs.readFileSync(finalPath, 'utf8')).toBe(previous);
+      expect(fs.existsSync(finalPath + '.tmp')).toBe(false);
     });
   });
 
@@ -353,8 +380,7 @@ describe('AppSession.buildRestoreEnvelope', () => {
 
   it('drops missing real-file tabs from the envelope and lists them under `missing`', () => {
     withTempHome((tmpHome) => {
-      // requireActual sidesteps any lingering jest.doMock('fs', ...)
-      // installed by earlier tests in the file.
+      // Fixture files use the real filesystem even in failure-injection tests.
       const fs = jest.requireActual('fs') as typeof import('fs');
       const realFile = normalize(tmpHome + '/exists.md');
       fs.writeFileSync(realFile, 'real body', 'utf-8');

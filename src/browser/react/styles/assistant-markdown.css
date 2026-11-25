@@ -1,0 +1,340 @@
+.assistant-markdown {
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.assistant-markdown > :first-child {
+  margin-top: 0;
+}
+.assistant-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.assistant-markdown p,
+.assistant-markdown ul,
+.assistant-markdown ol,
+.assistant-markdown blockquote,
+.assistant-markdown pre {
+  margin-block: 0.75em;
+}
+
+.assistant-markdown h1,
+.assistant-markdown h2,
+.assistant-markdown h3,
+.assistant-markdown h4,
+.assistant-markdown h5,
+.assistant-markdown h6 {
+  margin-block: 1.4em 0.6em;
+  font-weight: 600;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+.assistant-markdown h1 {
+  font-size: 1.65em;
+}
+.assistant-markdown h2 {
+  font-size: 1.4em;
+}
+.assistant-markdown h3 {
+  font-size: 1.2em;
+}
+.assistant-markdown h4 {
+  font-size: 1.08em;
+}
+.assistant-markdown h5 {
+  font-size: 1em;
+}
+.assistant-markdown h6 {
+  font-size: 0.94em;
+  color: var(--text-secondary);
+}
+
+.assistant-markdown ul,
+.assistant-markdown ol {
+  padding-inline-start: 1.75em;
+}
+.assistant-markdown ul {
+  list-style: disc;
+}
+.assistant-markdown ul ul {
+  list-style: circle;
+}
+.assistant-markdown ul ul ul {
+  list-style: square;
+}
+.assistant-markdown ol {
+  list-style: decimal;
+}
+.assistant-markdown ol ol {
+  list-style: lower-alpha;
+}
+.assistant-markdown ol ol ol {
+  list-style: lower-roman;
+}
+.assistant-markdown li + li {
+  margin-top: 0.25em;
+}
+.assistant-markdown li > ul,
+.assistant-markdown li > ol {
+  margin-block: 0.25em;
+}
+.assistant-markdown li > p {
+  margin-block: 0.5em;
+}
+.assistant-markdown li.task-list-item {
+  list-style: none;
+}
+.assistant-markdown .task-list-item > input[type='checkbox'],
+.assistant-markdown .task-list-item > p > input[type='checkbox'] {
+  margin-inline: -1.5em 0.5em;
+  accent-color: var(--accent-primary);
+  vertical-align: middle;
+}
+
+.assistant-markdown blockquote {
+  padding-inline-start: 1em;
+  border-inline-start: 3px solid var(--border-control);
+  color: var(--text-secondary);
+}
+.assistant-markdown blockquote > :first-child {
+  margin-top: 0;
+}
+.assistant-markdown blockquote > :last-child {
+  margin-bottom: 0;
+}
+.assistant-markdown a {
+  color: var(--accent-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.assistant-markdown a:hover {
+  color: var(--accent-hover);
+}
+.assistant-markdown code {
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+  background: var(--bg-hover);
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.9em;
+}
+.assistant-markdown pre {
+  max-width: 100%;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--bg-editor);
+  line-height: 1.6;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+.assistant-markdown pre code {
+  display: block;
+  padding: 0;
+  background: transparent;
+  font-size: 12px;
+  white-space: inherit;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.assistant-markdown .md-codeblock > pre > code.hljs {
+  padding: 0;
+  background: transparent;
+  overflow: visible;
+}
+.assistant-markdown .md-codeblock {
+  min-width: 0;
+  max-width: 100%;
+  margin-block: 1em;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--bg-editor);
+}
+.assistant-markdown .md-codeblock-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.assistant-markdown .md-codeblock-lang {
+  margin-inline-end: auto;
+}
+.assistant-markdown .md-codeblock-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.assistant-markdown .md-codeblock-copy:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.assistant-markdown .md-codeblock-copy svg {
+  width: 14px;
+  height: 14px;
+}
+.assistant-markdown .md-codeblock > pre.hljs {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-editor);
+}
+.assistant-markdown .md-codeblock-dots {
+  display: none;
+}
+.assistant-markdown .assistant-table-scroll {
+  max-width: 100%;
+  margin-block: 12px;
+  overflow-x: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+}
+.assistant-markdown table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: inherit;
+  line-height: 1.55;
+}
+.assistant-markdown th,
+.assistant-markdown td {
+  min-width: 8rem;
+  max-width: 22rem;
+  padding: 8px 12px;
+  border-inline-end: 1px solid var(--border-default);
+  border-block-end: 1px solid var(--border-default);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.assistant-markdown th {
+  background: var(--bg-elevated);
+  font-weight: 600;
+  text-align: left;
+}
+.assistant-markdown tbody tr:nth-child(even) {
+  background: var(--bg-editor);
+}
+.assistant-markdown tr > :last-child {
+  border-inline-end: 0;
+}
+.assistant-markdown tbody tr:last-child > td {
+  border-block-end: 0;
+}
+.assistant-markdown img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-block: 0.75em;
+  border-radius: 4px;
+}
+.assistant-markdown hr {
+  margin-block: 1.25em;
+  border: 0;
+  border-top: 1px solid var(--border-default);
+}
+.assistant-markdown kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--border-control);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  font-family: ui-monospace, monospace;
+  font-size: 0.85em;
+}
+.assistant-markdown mark {
+  background: var(--accent-subtle);
+  color: inherit;
+}
+.assistant-markdown sub,
+.assistant-markdown sup {
+  font-size: 0.75em;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+.assistant-markdown sub {
+  bottom: -0.25em;
+}
+.assistant-markdown sup {
+  top: -0.5em;
+}
+.assistant-markdown details,
+.assistant-markdown .assistant-html-panel {
+  margin-block: 1em;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+}
+.assistant-markdown summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.assistant-markdown details > :last-child {
+  margin-bottom: 0;
+}
+.assistant-markdown .assistant-html-panel {
+  border-style: dashed;
+}
+.assistant-markdown .footnotes {
+  margin-top: 1.25em;
+  color: var(--text-secondary);
+  font-size: 0.92em;
+}
+.assistant-markdown .footnote-ref a {
+  text-decoration: none;
+}
+.assistant-markdown .katex-display {
+  max-width: 100%;
+  padding-block: 8px;
+  overflow: auto hidden;
+}
+.assistant-markdown .assistant-alert {
+  margin-block: 1em;
+  padding: 10px 12px;
+  border-inline-start: 3px solid var(--accent-primary);
+  border-radius: 4px;
+  background: var(--accent-subtle);
+}
+.assistant-markdown .assistant-alert > :first-child {
+  margin-top: 0;
+}
+.assistant-markdown .assistant-alert > :last-child {
+  margin-bottom: 0;
+}
+.assistant-markdown .assistant-alert .assistant-alert-title {
+  margin-bottom: 0.4em;
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.assistant-markdown .assistant-alert-warning {
+  border-color: var(--status-warning);
+}
+.assistant-markdown .assistant-alert-caution {
+  border-color: var(--status-error);
+}
+.assistant-markdown .assistant-alert-tip {
+  border-color: var(--status-success);
+}
+.assistant-markdown .assistant-diagram {
+  max-width: 100%;
+  overflow: auto;
+  padding: 12px;
+}
+.assistant-markdown .assistant-diagram svg {
+  display: block;
+  min-width: 20rem;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}

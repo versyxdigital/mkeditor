@@ -5,7 +5,10 @@ import {
   FileTreePanel,
   filterTree,
 } from '../../src/browser/react/components/FileTreePanel';
-import type { TreeNode } from '../../src/browser/core/FileTreeManager';
+import {
+  FileTreeManager,
+  type TreeNode,
+} from '../../src/browser/core/FileTreeManager';
 import {
   renderWithProviders,
   fakeFileManager,
@@ -32,6 +35,57 @@ describe('filterTree (pure)', () => {
     { type: 'file', name: 'notes.md', path: '/root/notes.md' },
     { type: 'file', name: 'photo.jpg', path: '/root/photo.jpg' },
   ];
+
+  it.each([
+    { loaded: true, hasChildren: false, children: [] },
+    { hasChildren: false },
+  ])('keeps known-empty directories visible without a search (%j)', (state) => {
+    const empty: TreeNode = {
+      type: 'directory',
+      name: 'empty',
+      path: '/root/empty',
+      ...state,
+    };
+    expect(filterTree([empty], new Set(['md']), '').filteredNodes).toEqual([
+      empty,
+    ]);
+  });
+
+  it('keeps ancestors of empty directories visible', () => {
+    const empty: TreeNode = {
+      type: 'directory',
+      name: 'empty',
+      path: '/root/parent/empty',
+      loaded: true,
+      hasChildren: false,
+      children: [],
+    };
+    const parent: TreeNode = {
+      type: 'directory',
+      name: 'parent',
+      path: '/root/parent',
+      loaded: true,
+      hasChildren: true,
+      children: [empty],
+    };
+    expect(filterTree([parent], new Set(['md']), '').filteredNodes).toEqual([
+      parent,
+    ]);
+  });
+
+  it('hides empty directories during a search without matching files', () => {
+    const empty: TreeNode = {
+      type: 'directory',
+      name: 'empty',
+      path: '/root/empty',
+      loaded: true,
+      hasChildren: false,
+      children: [],
+    };
+    expect(filterTree([empty], new Set(['md']), 'empty').filteredNodes).toEqual(
+      [],
+    );
+  });
 
   it('keeps only files whose extension is in the active set (md-only default)', () => {
     const { filteredNodes } = filterTree(sample, new Set(['md']), '');
@@ -151,6 +205,56 @@ const mixedTree: TreeNode[] = [
 ];
 
 describe('<FileTreePanel> — filter bar integration', () => {
+  it.each(['desktop', 'web'] as const)(
+    'keeps a newly created empty folder visible after expanding and reopening its parent in %s mode',
+    (mode) => {
+      const bridge = { send: jest.fn(), receive: jest.fn() };
+      const manager = new FileTreeManager(bridge, jest.fn());
+      manager.buildFileTree([], '/root');
+      const { container } = renderWithProviders(<FileTreePanel />, {
+        managers: {
+          mode,
+          fileManager: fakeFileManager() as never,
+          fileTreeManager: manager,
+        },
+      });
+      const refreshParent = () =>
+        act(() =>
+          manager.buildFileTree(
+            [
+              {
+                type: 'directory',
+                name: 'new-folder',
+                path: '/root/new-folder',
+                hasChildren: true,
+              },
+            ],
+            '/root',
+          ),
+        );
+      const folderRow = () =>
+        container.querySelector('li[data-path="/root/new-folder"]');
+
+      // Creation refreshes the parent with a shallow directory listing.
+      refreshParent();
+      expect(folderRow()).not.toBeNull();
+      fireEvent.click(folderRow()!);
+      expect(bridge.send).toHaveBeenLastCalledWith('to:file:openpath', {
+        path: '/root/new-folder',
+      });
+      act(() => manager.buildFileTree([], '/root/new-folder'));
+      expect(folderRow()).not.toBeNull();
+
+      // Reopening the parent and expanding the same empty folder must also
+      // preserve its row instead of hiding it after the lazy-load response.
+      refreshParent();
+      expect(folderRow()).not.toBeNull();
+      fireEvent.click(folderRow()!);
+      act(() => manager.buildFileTree([], '/root/new-folder'));
+      expect(folderRow()).not.toBeNull();
+    },
+  );
+
   it('renders the filter bar when a workspace is open', () => {
     const { container } = renderWithProviders(<FileTreePanel />, {
       managers: {

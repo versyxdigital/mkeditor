@@ -71,7 +71,11 @@ describe('BridgeListeners session handlers', () => {
   };
   let files: {
     restoreSession: jest.Mock;
+    onSaveResult: jest.Mock;
     serializeSession: jest.Mock;
+    flushSessionCheckpoint: jest.Mock;
+    onSessionCheckpointSaved: jest.Mock;
+    onSessionCleared: jest.Mock;
     openingFile: boolean;
     untitledCounter: number;
     models: Map<string, unknown>;
@@ -95,7 +99,11 @@ describe('BridgeListeners session handlers', () => {
       }),
     };
     files = {
+      flushSessionCheckpoint: jest.fn(),
+      onSessionCheckpointSaved: jest.fn(),
+      onSessionCleared: jest.fn(),
       restoreSession: jest.fn(),
+      onSaveResult: jest.fn(),
       serializeSession: jest.fn(() => ({
         version: 1 as const,
         tabs: [],
@@ -163,6 +171,12 @@ describe('BridgeListeners session handlers', () => {
       tree as never,
       manager as never,
     );
+  });
+
+  it('routes correlated filesystem acknowledgements to FileManager', () => {
+    const result = { requestId: 'save-one', ok: false, cancelled: true };
+    handlers['from:file:save-result'](result);
+    expect(files.onSaveResult).toHaveBeenCalledWith(result);
   });
 
   it('from:session:restore calls FileManager.restoreSession with the envelope', () => {
@@ -280,15 +294,12 @@ describe('BridgeListeners session handlers', () => {
     expect(files.seedUntitled).not.toHaveBeenCalled();
   });
 
-  it('from:session:flush-request ships a synchronous to:session:save', () => {
+  it('from:session:flush-request delegates to the acknowledged FileManager checkpoint', () => {
     handlers['from:session:flush-request']();
-    expect(files.serializeSession).toHaveBeenCalledTimes(1);
-    expect(bridge.send).toHaveBeenCalledWith('to:session:save', {
-      version: 1,
-      tabs: [],
-      activeFile: null,
-      workspaceRoot: null,
-    });
+    expect(files.flushSessionCheckpoint).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ title: 'cloud:recovery_quit_title' }),
+    );
   });
 
   it('from:session:restore re-opens the workspace via to:file:openpath when a root is persisted', () => {

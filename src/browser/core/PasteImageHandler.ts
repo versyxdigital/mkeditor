@@ -10,8 +10,7 @@ import type { SettingsProvider } from './providers/SettingsProvider';
  * Result envelope from the IPC / web bridge.
  */
 export type PastedImageResult =
-  | { ok: true; path: string }
-  | { ok: false; error: string };
+  { ok: true; path: string } | { ok: false; error: string };
 
 /**
  * Mode-agnostic writer. The composition root binds this to:
@@ -42,6 +41,7 @@ const IMAGE_MIME_TO_EXTENSION: Record<string, string> = {
  */
 export class PasteImageHandler {
   private pasteListener: ((event: ClipboardEvent) => void) | null = null;
+  private attachmentGeneration = 0;
 
   constructor(
     private readonly mkeditor: editor.IStandaloneCodeEditor,
@@ -72,6 +72,7 @@ export class PasteImageHandler {
   }
 
   public detach(): void {
+    this.attachmentGeneration += 1;
     if (this.pasteListener) {
       window.removeEventListener('paste', this.pasteListener, {
         capture: true,
@@ -145,6 +146,13 @@ export class PasteImageHandler {
     const directory =
       this.settingsProvider.getSetting('pasteImages')?.directory?.trim() ||
       './assets';
+    const generation = this.attachmentGeneration;
+    const sourceModel = this.mkeditor.getModel?.();
+    const sourceVersion = sourceModel?.getVersionId();
+    const selection = this.mkeditor.getSelection();
+    if (!selection) return;
+    const range = { ...selection };
+    const snippets: string[] = [];
 
     for (const { file, extension } of imageFiles) {
       try {
@@ -163,7 +171,8 @@ export class PasteImageHandler {
           );
           continue;
         }
-        this.insertMarkdownLink(sourceFile, result.path);
+        const relative = relativePath(dirOf(sourceFile), result.path);
+        snippets.push(`![](${encodeRelativeMarkdownPath(relative)})`);
         sonnerToast(
           'success',
           t('notifications:pasted_image_saved', { path: result.path }),
@@ -177,21 +186,30 @@ export class PasteImageHandler {
         logger?.error('PasteImageHandler.processImageFiles', message);
       }
     }
+    // A delayed disk write must not insert into a different tab or overwrite
+    // text edited while the clipboard data was being saved.
+    if (
+      generation !== this.attachmentGeneration ||
+      this.fileManager.getActiveEditablePath() !== sourceFile ||
+      this.mkeditor.getModel?.() !== sourceModel ||
+      sourceModel?.getVersionId() !== sourceVersion ||
+      snippets.length === 0
+    )
+      return;
+    this.insertMarkdownLinks(range, snippets);
   }
 
   /**
    * Insert `![](<relative-path>)` at the editor's current cursor.
    */
-  private insertMarkdownLink(sourceFile: string, savedPath: string): void {
-    const relative = relativePath(dirOf(sourceFile), savedPath);
-    const encoded = encodeRelativeMarkdownPath(relative);
-    const snippet = `![](${encoded})`;
-    const selection = this.mkeditor.getSelection();
-    if (!selection) return;
+  private insertMarkdownLinks(
+    selection: editor.IIdentifiedSingleEditOperation['range'],
+    snippets: string[],
+  ): void {
     this.mkeditor.executeEdits('paste-image', [
       {
         range: selection,
-        text: snippet,
+        text: snippets.join('\n'),
         forceMoveMarkers: true,
       },
     ]);
@@ -224,12 +242,15 @@ function dirOf(filePath: string): string {
 export function relativePath(fromDir: string, toPath: string): string {
   const from = fromDir.replace(/\\/g, '/').replace(/\/+$/, '').split('/');
   const to = toPath.replace(/\\/g, '/').split('/');
+  const windows = /^[a-zA-Z]:$/.test(from[0]) && /^[a-zA-Z]:$/.test(to[0]);
   // Find the common prefix.
   let i = 0;
   while (
     i < from.length &&
     i < to.length - 1 &&
-    samePathSegment(from[i], to[i])
+    (windows
+      ? from[i].toLowerCase() === to[i].toLowerCase()
+      : from[i] === to[i])
   ) {
     i++;
   }
@@ -246,24 +267,16 @@ export function relativePath(fromDir: string, toPath: string): string {
 }
 
 /**
- * Case-insensitive comparison on Windows-style paths (drive letters
- * present anywhere in the input), case-sensitive on POSIX.
- */
-function samePathSegment(a: string, b: string): boolean {
-  if (a === b) return true;
-  if (/^[a-zA-Z]:$/.test(a) || /^[a-zA-Z]:$/.test(b)) {
-    return a.toLowerCase() === b.toLowerCase();
-  }
-  return false;
-}
-
-/**
  * URL-encode each segment so spaces / unicode round-trip cleanly
  * through markdown-it; do NOT encode the path separators.
  */
 function encodeRelativeMarkdownPath(rel: string): string {
   return rel
     .split('/')
-    .map((seg) => (seg === '.' || seg === '..' ? seg : encodeURIComponent(seg)))
+    .map((seg) =>
+      seg === '.' || seg === '..'
+        ? seg
+        : encodeURIComponent(seg).replace(/\(/g, '%28').replace(/\)/g, '%29'),
+    )
     .join('/');
 }

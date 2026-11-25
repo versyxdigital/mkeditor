@@ -18,6 +18,7 @@ import { PropertiesProvider } from '../../src/browser/react/contexts/PropertiesC
 import { SettingsContextProvider } from '../../src/browser/react/contexts/SettingsContext';
 import { ExportSettingsContextProvider } from '../../src/browser/react/contexts/ExportSettingsContext';
 import { AssistantContextProvider } from '../../src/browser/react/contexts/AssistantContext';
+import type { ConfigPushPayload } from '../../src/app/interfaces/Assistant';
 
 /**
  * Minimal in-memory FileManager stub good enough to drive the React
@@ -108,18 +109,8 @@ const EMPTY_CHAT_SNAPSHOT: ChatSnapshot = {
 
 export function fakeAssistantManager(
   init: {
-    initialSnapshot?: {
-      config: {
-        anthropic: { enabled: boolean; hasKey: boolean; defaultModel: string };
-        openai: { enabled: boolean; hasKey: boolean; defaultModel: string };
-        ollama: {
-          enabled: boolean;
-          hasKey: false;
-          baseUrl: string;
-          defaultModel: string;
-        };
-      } | null;
-      encryptionAvailable: boolean;
+    initialSnapshot?: Omit<ConfigPushPayload, 'config'> & {
+      config: ConfigPushPayload['config'] | null;
     };
     initialChatSnapshot?: ChatSnapshot;
   } = {},
@@ -142,7 +133,9 @@ export function fakeAssistantManager(
     getConfigSnapshot: jest.fn(() => snapshot),
     setProviderConfig: jest.fn(),
     setKey: jest.fn(),
+    connectWithApiKey: jest.fn(async () => true),
     clearKey: jest.fn(),
+    chatGptCommand: jest.fn(),
     refreshOllamaModels: jest.fn(async () => [] as string[]),
     testConnection: jest.fn(async () => ({ ok: true })),
     requestConfigRefresh: jest.fn(),
@@ -163,6 +156,7 @@ export function fakeAssistantManager(
     deleteConversation: jest.fn(),
     renameConversation: jest.fn(),
     setConversationModel: jest.fn(),
+    setConversationThinkingLevel: jest.fn(),
     setActiveConversation: jest.fn(),
     startCall: jest.fn(() => 'chat-new'),
     cancelCall: jest.fn(() => true),
@@ -183,6 +177,8 @@ export function fakeAssistantManager(
     setShareSelection: jest.fn(),
     addMention: jest.fn(async () => {}),
     removeMention: jest.fn(),
+    renameMentionPaths: jest.fn(),
+    removeMentionPaths: jest.fn(),
     contextChips: jest.fn(() => [] as unknown[]),
     contextTokenEstimate: jest.fn(() => 0),
     contextFor: jest.fn(async () => null),

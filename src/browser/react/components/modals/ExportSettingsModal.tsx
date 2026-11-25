@@ -65,7 +65,7 @@ export const ExportSettingsModal: React.FC = () => {
         <DialogHeader>
           <DialogTitle>{t('modals-export:title')}</DialogTitle>
         </DialogHeader>
-        <div className="px-4 pb-4 text-sm">
+        <div className="px-6 pb-6 text-sm">
           <p className="text-muted-foreground">{t('modals-export:intro')}</p>
           {mode === 'desktop' && (
             <p className="mt-1 text-muted-foreground">
@@ -145,7 +145,7 @@ export const ExportSettingsModal: React.FC = () => {
               help={t('modals-export:set_line_spacing_help')}
             >
               {/* Native range — Radix has no slider primitive in our stack.
-                  Styled via `accent-color` to pick up the brand teal. */}
+                  Styled via `accent-color` to pick up the shared accent. */}
               <input
                 id="export-setting-linespacing"
                 type="range"

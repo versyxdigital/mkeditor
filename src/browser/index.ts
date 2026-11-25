@@ -6,6 +6,7 @@ import type { PastedImageWriter } from './core/PasteImageHandler';
 import { EditorDispatcher } from './events/EditorDispatcher';
 import { initI18n, changeLanguage } from './i18n';
 import { markdownStylesheet } from './markdownStyles';
+import { designSystemStylesheet } from './designSystem';
 import { getExecutionBridge, logger } from './util';
 import { showSplashScreen } from './splash';
 
@@ -40,7 +41,7 @@ const platform: 'web' | 'darwin' | 'win32' | 'linux' =
 // exported HTML by HTMLExporter — single source of truth.
 const markdownStyleEl = document.createElement('style');
 markdownStyleEl.id = 'md-styles';
-markdownStyleEl.textContent = markdownStylesheet;
+markdownStyleEl.textContent = designSystemStylesheet + markdownStylesheet;
 document.head.appendChild(markdownStyleEl);
 
 // Precompute bindings, warm language bundle fetch and initialize i18n.
@@ -249,6 +250,8 @@ function onEditorReadyInner() {
     () =>
       editorManager.providers.settings?.getSetting('sessionRestore') ?? true,
   );
+  if (mode === 'desktop') bridgeManager.fileManager.suspendSessionSaves();
+  bridgeManager.fileManager.setCheckpointAcknowledgements(mode === 'desktop');
 
   // Round-trip the assistant right-sidebar view-state through the
   // existing session payload. UIStateContext keeps a live mirror
@@ -269,12 +272,14 @@ function onEditorReadyInner() {
         ? (opts) => window.mked!.pasteImage(opts)
         : (opts) =>
             (bridge as InstanceType<typeof WebFileBridge>).pasteImage(opts);
-    new PasteImageHandler(
-      mkeditor,
-      bridgeManager.fileManager,
-      settingsProvider,
-      writer,
-    ).attach();
+    editorManager.registerCleanup(
+      new PasteImageHandler(
+        mkeditor,
+        bridgeManager.fileManager,
+        settingsProvider,
+        writer,
+      ).attach(),
+    );
   }
 
   // Source the active editable path from FileManager (renderer-side,
@@ -284,9 +289,10 @@ function onEditorReadyInner() {
   // link resolution stays anchored to the user's real working
   // document. Reading via the main process here would lag tab
   // switches (main only learns about `from:file:opened`).
-  new MkedLinkProvider(mkeditor, () =>
+  const linkProvider = new MkedLinkProvider(mkeditor, () =>
     bridgeManager.fileManager.getActiveEditablePath(),
   );
+  editorManager.registerCleanup(() => linkProvider.dispose());
 
   if (api !== 'web') {
     api.receive('from:i18n:set', (lng: string) => {

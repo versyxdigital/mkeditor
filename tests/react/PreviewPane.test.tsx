@@ -2,6 +2,7 @@ import * as React from 'react';
 import { act, waitFor } from '@testing-library/react';
 
 import { PreviewPane } from '../../src/browser/react/components/PreviewPane';
+import { renderMermaidDiagrams } from '../../src/browser/mermaid';
 import {
   renderWithProviders,
   fakeDispatcher,
@@ -16,6 +17,10 @@ import {
 // mock is hooked under the same module path that the dynamic import
 // resolves to.
 jest.mock('../../src/browser/core/Markdown', () => ({
+  renderAssistantMarkdown: jest.fn(
+    () =>
+      '<img src="relative.png"><a href="other.md">Other</a><a href="https://example.test">External</a>',
+  ),
   Markdown: {
     render: jest.fn((src: string) => `<rendered>${src}</rendered>`),
   },
@@ -26,7 +31,185 @@ jest.mock('../../src/browser/extensions/editor/ScrollSync', () => ({
   refreshLines: jest.fn(),
 }));
 
+jest.mock('../../src/browser/mermaid', () => ({
+  renderMermaidDiagrams: jest.fn(async () => {}),
+}));
+
 describe('<PreviewPane>', () => {
+  it('renders document diagrams and aborts obsolete work when text changes or the preview unmounts', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    const renderer = Markdown.render as jest.Mock;
+    renderer.mockReturnValueOnce(
+      '<div data-diagram="mermaid" data-source="QQ=="><pre>A</pre></div>',
+    );
+    const dispatcher = fakeDispatcher();
+    let value = 'first diagram';
+    const view = renderWithProviders(<PreviewPane />, {
+      managers: {
+        dispatcher: dispatcher as never,
+        editorManager: { getValue: () => value } as never,
+      },
+    });
+    await waitFor(() => expect(renderMermaidDiagrams).toHaveBeenCalledTimes(1));
+    const first = jest.mocked(renderMermaidDiagrams).mock.calls[0][2];
+    expect(first.aborted).toBe(false);
+    renderer.mockReturnValueOnce(
+      '<div data-diagram="mermaid" data-source="Qg=="><pre>B</pre></div>',
+    );
+    value = 'next diagram';
+    act(() => dispatcher.render());
+    expect(first.aborted).toBe(true);
+    expect(view.container.querySelector('pre')?.textContent).toBe('B');
+    const second = jest.mocked(renderMermaidDiagrams).mock.calls[1][2];
+    view.unmount();
+    expect(second.aborted).toBe(true);
+  });
+  it('remote documents use safe rendering and never resolve relative assets against a local workspace', async () => {
+    const {
+      renderAssistantMarkdown,
+    } = require('../../src/browser/core/Markdown');
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        fileManager: fakeFileManager({
+          activeFile: 'cloud-drive://connection/account/id',
+        }) as never,
+        fileTreeManager: fakeFileTreeManager({
+          treeRoot: 'C:/private',
+        }) as never,
+        editorManager: { getValue: () => '![image](relative.png)' } as never,
+      },
+    });
+    await waitFor(() =>
+      expect(container.querySelector('img')).toBeInTheDocument(),
+    );
+    expect(renderAssistantMarkdown).toHaveBeenCalled();
+    expect(container.querySelector('img')).not.toHaveAttribute('src');
+    expect(container.querySelector('a')).not.toHaveAttribute('href');
+    expect(container.querySelectorAll('a')[1]).toHaveAttribute(
+      'href',
+      'https://example.test',
+    );
+  });
+  it('reuses unchanged Markdown and DOM across duplicate render events', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    const renderer = Markdown.render as jest.Mock;
+    renderer.mockClear();
+    const dispatcher = fakeDispatcher();
+    let value = '# Cached';
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        dispatcher: dispatcher as any,
+        editorManager: { getValue: () => value } as any,
+      },
+    });
+    await waitFor(() =>
+      expect(container.querySelector('rendered')?.textContent).toBe('# Cached'),
+    );
+    const original = container.querySelector('rendered');
+    act(() => {
+      dispatcher.render();
+      dispatcher.render();
+    });
+    expect(renderer).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('rendered')).toBe(original);
+    value = '# Changed';
+    act(() => {
+      dispatcher.render();
+    });
+    expect(renderer).toHaveBeenCalledTimes(2);
+    expect(container.querySelector('rendered')?.textContent).toBe('# Changed');
+  });
+
+  it('reuses parsed Markdown while rewriting assets after a file switch', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    const renderer = Markdown.render as jest.Mock;
+    renderer.mockClear();
+    renderer.mockReturnValueOnce('<img src="logo.png">');
+    const dispatcher = fakeDispatcher();
+    const files = fakeFileManager({ activeFile: 'C:/work/first/readme.md' });
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        dispatcher: dispatcher as any,
+        editorManager: { getValue: () => '![logo](logo.png)' } as any,
+        fileManager: files as any,
+        fileTreeManager: fakeFileTreeManager({ treeRoot: 'C:/work' }) as any,
+      },
+    });
+    await waitFor(() =>
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        'file:///C:/work/first/logo.png',
+      ),
+    );
+    act(() => {
+      files.activateFile('C:/work/second/readme.md');
+    });
+    await waitFor(() =>
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        'file:///C:/work/second/logo.png',
+      ),
+    );
+    expect(renderer).toHaveBeenCalledTimes(1);
+  });
+
+  it('strips rejected absolute and relative local paths before they reach the live DOM', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<img src="/etc/private.png"><img src="../../private.png"><a href="D:/private.pdf">outside</a>',
+    );
+    const { container } = renderWithProviders(<PreviewPane />, {
+      managers: {
+        mode: 'desktop',
+        dispatcher: fakeDispatcher() as any,
+        editorManager: { getValue: () => 'local assets' } as any,
+        fileManager: fakeFileManager({
+          activeFile: 'C:/work/notes/readme.md',
+        }) as any,
+        fileTreeManager: fakeFileTreeManager({ treeRoot: 'C:/work' }) as any,
+      },
+    });
+    await waitFor(() =>
+      expect(container.querySelectorAll('img')).toHaveLength(2),
+    );
+    expect(container.querySelector('img[src]')).toBeNull();
+    expect(container.querySelector('a[href]')).toBeNull();
+  });
+
+  it('handles rejected clipboard promises without an unhandled rejection', async () => {
+    const { Markdown } = require('../../src/browser/core/Markdown');
+    (Markdown.render as jest.Mock).mockReturnValueOnce(
+      '<div class="md-codeblock" data-source="aGVsbG8="><button class="md-codeblock-copy">Copy</button></div>',
+    );
+    const previous = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    const writeText = jest.fn().mockRejectedValue(new Error('denied'));
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const { container } = renderWithProviders(<PreviewPane />, {
+        managers: {
+          dispatcher: fakeDispatcher() as any,
+          editorManager: { getValue: () => 'copy' } as any,
+        },
+      });
+      await waitFor(() =>
+        expect(container.querySelector('button')).not.toBeNull(),
+      );
+      await act(async () => {
+        container.querySelector('button')!.click();
+      });
+      expect(writeText).toHaveBeenCalledWith('hello');
+      expect(errors).toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+      if (previous) Object.defineProperty(navigator, 'clipboard', previous);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+    }
+  });
+
   it('renders the initial markdown after the lazy Markdown chunk loads', async () => {
     const dispatcher = fakeDispatcher();
     const editorManager = {

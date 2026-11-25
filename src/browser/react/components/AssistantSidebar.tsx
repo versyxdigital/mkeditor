@@ -84,10 +84,12 @@ export const AssistantSidebar: React.FC = () => {
   return (
     <div
       id="assistant-sidebar"
-      className="flex h-full flex-col"
+      className="thin-scrollbars flex h-full flex-col bg-sidebar"
       data-testid="assistant-sidebar"
     >
-      <div className="explorer-title px-3 pt-3">{t('assistant:title')}</div>
+      <div className="explorer-title px-3 pt-4 pb-2">
+        {t('assistant:title')}
+      </div>
       {enabledProviders.length === 0 ? (
         <EmptyState
           onOpenSettings={() => openModal('settings', { tab: 'assistant' })}

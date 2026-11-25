@@ -1,0 +1,14 @@
+{
+  "title": "Conectar {{provider}}",
+  "openai_description": "Usa tu plan de ChatGPT o una clave API para empezar a chatear.",
+  "api_description": "Añade una clave API para empezar a chatear con {{provider}}.",
+  "api_option": "Usar una clave API",
+  "api_help": "{{provider}} factura el uso de la API por separado.",
+  "use_saved_key": "Usar clave API guardada",
+  "use_plan": "Usar cuenta de ChatGPT conectada",
+  "save": "Guardar y conectar",
+  "saving": "Guardando conexión…",
+  "save_failed": "No se pudo guardar la clave API de forma segura. Inténtalo de nuevo.",
+  "updating": "Actualizando conexión…",
+  "anthropic_subscription_note": "Las suscripciones de Claude no cubren el uso en MKEditor. Conecta con una clave API de Anthropic; el uso de la API se factura por separado."
+}

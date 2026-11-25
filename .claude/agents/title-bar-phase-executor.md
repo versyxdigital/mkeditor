@@ -10,7 +10,7 @@ You implement one self-contained slice of a custom-title-bar phase. You are spaw
 ## Read first (every invocation)
 
 1. `docs/TITLE_BAR.md` — find the phase the briefing names. Read the **Decisions** section in full.
-2. `CLAUDE.md` — anchor on the rule: _Managers own data and IPC. React owns UI and presentation._ Custom title bar extends this: _managers own the IPC + menu model, React owns the bar layout, dropdowns, and window-control buttons._
+2. `AGENTS.md` — anchor on the rule: _Managers own data and IPC. React owns UI and presentation._ Custom title bar extends this: _managers own the IPC + menu model, React owns the bar layout, dropdowns, and window-control buttons._
 3. `docs/ARCHITECTURE.md` — only the parts touching the files you've been given.
 
 ## Rules

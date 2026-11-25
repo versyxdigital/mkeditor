@@ -5,6 +5,7 @@ import { app, type BrowserWindow } from 'electron';
 import type { SettingsFile } from '../interfaces/Settings';
 import type { Providers } from '../interfaces/Providers';
 import { deepMerge, hasAllKeys, normalizeLanguage } from '../util';
+import { documentDefaults } from '../shared/designTokens';
 
 /**
  * AppSettings
@@ -42,11 +43,8 @@ export class AppSettings {
     pasteImages: { directory: './assets' },
     exportSettings: {
       withStyles: true,
-      container: 'container-fluid',
-      fontSize: 16,
-      lineSpacing: 1.5,
-      background: '#ffffff',
-      fontColor: '#212529',
+      container: 'container',
+      ...documentDefaults,
     },
   };
 
@@ -67,14 +65,16 @@ export class AppSettings {
     // Create the file if it doesn't exist, then load it.
     this.createFileIfNotExists(this.settings);
     const loaded = this.loadFile() as SettingsFile;
+    const merged = deepMerge(this.settings, loaded);
+
+    // Apply migrations immediately, even if persisting the upgraded file
+    // fails. Reassigning `loaded` here used to discard migrated defaults.
+    this.applied = merged;
 
     // Check for settings file integrity
     if (!this.isNewFile && !hasAllKeys(this.settings, loaded)) {
-      this.saveSettingsToFile(deepMerge(this.settings, loaded));
+      this.saveSettingsToFile(merged);
     }
-
-    // Set the applied settings for this session.
-    this.applied = loaded;
   }
 
   /**
@@ -117,7 +117,15 @@ export class AppSettings {
         encoding: 'utf-8',
       });
 
-      return JSON.parse(file);
+      const parsed: unknown = JSON.parse(file);
+      if (
+        typeof parsed !== 'object' ||
+        parsed === null ||
+        Array.isArray(parsed)
+      ) {
+        throw new Error('Invalid settings object');
+      }
+      return parsed;
     } catch (err) {
       this.context.webContents.send('from:notification:display', {
         status: 'error',
@@ -136,7 +144,7 @@ export class AppSettings {
    */
   createFileIfNotExists(settings: Partial<SettingsFile>) {
     if (!existsSync(this.appPath)) {
-      mkdirSync(this.appPath);
+      mkdirSync(this.appPath, { recursive: true });
     }
 
     if (!existsSync(this.filePath)) {
