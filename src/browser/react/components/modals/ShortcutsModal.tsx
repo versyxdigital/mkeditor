@@ -26,7 +26,7 @@ export const ShortcutsModal: React.FC = () => {
         <DialogHeader>
           <DialogTitle>{t('modals-shortcuts:title')}</DialogTitle>
         </DialogHeader>
-        <div className="px-4 pb-4 text-muted-foreground">
+        <div className="px-6 pb-6 text-muted-foreground">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <h6 className="mb-2 font-semibold text-foreground">

@@ -1,4 +1,5 @@
 {
+  "move_cross_device_conflict": "Impossibile completare in sicurezza lo spostamento tra unità. Entrambe le copie sono state conservate.",
   "unable_export_preview": "Impossibile esportare l’anteprima",
   "unable_save_markdown": "Impossibile salvare il markdown",
   "exported_html_success": "Anteprima esportata in HTML",
@@ -25,5 +26,13 @@
   "update_available": "Aggiornamento {{version}} disponibile, download in background in corso...",
   "update_downloaded": "Aggiornamento {{version}} scaricato, riavvia per aggiornare.",
   "session_file_missing": "Alcuni file precedentemente aperti non sono stati trovati e sono stati saltati: {{files}}",
-  "session_cleared": "Sessione salvata cancellata."
+  "session_cleared": "Sessione salvata cancellata.",
+  "pasted_image_saved": "Immagine incollata salvata",
+  "pasted_image_failed": "Impossibile salvare l'immagine incollata",
+  "pasted_image_no_workspace": "Salva il documento prima di incollare immagini",
+  "move_failed": "Spostamento non riuscito",
+  "move_into_self_refused": "Impossibile spostare una cartella in se stessa",
+  "move_same_source": "Già in quella posizione",
+  "move_collision": "Esiste già un file o una cartella con quel nome",
+  "move_parent_missing": "La cartella di destinazione non esiste"
 }

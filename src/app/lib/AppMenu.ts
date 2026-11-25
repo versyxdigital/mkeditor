@@ -160,7 +160,7 @@ export class AppMenu {
     switch (commandId) {
       case 'open-log': {
         const logpath = this.providers.logger?.logpath;
-        if (logpath) AppStorage.openPath(this.context, logpath);
+        if (logpath) AppStorage.openActiveFile(this.context, logpath);
         return;
       }
       case 'toggle-devtools':
@@ -176,8 +176,7 @@ export class AppMenu {
 
   /** Track the `to:command:run` handler so we can detach it on close. */
   private commandBridgeHandler:
-    | ((event: IpcMainEvent, commandId: string) => void)
-    | null = null;
+    ((event: IpcMainEvent, commandId: string) => void) | null = null;
 
   /**
    * Register the `to:command:run` IPC listener so the renderer's

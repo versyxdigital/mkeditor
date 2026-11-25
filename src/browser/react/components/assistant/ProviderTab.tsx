@@ -7,7 +7,14 @@ import {
 } from 'react-resizable-panels';
 
 import type { ProviderId } from '../../../../app/interfaces/Assistant';
-import { useAssistantChat } from '../../contexts/AssistantContext';
+import {
+  useAssistantChat,
+  useAssistantConfig,
+} from '../../contexts/AssistantContext';
+import { getAssistantConnection } from '../../../core/assistantConnection';
+import { ProviderConnection } from './ProviderConnection';
+import { ChatGptWelcome } from './ChatGptSettings';
+import { useModals } from '../../contexts/ModalsContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { Button } from '../ui/button';
 import { Icon } from '../Icon';
@@ -34,6 +41,11 @@ interface ProviderTabProps {
  */
 export const ProviderTab: React.FC<ProviderTabProps> = ({ provider }) => {
   const { chat, manager } = useAssistantChat();
+  const { snapshot } = useAssistantConfig();
+  const connection = getAssistantConnection(provider, snapshot);
+  const { open: modal } = useModals();
+  const welcome =
+    provider === 'openai' && modal !== 'settings' ? <ChatGptWelcome /> : null;
   const { t } = useTranslation();
 
   // Kick off the markdown renderer load eagerly the first time the
@@ -81,6 +93,8 @@ export const ProviderTab: React.FC<ProviderTabProps> = ({ provider }) => {
   );
 
   if (conversations.length === 0) {
+    if (provider !== 'ollama' && connection !== 'ready')
+      return <ProviderConnection key={provider} provider={provider} />;
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <Icon name="comments" className="text-3xl text-muted-foreground" />
@@ -98,41 +112,54 @@ export const ProviderTab: React.FC<ProviderTabProps> = ({ provider }) => {
           <Icon name="file" />
           <span>{t('assistant-chat:start_conversation')}</span>
         </Button>
+        {welcome}
       </div>
     );
   }
 
   return (
-    <Group orientation="horizontal" id={`assistant-${provider}-split`}>
-      <Panel
-        id={`${provider}-conversations`}
-        panelRef={convPanelRef}
-        collapsible
-        defaultSize="35%"
-        minSize="20%"
-        onResize={handleConvPanelResize}
+    <div className="flex h-full min-h-0 flex-col">
+      <Group
+        className="min-h-0 flex-1"
+        orientation="horizontal"
+        id={`assistant-${provider}-split`}
       >
-        <ConversationList
-          provider={provider}
-          conversations={conversations}
-          activeId={activeId}
-        />
-      </Panel>
-      <Separator className="gutter sidebar-gutter-horizontal" />
-      <Panel id={`${provider}-chat`}>
-        {active ? (
-          <ChatPane
+        <Panel
+          id={`${provider}-conversations`}
+          panelRef={convPanelRef}
+          collapsible
+          defaultSize="35%"
+          minSize="20%"
+          onResize={handleConvPanelResize}
+        >
+          <ConversationList
             provider={provider}
-            conversation={active}
-            convListCollapsed={convListCollapsed}
-            onToggleConvList={toggleConvList}
+            conversations={conversations}
+            activeId={activeId}
+            canCreate={connection === 'ready'}
           />
-        ) : (
-          <div className="flex h-full items-center justify-center p-4 text-center text-xs text-muted-foreground">
-            {t('assistant-chat:select_conversation')}
-          </div>
-        )}
-      </Panel>
-    </Group>
+        </Panel>
+        <Separator className="gutter sidebar-gutter-horizontal" />
+        <Panel id={`${provider}-chat`}>
+          {active ? (
+            <ChatPane
+              provider={provider}
+              conversation={active}
+              convListCollapsed={convListCollapsed}
+              onToggleConvList={toggleConvList}
+              connectionInParent
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center p-4 text-center text-xs text-muted-foreground">
+              {t('assistant-chat:select_conversation')}
+            </div>
+          )}
+        </Panel>
+      </Group>
+      {provider !== 'ollama' && connection !== 'ready' && (
+        <ProviderConnection key={provider} provider={provider} compact />
+      )}
+      {welcome}
+    </div>
   );
 };

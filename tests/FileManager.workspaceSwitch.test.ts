@@ -40,6 +40,7 @@ jest.mock('monaco-editor', () => {
   class Disposable {
     public _isDisposed = false;
     constructor(private onDispose: () => void) {}
+
     dispose() {
       if (this._isDisposed) return;
       this._isDisposed = true;
@@ -238,7 +239,7 @@ describe('FileManager.closeAllTabsForWorkspaceSwitch', () => {
   });
 
   it('fires save IPC for each dirty tab when the user picks Save all', async () => {
-    const { fm, sent } = await buildManagerWithTabs({
+    const { fm, sent, bridge } = await buildManagerWithTabs({
       workspaceFiles: [
         { path: '/old/a.md', content: 'a', dirty: true },
         { path: '/old/b.md', content: 'b' }, // not dirty — should NOT trigger save
@@ -250,6 +251,17 @@ describe('FileManager.closeAllTabsForWorkspaceSwitch', () => {
       button: 'confirm',
     });
 
+    bridge.send.mockImplementation((channel: string, data: unknown) => {
+      sent.push({ channel, data });
+      if (channel === 'to:file:save' || channel === 'to:file:saveas') {
+        const request = data as { requestId: string; file?: string };
+        fm.onSaveResult({
+          requestId: request.requestId,
+          ok: true,
+          path: request.file ?? '/saved-scratch.md',
+        });
+      }
+    });
     const result = await fm.closeAllTabsForWorkspaceSwitch();
     expect(result).toBe(true);
 

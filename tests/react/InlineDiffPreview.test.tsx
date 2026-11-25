@@ -6,8 +6,7 @@
  * stub Monaco's diff editor + model factories so we can assert:
  *   - editor + both models are constructed at mount
  *   - dispose order is editor-first, then models, on unmount
- *   - the side-by-side toggle calls `updateOptions({renderSideBySide})`
- *     in place (no remount)
+ *   - the side-by-side toggle recreates the preview with the new mode
  *   - prop changes flow through `setValue` on the existing models
  *     (also no remount)
  *
@@ -27,6 +26,8 @@ import {
 } from '@testing-library/react';
 
 import { PREVIEW_TRUNCATION_MARKER } from '../../src/browser/core/AssistantTools';
+import { EditorManager } from '../../src/browser/core/EditorManager';
+import { EditorDispatcher } from '../../src/browser/events/EditorDispatcher';
 
 interface MockModel {
   __id: string;
@@ -48,6 +49,10 @@ interface MockDiffEditor {
 
 const models: MockModel[] = [];
 const diffEditors: MockDiffEditor[] = [];
+
+jest.mock('../../src/browser/assets/intro', () => ({
+  welcomeMarkdown: '# Welcome',
+}));
 
 jest.mock('monaco-editor', () => {
   return {
@@ -107,74 +112,12 @@ jest.mock('../../src/browser/react/hooks/useTranslation', () => ({
   useTranslation: () => ({ t: (k: string) => k, language: 'en' }),
 }));
 
-// The component now reads `editorManager` from <ManagersProvider> and
-// calls its `createDiffPreview` factory instead of importing
-// `monaco-editor` directly. Stub the hook to inject a tiny manager
-// that delegates back into the mocked monaco-editor module above, so
-// the existing assertions on the `models` / `diffEditors` arrays
-// still observe every Monaco interaction.
-//
-// Module-level shim — Jest hoists this above the `import
-// { InlineDiffPreview }` below.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const fakeEditorManager = {
-  createDiffPreview: (
-    host: HTMLElement,
-    original: string,
-    modified: string,
-    options: { language: string; renderSideBySide: boolean },
-  ) => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { editor } = require('monaco-editor');
-    const originalModel = editor.createModel(original, options.language);
-    const modifiedModel = editor.createModel(modified, options.language);
-    const diff = editor.createDiffEditor(host, {
-      renderSideBySide: options.renderSideBySide,
-      useInlineViewWhenSpaceIsLimited: false,
-      renderSideBySideInlineBreakpoint: 0,
-      fontSize: 12,
-      readOnly: true,
-      automaticLayout: true,
-      scrollBeyondLastLine: false,
-      minimap: { enabled: false },
-      lineNumbers: 'off',
-      glyphMargin: false,
-      folding: false,
-      wordWrap: 'on',
-      renderOverviewRuler: false,
-      scrollbar: { vertical: 'auto', horizontal: 'hidden' },
-    });
-    diff.setModel({ original: originalModel, modified: modifiedModel });
-    return {
-      setOriginal: (value: string) => {
-        if (originalModel.getValue() !== value) originalModel.setValue(value);
-      },
-      setModified: (value: string) => {
-        if (modifiedModel.getValue() !== value) modifiedModel.setValue(value);
-      },
-      dispose: () => {
-        try {
-          diff.dispose();
-        } catch {
-          // already-disposed
-        }
-        try {
-          originalModel.dispose();
-        } catch {
-          // already-disposed
-        }
-        try {
-          modifiedModel.dispose();
-        } catch {
-          // already-disposed
-        }
-      },
-    };
-  },
-};
+// Exercise the production factory. Only Monaco is substituted; copying the
+// factory here would make its options and disposal checks test the fake itself.
+const editorManager = new EditorManager({ dispatcher: new EditorDispatcher() });
 
 jest.mock('../../src/browser/react/contexts/ManagersContext', () => ({
-  useManagers: () => ({ editorManager: fakeEditorManager }),
+  useManagers: () => ({ editorManager }),
 }));
 
 import { InlineDiffPreview } from '../../src/browser/react/components/assistant/InlineDiffPreview';

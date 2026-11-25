@@ -9,7 +9,7 @@ You are executing **Phase $1** of the custom-title-bar feature described in `doc
 
 1. **Anchor.** Read three things in order, then summarise back what you read so context is fresh:
    - `docs/TITLE_BAR.md` — specifically the **Decisions** section and the section "## Phase $1 — …".
-   - `CLAUDE.md` — for the governing rule "Managers own data and IPC. React owns UI and presentation."
+   - `AGENTS.md` — for the governing rule "Managers own data and IPC. React owns UI and presentation."
    - `docs/ARCHITECTURE.md` — only the sections relevant to files this phase will touch.
 
 2. **Prereq check.** Look at the Phase Index table. Every phase 1..($1 − 1) must be marked 🟢. If any prior phase is 🔵 or 🟡, stop and report — do not start.

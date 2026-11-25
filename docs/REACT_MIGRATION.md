@@ -2,7 +2,7 @@
 
 Phased plan for migrating MKEditor's renderer chrome from direct-DOM/Bootstrap to React 19 + shadcn/ui. This document is the source of truth for the migration; the high-level entry in [ROADMAP.md](ROADMAP.md) links here.
 
-Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
+Read first: [../AGENTS.md](../AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Decisions
 
@@ -373,7 +373,7 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
    - Add a React layer section with the component tree and context map.
    - Note that managers retained their roles; only the view layer changed.
 4. Update [src/browser/README.md](../src/browser/README.md) to reflect new structure.
-5. Update [CLAUDE.md](../CLAUDE.md): rewrite "Conventions" + "Renderer Composition Root" sections.
+5. Update [AGENTS.md](../AGENTS.md): rewrite "Conventions" + "Renderer Composition Root" sections.
 6. Update [ROADMAP.md](ROADMAP.md): mark React migration 🟢 with date; open §4 (post-React opportunities).
 
 **Exit criteria**:

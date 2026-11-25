@@ -10,13 +10,14 @@ import type {
   ChatErrorEvent,
   ChatToolCallEvent,
   ConfigPushPayload,
+  KeySaveResult,
   OllamaModelsEvent,
   PersistedConversations,
 } from '../../app/interfaces/Assistant';
 import type { EditorDispatcher } from '../events/EditorDispatcher';
 import type { BridgeManager } from './BridgeManager';
-import type { FileManager } from './FileManager';
-import type { FileTreeManager } from './FileTreeManager';
+import type { FileManager, FileSaveResult } from './FileManager';
+import { isPathWithinTree, type FileTreeManager } from './FileTreeManager';
 import {
   openModalExternal,
   type ModalKey,
@@ -83,40 +84,65 @@ export function registerBridgeListeners(
   // re-routing through `bridge.receive`.
   bridge.receive('from:file:new', () => manager.menuFileNew());
   bridge.receive('from:file:save', () => manager.menuFileSave());
+  bridge.receive('from:file:save-result', (result: FileSaveResult) => {
+    files.onSaveResult(result);
+    // Correlated saves do not reopen the file, so update the explorer here
+    // as well as in from:file:opened. Insertion preserves loaded subtrees.
+    if (result.ok && result.path) tree.addFileToTree(result.path);
+  });
   bridge.receive('from:file:saveas', () => manager.menuFileSaveAs());
   bridge.receive('from:folder:open', () => manager.menuFolderOpen());
 
   // Handle post-folder open events
-  bridge.receive('from:folder:opened', async ({ tree: t, path }) => {
-    const rootChanged = !tree.treeRoot || !path.startsWith(tree.treeRoot);
-    // Genuine workspace switch (had a root, now have a different one).
-    const switchingWorkspace = rootChanged && tree.treeRoot !== null;
-    if (switchingWorkspace) {
-      const proceed = await files.closeAllTabsForWorkspaceSwitch();
-      if (!proceed) {
-        // User cancelled the unsaved-changes prompt. Don't adopt the
-        // new tree, don't publish the new workspace root to main.
-        tree.openingFolder = false;
+  bridge.receive(
+    'from:folder:opened',
+    async ({ tree: t, path, workspaceChange = false }) => {
+      // Lazy replies can arrive after another workspace has been adopted.
+      // Only an explicit picker selection may replace an existing root.
+      if (
+        tree.treeRoot &&
+        !workspaceChange &&
+        !isPathWithinTree(path, tree.treeRoot)
+      )
         return;
+      const rootChanged = workspaceChange || !tree.treeRoot;
+      // Genuine workspace switch (had a root, now have a different one).
+      const switchingWorkspace = rootChanged && tree.treeRoot !== null;
+      if (switchingWorkspace) {
+        const proceed = await files.closeAllTabsForWorkspaceSwitch();
+        if (!proceed) {
+          // User cancelled the unsaved-changes prompt. Don't adopt the
+          // new tree, don't publish the new workspace root to main.
+          tree.openingFolder = false;
+          return;
+        }
+        const assistant = manager.assistantManager;
+        if (assistant) {
+          for (const callId of Object.keys(
+            assistant.getChatSnapshot().inflight,
+          )) {
+            assistant.cancelCall(callId);
+          }
+        }
       }
-    }
-    if (tree.openingFolder || rootChanged) {
-      tree.treeRoot = path;
-      tree.openingFolder = false;
-    }
-    tree.buildFileTree(t, path);
-    // Persist the new workspace root if it changed. Sub-directory
-    // expands (lazy-load) reuse the existing root, so they don't need
-    // their own save trigger.
-    if (rootChanged) {
-      files.scheduleSessionSave();
-      // Publish the new workspace root to main so the `mked:fs:*`
-      // handlers (AI assistant file ops) can enforce it as their
-      // trust boundary. Without this, any `mked:fs:*` invoke would
-      // be denied because main's workspaceRoot stays null.
-      bridge.send('to:workspace:set', { root: path });
-    }
-  });
+      if (rootChanged) {
+        tree.treeRoot = path;
+        tree.openingFolder = false;
+      }
+      tree.buildFileTree(t, path);
+      // Persist the new workspace root if it changed. Sub-directory
+      // expands (lazy-load) reuse the existing root, so they don't need
+      // their own save trigger.
+      if (rootChanged) {
+        files.scheduleSessionSave();
+        // Publish the new workspace root to main so the `mked:fs:*`
+        // handlers (AI assistant file ops) can enforce it as their
+        // trust boundary. Without this, any `mked:fs:*` invoke would
+        // be denied because main's workspaceRoot stays null.
+        bridge.send('to:workspace:set', { root: path });
+      }
+    },
+  );
 
   // Enable opening files from outside of the renderer execution context.
   bridge.receive('from:file:open', () => manager.menuFileOpen());
@@ -168,6 +194,16 @@ export function registerBridgeListeners(
   // from:file:opened so the tab label stays consistent across OSes.
   bridge.receive('from:path:renamed', ({ oldPath, newPath }: RenamedPath) => {
     files.renameTab(oldPath, newPath, basename(newPath));
+    files.renameDescendantTabs(oldPath, newPath);
+    manager.assistantManager?.renameMentionPaths(oldPath, newPath);
+    tree.workspaceFilesChanged(oldPath, newPath);
+  });
+  bridge.receive('from:path:deleted', ({ path }: { path: string }) => {
+    manager.assistantManager?.removeMentionPaths(path);
+    tree.workspaceFilesChanged(path);
+    for (const tab of files.getSnapshot().tabs) {
+      if (isPathWithinTree(tab.path, path)) void files.closeTab(tab.path);
+    }
   });
 
   // Enable access to the monaco editor command palette.
@@ -233,6 +269,8 @@ export function registerBridgeListeners(
   // to re-walk the persisted root via `to:file:openpath`, which fires
   // the normal `from:folder:opened` flow.
   bridge.receive('from:session:restore', (envelope: SessionRestoreEnvelope) => {
+    if (envelope?.recoveryError)
+      sonnerToast('error', t('cloud:recovery_storage_error'));
     if (envelope?.missing && envelope.missing.length > 0) {
       sonnerToast(
         'warning',
@@ -268,11 +306,26 @@ export function registerBridgeListeners(
     }
   });
 
-  // Final flush ahead of quit. Main's `before-quit` hook sends this
-  // and waits up to ~250 ms for the `to:session:save` ack — so the
-  // serialisation runs synchronously here and we ship immediately.
-  bridge.receive('from:session:flush-request', () => {
-    bridge.send('to:session:save', files.serializeSession());
+  // Final flush ahead of quit. Main waits for the correlated checkpoint
+  // to reach disk. Coalesce ordinary saves while that write is in flight.
+  let sessionSaveFailed = false;
+  bridge.receive('from:session:cleared', (message: { token: string }) =>
+    files.onSessionCleared(message.token),
+  );
+  bridge.receive('from:session:saved', (result: { ok: boolean }) => {
+    files.onSessionCheckpointSaved();
+    if (!result.ok && !sessionSaveFailed)
+      sonnerToast('error', t('cloud:recovery_storage_error'));
+    sessionSaveFailed = !result.ok;
+  });
+  bridge.receive('from:session:flush-request', (request?: { id?: string }) => {
+    providers.exportSettings?.flushPersist();
+    files.flushSessionCheckpoint(request?.id, {
+      title: t('cloud:recovery_quit_title'),
+      message: t('cloud:recovery_quit_message'),
+      quit: t('cloud:recovery_quit_anyway'),
+      cancel: t('cloud:cancel'),
+    });
   });
 
   // BrowserWindow maximize/unmaximize state — `<TitleBar>`'s maximize
@@ -291,6 +344,9 @@ export function registerBridgeListeners(
   // diffs the snapshot and notifies React subscribers.
   bridge.receive('from:ai:config', (payload: ConfigPushPayload) => {
     manager.assistantManager.setConfigFromServer(payload);
+  });
+  bridge.receive('from:ai:key:result', (payload: KeySaveResult) => {
+    manager.assistantManager.onKeySaveResult(payload);
   });
 
   // Ollama model-list reply. AssistantManager has the pending Promise

@@ -35,12 +35,18 @@ const FILE_PATH = APP_PATH + 'assistant.json';
 const TMP_PATH = FILE_PATH + '.tmp';
 
 export const assistantStorePath = (): string => FILE_PATH;
+
 export const assistantStoreTmpPath = (): string => TMP_PATH;
+
 export const assistantStoreDir = (): string => APP_PATH;
 
 const fallback = (): AssistantStoreFile => ({
   version: ASSISTANT_STORE_VERSION,
-  providers: DEFAULT_PROVIDER_CONFIG,
+  providers: {
+    anthropic: { ...DEFAULT_PROVIDER_CONFIG.anthropic },
+    openai: { ...DEFAULT_PROVIDER_CONFIG.openai },
+    ollama: { ...DEFAULT_PROVIDER_CONFIG.ollama },
+  },
   keys: {},
 });
 

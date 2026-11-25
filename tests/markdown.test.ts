@@ -4,6 +4,61 @@ import {
 } from '../src/browser/core/Markdown';
 
 describe('renderAssistantMarkdown (AI Assistant P4)', () => {
+  it('renders chat tables in a focusable scroll container while preserving alignment and escaping HTML', () => {
+    const source = [
+      '| Quantization | RAM | Notes |',
+      '| :--- | ---: | :---: |',
+      '| **Q4** | ~8 GB | Escaped \\| pipe |',
+      '| Q8 | ~14 GB | <img src=x onerror=alert(1)> |',
+    ].join('\n');
+    const document = new DOMParser().parseFromString(
+      renderAssistantMarkdown(source, { scrollableTables: true }),
+      'text/html',
+    );
+    const container = document.querySelector('.assistant-table-scroll');
+    expect(container?.getAttribute('tabindex')).toBe('0');
+    expect(container?.querySelectorAll('table')).toHaveLength(1);
+    expect(container?.querySelectorAll('thead th')).toHaveLength(3);
+    expect(container?.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect(
+      container?.querySelector('th:nth-child(2)')?.getAttribute('style'),
+    ).toBe('text-align:right');
+    expect(container?.querySelector('strong')?.textContent).toBe('Q4');
+    expect(container?.textContent).toContain('Escaped | pipe');
+    expect(document.querySelector('img')).toBeNull();
+    expect(Markdown.render(source)).not.toContain('assistant-table-scroll');
+    expect(renderAssistantMarkdown(source)).not.toContain(
+      'assistant-table-scroll',
+    );
+    expect(Markdown.options.html).toBe(true);
+  });
+
+  it('keeps table wrappers balanced as partial rows arrive during streaming', () => {
+    const source = '| Model | RAM |\n| --- | --- |\n| Q4 |';
+    for (const content of [source, `${source} ~8 GB |\n| Q8 | ~14 GB |`]) {
+      const document = new DOMParser().parseFromString(
+        renderAssistantMarkdown(content, { scrollableTables: true }),
+        'text/html',
+      );
+      expect(document.querySelectorAll('.assistant-table-scroll')).toHaveLength(
+        1,
+      );
+      expect(document.querySelectorAll('tbody tr')[0].children).toHaveLength(2);
+      expect(document.body.children).toHaveLength(1);
+    }
+  });
+
+  it('escapes fenced-code language labels even when raw HTML is disabled', () => {
+    const out = renderAssistantMarkdown(
+      '```</span><img/src=x/onerror=alert(1)>\ntext\n```',
+    );
+    const document = new DOMParser().parseFromString(out, 'text/html');
+    expect(document.querySelector('img')).toBeNull();
+    expect(document.querySelector('.md-codeblock-lang')?.textContent).toBe(
+      '</span><img/src=x/onerror=alert(1)>',
+    );
+  });
+
   it('escapes raw <script> tags from untrusted assistant content', () => {
     const out = renderAssistantMarkdown(
       'Look: <script>alert("xss")</script> and **bold**.',
@@ -47,6 +102,33 @@ describe('renderAssistantMarkdown (AI Assistant P4)', () => {
 });
 
 describe('Markdown', () => {
+  it('keeps fenced-code source line metadata on the codeblock wrapper', () => {
+    const out = Markdown.render('paragraph\n\n```ts\nconst x = 1;\n```');
+    const document = new DOMParser().parseFromString(out, 'text/html');
+    const block = document.querySelector('.md-codeblock');
+    expect(block?.classList.contains('has-line-data')).toBe(true);
+    expect(block?.getAttribute('data-line-start')).toBe('3');
+    expect(block?.getAttribute('data-line-end')).toBe('5');
+  });
+
+  it('treats inherited object property names as literal language labels', () => {
+    const out = Markdown.render('```toString\ntext\n```');
+    const document = new DOMParser().parseFromString(out, 'text/html');
+    expect(document.querySelector('.md-codeblock-lang')?.textContent).toBe(
+      'toString',
+    );
+  });
+
+  it('round-trips large Unicode codeblock source for copying', () => {
+    const source = '\u03bb\ud83d\ude80'.repeat(30000) + '\n';
+    const out = Markdown.render('```unknown\n' + source + '```');
+    const document = new DOMParser().parseFromString(out, 'text/html');
+    const encoded = document
+      .querySelector('.md-codeblock')!
+      .getAttribute('data-source')!;
+    expect(Buffer.from(encoded, 'base64').toString('utf8')).toBe(source);
+  });
+
   it('initializes with extensions', () => {
     const output = Markdown.render(
       `::: info\n[test](http://example.com)\n:::\n\n![alt](img.png)\n\n|a|b|\n|-|-|\n|1|2|\n`,

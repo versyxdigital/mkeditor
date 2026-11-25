@@ -1,0 +1,132 @@
+# Google Drive in MKEditor
+
+Experimental desktop integration: connect, browse and open Markdown documents, with optional saving and creation in My Drive. Authentication, browsing and writes have deterministic fixture coverage. The write protocol passed a live disposable-file test, and a Windows walkthrough now records real Google consent, browsing, saving and creation. Remaining live failure/recovery and platform checks are listed below. See the [decision record](drive-decisions.md) and [implementation report](implementation-report.md).
+
+## Connect your account
+
+1. Open **Settings → Connections** in the desktop app and choose **Connect with Google**.
+2. Choose your Google account in the system browser and approve MKEditor's requested access. Return to MKEditor when prompted.
+3. Select your connection in the top toolbar, beside the sidebar toggle. Use Explorer's folder location menu to choose **My Drive** or **Shared drives**. Open Markdown files read-only, or choose **Edit a local copy** from the Drive icon menu beside the active filename to edit and save locally.
+
+MKEditor includes its Desktop OAuth app registration. Regular users do not create a Google Cloud project, enable APIs, or enter client credentials. **Add another account** repeats the same sign-in flow. Existing connections, documents and encrypted account credentials are preserved.
+
+## Maintainer registration and public distribution
+
+The committed `src/app/config/googleDrive.json` is an empty template. `build-app` injects the shared Desktop registration into `dist/app/config/googleDrive.json` from `MKEDITOR_GOOGLE_CLIENT_ID` and `MKEDITOR_GOOGLE_CLIENT_SECRET`, or an ignored `src/app/config/googleDrive.local.json`. Only main loads it through `GoogleDriveRegistration.ts`. See [build configuration](../../CONTRIBUTING.md#google-drive-build-configuration) for local and release setup. The values remain readable from a packaged desktop app; keeping them out of Git avoids publishing them in source history. Never supply account tokens, refresh tokens, Web-client secrets or service-account credentials as registration values.
+
+The maintainer creates one Google app for MKEditor, enables Drive API, configures branding/privacy-policy links and consent scopes, and completes Google's production/verification requirements. A project in Testing remains limited to its configured test users; shipping the client configuration does not publish the project or bypass Google's review. Follow the [Google consent publication guide](google-verification.md).
+
+Fork maintainers can supply their own Desktop registration at build time. Existing connections retain their original registration so a build/configuration change cannot silently bind an old token to a different OAuth client. Unconfigured contributor builds disable the default button with an explanation; custom registration is still available under Advanced. Incomplete or malformed build configuration fails the build, and the release workflow requires both registration values.
+
+## Advanced: use your own Google app
+
+This optional path is for development or a custom registration, not ordinary account connection.
+
+1. Open the [Google Cloud console](https://console.cloud.google.com/), create or select a project, and enable **Google Drive API**.
+2. In **Google Auth Platform**, configure Branding and Audience. For an external app in Testing, add your Google account under test users. Add `https://www.googleapis.com/auth/drive.readonly` to Data Access, plus `https://www.googleapis.com/auth/drive` if testing editing.
+3. Create an OAuth client with application type **Desktop app**. Copy its client ID and Desktop client secret. Do not create a Web application client. The Desktop secret is a public registration value; it does not grant account access by itself.
+4. Start the desktop build. Open **Settings → Connections → Advanced → Use a custom Google app**. Enter a connection name and the two registration values, then choose **Add connection**.
+5. Choose **Connect with Google**, complete consent in your system browser, and return to MKEditor. The callback page tells you to return; MKEditor confirms the final connection result. The loopback redirect uses a random port: `http://127.0.0.1:<port>/oauth/callback`. Desktop clients support loopback without registering each ephemeral port.
+6. Choose **Test access**. Select the connection in the top toolbar's storage selector, then browse **My Drive** or **Shared drives**. Use Refresh and Load more as needed. Google-native documents and non-Markdown files appear disabled.
+
+App registration and scope details: [Google Desktop OAuth](https://developers.google.com/identity/protocols/oauth2/native-app), [Drive scopes and verification](https://developers.google.com/workspace/drive/api/guides/api-specific-auth), and [shared-drive API support](https://developers.google.com/workspace/drive/api/guides/enable-shareddrives).
+
+## Reading and local copies
+
+Drive-backed tabs display the Google Drive icon before the filename. Local files and local copies do not. While a document downloads, its Explorer row shows a spinner and ignores repeat opens. Creating a document shows a compact “Creating…” row after the name is confirmed; completion, cancellation and failures clear progress. Folder loading is also visible. The **Save a copy to Drive** menu tooltip explains that it creates a new Drive file from the active tab's current content, including local files, untitled drafts and unsaved edits.
+
+Opening the same file through the same connection and verified account focuses its existing tab. Identity uses Google's file ID, not the displayed name or folder. File rows remain one line; hover to see the full name, folder, modification time and ID, including when names are duplicated. Shortcuts resolve to their target. A file moving folders does not change its identity.
+
+The Drive icon beside the active filename opens document status and actions. Read-only documents have a quiet read-only label; saving shows a spinner, and successful saves do not add a banner. **Edit a local copy** opens a separate unsaved editable buffer. Use normal Save/Save As to save that copy locally. It never overwrites the Drive original. A cancelled local save retains the copy. Remote **Save As** also creates a local copy; save that new buffer with the normal picker.
+
+The top toolbar's storage selector keeps account details and **Manage connections** in its menu and remains available when Explorer is collapsed. Explorer's folder toolbar provides location, new-file and refresh controls. Its **More actions** menu contains **Save a copy to Drive** and **Manage connections**. These controls keep their heights when the sidebar is resized; long names truncate instead of wrapping.
+
+Relative images and links are preserved in the Markdown source but are not fetched or resolved against your local workspace. Remote document previews disable raw HTML. Absolute web links/images still follow the existing preview behavior. Downloading remote attachments and resolving Drive-relative links are not supported. UTF-8 Markdown (`.md`, matching the existing explorer rules) up to 4 MiB is supported; Google Docs/Sheets/Slides, binary encodings and conversions are not.
+
+## Editing, creation and recovery
+
+Connections initially request read-only access. Choose **Settings → Connections → Enable editing**, review the explanation and complete a fresh Google consent flow. Google requests full Drive permission, including deletion, because the folder browser opens arbitrary existing files; MKEditor itself exposes no remote delete operation. Reload an already open document to obtain a fresh validator, or open another Markdown file.
+
+Editable My Drive documents use normal **Save / Ctrl+S**. Saves target the file ID and use the exact v2 multipart/strong-ETag protocol verified in Decision B. A server rejection preserves the newer remote file and your buffer. Edits made during a save stay dirty after its snapshot is acknowledged. Shared-drive documents, files without edit permission and files without a usable strong validator remain read-only.
+
+The **New Markdown file** icon creates a `.md` file in the current My Drive folder. **More actions → Save a copy to Drive** creates a new remote file from a snapshot of the active document; it does not move or mark the source saved. An existing same-name item found before creation causes refusal, without silently renaming or overwriting anything. Google allows duplicate names: this preflight check cannot reserve a name against another app creating one concurrently.
+
+Right-click in the Drive Explorer for contextual actions. Empty space offers **New Markdown file**, **New folder** and **Refresh**. Right-click a folder to open it or create an item inside it. Right-click a Markdown document and choose **Move to…**, browse to the destination folder, then choose **Move here**. The picker stays within the same connection's My Drive. **More actions → New folder** also creates a folder in the current location.
+
+Moves preserve the Google file ID, open tab, unsaved text, undo history and saved baseline. They change parent metadata without uploading document text. Saves wait for an active move; the saved content validator advances only if the content baseline still matches. Read-only connections and shared drives cannot create folders or move documents. If a folder creation or move response is lost, **Check operation** verifies the result without replaying the write.
+
+Connection and save problems show a compact recovery bar above the workspace, without spanning the Explorer or assistant. Hover an action icon for its label; the Drive document menu also provides the recovery actions below.
+
+- **Save conflict:** use **Compare with Drive** to view current remote text on the original side and your buffer on the modified side. Save a local copy to keep your version. **Reload from Drive** asks before replacing a dirty buffer and refuses replacement if you edit during loading or confirmation.
+- **Save failed:** the buffer remains dirty. Resolve connection, quota or permission problems before retrying. A missing/trashed file is never recreated by Save.
+- **Save outcome unknown:** the response may have been lost after Google committed the write. **Check save** reads and compares the captured snapshot and revision; it never replays the write. Reload is blocked while unresolved. A local copy remains available.
+- **Create outcome unknown:** **Check created file** checks the generated ID and operation marker, without repeating creation. A non-empty copy also gets a local recovery buffer. Keep the app open while resolving the result.
+
+Close, workspace-switch and quit protection includes dirty buffers and pending/unconfirmed saves. Explicitly discarding a tab removes its session draft. A write already sent to Google may complete after disconnect, but queued writes cannot begin and credentials remain cleared.
+
+## Remote session recovery
+
+With **Restore previous session** enabled, Drive tabs reopen with their tab order, active tab, cursor/scroll position and locally checkpointed text. Unsaved drafts remain marked as unsaved. Recovery works before Google is reachable; reconnect to the same account before saving, or use **Edit a local copy**.
+
+MKEditor checks the latest Drive version before enabling a recovered document's Save. A clean tab can refresh automatically. A changed Drive document with local edits opens conflict recovery, preserving both versions. Missing files and removed accounts keep their cached text available; they are not recreated or retargeted to a different account. Restoring never automatically uploads draft text.
+
+Remote text and the last saved baseline live in the OS-encrypted `~/.mkeditor/cloud-recovery.bin`, separately from the plaintext local session. Checkpoints run while typing, and window close/quit waits for an acknowledged disk write. A forced crash recovers the last successfully written snapshot. Checkpoints are bounded to one in flight, with newer edits coalesced; the recovery store has a 64 MiB serialized-data limit. Storage/encryption failures retain the previous snapshot and report an error. If quitting cannot commit a checkpoint, you can cancel or explicitly quit anyway.
+
+Write intentions are journaled before contacting Drive. Interrupted saves, creates and moves are read back after restart, never replayed automatically. Recovery keeps edits made after an in-flight save separate from its frozen write snapshot. Explorer also offers **Check operation** for interrupted operations. A write confirmed not to have happened can be retried explicitly.
+
+**Clear saved session** removes cached session drafts and prevents an old queued/quit checkpoint from immediately restoring them. Later document activity can create a new session checkpoint. Unresolved operation records remain available for checking, even after session drafts are cleared. Turning restoration off stops draft checkpointing and reopening; it does not erase an existing checkpoint. Use Clear saved session to remove that snapshot.
+
+## Connection lifecycle and storage
+
+Rename changes only the display name. Reconnect opens a new consent flow; choosing a different Google account creates different document identities and never retargets an existing tab. Test access reports errors inline. Disconnect clears credentials and the account display while keeping the named configuration. Remove clears configuration too. Both preserve open document buffers. Cancel can stop pending sign-in; background refresh cannot restore a disconnected credential.
+
+Configuration lives in `~/.mkeditor/connections.json`, separately from settings, sessions and assistant data. Tokens in that file are encrypted using the OS credential backend. They never reach the renderer, logs or UI. There is no plaintext fallback. If secure storage is unavailable, sign-in is disabled. Disconnect does not revoke the app's Google-side grant; remove that separately through your Google account's connected-app settings if desired.
+
+Drive tabs and the selected remote workspace are not restored after restart. Select the connection in the top toolbar to browse again. Open tabs remain readable if the network disappears or you disconnect, but no offline sync or remote-buffer recovery after restart is promised. Save an editable local copy when you need persistent work.
+
+## Troubleshooting
+
+- **Invalid configuration:** confirm a Desktop app client, the matching registration values, enabled Drive API, declared read-only scope and consent test user. A Web client or a mismatched project can produce redirect/client errors. Remove and re-add a connection to change registration values.
+- **Needs reauthorisation:** reconnect. Google may revoke access or expire test-app refresh tokens after about seven days; see [token expiration](https://developers.google.com/identity/protocols/oauth2#expiration).
+- **Permission denied / missing item:** refresh the folder, check access in Google Drive, and confirm the item was not trashed. Existing open tabs are retained.
+- **Connection failure / throttling / quota:** check connectivity or wait before retrying. Safe reads use bounded retries; long retry hints are surfaced rather than ignored. Writes are never automatically replayed. Use the check action for unknown outcomes before attempting another write.
+- **Secure storage error:** unlock the OS keychain/credential service and check disk access. Linux must use a supported keyring backend, not `basic_text`. Failed credential deletion is reported; do not assume it cleared the on-disk entry if an error is shown.
+- **Damaged configuration file:** a malformed `connections.json` is reported instead of silently overwritten. Back it up before repairing or removing it; you will need to add connections and sign in again. Do not share the file or its encrypted credentials in bug reports.
+
+## Opt-in live smoke check
+
+For repeatable Playwright checks of Drive operations and encrypted connection persistence across restarts, see [Drive and restart smoke tests](drive-smoke-tests.md). `npm run test:drive-smoke` uses a local HTTP fixture; `npm run test:drive-live` runs against Google after interactive consent. Both use an isolated connection store.
+
+### Existing-file write precondition
+
+Run `npm run build-app`, then `npm run verify-drive-writes -- --v2 --multipart` from the application checkout for the verified endpoint. This is an explicitly opt-in developer test, not part of CI or the ordinary Test access button. Keep one Google account connected for the spike. It opens separate read access plus `drive.file` consent for the marked disposable test file. Choose the connected account. Temporary tokens are not persisted or substituted for the normal connection.
+
+The verifier pre-generates one file ID, creates a uniquely marked disposable Markdown file, and looks for a provider-issued strong ETag. If one is available, it tests three successful current-validator uploads and three stale-validator rejection cases on the exact v3 `uploadType=media` endpoint. It compares both the newer contents and revision after every rejected save. Only this run's marked test file can be updated or trashed; cleanup is reversible. A lost create response is reconciled by the generated ID without repeating the create. Missing validators or incomplete requests are inconclusive, not permission to enable saving.
+
+Results are saved to `out/drive-write-verification-v2-multipart.json` with timestamps, endpoint, validator source, HTTP statuses and content-preservation checks, without tokens. If cleanup fails, the report identifies the file for removal. Decision B records the My Drive pass; shared-drive writes were not verified. Passing fixtures do not count as live provider verification.
+
+### Application workflow
+
+Use a disposable Google test account with a `.md` file, an empty folder, duplicate-named Markdown files, a shortcut, and a native Google Doc. If available, add a shared-drive folder. Use the default **Connect with Google** flow without entering client details, then test access; browse My Drive/shared drives, refresh, open a shortcut and open the same file twice. Confirm native/non-Markdown entries are disabled, remote edits are blocked, relative assets do not load locally, and a local copy saves without changing the original. Repeat using Advanced custom configuration if that path is being changed.
+
+Disconnect with a document open: the account and listing must clear, the tab must remain readable, and authorized operations must fail. Reconnect with another disposable account: old tabs must retain their original connection/account identity. Quit/relaunch to check encrypted credential persistence and confirm remote tabs are not restored. Revoke access in Google and verify reauthorization is requested on the next failed authorized operation. Check keyboard access and both themes.
+
+Then enable editing, reload and save a disposable My Drive Markdown file. Verify its contents in Drive. Make an external change and confirm stale-save rejection, comparison, cancelled reload and local-copy recovery. Create a Unicode-named file, refuse a same-name create, and save a copy without marking its source saved. Check close/quit cancellation with dirty edits, keyboard controls and both themes. Lost-response and edit-during-save cases have deterministic fixtures; no live network-failure simulation is claimed.
+
+Record OS, date, app configuration and individual outcomes without credentials. The separate [write protocol](drive-decisions.md#b--existing-file-save-precondition) passed live. The recorded Windows walkthrough passed real consent, browsing, existing-file save and new-file creation, with independent content readback. Its isolated shell did not test normal connection persistence across restart. Remaining live failure/recovery, lifecycle and other-platform cases are pending.
+
+## Capability matrix
+
+| Provider     | Status                                                                                                                                                                          | Editions / OS targets                                                               | Authentication and scope                                                                 | Current capabilities                                                                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Google Drive | Implemented and fixture-tested; owner-reported live connection, live conditional-write protocol pass; Windows consent/browse/save/create recorded; remaining live cases pending | Personal/Workspace accounts; Windows/macOS/Linux desktop targets, Windows exercised | Desktop browser OAuth + PKCE; read-only default, separate full Drive consent for editing | My Drive/shared-drive browsing, Markdown read, local copy; conditional My Drive save/conflict/reconcile, create and save-copy; shared-drive writes disabled |
+| Dropbox      | Implemented; fixture-tested and live-verified on Windows                                                                                                                        | Personal accounts and team member home area; Windows exercised                      | Browser OAuth + PKCE; read-only default and separate editing consent                     | Browse/open, revision-conditional save, create/copy and encrypted recovery; see [Dropbox](dropbox.md)                                                       |
+| OneDrive     | Planned                                                                                                                                                                         | Not yet verified                                                                    | Not implemented                                                                          | No adapter                                                                                                                                                  |
+| GitHub       | Planned                                                                                                                                                                         | GitHub.com only in roadmap                                                          | Not implemented                                                                          | No adapter                                                                                                                                                  |
+| GitLab       | Planned                                                                                                                                                                         | GitLab.com in roadmap                                                               | Not implemented                                                                          | No adapter                                                                                                                                                  |
+| Bitbucket    | Planned                                                                                                                                                                         | Bitbucket Cloud in roadmap                                                          | Not implemented                                                                          | No adapter                                                                                                                                                  |
+| Confluence   | Planned                                                                                                                                                                         | Cloud in roadmap                                                                    | Not implemented                                                                          | No adapter                                                                                                                                                  |
+| Jira         | Planned                                                                                                                                                                         | Cloud in roadmap                                                                    | Not implemented                                                                          | No adapter                                                                                                                                                  |
+| SFTP         | Planned                                                                                                                                                                         | Not yet verified                                                                    | Not implemented                                                                          | No adapter                                                                                                                                                  |
+
+“Shared with me” is not a separate browser; shared-drive roots are explicitly listed. Shared folders reachable through My Drive can be opened. Remote item rename, folder moves, delete, synchronization, account-wide search and Google-native conversion are outside this implementation.

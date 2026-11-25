@@ -34,5 +34,13 @@
   "language_help": "Seleziona la lingua dell’interfaccia.",
   "save_settings": "Salva impostazioni",
   "tab_general": "Impostazioni generali",
-  "tab_assistant": "Provider IA"
+  "tab_assistant": "Provider IA",
+  "paste_images": "Immagini incollate",
+  "paste_images_directory_label": "Cartella per immagini incollate",
+  "paste_images_directory_help": "I percorsi relativi (es. './assets') vengono risolti rispetto alla cartella del file Markdown attivo. I percorsi assoluti devono rimanere nel workspace aperto.",
+  "nav_editor": "Editor",
+  "nav_preview": "Anteprima",
+  "nav_workspace": "File e area di lavoro",
+  "darkmode_label": "Tema scuro",
+  "changes_apply_immediately": "Le modifiche vengono applicate subito."
 }

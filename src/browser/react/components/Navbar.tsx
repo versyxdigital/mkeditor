@@ -5,10 +5,11 @@ import { useModals } from '../contexts/ModalsContext';
 import { useUIState } from '../contexts/UIStateContext';
 import { useManagers } from '../contexts/ManagersContext';
 import { sonnerToast } from '../../notify';
-import { useCounts } from '../hooks/useCounts';
 import { useTranslation } from '../hooks/useTranslation';
 import { Icon } from './Icon';
 import { Button } from './ui/button';
+import { RemoteDocumentMenu } from './cloud/RemoteDocumentMenu';
+import { WorkspacePicker } from './cloud/CloudExplorer';
 import {
   Tooltip,
   TooltipContent,
@@ -29,7 +30,6 @@ export const Navbar: React.FC = () => {
   // Hide the AI sidebar toggle on web — AI Assistant is desktop-only
   // (see docs/AI_ASSISTANT.md "Decisions" → "API call location").
   const showAssistantToggle = mode !== 'web';
-  const counts = useCounts();
 
   // Navbar shows the full path of the active file (the tab itself
   // shows just the filename via tab.name). For untitled scratch
@@ -38,6 +38,8 @@ export const Navbar: React.FC = () => {
   const isUntitled = !activeFile || activeFile.startsWith('untitled');
   const activeFileLabel = React.useMemo(() => {
     if (!activeFile) return null;
+    const remote = tabs.find((tab) => tab.path === activeFile)?.remote;
+    if (remote) return `${remote.connectionName} / ${remote.item.name}`;
     if (isUntitled) {
       return tabs.find((tab) => tab.path === activeFile)?.name ?? null;
     }
@@ -56,79 +58,83 @@ export const Navbar: React.FC = () => {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <nav className="flex items-center justify-between border-b border-border bg-background">
-        <div className="flex items-center gap-2">
+      <nav className="flex h-[var(--toolbar-height)] shrink-0 min-w-0 items-center justify-between gap-2 border-b border-subtle bg-background px-2">
+        <div className="flex min-w-0 items-center gap-2">
           <Button
             id="sidebar-toggle"
             size="icon"
             variant="ghost"
             type="button"
             title={t('navbar:toggle_sidebar')}
+            aria-label={t('navbar:toggle_sidebar')}
             onClick={toggleSidebar}
-            className="h-7 w-7 text-xs"
+            className="h-7 w-7 shrink-0 text-muted-foreground"
           >
-            <Icon name="bars" />
+            <Icon name="bars" className="h-3.5 w-3.5" />
           </Button>
+          <WorkspacePicker />
           <span
             id="active-file"
-            className="truncate text-xs text-muted-foreground"
+            className="truncate text-xs font-medium text-muted-foreground"
             title={activeFileLabel ?? undefined}
           >
             {activeFileLabel ?? t('app:brand_name')}
           </span>
-          {!isUntitled && activeFile && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  onClick={handleCopyPath}
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground text-xs"
-                  aria-label={t('navbar:copy_path_tooltip')}
-                >
-                  <Icon name="copy" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t('navbar:copy_path_tooltip')}</TooltipContent>
-            </Tooltip>
-          )}
+          <RemoteDocumentMenu />
+          {!isUntitled &&
+            activeFile &&
+            !tabs.find((tab) => tab.path === activeFile)?.remote && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={handleCopyPath}
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground text-xs"
+                    aria-label={t('navbar:copy_path_tooltip')}
+                  >
+                    <Icon name="copy" className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('navbar:copy_path_tooltip')}</TooltipContent>
+              </Tooltip>
+            )}
         </div>
-        <div className="flex items-center gap-3 pr-3">
-          <div className="text-xs text-muted-foreground">
-            <span>{t('navbar:character_count')}</span>{' '}
-            <span id="character-count">{counts.characters}</span>
-            <span className="mx-1 opacity-50">|</span>
-            <span>{t('navbar:word_count')}</span>{' '}
-            <span id="word-count">{counts.words}</span>
-          </div>
+        <div className="flex shrink-0 items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <a
-                className="text-muted-foreground hover:text-foreground"
-                href="#"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground"
+                title={t('navbar:settings_tooltip')}
+                aria-label={t('navbar:settings_tooltip')}
                 onClick={(e) => {
                   e.preventDefault();
                   openModal('settings');
                 }}
               >
-                <Icon name="cogs" />
-              </a>
+                <Icon name="cogs" className="h-3.5 w-3.5" />
+              </Button>
             </TooltipTrigger>
             <TooltipContent>{t('navbar:settings_tooltip')}</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <a
-                className="text-muted-foreground hover:text-foreground"
-                href="#"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground"
+                title={t('navbar:shortcuts_tooltip')}
+                aria-label={t('navbar:shortcuts_tooltip')}
                 onClick={(e) => {
                   e.preventDefault();
                   openModal('shortcuts');
                 }}
               >
-                <Icon name="question-circle" />
-              </a>
+                <Icon name="question-circle" className="h-3.5 w-3.5" />
+              </Button>
             </TooltipTrigger>
             <TooltipContent>{t('navbar:shortcuts_tooltip')}</TooltipContent>
           </Tooltip>
@@ -141,10 +147,12 @@ export const Navbar: React.FC = () => {
                   variant="ghost"
                   type="button"
                   aria-pressed={rightSidebarOpen}
+                  aria-label={t('navbar:toggle_assistant_tooltip')}
+                  title={t('navbar:toggle_assistant_tooltip')}
                   onClick={toggleRightSidebar}
                   className="h-7 w-7 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  <Icon name="comments" />
+                  <Icon name="comments" className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>

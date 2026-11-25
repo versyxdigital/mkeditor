@@ -2,6 +2,8 @@ import { dom } from '../dom';
 import { exportSettings as defaults } from '../config';
 import { markdownStylesheet } from '../markdownStyles';
 import type { ExportSettings } from '../interfaces/Editor';
+import { logger } from '../util';
+import { renderMermaidDiagrams } from '../mermaid';
 
 /**
  * External resources still pulled in via CDN when `withStyles` is on:
@@ -70,7 +72,7 @@ const printOverrides = `
 const codeblockCopyScript = `
 (function () {
   if (typeof document === 'undefined') return;
-  document.addEventListener('click', function (event) {
+  document.addEventListener('click', async function (event) {
     var target = event.target;
     if (!target || !target.closest) return;
     var btn = target.closest('.md-codeblock-copy');
@@ -82,9 +84,8 @@ const codeblockCopyScript = `
       var binary = atob(encoded);
       var bytes = Uint8Array.from(binary, function (c) { return c.charCodeAt(0); });
       var text = new TextDecoder().decode(bytes);
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text);
-      }
+      if (!navigator.clipboard || !navigator.clipboard.writeText) return;
+      await navigator.clipboard.writeText(text);
       btn.classList.add('is-copied');
       setTimeout(function () { btn.classList.remove('is-copied'); }, 1200);
     } catch (err) { /* noop */ }
@@ -97,6 +98,45 @@ type ProviderKey = keyof typeof cdn;
 const providers: ProviderKey[] = ['highlightjs', 'katex'];
 
 export class HTMLExporter {
+  /** Render diagrams from a snapshot before creating a portable document. */
+  static async prepareHTML(
+    content: string,
+    settings: ExportSettings,
+  ): Promise<string> {
+    const document = new DOMParser().parseFromString(
+      content.trim(),
+      'text/html',
+    );
+    const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(
+      settings.background,
+    );
+    const dark = Boolean(
+      settings.withStyles &&
+      match &&
+      parseInt(match[1], 16) * 0.2126 +
+        parseInt(match[2], 16) * 0.7152 +
+        parseInt(match[3], 16) * 0.0722 <
+        128,
+    );
+    await renderMermaidDiagrams(
+      document.body,
+      dark,
+      new AbortController().signal,
+    );
+    for (const block of document.querySelectorAll('[data-diagram="mermaid"]')) {
+      const svg = block.querySelector('.md-diagram > svg');
+      if (!svg) continue;
+      const figure = document.createElement('figure');
+      figure.className = 'md-diagram';
+      figure.append(svg);
+      block.replaceWith(figure);
+    }
+    return HTMLExporter.generateHTML(
+      document.documentElement.outerHTML,
+      settings,
+    );
+  }
+
   /**
    * Generate HTML export.
    *
@@ -113,6 +153,11 @@ export class HTMLExporter {
     const document = HTMLExporter.sanitizeHTML(
       new DOMParser().parseFromString(content.trim(), 'text/html'),
     );
+    if (!document.querySelector('meta[charset]')) {
+      const charset = document.createElement('meta');
+      charset.setAttribute('charset', 'utf-8');
+      document.head.prepend(charset);
+    }
 
     if (withStyles) {
       // Pull in the external CSS/JS for syntax highlighting + math.
@@ -161,14 +206,14 @@ export class HTMLExporter {
       document.body.style.backgroundColor = background;
       document.body.style.color = fontColor;
     } else {
-      // No styles — strip every class so the export is plain HTML.
+      // Strip document classes, retaining the SVG's own vector styling.
       const elems = document.querySelectorAll('*');
       for (const elem of elems) {
-        elem.removeAttribute('class');
+        if (!elem.closest('svg')) elem.removeAttribute('class');
       }
     }
 
-    return `<!DOCTYPE html>${document.documentElement.innerHTML}`;
+    return `<!DOCTYPE html>${document.documentElement.outerHTML}`;
   }
 
   /**
@@ -178,33 +223,18 @@ export class HTMLExporter {
    * @returns - the sanitized HTML
    */
   static sanitizeHTML(document: Document) {
-    // Define attributes and classes for removal
-    const removals = {
-      attrs: [dom.meta.scroll.line.start, dom.meta.scroll.line.end],
-      classes: [dom.meta.scroll.line.class],
-    };
-
-    // Loop through and remove attributes
-    for (const removeAttr of removals.attrs) {
-      const elems = document.querySelectorAll(`[${removeAttr}]`);
-      for (const elem of elems) {
-        if (elem.hasAttribute(removeAttr)) {
-          elem.removeAttribute(removeAttr);
-        }
-      }
-    }
-
-    // Loop through and remove classes
-    for (const removeClass of removals.classes) {
-      const elems = document.querySelectorAll(`.${removeClass}`);
-      for (const elem of elems) {
-        if (elem.hasAttribute('class')) {
-          elem.classList.remove(removeClass);
-          if (elem.classList.length === 0) {
-            elem.removeAttribute('class');
-          }
-        }
-      }
+    const metadata = dom.meta.scroll.line;
+    // One traversal rather than rescanning large exported documents for
+    // each marker. Keep user-authored classes and attributes intact.
+    const elements = document.querySelectorAll(
+      `[${metadata.start}],[${metadata.end}],.${metadata.class}`,
+    );
+    for (const element of elements) {
+      element.removeAttribute(metadata.start);
+      element.removeAttribute(metadata.end);
+      element.classList.remove(metadata.class);
+      if (element.getAttribute('class') === '')
+        element.removeAttribute('class');
     }
 
     // Return the sanitized HTML
@@ -218,19 +248,19 @@ export class HTMLExporter {
    * @param mimeType- the mime type
    * @param extension - the file extension
    */
-  static webExport(
-    content: string,
+  static async webExport(
+    content: string | Promise<string>,
     mimeType: MIMEType = 'text/plain',
     extension: FileExtension = '.md',
-  ) {
+  ): Promise<boolean> {
+    if (typeof content !== 'string') void content.catch(() => {});
     if (extension === '.pdf') {
       return HTMLExporter.pdfWebExport(content);
     }
 
-    const blob = new Blob([content], { type: mimeType });
-
-    async function createHandle() {
-      return await window.showSaveFilePicker({
+    let writable: FileSystemWritableFileStream | null = null;
+    try {
+      const handle = await window.showSaveFilePicker({
         types: [
           {
             description: 'MKEditor export',
@@ -238,14 +268,25 @@ export class HTMLExporter {
           },
         ],
       });
+      const resolved = typeof content === 'string' ? content : await content;
+      const blob = new Blob([resolved], { type: mimeType });
+      writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return true;
+    } catch (error) {
+      if (writable) {
+        try {
+          await writable.abort();
+        } catch {
+          /* best-effort rollback */
+        }
+      }
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        logger.error('HTMLExporter.webExport', error);
+      }
+      return false;
     }
-
-    createHandle().then((handle) => {
-      handle.createWritable().then(async (writable) => {
-        await writable.write(blob);
-        await writable.close();
-      });
-    });
   }
 
   /**
@@ -253,41 +294,78 @@ export class HTMLExporter {
    *
    * @param content - the editor content
    */
-  static pdfWebExport(content: string) {
-    const awaitStyles = (win: Window, cb: () => void) => {
-      const links = Array.from(
-        win.document.querySelectorAll('link[rel="stylesheet"]'),
-      ) as HTMLLinkElement[];
-
-      let loaded = 0;
-      if (links.length === 0) return cb();
-
-      links.forEach((link) => {
-        link.addEventListener('load', () => {
-          loaded++;
-          if (loaded === links.length) cb();
-        });
-        link.addEventListener('error', () => {
-          loaded++;
-          if (loaded === links.length) cb();
-        });
-      });
-    };
-
+  static async pdfWebExport(
+    content: string | Promise<string>,
+  ): Promise<boolean> {
+    if (typeof content !== 'string') void content.catch(() => {});
     // Open a new window with the generated HTML
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      console.error('Unable to open print window.');
-      return;
+      logger.error('Unable to open print window.');
+      return false;
     }
 
     // Write the content and trigger print once loaded
-    printWindow.document.documentElement.innerHTML = content;
-
-    // Wait for stylesheets and resources to load before printing
-    awaitStyles(printWindow, () => {
+    try {
+      const resolved = typeof content === 'string' ? content : await content;
+      if (printWindow.closed) return false;
+      printWindow.document.documentElement.innerHTML = resolved;
+      await HTMLExporter.waitForPrintResources(printWindow);
+      if (printWindow.closed) return false;
       printWindow.focus();
       printWindow.print();
-    });
+      return true;
+    } catch (error) {
+      logger.error('HTMLExporter.pdfWebExport', error);
+      printWindow.close();
+      return false;
+    }
+  }
+
+  private static async waitForPrintResources(win: Window): Promise<void> {
+    const cleanup: Array<() => void> = [];
+    const pending: Promise<unknown>[] = [];
+    for (const resource of win.document.querySelectorAll<
+      HTMLLinkElement | HTMLImageElement
+    >('link[rel="stylesheet"], img')) {
+      const ready =
+        resource.tagName === 'IMG'
+          ? (resource as HTMLImageElement).complete
+          : Boolean((resource as HTMLLinkElement).sheet);
+      if (ready) continue;
+      pending.push(
+        new Promise<void>((resolve) => {
+          const done = () => {
+            resource.removeEventListener('load', done);
+            resource.removeEventListener('error', done);
+            resolve();
+          };
+          resource.addEventListener('load', done, { once: true });
+          resource.addEventListener('error', done, { once: true });
+          cleanup.push(() => {
+            resource.removeEventListener('load', done);
+            resource.removeEventListener('error', done);
+          });
+        }),
+      );
+    }
+    if (pending.length === 0 && !win.document.fonts) return;
+    let timer: number | undefined;
+    try {
+      // Offline CDN resources must not leave a print request hanging forever.
+      await Promise.race([
+        // Read FontFaceSet.ready after stylesheets finish: loading CSS can
+        // initiate a new font-loading cycle after an earlier ready resolved.
+        Promise.all(pending).then(() =>
+          win.document.fonts?.ready.catch(() => {}),
+        ),
+        new Promise<void>((resolve) => {
+          timer = window.setTimeout(resolve, 5000);
+        }),
+      ]);
+    } finally {
+      window.clearTimeout(timer);
+      cleanup.forEach((dispose) => dispose());
+    }
   }
 }

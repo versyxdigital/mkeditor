@@ -5,5 +5,9 @@
   "settings_tooltip": "Configurar o editor",
   "shortcuts_tooltip": "Ver atalhos do editor",
   "theme_switch_notice": "Este interruptor fica desativado no desktop se você estiver usando o tema do sistema.",
-  "active_file_default": "MKEditor"
+  "active_file_default": "MKEditor",
+  "code_copied": "Código copiado para a área de transferência",
+  "copy_path_tooltip": "Copiar caminho para a área de transferência",
+  "path_copied": "Caminho copiado para a área de transferência",
+  "toggle_assistant_tooltip": "Alternar assistente de IA"
 }

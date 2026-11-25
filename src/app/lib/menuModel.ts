@@ -19,13 +19,7 @@
  *  so we don't pull in `@types/electron`. `AppMenu` coerces these to the
  *  Electron type at build time. */
 export type MenuRole =
-  | 'undo'
-  | 'redo'
-  | 'cut'
-  | 'copy'
-  | 'paste'
-  | 'togglefullscreen'
-  | 'quit';
+  'undo' | 'redo' | 'cut' | 'copy' | 'paste' | 'togglefullscreen' | 'quit';
 
 export type MenuAction =
   /** Send a `from:*` channel from main to renderer (used by the macOS

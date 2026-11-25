@@ -11,7 +11,6 @@
   "expand_folder": "Розгорнути папку",
   "rename_folder": "Перейменувати папку...",
   "delete_folder": "Видалити папку...",
-
   "prompt_new_file_title": "Назва нового файлу",
   "prompt_new_file_placeholder": "Без назви.md",
   "prompt_new_folder_title": "Назва нової папки",
@@ -19,5 +18,8 @@
   "prompt_rename_folder_title": "Перейменувати папку",
   "confirm_delete_file_title": "Видалити файл?",
   "confirm_delete_folder_title": "Видалити папку?",
-  "confirm_delete_button": "Видалити"
+  "confirm_delete_button": "Видалити",
+  "move_to": "Перемістити до…",
+  "prompt_cancel": "Скасувати",
+  "prompt_save": "Зберегти"
 }

@@ -1,0 +1,14 @@
+{
+  "title": "{{provider}} bağlantısı kur",
+  "openai_description": "Sohbete başlamak için ChatGPT aboneliğinizi veya bir API anahtarını kullanın.",
+  "api_description": "{{provider}} ile sohbete başlamak için bir API anahtarı ekleyin.",
+  "api_option": "API anahtarı kullan",
+  "api_help": "API kullanımı {{provider}} tarafından ayrı faturalandırılır.",
+  "use_saved_key": "Kayıtlı API anahtarını kullan",
+  "use_plan": "Bağlı ChatGPT hesabını kullan",
+  "save": "Kaydet ve bağlan",
+  "saving": "Bağlantı kaydediliyor…",
+  "save_failed": "API anahtarı güvenli şekilde kaydedilemedi. Tekrar deneyin.",
+  "updating": "Bağlantı güncelleniyor…",
+  "anthropic_subscription_note": "Claude abonelikleri MKEditor kullanımını kapsamaz. Anthropic API anahtarıyla bağlanın; API kullanımı ayrı faturalandırılır."
+}

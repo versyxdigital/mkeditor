@@ -71,9 +71,11 @@ function makeMockWindow(senderId: number = FAKE_SENDER_ID): MockWindow {
     fireEvent: (event, ...args) => {
       (eventHandlers.get(event) ?? []).forEach((h) => h(...args));
     },
+
     fireWindowOnce: (event, ...args) => {
       (windowOnceHandlers.get(event) ?? []).forEach((h) => h(...args));
     },
+
     fireWebContentsOnce: (event, ...args) => {
       (webContentsOnceHandlers.get(event) ?? []).forEach((h) => h(...args));
     },

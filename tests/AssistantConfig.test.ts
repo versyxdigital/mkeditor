@@ -44,9 +44,50 @@ function loadAssistantConfig(tmpHome: string): ConfigClass {
 
 const fileFor = (tmpHome: string) =>
   normalize(tmpHome + '/.mkeditor/assistant.json');
+
 const tmpFor = (tmpHome: string) => fileFor(tmpHome) + '.tmp';
 
 describe('AssistantConfig.load', () => {
+  it('persists Ollama context size, rejects invalid updates and can restore the daemon default', () => {
+    withTempHome((tmpHome) => {
+      const Config = loadAssistantConfig(tmpHome);
+      expect(Config.load().ollama.contextLength).toBeUndefined();
+      Config.update({ provider: 'ollama', config: { contextLength: 32768 } });
+      expect(Config.load().ollama.contextLength).toBe(32768);
+      for (const contextLength of [-1, 1.5, NaN, Infinity, 1048577, '8192']) {
+        Config.update({
+          provider: 'ollama',
+          config: { contextLength: contextLength as number },
+        });
+        expect(Config.load().ollama.contextLength).toBe(32768);
+      }
+      Config.update({ provider: 'ollama', config: { contextLength: 0 } });
+      expect(Config.load().ollama.contextLength).toBe(0);
+    });
+  });
+
+  it('persists thinking preferences and ignores invalid levels without erasing the saved value', () => {
+    withTempHome((tmpHome) => {
+      const Config = loadAssistantConfig(tmpHome);
+      expect(Config.load().anthropic.thinkingLevel).toBeUndefined();
+      Config.update({
+        provider: 'anthropic',
+        config: { thinkingLevel: 'high' },
+      });
+      expect(Config.load().anthropic.thinkingLevel).toBe('high');
+      Config.update({
+        provider: 'anthropic',
+        config: { thinkingLevel: 'invalid' as never },
+      });
+      expect(Config.load().anthropic.thinkingLevel).toBe('high');
+      Config.update({
+        provider: 'anthropic',
+        config: { thinkingLevel: 'auto' },
+      });
+      expect(Config.load().anthropic.thinkingLevel).toBe('auto');
+    });
+  });
+
   it('returns DEFAULT_PROVIDER_CONFIG when no file exists', () => {
     withTempHome((tmpHome) => {
       const cfg = loadAssistantConfig(tmpHome).load();
@@ -216,6 +257,7 @@ describe('AssistantConfig — atomic writes', () => {
           calls.push(`write:${p}`);
           return realFs.writeFileSync(p, d, o);
         },
+
         renameSync: (from: string, to: string) => {
           calls.push(`rename:${from}->${to}`);
           return realFs.renameSync(from, to);
@@ -298,6 +340,64 @@ describe('AssistantConfig — schema field name', () => {
       };
       expect(written.providers).toBeDefined();
       expect(written.config).toBeUndefined();
+    });
+  });
+});
+
+describe('AssistantConfig runtime validation regressions', () => {
+  it('ignores malformed values and extra fields in patches', () => {
+    withTempHome((tmpHome) => {
+      const Config = loadAssistantConfig(tmpHome);
+      const before = Config.load();
+      const result = Config.update({
+        provider: 'ollama',
+        config: {
+          enabled: 'false',
+          baseUrl: 42,
+          defaultModel: null,
+          secret: 'must not persist',
+        },
+      } as never);
+      expect(result).toEqual(before);
+      expect(readFileSync(fileFor(tmpHome), 'utf-8')).not.toContain(
+        'must not persist',
+      );
+      expect(() =>
+        Config.update({ provider: 'ollama', config: null } as never),
+      ).not.toThrow();
+    });
+  });
+
+  it('normalises malformed stored config fields without dropping encrypted keys', () => {
+    withTempHome((tmpHome) => {
+      const Config = loadAssistantConfig(tmpHome);
+      Config.update({ provider: 'ollama', config: { enabled: true } });
+      const fs = jest.requireActual('fs') as typeof import('fs');
+      const stored = JSON.parse(fs.readFileSync(fileFor(tmpHome), 'utf-8'));
+      stored.providers.ollama.baseUrl = 42;
+      stored.providers.ollama.enabled = 'false';
+      stored.providers.ollama.defaultModel = null;
+      stored.keys = { anthropic: 'encrypted-key' };
+      fs.writeFileSync(fileFor(tmpHome), JSON.stringify(stored), 'utf-8');
+      expect(Config.load().ollama).toMatchObject({
+        enabled: false,
+        baseUrl: 'http://localhost:11434',
+      });
+      expect(typeof Config.load().ollama.defaultModel).toBe('string');
+      Config.update({ provider: 'openai', config: { enabled: true } });
+      expect(
+        JSON.parse(fs.readFileSync(fileFor(tmpHome), 'utf-8')).keys,
+      ).toEqual({ anthropic: 'encrypted-key' });
+    });
+  });
+
+  it('keeps fallback provider objects independent between loads', () => {
+    withTempHome((tmpHome) => {
+      loadAssistantConfig(tmpHome);
+      const { loadAssistantStore } =
+        require('../src/app/lib/assistantStoreFile') as typeof import('../src/app/lib/assistantStoreFile');
+      loadAssistantStore().providers.anthropic.enabled = true;
+      expect(loadAssistantStore().providers.anthropic.enabled).toBe(false);
     });
   });
 });

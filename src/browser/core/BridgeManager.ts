@@ -9,6 +9,7 @@ import { AssistantContextSource } from './AssistantContextSource';
 import { registerBridgeListeners } from './BridgeListeners';
 import { FileManager } from './FileManager';
 import { FileTreeManager } from './FileTreeManager';
+import { CloudManager } from './CloudManager';
 
 /**
  * Bridge handler.
@@ -48,6 +49,7 @@ export class BridgeManager {
    * `onConfigPush` handler.
    */
   public assistantManager: AssistantManager;
+  public cloudManager: CloudManager;
 
   /** Window-control state. Mutated by `BridgeListeners.from:window:state`
    *  on every main-process maximize / unmaximize event. React's
@@ -74,10 +76,17 @@ export class BridgeManager {
       this.mkeditor,
       this.dispatcher,
     );
-    this.fileTreeManager = new FileTreeManager(this.bridge, (path) =>
-      this.fileManager.openFileFromPath(path),
+    this.fileTreeManager = new FileTreeManager(
+      this.bridge,
+      (path) => this.fileManager.openFileFromPath(path),
+      async (root) => {
+        if (!window.mked?.listWorkspaceFiles)
+          throw new Error('Workspace file listing is unavailable.');
+        return window.mked.listWorkspaceFiles(root);
+      },
     );
     this.assistantManager = new AssistantManager(this.bridge);
+    this.cloudManager = new CloudManager(this.bridge, this.fileManager);
     // Hand the tool catalog to the manager. The executor needs the
     // BridgeManager instance (it reaches into FileManager /
     // FileTreeManager / EditorManager through there), so it's
@@ -238,11 +247,64 @@ export class BridgeManager {
   public editCut(): void {
     this.bridge.send('to:edit:cut', null);
   }
+
   public editCopy(): void {
     this.bridge.send('to:edit:copy', null);
   }
+
   public editPaste(): void {
     this.bridge.send('to:edit:paste', null);
+  }
+
+  /**
+   * Hand off a workspace file to the OS default application
+   * (Windows Photos / macOS Preview / Acrobat / …).
+   */
+  public openInDefaultViewer(path: string): void {
+    this.bridge.send('to:shell:openpath', { path });
+  }
+
+  /**
+   * Move a file or folder inside the workspace. Routes through the
+   * desktop `window.mked.moveItem` invoke when available; falls back
+   * to the web bridge's `moveItem` (added by `WebFileBridge`) so
+   * drag-and-drop and the "Move to…" modal use one call site.
+   *
+   * Returns the structured result from main so the caller can show
+   * a translated toast on refusal (collision, descendant-of-self,
+   * outside-workspace, …). The renderer never needs to refresh the
+   * file tree or remap open-tab paths itself — main emits both
+   * `from:folder:opened` events and `from:path:renamed` and the
+   * existing BridgeListeners handlers thread those through
+   * FileTreeManager and FileManager.
+   */
+  public async moveItem(
+    srcPath: string,
+    dstPath: string,
+  ): Promise<
+    | { ok: true; oldPath: string; newPath: string }
+    | { ok: false; error: string }
+  > {
+    if (window.mked?.moveItem) {
+      return window.mked.moveItem({ srcPath, dstPath });
+    }
+    // Web bridge: WebFileBridge.moveItem (Phase 5) exposes the same
+    // shape. Cast through `unknown` because ContextBridgeAPI is the
+    // narrow desktop-shaped surface; the web bridge has the
+    // additional method.
+    const webBridge = this.bridge as unknown as {
+      moveItem?: (opts: {
+        srcPath: string;
+        dstPath: string;
+      }) => Promise<
+        | { ok: true; oldPath: string; newPath: string }
+        | { ok: false; error: string }
+      >;
+    };
+    if (typeof webBridge.moveItem === 'function') {
+      return webBridge.moveItem({ srcPath, dstPath });
+    }
+    return { ok: false, error: 'move_unsupported_in_this_mode' };
   }
 
   // Menu dispatch helpers (consumed by both BridgeListeners' anonymous
@@ -272,17 +334,13 @@ export class BridgeManager {
   }
 
   public menuFileSave(): void {
-    // Delegate to FileManager so every save path (toolbar button,
-    // menu accelerator Ctrl+S, native macOS menu, in-window
-    // TitleBar) clears the tab's unsaved-changes dot via the same
-    // `markTabClean` call. Previously this branch duplicated the
-    // body but skipped `markTabClean`, so the file was saved on
-    // disk while the dot stayed lit.
+    // FileManager clears the dirty baseline only after the correlated
+    // filesystem acknowledgement, including saves from every menu surface.
     this.fileManager.saveContentToFile();
   }
 
   public menuFileSaveAs(): void {
-    this.bridge.send('to:file:saveas', this.mkeditor.getValue());
+    void this.fileManager.saveContentToFile(true);
   }
 
   public menuFolderOpen(): void {

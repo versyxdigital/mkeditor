@@ -85,7 +85,7 @@ export const TitleBar: React.FC = () => {
     <div
       data-testid="title-bar"
       className={cn(
-        'flex h-8 select-none items-center gap-1 border-b border-border bg-background pl-2 pr-0 text-xs',
+        'flex h-8 shrink-0 select-none items-center gap-1 bg-background pl-2 pr-0 text-xs',
       )}
       style={
         isDesktop ? ({ WebkitAppRegion: 'drag' } as React.CSSProperties) : {}
@@ -193,11 +193,12 @@ const ControlButton: React.FC<{
   <button
     type="button"
     aria-label={ariaLabel}
+    title={ariaLabel}
     onClick={onClick}
     className={cn(
       'flex w-11 items-center justify-center text-foreground',
       variant === 'close'
-        ? 'hover:bg-red-600 hover:text-white'
+        ? 'hover:bg-destructive hover:text-destructive-foreground'
         : 'hover:bg-accent hover:text-accent-foreground',
       'focus:outline-none focus-visible:bg-accent',
     )}

@@ -32,5 +32,11 @@
   "mention_picker_aria": "Datei zum Erwähnen auswählen",
   "mention_picker_empty": "Keine passenden Dateien",
   "hide_conversations_aria": "Unterhaltungsliste ausblenden",
-  "show_conversations_aria": "Unterhaltungsliste anzeigen"
+  "show_conversations_aria": "Unterhaltungsliste anzeigen",
+  "expand_input": "Nachrichtenfeld vergrößern",
+  "collapse_input": "Nachrichtenfeld verkleinern",
+  "mention_picker_loading": "Arbeitsbereichsdateien werden geladen…",
+  "mention_picker_error": "Arbeitsbereichsdateien konnten nicht geladen werden.",
+  "copy_code": "Code kopieren",
+  "copy_failed": "Code konnte nicht kopiert werden."
 }

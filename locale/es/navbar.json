@@ -5,5 +5,9 @@
   "settings_tooltip": "Configurar el editor",
   "shortcuts_tooltip": "Ver atajos del editor",
   "theme_switch_notice": "Este interruptor está deshabilitado en el escritorio si usas el tema del sistema.",
-  "active_file_default": "MKEditor"
+  "active_file_default": "MKEditor",
+  "code_copied": "Código copiado al portapapeles",
+  "copy_path_tooltip": "Copiar ruta al portapapeles",
+  "path_copied": "Ruta copiada al portapapeles",
+  "toggle_assistant_tooltip": "Alternar asistente de IA"
 }

@@ -31,11 +31,13 @@ function installIndexedDbStub() {
           setTimeout(() => req.onsuccess?.(), 0);
           return req;
         },
+
         put: () => {
           const req: { onsuccess?: () => void } = {};
           setTimeout(() => req.onsuccess?.(), 0);
           return req;
         },
+
         delete: () => {
           const req: { onsuccess?: () => void } = {};
           setTimeout(() => req.onsuccess?.(), 0);
@@ -45,6 +47,7 @@ function installIndexedDbStub() {
       oncomplete: undefined as (() => void) | undefined,
       onerror: undefined as (() => void) | undefined,
     }),
+
     close: () => {},
   };
 
@@ -110,6 +113,28 @@ describe('WebFileBridge.persistSession (to:session:save)', () => {
     );
     expect(stored).toEqual(payload);
   });
+
+  it.each(['cloud-drive', 'cloud-dropbox'])(
+    'never persists a %s identity as a local web tab',
+    async (scheme) => {
+      const bridge = await loadBridge();
+      bridge.send('to:session:save', {
+        version: 3,
+        tabs: [
+          {
+            path: `${scheme}://connection/account/item`,
+            name: 'remote.md',
+            viewState: null,
+          },
+        ],
+        activeFile: `${scheme}://connection/account/item`,
+        workspaceRoot: null,
+      });
+      expect(
+        JSON.parse(localStorage.getItem('mkeditor-session') ?? 'null'),
+      ).toMatchObject({ tabs: [], activeFile: null });
+    },
+  );
 });
 
 describe('WebFileBridge.shipSessionRestore', () => {

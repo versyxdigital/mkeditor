@@ -13,7 +13,7 @@ type NodeBinding =
 
 let bindings: NodeBinding[] | null = null;
 
-const supportedLocales = [
+export const supportedLocales = [
   'en',
   'de',
   'es',
@@ -36,12 +36,14 @@ const supportedLocales = [
  * the combined bundle failed to build.
  */
 const namespaces: { ns: string; path: string }[] = [
+  { ns: 'cloud', path: 'locale/{{lng}}/cloud.json' },
   { ns: 'app', path: 'locale/{{lng}}/app.json' },
   { ns: 'navbar', path: 'locale/{{lng}}/navbar.json' },
   { ns: 'sidebar', path: 'locale/{{lng}}/sidebar.json' },
   { ns: 'toolbar', path: 'locale/{{lng}}/toolbar.json' },
   { ns: 'menus-explorer', path: 'locale/{{lng}}/menus/explorer.json' },
   { ns: 'menus-titlebar', path: 'locale/{{lng}}/menus/titlebar.json' },
+  { ns: 'menus-tabs', path: 'locale/{{lng}}/menus/tabs.json' },
   { ns: 'notifications', path: 'locale/{{lng}}/notifications.json' },
   { ns: 'modals-unsaved', path: 'locale/{{lng}}/modals/unsaved.json' },
   { ns: 'modals-properties', path: 'locale/{{lng}}/modals/properties.json' },
@@ -52,6 +54,13 @@ const namespaces: { ns: string; path: string }[] = [
   { ns: 'modals-export', path: 'locale/{{lng}}/modals/export.json' },
   { ns: 'modals-about', path: 'locale/{{lng}}/modals/about.json' },
   { ns: 'modals-shortcuts', path: 'locale/{{lng}}/modals/shortcuts.json' },
+  { ns: 'modals-move', path: 'locale/{{lng}}/modals/move.json' },
+  { ns: 'assistant', path: 'locale/{{lng}}/assistant.json' },
+  { ns: 'assistant-connect', path: 'locale/{{lng}}/assistant-connect.json' },
+  { ns: 'chatgpt', path: 'locale/{{lng}}/chatgpt.json' },
+  { ns: 'assistant-chat', path: 'locale/{{lng}}/assistant-chat.json' },
+  { ns: 'assistant-settings', path: 'locale/{{lng}}/assistant-settings.json' },
+  { ns: 'assistant-tools', path: 'locale/{{lng}}/assistant-tools.json' },
 ];
 
 // Cache fetched JSON resources by URL (dedupe concurrent/duplicate requests)
@@ -138,14 +147,21 @@ export function getUserLocale(mode: 'desktop' | 'web') {
       userLocale = window.mked.getAppLocale();
     }
   } else {
-    const settings = JSON.parse(
-      <string>localStorage.getItem('mkeditor-settings'),
-    );
-
-    if (settings && settings.locale) {
-      userLocale = settings.locale;
-    } else {
-      userLocale = navigator.language;
+    userLocale = navigator.language;
+    try {
+      const settings: unknown = JSON.parse(
+        localStorage.getItem('mkeditor-settings') ?? 'null',
+      );
+      if (
+        settings &&
+        typeof settings === 'object' &&
+        'locale' in settings &&
+        typeof settings.locale === 'string'
+      ) {
+        userLocale = settings.locale;
+      }
+    } catch {
+      // Disabled storage or malformed preferences must not prevent startup.
     }
   }
 
@@ -253,7 +269,9 @@ async function loadFallbackBundles(lng: string) {
     }
   });
 
-  loadedLanguages.add(lng);
+  if (results.every((result) => result.status === 'fulfilled')) {
+    loadedLanguages.add(lng);
+  }
 }
 
 /**
@@ -264,7 +282,7 @@ async function loadFallbackBundles(lng: string) {
  * @returns
  */
 export function normalizeLanguage(lng: string | null | undefined) {
-  if (!lng) return 'en';
+  if (typeof lng !== 'string' || !lng) return 'en';
   const base = lng.toLowerCase().split(/[-_]/)[0];
   return base || 'en';
 }
@@ -279,7 +297,8 @@ export function normalizeLanguage(lng: string | null | undefined) {
 export function prefetchLanguage(lng: string) {
   const base = normalizeLanguage(lng);
   const bundle = resolvePath('locale/{{lng}}/all.json', base);
-  void fetchJson(bundle);
+  // This is a speculative fetch; changeLanguage owns fallback and retry.
+  void fetchJson(bundle).catch(() => {});
 }
 
 /**
@@ -330,6 +349,9 @@ export async function prepareI18n(
   await i18next.init({
     lng,
     fallbackLng: 'en',
+    // Empty translations intentionally hide optional labels; preserve this
+    // behavior explicitly instead of inheriting i18next 27's changed default.
+    returnEmptyString: true,
     ns: namespaces.map((n) => n.ns),
     defaultNS: 'app',
     interpolation: { escapeValue: false },
@@ -348,6 +370,7 @@ export async function prepareI18n(
  * avoid resolving against the previous language's bundle.
  */
 let languageReady: Promise<void> | null = null;
+let languageChangeSequence = 0;
 
 /**
  * Resolves once any in-flight `changeLanguage()` has finished applying.
@@ -363,6 +386,7 @@ export function whenLanguageReady(): Promise<void> {
  * @param lng - the language to load
  */
 export async function changeLanguage(lng: string) {
+  const sequence = ++languageChangeSequence;
   const run = async () => {
     const base = normalizeLanguage(lng);
     const ok = await loadCombinedBundle(base);
@@ -370,14 +394,17 @@ export async function changeLanguage(lng: string) {
       await loadFallbackBundles(base);
     }
 
+    // A slower earlier download must not undo a newer language selection.
+    if (sequence !== languageChangeSequence) return;
     await i18next.changeLanguage(base);
-    applyTranslations();
+    if (sequence === languageChangeSequence) applyTranslations();
   };
 
-  languageReady = run().finally(() => {
-    languageReady = null;
+  const ready = run().finally(() => {
+    if (languageReady === ready) languageReady = null;
   });
-  return languageReady;
+  languageReady = ready;
+  return ready;
 }
 
 /**

@@ -37,8 +37,8 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-[1060] w-full max-w-[500px] -translate-x-1/2 -translate-y-1/2',
-        'rounded-lg border border-border bg-popover text-popover-foreground shadow-lg',
+        'fixed left-1/2 top-1/2 z-[1060] w-[calc(100%-32px)] max-h-[calc(100dvh-32px)] overflow-y-auto max-w-[500px] -translate-x-1/2 -translate-y-1/2',
+        'rounded-[10px] border border-border bg-sidebar text-popover-foreground shadow-[var(--shadow-floating)] [--background:var(--bg-editor)] [--input:var(--border-default)]',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         className,
@@ -57,13 +57,13 @@ const DialogHeader = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn('flex items-center justify-between px-4 py-3', className)}
+    className={cn('flex items-center justify-between px-6 py-5', className)}
     {...props}
   >
     {children}
     <DialogPrimitive.Close
       aria-label="Close"
-      className="ml-2 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm opacity-60 hover:opacity-100 focus:outline-none"
+      className="ml-2 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm opacity-60 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       type="button"
     >
       <svg
@@ -99,7 +99,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn('text-lg font-semibold leading-none', className)}
+    className={cn('text-base font-semibold leading-6', className)}
     {...props}
   />
 ));

@@ -44,4 +44,5 @@ export const codeblocks: BlockMapping[] = [
   { type: 'YAML', key: 'M' },
   { type: 'SQL', key: 'Q' },
   { type: 'XML', key: 'X' },
+  { type: 'Mermaid', key: 'D' },
 ];

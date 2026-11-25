@@ -1,126 +1,100 @@
 import { dom } from '../../dom';
 
-let lineElements: { element: HTMLElement; line: number }[] = [];
+interface LineElement {
+  element: HTMLElement;
+  line: number;
+}
+
+let lineElements: LineElement[] = [];
+let cachedPreview: HTMLElement | null = null;
 let needsRefresh = true;
 
-const cacheLineElements = () => {
-  lineElements = [{ element: document.body, line: 0 }];
-
-  for (const element of document.getElementsByClassName(
+const cacheLineElements = (preview: HTMLElement) => {
+  lineElements = [{ element: preview, line: 0 }];
+  // Assistant messages use the same Markdown renderer, but must never
+  // participate in the document preview's scroll mapping.
+  for (const element of preview.getElementsByClassName(
     dom.meta.scroll.line.class,
   )) {
-    const line = parseInt(
-      <string>element.getAttribute(dom.meta.scroll.line.start),
+    const line = Number.parseInt(
+      element.getAttribute(dom.meta.scroll.line.start) ?? '',
+      10,
     );
-
-    if (isNaN(line)) {
-      continue;
-    }
-
+    if (!Number.isFinite(line) || line < 0) continue;
     const node = element as HTMLElement;
-    if (
-      node.tagName === 'CODE' &&
-      node.parentElement &&
-      node.parentElement.tagName === 'PRE'
-    ) {
-      // Fenced code blocks are a special case since the `code-line` can only be marked on
-      // the `<code>` element and not the parent `<pre>` element.
-      lineElements.push({ element: node.parentElement, line });
-    } else {
-      lineElements.push({ element: node, line });
-    }
+    lineElements.push({
+      element:
+        node.tagName === 'CODE' && node.parentElement?.tagName === 'PRE'
+          ? node.parentElement
+          : node,
+      line,
+    });
   }
+  lineElements.sort((a, b) => a.line - b.line);
+  cachedPreview = preview;
   needsRefresh = false;
 };
 
 const refreshLines = () => {
   needsRefresh = true;
+  cachedPreview = null;
+  lineElements = [];
 };
 
-const ScrollSync = async (line: number, preview: HTMLElement) => {
-  return new Promise((resolve) => {
-    if (line <= 0) {
-      preview.scroll(preview.scrollLeft, 0);
-      return resolve(preview);
-    }
-
-    const { previous, next } = getElementsForSourceLine(line);
-
-    if (!previous) {
-      return;
-    }
-
-    let scrollTo: number;
-    const rect = getElementBounds(previous);
-    const previousTop = rect.top;
-
-    if (next && next.line !== previous.line) {
-      // Between two elements. Go to percentage offset between them.
-      const betweenProgress =
-        (line - previous.line) / (next.line - previous.line);
-      const elementOffset =
-        next.element.getBoundingClientRect().top - previousTop;
-      scrollTo = previousTop + betweenProgress * elementOffset;
-    } else {
-      const progressInElement = line - Math.floor(line);
-      scrollTo = previousTop + rect.height * progressInElement;
-    }
-
-    scrollTo = Math.abs(scrollTo) < 1 ? Math.sign(scrollTo) : scrollTo;
-    preview.scroll(
-      preview.scrollLeft,
-      Math.max(1, preview.scrollTop + scrollTo),
-    );
-
-    // If we're at the top of the editor then force scroll top
-    if (line === 1) preview.scroll({ top: 0 });
-
-    return resolve(preview);
-  });
-};
-
-const getElementsForSourceLine = (targetLine: number) => {
-  const lineNumber = Math.floor(targetLine);
-  const lines = getCodeLineElements();
-  let previous = lines[0] || null;
-
-  for (const entry of lines) {
-    if (entry.line === lineNumber) {
-      return { previous: entry, next: undefined };
-    } else if (entry.line > lineNumber) {
-      return { previous, next: entry };
-    }
-    previous = entry;
+const getElementsForSourceLine = (targetLine: number, preview: HTMLElement) => {
+  if (needsRefresh || cachedPreview !== preview) cacheLineElements(preview);
+  const line = Math.floor(targetLine);
+  // Lower bound keeps lookup logarithmic on large documents and selects
+  // the outermost element when nested tokens share a source line.
+  let low = 0;
+  let high = lineElements.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (lineElements[middle].line < line) low = middle + 1;
+    else high = middle;
   }
-
-  return { previous };
+  const next = lineElements[low];
+  if (next?.line === line) return { previous: next, next: undefined };
+  return { previous: lineElements[Math.max(0, low - 1)], next };
 };
 
-const getCodeLineElements = () => {
-  if (needsRefresh) {
-    cacheLineElements();
-  }
-
-  return lineElements;
-};
-
-const getElementBounds = ({ element }: { element: HTMLElement }) => {
+const getElementBounds = ({ element }: LineElement) => {
   const bounds = element.getBoundingClientRect();
-  // Some code line elements may contain other code line elements.
-  // In those cases, only take the height up to that child.
   const child = element.querySelector(`.${dom.meta.scroll.line.class}`);
-
   if (child) {
-    const childBounds = child.getBoundingClientRect();
-    const height = Math.max(1, childBounds.top - bounds.top);
-
     return {
       top: bounds.top,
-      height,
+      height: Math.max(1, child.getBoundingClientRect().top - bounds.top),
     };
   }
-
   return bounds;
+};
+
+const ScrollSync = async (line: number, preview: HTMLElement | null) => {
+  if (!preview || !Number.isFinite(line)) return preview;
+  if (line <= 1) {
+    preview.scroll(preview.scrollLeft, 0);
+    return preview;
+  }
+
+  const { previous, next } = getElementsForSourceLine(line, preview);
+  const rect = getElementBounds(previous);
+  let targetTop = rect.top;
+  if (next && next.line !== previous.line) {
+    const progress = (line - previous.line) / (next.line - previous.line);
+    targetTop +=
+      progress * (next.element.getBoundingClientRect().top - rect.top);
+  } else {
+    targetTop += rect.height * (line - Math.floor(line));
+  }
+  // Element rectangles are viewport-relative; the scroll offset must be
+  // measured from the preview's own content edge, including its border.
+  const previewTop = preview.getBoundingClientRect().top + preview.clientTop;
+  preview.scroll(
+    preview.scrollLeft,
+    Math.max(0, preview.scrollTop + targetTop - previewTop),
+  );
+  return preview;
 };
 
 export { ScrollSync, refreshLines };

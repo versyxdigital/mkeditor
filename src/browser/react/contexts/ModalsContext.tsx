@@ -1,15 +1,20 @@
 import * as React from 'react';
 
-export type ModalKey = 'settings' | 'exportSettings' | 'about' | 'shortcuts';
+export type ModalKey =
+  'settings' | 'exportSettings' | 'about' | 'shortcuts' | 'moveItem';
 
 /**
- * Optional payload openers can hand to `openModal`. Only the settings
- * modal consumes one today (the AI Assistant sidebar empty-state
- * CTA opens the modal directly on the AI Providers tab); the others
- * are flag-only. Keep this union narrow so type-checking catches a
- * typo at the call site.
+ * Optional payload openers can hand to `openModal`. The settings
+ * modal reads `tab` to pick the initial section; the move-item
+ * modal needs the source path so it knows what to move on confirm.
+ * Keep this union narrow so type-checking catches a typo at the
+ * call site.
  */
-export type ModalPayload = { tab?: 'general' | 'assistant' } | null | undefined;
+export type ModalPayload =
+  | { tab?: 'general' | 'assistant' | 'connections' }
+  | { sourcePath: string }
+  | null
+  | undefined;
 
 export interface ModalsState {
   open: ModalKey | null;
@@ -79,8 +84,7 @@ export function useModals(): ModalsState {
  * function ignores undefined payloads cleanly.
  */
 let externalOpenModal:
-  | ((key: ModalKey, payload?: ModalPayload) => void)
-  | null = null;
+  ((key: ModalKey, payload?: ModalPayload) => void) | null = null;
 
 export function registerOpenModal(
   fn: (key: ModalKey, payload?: ModalPayload) => void,

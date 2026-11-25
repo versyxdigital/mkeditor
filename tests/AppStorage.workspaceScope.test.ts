@@ -4,15 +4,24 @@
  *
  * These handlers accept renderer-supplied paths and perform direct
  * fs operations, so the trust boundary lives in
- * `assertInWorkspace`. Tests use real tmpdirs (no fs mocking) so
- * the symlink branch is exercised against the actual OS behaviour.
+ * `assertInWorkspace`. Directory links use real temp directories and
+ * Windows junctions. File-link metadata is injected in two focused cases
+ * so those checks also run without Windows symlink privileges.
  */
 
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from 'fs';
+import {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+  mkdirSync,
+  promises as fs,
+  realpathSync,
+} from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 
 import { AppStorage } from '../src/app/lib/AppStorage';
+import { createDirectoryLink } from './utils/directoryLink';
 
 function withTempRoot<T>(fn: (root: string) => Promise<T>): Promise<T> {
   const root = mkdtempSync(join(tmpdir(), 'mkeditor-scope-'));
@@ -21,6 +30,7 @@ function withTempRoot<T>(fn: (root: string) => Promise<T>): Promise<T> {
 
 describe('AppStorage.assertInWorkspace', () => {
   afterEach(() => {
+    jest.restoreAllMocks();
     AppStorage.setWorkspaceRoot(null);
   });
 
@@ -31,12 +41,12 @@ describe('AppStorage.assertInWorkspace', () => {
     ).rejects.toThrow(/No workspace is open/);
   });
 
-  it('rejects an empty / non-string path', async () => {
+  it.each(['', null, 42, {}])('rejects an invalid path: %p', async (path) => {
     await withTempRoot(async (root) => {
       AppStorage.setWorkspaceRoot(root);
-      await expect(AppStorage.assertInWorkspace('')).rejects.toThrow(
-        /Invalid path/,
-      );
+      await expect(
+        AppStorage.assertInWorkspace(path as unknown as string),
+      ).rejects.toThrow(/Invalid path/);
     });
   });
 
@@ -46,28 +56,21 @@ describe('AppStorage.assertInWorkspace', () => {
       writeFileSync(file, 'hi');
       AppStorage.setWorkspaceRoot(root);
       const safe = await AppStorage.assertInWorkspace(file);
-      // The returned path is realpath-canonicalised — on platforms
-      // where the tmpdir root is itself a symlink (macOS
-      // /var → /private/var) both sides resolve so we compare
-      // suffixes rather than equality.
-      expect(safe.endsWith('notes.md')).toBe(true);
+      expect(safe).toBe(await fs.realpath(file));
     });
   });
 
   it('rejects a path outside the workspace (parent-traversal via `..`)', async () => {
-    await withTempRoot(async (root) => {
+    await withTempRoot(async (parent) => {
+      const root = join(parent, 'workspace');
+      mkdirSync(root);
       AppStorage.setWorkspaceRoot(root);
-      // ../escape would land in the tmpdir parent — outside the
-      // workspace boundary.
+      // The sibling is outside the workspace but inside this private fixture.
       const escapeTarget = join(root, '..', 'escape.md');
       writeFileSync(escapeTarget, 'leaked');
-      try {
-        await expect(
-          AppStorage.assertInWorkspace(escapeTarget),
-        ).rejects.toThrow(/outside the workspace/);
-      } finally {
-        rmSync(escapeTarget, { force: true });
-      }
+      await expect(AppStorage.assertInWorkspace(escapeTarget)).rejects.toThrow(
+        /outside the workspace/,
+      );
     });
   });
 
@@ -85,7 +88,7 @@ describe('AppStorage.assertInWorkspace', () => {
     });
   });
 
-  it('rejects a symlink whose target escapes the workspace (no symlink-laundering)', async () => {
+  it('rejects a file reached through an external directory link (no link laundering)', async () => {
     // Real-fs symlink test — the canonicalisation step is the only
     // thing keeping a malicious / careless symlink from leaking
     // arbitrary files outside the workspace.
@@ -93,17 +96,10 @@ describe('AppStorage.assertInWorkspace', () => {
       await withTempRoot(async (otherRoot) => {
         const secret = join(otherRoot, 'secret.md');
         writeFileSync(secret, 'top-secret');
-        const link = join(root, 'innocent.md');
-        try {
-          symlinkSync(secret, link);
-        } catch (err) {
-          // Some CI / Windows configs deny symlink creation
-          // without admin — skip if we can't even set up the
-          // adversarial scenario.
-          const code = (err as NodeJS.ErrnoException).code;
-          if (code === 'EPERM' || code === 'EACCES') return;
-          throw err;
-        }
+        const directoryLink = join(root, 'linked');
+        createDirectoryLink(otherRoot, directoryLink);
+        const link = join(directoryLink, 'secret.md');
+        expect(await fs.realpath(link)).toBe(realpathSync.native(secret));
         AppStorage.setWorkspaceRoot(root);
         await expect(AppStorage.assertInWorkspace(link)).rejects.toThrow(
           /outside the workspace/,
@@ -116,13 +112,13 @@ describe('AppStorage.assertInWorkspace', () => {
     await withTempRoot(async (root) => {
       AppStorage.setWorkspaceRoot(root);
       const target = join(root, 'new-subdir', 'fresh.md');
-      // Parent doesn't exist either — assertInWorkspace falls back
-      // to lexical scope check when realpath(parent) ENOENTs. The
-      // handler's mkdir -p creates the chain.
+      // Missing parents must still be resolved against the canonical root.
       const safe = await AppStorage.assertInWorkspace(target, {
         mustExist: false,
       });
-      expect(safe.endsWith(join('new-subdir', 'fresh.md'))).toBe(true);
+      expect(safe).toBe(
+        join(await fs.realpath(root), 'new-subdir', 'fresh.md'),
+      );
     });
   });
 
@@ -133,6 +129,66 @@ describe('AppStorage.assertInWorkspace', () => {
       await expect(
         AppStorage.assertInWorkspace(escape, { mustExist: false }),
       ).rejects.toThrow(/outside the workspace/);
+    });
+  });
+
+  it('mustExist: false rejects external file-link metadata without requiring link privileges', async () => {
+    await withTempRoot(async (root) => {
+      await withTempRoot(async (outside) => {
+        const secret = join(outside, 'secret.md');
+        writeFileSync(secret, 'do not overwrite');
+        const link = join(root, 'shortcut.md');
+        const canonicalSecret = await fs.realpath(secret);
+        const realpath = jest
+          .spyOn(fs, 'realpath')
+          .mockResolvedValueOnce(canonicalSecret);
+        AppStorage.setWorkspaceRoot(root);
+        await expect(
+          AppStorage.assertInWorkspace(link, { mustExist: false }),
+        ).rejects.toThrow(/outside the workspace/);
+        expect(realpath).toHaveBeenCalledWith(link);
+        expect(await fs.readFile(secret, 'utf8')).toBe('do not overwrite');
+      });
+    });
+  });
+
+  it('mustExist: false resolves ancestors above missing parent directories', async () => {
+    await withTempRoot(async (root) => {
+      await withTempRoot(async (outside) => {
+        const link = join(root, 'shortcut');
+        createDirectoryLink(outside, link);
+        AppStorage.setWorkspaceRoot(root);
+        await expect(
+          AppStorage.assertInWorkspace(
+            join(link, 'missing', 'nested', 'note.md'),
+            {
+              mustExist: false,
+            },
+          ),
+        ).rejects.toThrow(/outside the workspace/);
+      });
+    });
+  });
+
+  it('mustExist: false refuses dangling symlinks instead of treating them as missing', async () => {
+    await withTempRoot(async (root) => {
+      const link = join(root, 'dangling.md');
+      const linkMetadata = Object.assign(await fs.lstat(root), {
+        isSymbolicLink: () => true,
+      });
+      const missingTarget = Object.assign(new Error('Dangling file link'), {
+        code: 'ENOENT',
+      });
+      const realpath = jest
+        .spyOn(fs, 'realpath')
+        .mockRejectedValueOnce(missingTarget);
+      const lstat = jest.spyOn(fs, 'lstat').mockResolvedValueOnce(linkMetadata);
+      AppStorage.setWorkspaceRoot(root);
+      await expect(
+        AppStorage.assertInWorkspace(link, { mustExist: false }),
+      ).rejects.toThrow(/symbolic link/);
+      expect(realpath).toHaveBeenCalledWith(link);
+      expect(lstat).toHaveBeenCalledWith(link);
     });
   });
 
@@ -159,17 +215,11 @@ describe('AppStorage.assertInWorkspace', () => {
         mkdtempSync(join(tmpdir(), 'mkeditor-link-')),
         'workspace-link',
       );
-      try {
-        symlinkSync(realRoot, linkRoot, 'dir');
-      } catch (err) {
-        const code = (err as NodeJS.ErrnoException).code;
-        if (code === 'EPERM' || code === 'EACCES') return;
-        throw err;
-      }
+      createDirectoryLink(realRoot, linkRoot);
       try {
         AppStorage.setWorkspaceRoot(linkRoot);
         const safe = await AppStorage.assertInWorkspace(file);
-        expect(safe.endsWith('inside.md')).toBe(true);
+        expect(safe).toBe(await fs.realpath(file));
       } finally {
         rmSync(linkRoot, { force: true });
         rmSync(dirname(linkRoot), { recursive: true, force: true });
@@ -188,7 +238,7 @@ describe('AppStorage.assertInWorkspace', () => {
       writeFileSync(file, 'hi');
       AppStorage.setWorkspaceRoot(root);
       const safe = await AppStorage.assertInWorkspace(file);
-      expect(safe.endsWith(join('..config', 'note.md'))).toBe(true);
+      expect(safe).toBe(await fs.realpath(file));
     });
   });
 

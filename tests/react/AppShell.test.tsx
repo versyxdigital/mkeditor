@@ -11,6 +11,8 @@
  */
 
 import * as React from 'react';
+import { act, screen } from '@testing-library/react';
+import { getCurrentAssistantState } from '../../src/browser/assistantUiState';
 
 import { Shell } from '../../src/browser/react/App';
 import { renderWithProviders } from '../utils/render';
@@ -32,18 +34,43 @@ jest.mock('../../src/browser/react/components/AssistantSidebar', () => ({
 // `[data-panel-id="assistant-pane"]` assertion below can do its job
 // without dragging in the real layout machinery.
 jest.mock('react-resizable-panels', () => ({
-  Group: ({ children, id }: { children: React.ReactNode; id?: string }) => (
-    <div data-group-id={id}>{children}</div>
+  Group: ({
+    children,
+    id,
+    onLayoutChanged,
+    resizeTargetMinimumSize,
+  }: {
+    children: React.ReactNode;
+    id?: string;
+    onLayoutChanged?: (layout: Record<string, number>) => void;
+    resizeTargetMinimumSize?: { fine: number };
+  }) => (
+    <div
+      data-group-id={id}
+      data-target-size={resizeTargetMinimumSize?.fine}
+      onPointerUp={() => onLayoutChanged?.({ 'assistant-pane': 35 })}
+      onDoubleClick={() => onLayoutChanged?.({ 'assistant-pane': 0 })}
+    >
+      {children}
+    </div>
   ),
+
   Panel: ({ children, id }: { children: React.ReactNode; id?: string }) => (
     <div data-panel-id={id}>{children}</div>
   ),
-  Separator: () => <div data-testid="rrp-separator" />,
+
+  Separator: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+    <div {...props} role="separator">
+      {children}
+    </div>
+  ),
 }));
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   whenLanguageReady: () => Promise.resolve(),
+
   normalizeLanguage: (lng: string) => lng,
   getAvailableLocales: jest.fn(async () => []),
   initI18n: jest.fn(),
@@ -51,6 +78,24 @@ jest.mock('../../src/browser/i18n', () => ({
 }));
 
 describe('<Shell> — assistant pane visibility', () => {
+  it('provides a visible, labelled resize handle and persists settled widths without clearing them on collapse', () => {
+    const groupRef = React.createRef<GroupImperativeHandle>();
+    renderWithProviders(<Shell workspaceGroupRef={groupRef} />, {
+      managers: { mode: 'desktop' },
+    });
+    const handle = screen.getByRole('separator', {
+      name: 'assistant:resize_sidebar',
+    });
+    expect(handle).toHaveClass('w-2', 'cursor-col-resize');
+    const group = document.querySelector('[data-group-id="mkeditor-layout"]')!;
+    expect(group).toHaveAttribute('data-target-size', '18');
+    act(() => group.dispatchEvent(new Event('pointerup', { bubbles: true })));
+    expect(getCurrentAssistantState().size).toBe(35);
+    act(() =>
+      group.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })),
+    );
+    expect(getCurrentAssistantState().size).toBe(35);
+  });
   it('renders the assistant pane (panel-id="assistant-pane") in desktop mode', () => {
     const groupRef = React.createRef<GroupImperativeHandle>();
     renderWithProviders(<Shell workspaceGroupRef={groupRef} />, {

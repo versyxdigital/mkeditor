@@ -2,9 +2,11 @@ import './icons';
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 
+import type { PastedImageWriter } from './core/PasteImageHandler';
 import { EditorDispatcher } from './events/EditorDispatcher';
 import { initI18n, changeLanguage } from './i18n';
 import { markdownStylesheet } from './markdownStyles';
+import { designSystemStylesheet } from './designSystem';
 import { getExecutionBridge, logger } from './util';
 import { showSplashScreen } from './splash';
 
@@ -39,7 +41,7 @@ const platform: 'web' | 'darwin' | 'win32' | 'linux' =
 // exported HTML by HTMLExporter — single source of truth.
 const markdownStyleEl = document.createElement('style');
 markdownStyleEl.id = 'md-styles';
-markdownStyleEl.textContent = markdownStylesheet;
+markdownStyleEl.textContent = designSystemStylesheet + markdownStylesheet;
 document.head.appendChild(markdownStyleEl);
 
 // Precompute bindings, warm language bundle fetch and initialize i18n.
@@ -122,6 +124,7 @@ async function boot() {
     { CommandProvider },
     { CompletionProvider },
     { MkedLinkProvider },
+    { PasteImageHandler },
     { SettingsProvider },
     { ExportSettingsProvider },
     { BridgeManager },
@@ -131,6 +134,7 @@ async function boot() {
     import('./core/providers/CommandProvider'),
     import('./core/providers/CompletionProvider'),
     import('./core/providers/MkedLinkProvider'),
+    import('./core/PasteImageHandler'),
     import('./core/providers/SettingsProvider'),
     import('./core/providers/ExportSettingsProvider'),
     import('./core/BridgeManager'),
@@ -156,6 +160,7 @@ async function boot() {
     CommandProvider,
     CompletionProvider,
     MkedLinkProvider,
+    PasteImageHandler,
     SettingsProvider,
     ExportSettingsProvider,
     BridgeManager,
@@ -170,6 +175,7 @@ let pendingFactories: {
   CommandProvider: typeof import('./core/providers/CommandProvider').CommandProvider;
   CompletionProvider: typeof import('./core/providers/CompletionProvider').CompletionProvider;
   MkedLinkProvider: typeof import('./core/providers/MkedLinkProvider').MkedLinkProvider;
+  PasteImageHandler: typeof import('./core/PasteImageHandler').PasteImageHandler;
   SettingsProvider: typeof import('./core/providers/SettingsProvider').SettingsProvider;
   ExportSettingsProvider: typeof import('./core/providers/ExportSettingsProvider').ExportSettingsProvider;
   BridgeManager: typeof import('./core/BridgeManager').BridgeManager;
@@ -203,6 +209,7 @@ function onEditorReadyInner() {
     CommandProvider,
     CompletionProvider,
     MkedLinkProvider,
+    PasteImageHandler,
     SettingsProvider,
     ExportSettingsProvider,
     BridgeManager,
@@ -243,6 +250,8 @@ function onEditorReadyInner() {
     () =>
       editorManager.providers.settings?.getSetting('sessionRestore') ?? true,
   );
+  if (mode === 'desktop') bridgeManager.fileManager.suspendSessionSaves();
+  bridgeManager.fileManager.setCheckpointAcknowledgements(mode === 'desktop');
 
   // Round-trip the assistant right-sidebar view-state through the
   // existing session payload. UIStateContext keeps a live mirror
@@ -255,6 +264,24 @@ function onEditorReadyInner() {
     bridgeManager.fileManager.notifyAssistantStateChanged(),
   );
 
+  // Paste-image plumbing.
+  const settingsProvider = editorManager.providers.settings;
+  if (settingsProvider) {
+    const writer: PastedImageWriter =
+      api !== 'web'
+        ? (opts) => window.mked!.pasteImage(opts)
+        : (opts) =>
+            (bridge as InstanceType<typeof WebFileBridge>).pasteImage(opts);
+    editorManager.registerCleanup(
+      new PasteImageHandler(
+        mkeditor,
+        bridgeManager.fileManager,
+        settingsProvider,
+        writer,
+      ).attach(),
+    );
+  }
+
   // Source the active editable path from FileManager (renderer-side,
   // always current). `getActiveEditablePath` returns the file Monaco
   // is actually backing — including when a popped-out diff preview
@@ -262,9 +289,10 @@ function onEditorReadyInner() {
   // link resolution stays anchored to the user's real working
   // document. Reading via the main process here would lag tab
   // switches (main only learns about `from:file:opened`).
-  new MkedLinkProvider(mkeditor, () =>
+  const linkProvider = new MkedLinkProvider(mkeditor, () =>
     bridgeManager.fileManager.getActiveEditablePath(),
   );
+  editorManager.registerCleanup(() => linkProvider.dispose());
 
   if (api !== 'web') {
     api.receive('from:i18n:set', (lng: string) => {

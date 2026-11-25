@@ -10,19 +10,20 @@ import {
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log/main';
-import { existsSync, writeFileSync } from 'fs';
+import { existsSync, writeFileSync, promises as fs } from 'fs';
 import { homedir } from 'os';
-import { join, normalize } from 'path';
+import { extname, join, normalize, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { AppAssistant } from './lib/AppAssistant';
 import { AppBridge } from './lib/AppBridge';
 import { AppMenu } from './lib/AppMenu';
-import { AppSession } from './lib/AppSession';
 import { AppSettings } from './lib/AppSettings';
 import { AppStorage } from './lib/AppStorage';
 import { AppWindow } from './lib/AppWindow';
 import { runQuitFlush } from './lib/quitFlush';
 import { iconBase64 } from './assets/icon';
 import type { LogConfig } from './interfaces/Logging';
+import { WORKSPACE_EXTENSIONS_DOTTED } from './shared/fileExtensions';
 
 /** --------------------App Logging------------------------------- */
 
@@ -31,7 +32,13 @@ const logpath = join(normalize(homedir()), '.mkeditor/main.log');
 
 // Truncate the log file
 if (existsSync(logpath)) {
-  writeFileSync(logpath, '');
+  try {
+    writeFileSync(logpath, '');
+  } catch (err) {
+    // Logging must not prevent the editor opening when the previous log
+    // is locked or the user no longer has write access to its directory.
+    console.warn('Unable to truncate the previous MKEditor log.', err);
+  }
 }
 
 // Configure the logger
@@ -41,6 +48,7 @@ log.initialize();
 
 // Define log config to pass to app handlers
 const logconfig: LogConfig = { log, logpath };
+let sessionBridge: AppBridge | null = null;
 
 /** --------------------Auto Updates------------------------------ */
 
@@ -70,6 +78,7 @@ protocol.registerSchemesAsPrivileged([
 /** --------------------App Entry--------------------------------- */
 
 let context: BrowserWindow | null;
+let pendingOpenFile: string | null = null;
 
 /**
  * Main entry point for MKEditor app.
@@ -77,6 +86,8 @@ let context: BrowserWindow | null;
  * @param file - present if we are opening the app from a file
  */
 function main(file: string | null = null) {
+  // Authorisation belongs to this window's workspace selection/restore.
+  AppStorage.setWorkspaceRoot(null);
   // Pick the window chrome per platform. Windows + Linux become frameless
   // so the renderer's `<TitleBar>` can draw the logo, menu bar, and
   // window-control buttons. macOS keeps the native traffic lights via
@@ -137,6 +148,7 @@ function main(file: string | null = null) {
   // Load the main process "bridge" to handle IPC traffic across
   // execution contexts.
   const bridge = new AppBridge(context);
+  sessionBridge = bridge;
   bridge.provide('settings', settings);
   bridge.provide('logger', logconfig);
 
@@ -145,6 +157,7 @@ function main(file: string | null = null) {
   // instance; the renderer reaches it only through the IPC surface
   // AppBridge whitelists.
   const assistant = new AppAssistant(context);
+  context.once('closed', () => assistant.dispose());
   bridge.provide('assistant', assistant);
 
   bridge.register(); // Register all IPC event listeners
@@ -183,15 +196,42 @@ function main(file: string | null = null) {
     return new Response(''); // satisfy the protocol
   });
 
-  // Set the window open handler for HTTP(S) URLs.*
+  // External URLs launch in the browser; preview file links must pass
+  // workspace/type checks before opening a document or OS application.
+  const linkWindow = context;
   context.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url); // Use the user's default browser
+    try {
+      const scheme = new URL(url).protocol;
+      if (scheme === 'http:' || scheme === 'https:' || scheme === 'mailto:') {
+        void Promise.resolve(shell.openExternal(url)).catch((error) => {
+          log.error('Unable to open external link', error);
+        });
+      } else if (scheme === 'file:') {
+        const path = fileURLToPath(url);
+        void AppStorage.assertInWorkspace(path)
+          .then(async (safePath) => {
+            const extension = extname(safePath).toLowerCase();
+            if (!WORKSPACE_EXTENSIONS_DOTTED.has(extension)) return;
+            const stats = await fs.stat(safePath);
+            if (!stats.isFile() || linkWindow.isDestroyed()) return;
+            if (extension === '.md') {
+              await AppStorage.openPath(linkWindow, safePath);
+            } else {
+              const error = await shell.openPath(safePath);
+              if (error) log.error('Unable to open workspace link', error);
+            }
+          })
+          .catch((error) => log.error('Unable to open workspace link', error));
+      }
+    } catch {
+      // Malformed or unsupported links cannot launch an OS application.
+    }
     return { action: 'deny' }; // No new window in main process
   });
 
   // On finished frotend loading, set the editor theme and settings,
   // and set the active file (untitled new file if no file open).
-  context.webContents.on('did-finish-load', () => {
+  context.webContents.on('did-finish-load', async () => {
     if (context) {
       context.webContents.send(
         'from:theme:set',
@@ -200,12 +240,15 @@ function main(file: string | null = null) {
       context.webContents.send('from:settings:set', settings.loadFile());
 
       const sessionEnabled = settings.applied?.sessionRestore ?? true;
-      context.webContents.send(
-        'from:session:restore',
-        sessionEnabled
-          ? AppSession.buildRestoreEnvelope(AppSession.load())
-          : { session: null, missing: [], contents: {} },
-      );
+      const restoreWindow = context;
+      const envelope = await bridge.restoreSession(sessionEnabled);
+      if (!context || context !== restoreWindow || context.isDestroyed())
+        return;
+      const restoreRoot = envelope.session?.workspaceRoot;
+      if (restoreRoot && !AppStorage.offerWorkspaceRoot(restoreRoot, true)) {
+        envelope.session = { ...envelope.session!, workspaceRoot: null };
+      }
+      context.webContents.send('from:session:restore', envelope);
 
       // Hydrate the renderer with the sanitized AI Assistant config.
       // The payload exposes per-provider `hasKey: boolean` only —
@@ -229,12 +272,45 @@ function main(file: string | null = null) {
   };
   nativeTheme.on('updated', handleNativeThemeUpdated);
 
+  let closeCheckpointReady = false;
+  let closeCheckpointPending = false;
+  const closingWindow = context;
   context.on('close', (event) => {
+    if (closeCheckpointReady) return;
+    if (closeCheckpointPending) {
+      event.preventDefault();
+      return;
+    }
     bridge.promptUserBeforeQuit(<Event>event);
+    if (event.defaultPrevented) {
+      isFlushingSession = false;
+      quitCheckpointReady = false;
+      quitAttempt++;
+      return;
+    }
+    if (isFlushingSession && quitCheckpointReady) return;
+    event.preventDefault();
+    if (isFlushingSession) return;
+    closeCheckpointPending = true;
+    void bridge.flushSession().then((ok) => {
+      closeCheckpointPending = false;
+      if (closingWindow.isDestroyed()) return;
+      if (ok || bridge.confirmFailedSession()) {
+        closeCheckpointReady = true;
+        closingWindow.close();
+      } else
+        closingWindow.webContents.send('from:notification:display', {
+          status: 'error',
+          key: 'cloud:recovery_storage_error',
+        });
+    });
   });
 
   context.on('closed', () => {
     nativeTheme.off('updated', handleNativeThemeUpdated);
+    // macOS can recreate the window without restarting the process. The
+    // protocol callback owns this window's bridge and must not survive it.
+    protocol.unhandle('mked');
     context = null;
   });
 
@@ -248,13 +324,15 @@ function main(file: string | null = null) {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', (event, args) => {
-    console.log({ event, args });
+  app.on('second-instance', (_event, args, workingDirectory) => {
     app.focus();
     // If user has opened the app via a file, then set active file.
     if (args.length >= 2) {
-      const filepath = args.find((arg) => arg.toLowerCase().endsWith('.md'));
-      if (context && filepath) AppStorage.openPath(context, filepath);
+      const filepath = args.find(
+        (arg) => !arg.startsWith('-') && arg.toLowerCase().endsWith('.md'),
+      );
+      if (context && filepath)
+        AppStorage.openActiveFile(context, resolve(workingDirectory, filepath));
     }
   });
 }
@@ -265,7 +343,8 @@ app.on('ready', () => {
   if (process.platform === 'win32' && process.argv.length >= 2) {
     file = process.argv[1];
   }
-  main(file);
+  main(pendingOpenFile ?? file);
+  pendingOpenFile = null;
 });
 
 autoUpdater.on('update-available', async (event) => {
@@ -292,54 +371,83 @@ app.on('activate', () => {
 });
 
 // MacOS - open with... Also handle files using the same runnning instance
-app.on('open-file', (event) => {
+app.on('open-file', (event, file) => {
   event.preventDefault();
-  let file: string | null = null;
-  if (process.platform === 'win32' && process.argv.length >= 2) {
-    file = process.argv[1];
-  }
-
-  if (!context) {
+  if (context) {
+    AppStorage.openActiveFile(context, file);
+  } else if (app.isReady()) {
     main(file);
   } else {
-    AppStorage.openActiveFile(context, file);
+    // macOS delivers open-file before ready when launching from Finder.
+    pendingOpenFile = file;
   }
 });
 
 /**
  * Final session flush on quit. Asks the renderer to send one last
- * `to:session:save` (so the at-quit cursor position of the active tab
- * lands on disk), waits up to ~250 ms for it to arrive, and then
- * proceeds with quit either way. The renderer's debounced save covers
- * everything else, so a missed ack just means the very last cursor
- * movement isn't persisted — not data loss.
+ * checkpoint and waits for the disk acknowledgement. A failed or timed
+ * out checkpoint requires an explicit decision before quitting.
  */
 let isFlushingSession = false;
+let quitCheckpointReady = false;
+let quitAttempt = 0;
 app.on('before-quit', (event) => {
-  if (isFlushingSession) return; // second pass after our own app.quit()
+  if (isFlushingSession) {
+    if (!quitCheckpointReady) event.preventDefault();
+    return;
+  }
   if (!context || context.isDestroyed()) return;
 
   event.preventDefault();
   isFlushingSession = true;
+  const attempt = ++quitAttempt;
+  let sessionSaved = false;
 
-  // Two flush requests fan out in parallel — session (FileManager
-  // tabs + cursor) and AI conversations. We resolve when BOTH ack
-  // OR the 250ms safety timeout fires. Missing one ack just costs
-  // a few hundred ms of unpersisted activity, not data loss; the
-  // renderer's debounced saves cover everything else. Logic lives
-  // in `quitFlush.ts` so it can be unit-tested without spinning up
-  // Electron's app lifecycle.
+  // Flush session and AI conversations in parallel. The session signal
+  // here is emitted only after the checkpoint has committed (or failed),
+  // rather than when its IPC payload first arrives.
   runQuitFlush({
-    on: (channel, listener) => ipcMain.on(channel, listener),
-    off: (channel, listener) => ipcMain.removeListener(channel, listener),
+    on: (channel, listener) =>
+      ipcMain.on(
+        channel === 'to:session:save' ? 'mked:session:committed' : channel,
+        listener,
+      ),
+
+    off: (channel, listener) =>
+      ipcMain.removeListener(
+        channel === 'to:session:save' ? 'mked:session:committed' : channel,
+        listener,
+      ),
+
     send: (channel, payload) => {
       if (!context || context.isDestroyed()) return;
+      if (channel === 'from:session:flush-request') {
+        void sessionBridge?.flushSession().then((ok) => {
+          sessionSaved = ok;
+          ipcMain.emit('mked:session:committed');
+        });
+        return;
+      }
       // `from:session:flush-request` historically went without a
       // payload; preserve that signature for the renderer.
       if (payload === undefined) context.webContents.send(channel);
       else context.webContents.send(channel, payload);
     },
-    onDone: () => app.quit(),
+    timeoutMs: 2200,
+    onDone: () => {
+      if (attempt !== quitAttempt) return;
+      if (sessionSaved || sessionBridge?.confirmFailedSession()) {
+        quitCheckpointReady = true;
+        app.quit();
+      } else {
+        isFlushingSession = false;
+        if (context && !context.isDestroyed())
+          context.webContents.send('from:notification:display', {
+            status: 'error',
+            key: 'cloud:recovery_storage_error',
+          });
+      }
+    },
   });
 });
 

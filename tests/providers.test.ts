@@ -93,6 +93,12 @@ describe('SettingsProvider.loadSettingsFromLocalStorage (web)', () => {
     expect(provider.getSetting('fileExplorer')).toEqual({
       extensions: ['md'],
     });
+    // `pasteImages` (4.2.0) — same upgrade story. Pre-existing
+    // settings get the `./assets` default so PasteImageHandler can
+    // read `pasteImages.directory` without crashing.
+    expect(provider.getSetting('pasteImages')).toEqual({
+      directory: './assets',
+    });
 
     // The merged shape was persisted back so subsequent loads are
     // consistent (sessionRestore now present in storage).
@@ -102,6 +108,7 @@ describe('SettingsProvider.loadSettingsFromLocalStorage (web)', () => {
     expect(upgraded.sessionRestore).toBe(true);
     expect(upgraded.autoindent).toBe(true);
     expect(upgraded.fileExplorer).toEqual({ extensions: ['md'] });
+    expect(upgraded.pasteImages).toEqual({ directory: './assets' });
   });
 
   it('skips re-persisting when stored already has every key', () => {
@@ -116,6 +123,7 @@ describe('SettingsProvider.loadSettingsFromLocalStorage (web)', () => {
       sessionRestore: false,
       locale: 'en',
       fileExplorer: { extensions: ['md'] },
+      pasteImages: { directory: './assets' },
     };
     localStorage.setItem('mkeditor-settings', JSON.stringify(full));
 

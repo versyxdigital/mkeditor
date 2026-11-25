@@ -17,7 +17,9 @@ import { screen, fireEvent, within } from '@testing-library/react';
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   normalizeLanguage: (lng: string) => lng,
+
   whenLanguageReady: () => Promise.resolve(),
   getAvailableLocales: jest.fn(async () => []),
   initI18n: jest.fn(),
@@ -38,14 +40,17 @@ jest.mock('react-resizable-panels', () => ({
   Group: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="rrp-group">{children}</div>
   ),
+
   Panel: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="rrp-panel">{children}</div>
   ),
+
   Separator: () => <div data-testid="rrp-separator" />,
 }));
 
 import { ProviderTab } from '../../src/browser/react/components/assistant/ProviderTab';
-import { fakeAssistantManager, renderWithProviders } from '../utils/render';
+import { renderWithProviders } from '../utils/render';
+import { connectedAssistant as fakeAssistantManager } from '../fixtures/connectedAssistant';
 
 function snapshotWith(
   provider: 'anthropic' | 'openai' | 'ollama',

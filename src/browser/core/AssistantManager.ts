@@ -1,4 +1,10 @@
 import type { ContextBridgeAPI } from '../interfaces/Bridge';
+import { t } from '../i18n';
+import { getAssistantConnection } from './assistantConnection';
+import type {
+  ChatGptCommand,
+  ChatGptSnapshot,
+} from '../../app/interfaces/ChatGpt';
 import type {
   ApiProviderId,
   AssistantChatSnapshot,
@@ -11,6 +17,7 @@ import type {
   ConfigPushPayload,
   ConfigSetRequest,
   InflightChatCall,
+  KeySaveResult,
   OllamaListRequest,
   OllamaModelsEvent,
   PendingConfirm,
@@ -19,13 +26,24 @@ import type {
   PersistedChatMessage,
   PersistedConversations,
   ToolInvocation,
+  ToolConfirmPreview,
   ToolResultRequest,
+  ThinkingLevel,
   UiChatMessage,
   UiMessageSegment,
 } from '../../app/interfaces/Assistant';
 import type { ToolExecutor } from './AssistantTools';
 import { encryptForMain } from './SecureChannelClient';
 import { cancelToolConfirmsForCallId } from '../toolConfirm';
+import { isPathWithinTree } from './FileTreeManager';
+import {
+  getThinkingLevels,
+  isThinkingLevel,
+} from '../../app/shared/assistantModels';
+import {
+  buildChatHistory,
+  normalizeHistorySegments,
+} from '../../app/shared/assistantHistory';
 
 /**
  * Surface AssistantManager uses to gather context at send time
@@ -80,12 +98,13 @@ export interface AssistantContextChip {
  * surface in P4) should treat null as "loading" rather than rendering
  * provider-specific affordances.
  *
- * `encryptionAvailable` mirrors main's `safeStorage.isEncryptionAvailable()`
+ * `encryptionAvailable` mirrors main's resolved async safeStorage availability
  * (see `AssistantKeyStore.isEncryptionAvailable`). When false the
  * remote providers are effectively disabled — settings UI surfaces a
  * warning and the test-connection / key-set buttons short-circuit.
  */
 export interface AssistantConfigSnapshot {
+  chatgpt?: ChatGptSnapshot;
   config: SanitizedProviderConfig | null;
   encryptionAvailable: boolean;
 }
@@ -150,7 +169,7 @@ const EMPTY_CHAT_SNAPSHOT: AssistantChatSnapshot = {
  * config-only consumers don't re-render on chat churn (chunks
  * arrive multiple times per second during streaming).
  *
- * Architectural responsibilities (CLAUDE.md): owns data + IPC;
+ * Architectural responsibilities (AGENTS.md): owns data + IPC;
  * never imports React. The composition root injects the bridge
  * ref through the constructor.
  */
@@ -182,6 +201,14 @@ export class AssistantManager {
    */
   private pendingTests = new Map<string, PendingTest>();
   private pendingOllama = new Map<string, PendingOllama>();
+  private pendingKeys = new Map<
+    string,
+    {
+      provider: ApiProviderId;
+      resolve: (ok: boolean) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
 
   /** Test connections shouldn't hang forever — bound the wait. */
   private static readonly TEST_TIMEOUT_MS = 15_000;
@@ -354,9 +381,14 @@ export class AssistantManager {
    */
   public setConfigFromServer(payload: ConfigPushPayload): void {
     this.snapshot = {
+      chatgpt: payload.chatgpt,
       config: payload.config,
       encryptionAvailable: payload.encryptionAvailable,
     };
+    for (const [callId, call] of this.inflightChats) {
+      if (getAssistantConnection(call.provider, this.snapshot) !== 'ready')
+        this.cancelCall(callId);
+    }
     this.listeners.forEach((l) => l());
   }
 
@@ -367,6 +399,27 @@ export class AssistantManager {
   /** Request an immediate `from:ai:config` push (called at bridge boot). */
   public requestConfigRefresh(): void {
     this.bridge.send('to:ai:config:get', null);
+  }
+
+  public chatGptCommand(command: ChatGptCommand): void {
+    this.bridge.send(
+      'to:ai:chatgpt',
+      command.action === 'sign-in'
+        ? {
+            ...command,
+            callback: {
+              language: document.documentElement.lang || 'en',
+              successTitle: t('chatgpt:callback_success_title'),
+              successBody: t('chatgpt:callback_success_body'),
+              errorTitle: t('chatgpt:callback_error_title'),
+              errorBody: t('chatgpt:callback_error_body'),
+              permissionTitle: t('chatgpt:callback_permission_title'),
+              permissionBody: t('chatgpt:callback_permission_body'),
+              returnToApp: t('chatgpt:callback_return'),
+            },
+          }
+        : command,
+    );
   }
 
   /** Persist non-secret per-provider config. */
@@ -392,6 +445,46 @@ export class AssistantManager {
   public async setKey(provider: ApiProviderId, key: string): Promise<void> {
     const ciphertext = await encryptForMain(key);
     this.bridge.send('to:ai:key:set', { provider, ciphertext });
+  }
+
+  /** Inline onboarding waits for the acknowledged encrypted write. */
+  public async connectWithApiKey(
+    provider: ApiProviderId,
+    key: string,
+  ): Promise<boolean> {
+    if (!key.trim() || !this.snapshot.encryptionAvailable) return false;
+    let ciphertext: string;
+    try {
+      ciphertext = await encryptForMain(key.trim());
+    } catch {
+      return false;
+    }
+    const requestId = AssistantManager.mintCallId('key');
+    const ok = await new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        this.pendingKeys.delete(requestId);
+        resolve(false);
+      }, 15000);
+      this.pendingKeys.set(requestId, { provider, resolve, timer });
+      try {
+        this.bridge.send('to:ai:key:set', { provider, ciphertext, requestId });
+      } catch {
+        clearTimeout(timer);
+        this.pendingKeys.delete(requestId);
+        resolve(false);
+      }
+    });
+    if (ok && provider === 'openai')
+      this.chatGptCommand({ action: 'mode', mode: 'api-key' });
+    return ok;
+  }
+
+  public onKeySaveResult(result: KeySaveResult): void {
+    const pending = this.pendingKeys.get(result.requestId);
+    if (!pending || pending.provider !== result.provider) return;
+    this.pendingKeys.delete(result.requestId);
+    clearTimeout(pending.timer);
+    pending.resolve(result.ok === true);
   }
 
   /** Remove the encrypted key for a provider. */
@@ -626,6 +719,13 @@ export class AssistantManager {
     const trimmed = model.trim();
     if (!trimmed || trimmed === conv.model) return;
     conv.model = trimmed;
+    if (
+      conv.thinkingLevel &&
+      conv.thinkingLevel !== 'auto' &&
+      !getThinkingLevels(provider, trimmed).includes(conv.thinkingLevel)
+    ) {
+      conv.thinkingLevel = 'auto';
+    }
     conv.updatedAt = Date.now();
     this.rebuildChatSnapshot();
   }
@@ -636,6 +736,25 @@ export class AssistantManager {
   ): void {
     if (this.activeConv[provider] === conversationId) return;
     this.activeConv[provider] = conversationId;
+    this.rebuildChatSnapshot();
+  }
+
+  public setConversationThinkingLevel(
+    provider: ProviderId,
+    conversationId: string,
+    level: ThinkingLevel,
+  ): void {
+    const conv = this.conversations[provider].get(conversationId);
+    if (
+      !conv ||
+      !isThinkingLevel(level) ||
+      (level !== 'auto' &&
+        !getThinkingLevels(provider, conv.model).includes(level)) ||
+      conv.thinkingLevel === level
+    )
+      return;
+    conv.thinkingLevel = level;
+    conv.updatedAt = Date.now();
     this.rebuildChatSnapshot();
   }
 
@@ -677,6 +796,11 @@ export class AssistantManager {
      */
     systemContext?: ChatMessage | null,
   ): string | null {
+    if (
+      this.snapshot.config &&
+      getAssistantConnection(provider, this.snapshot) !== 'ready'
+    )
+      return null;
     const conv = this.conversations[provider].get(conversationId);
     if (!conv) return null;
     const trimmed = userText.trim();
@@ -713,16 +837,9 @@ export class AssistantManager {
       startedAt: Date.now(),
     });
 
-    // Build the wire message list — pull every completed user/
-    // assistant message in the conversation, skip the streaming
-    // placeholder we just inserted, drop cancelled/failed messages
-    // (they confuse the model — `cancelled` carries no content,
-    // `failed` is similarly noisy).
-    const history: ChatMessage[] = conv.messages
-      .filter(
-        (m) => m.id !== assistantMsg.id && m.status === 'complete' && m.content,
-      )
-      .map((m) => ({ role: m.role, content: m.content }));
+    // Text alone loses the actual tool work visible in the chat. Replay
+    // resolved invocations as matched tool-use/result pairs as well.
+    const history = buildChatHistory(conv.messages);
 
     const wireMessages: ChatMessage[] = systemContext
       ? [systemContext, ...history]
@@ -734,6 +851,12 @@ export class AssistantManager {
       model: conv.model,
       messages: wireMessages,
       tools: this.toolExecutor?.describe() ?? undefined,
+      ...(conv.thinkingLevel
+        ? { thinkingLevel: conv.thinkingLevel }
+        : provider !== 'ollama' &&
+            this.snapshot.config?.[provider].thinkingLevel
+          ? { thinkingLevel: this.snapshot.config[provider].thinkingLevel }
+          : {}),
     };
     this.bridge.send('to:ai:chat', req);
     this.rebuildChatSnapshot();
@@ -931,6 +1054,15 @@ export class AssistantManager {
   public onToolCall(payload: ChatToolCallEvent): void {
     const inflight = this.inflightChats.get(payload.callId);
     if (!inflight) return; // foreign callId (e.g. test ping) — silently drop
+    const conversation = this.conversations[inflight.provider].get(
+      inflight.conversationId,
+    );
+    const message = conversation?.messages.find(
+      (m) => m.id === inflight.assistantMessageId,
+    );
+    // Replayed events must not execute a write twice or replace a pending decision.
+    if (message?.toolCalls?.some((tc) => tc.toolCallId === payload.toolCallId))
+      return;
     this.drainPendingForCall(payload.callId);
     const executor = this.toolExecutor;
     if (!executor || !executor.hasTool(payload.toolName)) {
@@ -948,14 +1080,20 @@ export class AssistantManager {
       });
       return;
     }
-    const toolClass = executor.classify(payload.toolName);
+    const toolClass = executor.classify(payload.toolName, payload.arguments);
     const conv = this.conversations[inflight.provider].get(
       inflight.conversationId,
     );
     const autoAccept = conv?.autoAcceptWrites ?? false;
+    const confirm =
+      toolClass === 'write' &&
+      (!autoAccept ||
+        executor.requiresConfirmation?.(payload.toolName, payload.arguments) ===
+          true);
 
-    const initialStatus: ToolInvocation['status'] =
-      toolClass === 'write' && !autoAccept ? 'pending-confirm' : 'executing';
+    const initialStatus: ToolInvocation['status'] = confirm
+      ? 'pending-confirm'
+      : 'executing';
     this.recordToolCall(inflight, {
       toolCallId: payload.toolCallId,
       toolName: payload.toolName,
@@ -963,7 +1101,7 @@ export class AssistantManager {
       status: initialStatus,
     });
 
-    if (toolClass === 'write' && !autoAccept) {
+    if (confirm) {
       void this.runWithConfirmation(payload, executor);
     } else {
       void this.runImmediate(payload, executor);
@@ -982,6 +1120,7 @@ export class AssistantManager {
         payload.toolName,
         payload.arguments,
       );
+      if (this.inflightChats.get(payload.callId) !== inflight) return;
       this.updateToolCall(inflight, payload.toolCallId, (tc) => ({
         ...tc,
         status: 'succeeded',
@@ -989,6 +1128,7 @@ export class AssistantManager {
       }));
       this.shipToolResult(payload.callId, payload.toolCallId, result);
     } catch (err) {
+      if (this.inflightChats.get(payload.callId) !== inflight) return;
       const message = err instanceof Error ? err.message : String(err);
       this.updateToolCall(inflight, payload.toolCallId, (tc) => ({
         ...tc,
@@ -998,7 +1138,8 @@ export class AssistantManager {
       }));
       this.shipToolResult(payload.callId, payload.toolCallId, {
         ok: false,
-        error: message,
+        error: (err as { code?: string })?.code ?? message,
+        ...((err as { code?: string })?.code ? { message } : {}),
       });
     }
   }
@@ -1024,7 +1165,30 @@ export class AssistantManager {
     payload: ChatToolCallEvent,
     executor: ToolExecutor,
   ): Promise<void> {
-    const preview = executor.buildPreview(payload.toolName, payload.arguments);
+    let preview: ToolConfirmPreview | null;
+    try {
+      preview = executor.preparePreview
+        ? await executor.preparePreview(payload.toolName, payload.arguments)
+        : executor.buildPreview(payload.toolName, payload.arguments);
+    } catch (error) {
+      const inflight = this.inflightChats.get(payload.callId);
+      if (inflight) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.updateToolCall(inflight, payload.toolCallId, (tc) => ({
+          ...tc,
+          status: 'failed',
+          errorCode: 'execution_failed',
+          errorMessage: message,
+        }));
+        this.shipToolResult(payload.callId, payload.toolCallId, {
+          ok: false,
+          error: (error as { code?: string })?.code ?? 'execution_failed',
+          message,
+        });
+      }
+      return;
+    }
+    if (!this.inflightChats.has(payload.callId)) return;
     const entry: PendingConfirm = {
       toolCallId: payload.toolCallId,
       toolName: payload.toolName,
@@ -1264,6 +1428,7 @@ export class AssistantManager {
     // Read first — if it throws, we don't poison the chip row with a
     // path we can't actually include.
     const { content } = await this.contextProvider.readFile(path);
+    if (this.conversations[provider].get(conversationId) !== conv) return;
     this.mentionContents.set(path, content);
     if (conv.mentions.includes(path)) {
       // Re-add: chip stays put, content gets refreshed (above), but
@@ -1300,6 +1465,59 @@ export class AssistantManager {
     });
     if (!stillUsed) this.mentionContents.delete(path);
     this.rebuildChatSnapshot();
+  }
+
+  /** Existing references follow file and folder moves, including closed files. */
+  public renameMentionPaths(oldPath: string, newPath: string): void {
+    const old = oldPath.replace(/\\/g, '/').replace(/\/+$/, '');
+    const replacement = newPath.replace(/[\\/]+$/, '');
+    const remap = (path: string) =>
+      isPathWithinTree(path, oldPath)
+        ? replacement +
+          path
+            .replace(/\\/g, '/')
+            .slice(old.length)
+            .replace(/\//g, newPath.includes('\\') ? '\\' : '/')
+        : path;
+    let changed = false;
+    for (const provider of PROVIDER_IDS) {
+      for (const conversation of this.conversations[provider].values()) {
+        const mentions = conversation.mentions.map(remap);
+        if (mentions.some((path, i) => path !== conversation.mentions[i])) {
+          conversation.mentions = [...new Set(mentions)];
+          conversation.updatedAt = Date.now();
+          changed = true;
+        }
+      }
+    }
+    for (const [path, content] of [...this.mentionContents]) {
+      const next = remap(path);
+      if (next !== path) {
+        this.mentionContents.delete(path);
+        this.mentionContents.set(next, content);
+      }
+    }
+    if (changed) this.rebuildChatSnapshot();
+  }
+
+  public removeMentionPaths(path: string): void {
+    let changed = false;
+    for (const provider of PROVIDER_IDS) {
+      for (const conversation of this.conversations[provider].values()) {
+        const mentions = conversation.mentions.filter(
+          (mention) => !isPathWithinTree(mention, path),
+        );
+        if (mentions.length !== conversation.mentions.length) {
+          conversation.mentions = mentions;
+          conversation.updatedAt = Date.now();
+          changed = true;
+        }
+      }
+    }
+    for (const mention of this.mentionContents.keys()) {
+      if (isPathWithinTree(mention, path)) this.mentionContents.delete(mention);
+    }
+    if (changed) this.rebuildChatSnapshot();
   }
 
   /**
@@ -1358,8 +1576,8 @@ export class AssistantManager {
   }
 
   /**
-   * Estimated token count for the next send: draft input + every chip's
-   * byte-count contribution + tag overhead, divided by 4. Cheap
+   * Estimated token count for the next send: history (including tool
+   * results), tool definitions, draft and shared file context, divided by 4. Cheap
    * heuristic, intentionally rough — surfaced to the user purely to
    * flag "you're about to ship a huge prompt." No tiktoken dependency
    * in v1 (see Decisions).
@@ -1370,7 +1588,11 @@ export class AssistantManager {
     draftText: string,
   ): number {
     const chips = this.contextChips(provider, conversationId);
+    const conv = this.conversations[provider].get(conversationId);
     let chars = draftText.length;
+    if (conv) chars += JSON.stringify(buildChatHistory(conv.messages)).length;
+    const tools = this.toolExecutor?.describe();
+    if (tools?.length) chars += JSON.stringify(tools).length;
     for (const chip of chips) {
       if (chip.byteCount !== undefined) {
         // Add a small constant for the fence/path tag wrapper we add
@@ -1384,9 +1606,10 @@ export class AssistantManager {
 
   /**
    * Assemble the system context message that gets prepended to the
-   * next send. Reads the active-file / selection synchronously off
-   * the context provider and the mention contents from the cache
-   * (`addMention` populates it eagerly). Returns null when there's
+   * next send. Refreshes explicitly mentioned files through the context
+   * provider so restored mentions and unsaved edits are included. Reads
+   * the active-file/selection after I/O and rechecks sharing controls.
+   * Returns null when there's
    * nothing to share — caller (`startCall`) just ships the message
    * history without a leading system turn.
    */
@@ -1396,25 +1619,42 @@ export class AssistantManager {
   ): Promise<ChatMessage | null> {
     const conv = this.conversations[provider].get(conversationId);
     if (!conv || !this.contextProvider) return null;
+    const contextProvider = this.contextProvider;
+    const mentions = await Promise.all(
+      conv.mentions.map(async (path) => {
+        try {
+          return {
+            path,
+            content: (await contextProvider.readFile(path)).content,
+          };
+        } catch {
+          // Deleted/inaccessible mentions should not reuse a stale cached document.
+          return { path, content: undefined };
+        }
+      }),
+    );
+    if (this.conversations[provider].get(conversationId) !== conv) return null;
     const blocks: string[] = [];
     const seenPaths = new Set<string>();
     const active = conv.shareActiveFile
-      ? this.contextProvider.getActiveFile()
+      ? contextProvider.getActiveFile()
       : null;
     if (active) {
       blocks.push(formatFileBlock(active.path, active.content));
       seenPaths.add(active.path);
     }
     if (conv.shareSelection) {
-      const sel = this.contextProvider.getSelection();
-      if (sel && sel.text) {
-        blocks.push(formatSelectionBlock(sel));
-      }
+      const sel = contextProvider.getSelection();
+      if (sel && sel.text) blocks.push(formatSelectionBlock(sel));
     }
-    for (const path of conv.mentions) {
-      if (seenPaths.has(path)) continue; // already included via active-file
-      const content = this.mentionContents.get(path);
-      if (content === undefined) continue; // not yet loaded — skip silently
+    for (const { path, content } of mentions) {
+      if (!conv.mentions.includes(path)) continue;
+      if (content === undefined) {
+        this.mentionContents.delete(path);
+        continue;
+      }
+      this.mentionContents.set(path, content);
+      if (seenPaths.has(path)) continue;
       blocks.push(formatFileBlock(path, content));
       seenPaths.add(path);
     }
@@ -1462,20 +1702,24 @@ export class AssistantManager {
         const messages: PersistedChatMessage[] = [];
         for (const m of conv.messages) {
           if (m.role !== 'user' && m.role !== 'assistant') continue;
-          // Streaming messages are mid-flight; the corresponding
-          // in-flight call is cancelled on quit, so the message body
-          // can't be recovered. Drop it.
-          if (m.status === 'streaming') continue;
+          const persistedToolCalls = m.toolCalls?.filter(
+            (tc) => tc.status === 'succeeded' || tc.status === 'failed',
+          );
+          // Unfinished text cannot resume after relaunch, but resolved
+          // tool work already happened and must survive an interrupted turn.
+          if (m.status === 'streaming' && !persistedToolCalls?.length) continue;
           const persistedStatus =
             m.status === 'complete' ||
             m.status === 'cancelled' ||
             m.status === 'failed'
               ? m.status
-              : 'complete';
+              : 'cancelled';
           // Keep only fully-resolved tool invocations. Pending /
           // executing entries can't pick back up across a restart.
-          const persistedToolCalls = m.toolCalls?.filter(
-            (tc) => tc.status === 'succeeded' || tc.status === 'failed',
+          const segments = normalizeHistorySegments(
+            m.segments,
+            m.content,
+            persistedToolCalls ?? [],
           );
           messages.push({
             id: m.id,
@@ -1487,6 +1731,7 @@ export class AssistantManager {
             ...(persistedToolCalls && persistedToolCalls.length > 0
               ? { toolCalls: persistedToolCalls }
               : {}),
+            ...(segments ? { segments } : {}),
             createdAt: m.createdAt,
           });
         }
@@ -1495,6 +1740,7 @@ export class AssistantManager {
           providerId: conv.providerId,
           title: conv.title,
           model: conv.model,
+          ...(conv.thinkingLevel ? { thinkingLevel: conv.thinkingLevel } : {}),
           messages,
           autoAcceptWrites: conv.autoAcceptWrites,
           shareActiveFile: conv.shareActiveFile,
@@ -1532,6 +1778,17 @@ export class AssistantManager {
     const wasEnabled = this.persistEnabled;
     this.persistEnabled = false;
     try {
+      if (this.persistTimer !== null) {
+        clearTimeout(this.persistTimer);
+        this.persistTimer = null;
+      }
+      for (const callId of Array.from(this.inflightChats.keys()))
+        this.cancelCall(callId);
+      this.pendingChunkBuffers.clear();
+      if (this.revealFrameHandle !== null) {
+        this.cancelFrame(this.revealFrameHandle);
+        this.revealFrameHandle = null;
+      }
       // Clear any in-memory state first so restore is idempotent.
       this.conversations = {
         anthropic: new Map(),
@@ -1540,6 +1797,7 @@ export class AssistantManager {
       };
       this.activeConv = { anthropic: null, openai: null, ollama: null };
       this.drafts.clear();
+      this.mentionContents.clear();
       this.activeProviderTab = null;
       if (!snapshot) {
         this.rebuildChatSnapshot();
@@ -1553,42 +1811,93 @@ export class AssistantManager {
 
   private applyRestoreSnapshot(snapshot: PersistedConversations): void {
     for (const provider of PROVIDER_IDS) {
-      const persistedList = snapshot.conversations?.[provider] ?? [];
+      const entries = snapshot.conversations?.[provider];
+      const persistedList = Array.isArray(entries) ? entries : [];
       for (const persisted of persistedList) {
+        if (
+          !persisted ||
+          typeof persisted.id !== 'string' ||
+          typeof persisted.title !== 'string' ||
+          typeof persisted.model !== 'string' ||
+          !Array.isArray(persisted.messages) ||
+          !Array.isArray(persisted.mentions) ||
+          !Number.isFinite(persisted.createdAt) ||
+          !Number.isFinite(persisted.updatedAt)
+        )
+          continue;
         // Re-hydrate as a runtime ChatConversation. Messages get
         // their runtime status mapped 1:1 (persisted statuses are
         // already in the runtime vocabulary minus 'streaming').
-        const messages: UiChatMessage[] = persisted.messages.map((m) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-          status: m.status,
-          ...(m.errorCode ? { errorCode: m.errorCode } : {}),
-          ...(m.errorMessage ? { errorMessage: m.errorMessage } : {}),
-          ...(m.toolCalls && m.toolCalls.length > 0
-            ? { toolCalls: m.toolCalls }
-            : {}),
-          createdAt: m.createdAt,
-        }));
+        const messages: UiChatMessage[] = persisted.messages
+          .filter(
+            (m) =>
+              m &&
+              typeof m.id === 'string' &&
+              typeof m.content === 'string' &&
+              (m.role === 'user' || m.role === 'assistant') &&
+              (m.status === 'complete' ||
+                m.status === 'cancelled' ||
+                m.status === 'failed') &&
+              Number.isFinite(m.createdAt),
+          )
+          .map((m) => {
+            const toolCalls = Array.isArray(m.toolCalls)
+              ? m.toolCalls.filter(
+                  (tc) =>
+                    tc &&
+                    typeof tc.toolCallId === 'string' &&
+                    typeof tc.toolName === 'string' &&
+                    (tc.status === 'succeeded' || tc.status === 'failed'),
+                )
+              : [];
+            const segments = normalizeHistorySegments(
+              m.segments,
+              m.content,
+              toolCalls,
+            );
+            return {
+              id: m.id,
+              role: m.role,
+              content: m.content,
+              status: m.status,
+              ...(m.errorCode ? { errorCode: m.errorCode } : {}),
+              ...(m.errorMessage ? { errorMessage: m.errorMessage } : {}),
+              ...(toolCalls.length > 0 ? { toolCalls } : {}),
+              ...(segments ? { segments } : {}),
+              createdAt: m.createdAt,
+            };
+          });
         const conv: ChatConversation = {
           id: persisted.id,
-          providerId: persisted.providerId,
+          providerId: provider,
           title: persisted.title,
           model: persisted.model,
+          ...(isThinkingLevel(persisted.thinkingLevel)
+            ? { thinkingLevel: persisted.thinkingLevel }
+            : {}),
           messages,
-          autoAcceptWrites: persisted.autoAcceptWrites,
-          shareActiveFile: persisted.shareActiveFile,
-          shareSelection: persisted.shareSelection,
-          mentions: [...persisted.mentions],
+          autoAcceptWrites: persisted.autoAcceptWrites === true,
+          shareActiveFile: persisted.shareActiveFile !== false,
+          shareSelection: persisted.shareSelection === true,
+          mentions: persisted.mentions.filter(
+            (path) => typeof path === 'string',
+          ),
           createdAt: persisted.createdAt,
           updatedAt: persisted.updatedAt,
         };
         this.conversations[provider].set(conv.id, conv);
       }
+      const active = snapshot.activeConversation?.[provider];
       this.activeConv[provider] =
-        snapshot.activeConversation?.[provider] ?? null;
+        active && this.conversations[provider].has(active)
+          ? active
+          : (this.firstByRecency(provider)?.id ?? null);
     }
-    this.activeProviderTab = snapshot.activeProvider ?? null;
+    this.activeProviderTab = PROVIDER_IDS.includes(
+      snapshot.activeProvider as ProviderId,
+    )
+      ? snapshot.activeProvider
+      : null;
     if (snapshot.drafts) {
       for (const [k, v] of Object.entries(snapshot.drafts)) {
         if (typeof v === 'string' && v.length > 0) this.drafts.set(k, v);
@@ -1656,6 +1965,10 @@ export class AssistantManager {
         code: payload.code,
         message: payload.message,
       });
+      return;
+    }
+    if (payload.code === 'cancelled') {
+      this.cancelCall(payload.callId);
       return;
     }
     const inflight = this.inflightChats.get(payload.callId);
@@ -1893,7 +2206,7 @@ function baseName(path: string): string {
  * so models don't see a prematurely-closed code block.
  */
 function formatFileBlock(path: string, content: string): string {
-  const fence = content.includes('```') ? '````' : '```';
+  const fence = contextFence(content);
   return `${fence}md path="${path}"\n${content}\n${fence}`;
 }
 
@@ -1907,7 +2220,16 @@ function formatSelectionBlock(sel: {
   startLine: number;
   endLine: number;
 }): string {
-  const fence = sel.text.includes('```') ? '````' : '```';
+  const fence = contextFence(sel.text);
   const pathAttr = sel.path ? ` path="${sel.path}"` : '';
   return `${fence}md${pathAttr} lines="L${sel.startLine}-L${sel.endLine}"\n${sel.text}\n${fence}`;
+}
+
+/** Keep nested Markdown fences inside the context block, regardless of width. */
+function contextFence(content: string): string {
+  let width = 3;
+  for (const match of content.matchAll(/`{3,}/g)) {
+    width = Math.max(width, match[0].length + 1);
+  }
+  return '`'.repeat(width);
 }

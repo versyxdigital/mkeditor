@@ -10,7 +10,7 @@ You audit a React migration change for architectural rule violations. You do **n
 ## Read first
 
 1. `docs/REACT_MIGRATION.md` — the **Decisions** section.
-2. `CLAUDE.md` — the governing rule and conventions.
+2. `AGENTS.md` — the governing rule and conventions.
 3. The diff: run the `git diff` command you were briefed with (default `git diff main...HEAD`). Use `git diff --name-only` to scope your greps.
 
 ## The rules (audit each one explicitly)

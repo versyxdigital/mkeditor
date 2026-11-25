@@ -26,21 +26,23 @@
  *   - `src/browser/core/HTMLExporter.ts` inlines the same string into
  *     the exported document's `<head>` when `withStyles` is on.
  */
+import { lightPalette, darkPalette } from '../app/shared/designTokens';
+
 export const markdownStylesheet = `
 :root {
-  --md-border: #d1d9e0;
-  --md-muted-fg: #59636e;
-  --md-muted-bg: #f6f8fa;
-  --md-code-bg: rgba(175, 184, 193, 0.2);
-  --md-link: #0969da;
+  --md-border: ${lightPalette['border-default']};
+  --md-muted-fg: ${lightPalette['text-secondary']};
+  --md-muted-bg: ${lightPalette['bg-sidebar']};
+  --md-code-bg: ${lightPalette['bg-hover']};
+  --md-link: ${lightPalette['accent-primary']};
 }
 
 [data-theme='dark'] {
-  --md-border: #30363d;
-  --md-muted-fg: #9198a1;
-  --md-muted-bg: #161b22;
-  --md-code-bg: rgba(110, 118, 129, 0.4);
-  --md-link: #2f81f7;
+  --md-border: ${darkPalette['border-default']};
+  --md-muted-fg: ${darkPalette['text-secondary']};
+  --md-muted-bg: ${darkPalette['bg-elevated']};
+  --md-code-bg: ${darkPalette['bg-hover']};
+  --md-link: ${darkPalette['accent-primary']};
 }
 
 /* ===== Base ===== */
@@ -64,7 +66,7 @@ export const markdownStylesheet = `
 #preview-content dl,
 #preview-content table,
 #preview-content pre {
-  margin: 0 0 16px 0;
+  margin: 0 0 1em 0;
 }
 
 /* ===== Headings ===== */
@@ -75,23 +77,17 @@ export const markdownStylesheet = `
 #preview-content h4,
 #preview-content h5,
 #preview-content h6 {
-  margin: 24px 0 16px;
+  margin: 1.6em 0 0.6em;
   font-weight: 600;
   line-height: 1.25;
 }
 
-#preview-content h1,
-#preview-content h2 {
-  padding-bottom: 0.3em;
-  border-bottom: 1px solid var(--md-border);
-}
-
-#preview-content h1 { font-size: 2em;     }
+#preview-content h1 { font-size: 1.875em; }
 #preview-content h2 { font-size: 1.5em;   }
 #preview-content h3 { font-size: 1.25em;  }
-#preview-content h4 { font-size: 1em;     }
-#preview-content h5 { font-size: 0.875em; }
-#preview-content h6 { font-size: 0.85em; color: var(--md-muted-fg); }
+#preview-content h4 { font-size: 1.0625em; }
+#preview-content h5 { font-size: 0.9375em; }
+#preview-content h6 { font-size: 0.875em; color: var(--md-muted-fg); }
 
 /* ===== Lists =====
  * Tailwind's base layer resets list-style on ul/ol, so we re-assert the
@@ -149,7 +145,7 @@ export const markdownStylesheet = `
   font-size: 85%;
   white-space: break-spaces;
   background: var(--md-code-bg);
-  border-radius: 6px;
+  border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
     'Liberation Mono', monospace;
 }
@@ -220,16 +216,12 @@ export const markdownStylesheet = `
   border: 0;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+  transition: background 120ms ease, color 120ms ease;
 }
 
 #preview-content .md-codeblock-copy:hover {
   background: rgba(127, 127, 127, 0.18);
   color: var(--foreground, inherit);
-}
-
-#preview-content .md-codeblock-copy:active {
-  transform: scale(0.94);
 }
 
 #preview-content .md-codeblock-copy svg {
@@ -289,6 +281,22 @@ export const markdownStylesheet = `
 
 /* ===== Tables ===== */
 
+#preview-content .md-diagram {
+  max-width: 100%;
+  margin: 1em 0;
+  overflow: auto;
+}
+#preview-content .md-codeblock > .md-diagram {
+  margin: 0;
+  padding: 16px;
+}
+#preview-content .md-diagram svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
 #preview-content table {
   display: block;
   width: max-content;
@@ -301,7 +309,7 @@ export const markdownStylesheet = `
 #preview-content table th,
 #preview-content table td {
   padding: 6px 13px;
-  border: 1px solid var(--md-border);
+  border-bottom: 1px solid var(--md-border);
 }
 
 #preview-content table th {
@@ -332,10 +340,11 @@ export const markdownStylesheet = `
 
 #preview-content a {
   color: var(--md-link);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-#preview-content a:hover { text-decoration: underline; }
+#preview-content a:hover { text-decoration-thickness: 2px; }
 
 /* ===== Keyboard ===== */
 
@@ -354,15 +363,15 @@ export const markdownStylesheet = `
 /* ===== Container width (ExportSettings.container) ===== */
 
 #preview-content.container {
-  max-width: 960px;
+  max-width: 760px;
   margin-left: auto;
   margin-right: auto;
-  padding: 0 16px;
+  padding: 0;
 }
 
 #preview-content.container-fluid {
   max-width: 100%;
-  padding: 0 16px;
+  padding: 0;
 }
 
 /* ===== Custom alert blocks ===== */
@@ -465,6 +474,10 @@ export const markdownStylesheet = `
 /* ===== Print ===== */
 
 @media print {
+  #preview-content .md-diagram {
+    overflow: visible;
+    break-inside: avoid;
+  }
   #preview-content {
     color: #000;
   }

@@ -18,6 +18,7 @@ import { PropertiesProvider } from '../../src/browser/react/contexts/PropertiesC
 import { SettingsContextProvider } from '../../src/browser/react/contexts/SettingsContext';
 import { ExportSettingsContextProvider } from '../../src/browser/react/contexts/ExportSettingsContext';
 import { AssistantContextProvider } from '../../src/browser/react/contexts/AssistantContext';
+import type { ConfigPushPayload } from '../../src/app/interfaces/Assistant';
 
 /**
  * Minimal in-memory FileManager stub good enough to drive the React
@@ -46,6 +47,8 @@ export function fakeFileManager(
       emit();
     }),
     closeTab: jest.fn(async (_path: string) => {}),
+    closeOtherTabs: jest.fn(async (_keepPath: string) => {}),
+    closeAllTabs: jest.fn(async () => {}),
     reorderTabs: jest.fn(),
     openFileFromPath: jest.fn(),
     createUntitledTab: jest.fn(),
@@ -106,18 +109,8 @@ const EMPTY_CHAT_SNAPSHOT: ChatSnapshot = {
 
 export function fakeAssistantManager(
   init: {
-    initialSnapshot?: {
-      config: {
-        anthropic: { enabled: boolean; hasKey: boolean; defaultModel: string };
-        openai: { enabled: boolean; hasKey: boolean; defaultModel: string };
-        ollama: {
-          enabled: boolean;
-          hasKey: false;
-          baseUrl: string;
-          defaultModel: string;
-        };
-      } | null;
-      encryptionAvailable: boolean;
+    initialSnapshot?: Omit<ConfigPushPayload, 'config'> & {
+      config: ConfigPushPayload['config'] | null;
     };
     initialChatSnapshot?: ChatSnapshot;
   } = {},
@@ -130,6 +123,7 @@ export function fakeAssistantManager(
   const configListeners = new Set<() => void>();
   const chatListeners = new Set<() => void>();
   const emitConfig = () => configListeners.forEach((l) => l());
+
   const emitChat = () => chatListeners.forEach((l) => l());
   return {
     // P3 config surface
@@ -140,7 +134,9 @@ export function fakeAssistantManager(
     getConfigSnapshot: jest.fn(() => snapshot),
     setProviderConfig: jest.fn(),
     setKey: jest.fn(),
+    connectWithApiKey: jest.fn(async () => true),
     clearKey: jest.fn(),
+    chatGptCommand: jest.fn(),
     refreshOllamaModels: jest.fn(async () => [] as string[]),
     testConnection: jest.fn(async () => ({ ok: true })),
     requestConfigRefresh: jest.fn(),
@@ -161,6 +157,7 @@ export function fakeAssistantManager(
     deleteConversation: jest.fn(),
     renameConversation: jest.fn(),
     setConversationModel: jest.fn(),
+    setConversationThinkingLevel: jest.fn(),
     setActiveConversation: jest.fn(),
     startCall: jest.fn(() => 'chat-new'),
     cancelCall: jest.fn(() => true),
@@ -181,6 +178,8 @@ export function fakeAssistantManager(
     setShareSelection: jest.fn(),
     addMention: jest.fn(async () => {}),
     removeMention: jest.fn(),
+    renameMentionPaths: jest.fn(),
+    removeMentionPaths: jest.fn(),
     contextChips: jest.fn(() => [] as unknown[]),
     contextTokenEstimate: jest.fn(() => 0),
     contextFor: jest.fn(async () => null),
@@ -196,6 +195,7 @@ export function fakeAssistantManager(
       snapshot = next;
       emitConfig();
     },
+
     _setChatSnapshot: (next: ChatSnapshot) => {
       chatSnapshot = next;
       emitChat();
@@ -242,10 +242,12 @@ export function fakeDispatcher() {
     removeEventListener: target.removeEventListener.bind(target),
     dispatchEvent: target.dispatchEvent.bind(target),
     render: () => target.dispatchEvent(new CustomEvent('editor:render')),
+
     setTrackedContent: ({ content }: { content: string }) =>
       target.dispatchEvent(
         new CustomEvent('editor:track:content', { detail: content }),
       ),
+
     message: ({ detail }: { detail: string }) =>
       target.dispatchEvent(new CustomEvent('message', { detail })),
   };

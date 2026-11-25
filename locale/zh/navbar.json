@@ -5,5 +5,9 @@
   "settings_tooltip": "配置编辑器设置",
   "shortcuts_tooltip": "查看编辑器快捷键",
   "theme_switch_notice": "如果使用系统主题，在桌面端此开关将被禁用。",
-  "active_file_default": "MKEditor"
+  "active_file_default": "MKEditor",
+  "code_copied": "代码已复制到剪贴板",
+  "copy_path_tooltip": "将路径复制到剪贴板",
+  "path_copied": "路径已复制到剪贴板",
+  "toggle_assistant_tooltip": "切换 AI 助手"
 }

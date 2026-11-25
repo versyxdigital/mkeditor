@@ -3,8 +3,7 @@
  *
  * The component is intentionally small — a single green block for
  * pure-addition previews (`insert_at_cursor`, `create_file`). Tests
- * verify it renders the content, surfaces the optional detail line,
- * and applies the maxHeight cap to the scroll container.
+ * verify content, optional detail, and full-content expansion and retry.
  */
 
 import * as React from 'react';
@@ -18,7 +17,7 @@ import { InsertPreview } from '../../src/browser/react/components/assistant/Inse
 import { PREVIEW_TRUNCATION_MARKER } from '../../src/browser/core/AssistantTools';
 
 describe('<InsertPreview>', () => {
-  it('renders the content verbatim inside a scrollable block', () => {
+  it('renders the content verbatim', () => {
     const content = '# Hello\n\nWorld';
     render(<InsertPreview content={content} />);
     expect(screen.getByTestId('insert-preview')).toBeInTheDocument();
@@ -48,22 +47,6 @@ describe('<InsertPreview>', () => {
     const container = screen.getByTestId('insert-preview');
     // Only one span (the "After" label). Detail span absent.
     expect(container.querySelectorAll('span')).toHaveLength(1);
-  });
-
-  it('applies the maxHeight cap to the pre block', () => {
-    render(<InsertPreview content="x" maxHeight={120} />);
-    const pre = screen
-      .getByTestId('insert-preview')
-      .querySelector('pre') as HTMLPreElement;
-    expect(pre.style.maxHeight).toBe('120px');
-  });
-
-  it('defaults maxHeight to 240px when unspecified', () => {
-    render(<InsertPreview content="x" />);
-    const pre = screen
-      .getByTestId('insert-preview')
-      .querySelector('pre') as HTMLPreElement;
-    expect(pre.style.maxHeight).toBe('240px');
   });
 
   it('shows no expander when content is not truncated, even with a fetcher', () => {

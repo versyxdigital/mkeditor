@@ -20,7 +20,9 @@ import { renderWithProviders } from '../utils/render';
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   whenLanguageReady: () => Promise.resolve(),
+
   normalizeLanguage: (lng: string) => lng,
   getAvailableLocales: jest.fn(async () => []),
   initI18n: jest.fn(),

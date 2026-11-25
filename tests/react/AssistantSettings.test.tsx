@@ -9,7 +9,8 @@
  *   - API key Save click fires setKey with the typed value
  *   - the saved key value is never echoed back into the input
  *   - clearKey clears the saved entry
- *   - default model blur fires setProviderConfig({defaultModel})
+ *   - readable model selection saves API IDs; custom IDs remain available
+ *   - supported thinking levels round-trip through setProviderConfig
  *   - testConnection success / failure surface a sonner toast
  *   - Ollama refresh populates the model select
  *   - web mode shows the localStorage warning banner
@@ -17,6 +18,7 @@
  */
 
 import * as React from 'react';
+import userEvent from '@testing-library/user-event';
 import {
   screen,
   fireEvent,
@@ -30,7 +32,9 @@ import { fakeAssistantManager, renderWithProviders } from '../utils/render';
 
 jest.mock('../../src/browser/i18n', () => ({
   t: (key: string) => key,
+
   normalizeLanguage: (lng: string) => lng,
+
   whenLanguageReady: () => Promise.resolve(),
   getAvailableLocales: jest.fn(async () => []),
   initI18n: jest.fn(),
@@ -46,6 +50,10 @@ jest.mock('../../src/browser/notify', () => ({
 
 beforeEach(() => {
   toastSpy.mockClear();
+  Element.prototype.scrollIntoView = jest.fn();
+  Element.prototype.hasPointerCapture = jest.fn(() => false);
+  Element.prototype.setPointerCapture = jest.fn();
+  Element.prototype.releasePointerCapture = jest.fn();
 });
 
 function baseSnapshot() {
@@ -215,7 +223,34 @@ describe('<AssistantSettings> — Anthropic row (API-key provider)', () => {
     expect(am.clearKey).toHaveBeenCalledWith('anthropic');
   });
 
-  it('Default model blur fires setProviderConfig({defaultModel}) when changed', () => {
+  it('shows saved-key feedback and focuses the empty replacement field', () => {
+    const snap = baseSnapshot();
+    snap.config.anthropic.hasKey = true;
+    const am = fakeAssistantManager({ initialSnapshot: snap });
+    renderWithProviders(<AssistantSettings />, {
+      managers: { assistantManager: am as never, mode: 'desktop' },
+    });
+    const region = screen.getByRole('region', {
+      name: 'assistant-settings:provider_anthropic',
+    });
+    expect(
+      within(region).getByText('assistant-settings:key_configured'),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(region).getByRole('button', {
+        name: 'assistant-settings:replace_key',
+      }),
+    );
+    const input = within(region).getByLabelText(
+      'assistant-settings:api_key_label',
+    );
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue('');
+    expect(am.setKey).not.toHaveBeenCalled();
+  });
+
+  it('shows readable names and saves the API model ID when selected', async () => {
+    const user = userEvent.setup();
     const am = fakeAssistantManager({ initialSnapshot: baseSnapshot() });
     renderWithProviders(<AssistantSettings />, {
       managers: { assistantManager: am as never, mode: 'desktop' },
@@ -223,19 +258,180 @@ describe('<AssistantSettings> — Anthropic row (API-key provider)', () => {
     const region = screen.getByRole('region', {
       name: 'assistant-settings:provider_anthropic',
     });
-    const input = within(region).getByLabelText(
+    const select = within(region).getByLabelText(
       'assistant-settings:default_model_label',
-    ) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'claude-opus-4-7' } });
-    fireEvent.blur(input);
+    );
+    expect(select).toHaveTextContent('Sonnet 4.6');
+    await user.click(select);
+    await user.click(screen.getByRole('option', { name: 'Sonnet 5.5' }));
     expect(am.setProviderConfig).toHaveBeenCalledWith({
       provider: 'anthropic',
-      config: { defaultModel: 'claude-opus-4-7' },
+      config: { defaultModel: 'claude-sonnet-5-5' },
+    });
+  });
+
+  it('lets users enter custom IDs without losing an existing custom model', async () => {
+    const user = userEvent.setup();
+    const snap = baseSnapshot();
+    snap.config.anthropic.defaultModel = 'my-private-model';
+    const am = fakeAssistantManager({ initialSnapshot: snap });
+    renderWithProviders(<AssistantSettings />, {
+      managers: { assistantManager: am as never, mode: 'desktop' },
+    });
+    const region = screen.getByRole('region', {
+      name: 'assistant-settings:provider_anthropic',
+    });
+    const input = within(region).getByLabelText(
+      'assistant-settings:custom_model_id',
+    );
+    expect(input).toHaveValue('my-private-model');
+    expect(
+      within(region).getByLabelText('assistant-settings:thinking_label'),
+    ).toBeDisabled();
+    await user.clear(input);
+    await user.type(input, ' new-model-id ');
+    await user.tab();
+    expect(am.setProviderConfig).toHaveBeenCalledWith({
+      provider: 'anthropic',
+      config: { defaultModel: 'new-model-id' },
+    });
+  });
+
+  it('can switch from a listed model to a custom model ID', async () => {
+    const user = userEvent.setup();
+    const am = fakeAssistantManager({ initialSnapshot: baseSnapshot() });
+    renderWithProviders(<AssistantSettings />, {
+      managers: { assistantManager: am as never, mode: 'desktop' },
+    });
+    const region = screen.getByRole('region', {
+      name: 'assistant-settings:provider_openai',
+    });
+    await user.click(
+      within(region).getByLabelText('assistant-settings:default_model_label'),
+    );
+    await user.click(
+      screen.getByRole('option', { name: 'assistant-settings:custom_model' }),
+    );
+    const input = within(region).getByLabelText(
+      'assistant-settings:custom_model_id',
+    );
+    await user.clear(input);
+    await user.type(input, 'private-deployment{Enter}');
+    expect(am.setProviderConfig).toHaveBeenCalledWith({
+      provider: 'openai',
+      config: { defaultModel: 'private-deployment' },
+    });
+  });
+
+  it('offers model-supported thinking levels and saves the chosen level', async () => {
+    const user = userEvent.setup();
+    const snap = baseSnapshot();
+    snap.config.anthropic.defaultModel = 'claude-sonnet-5-5';
+    const am = fakeAssistantManager({ initialSnapshot: snap });
+    renderWithProviders(<AssistantSettings />, {
+      managers: { assistantManager: am as never, mode: 'desktop' },
+    });
+    const region = screen.getByRole('region', {
+      name: 'assistant-settings:provider_anthropic',
+    });
+    await user.click(
+      within(region).getByLabelText('assistant-settings:thinking_label'),
+    );
+    expect(
+      screen.queryByRole('option', {
+        name: 'assistant-settings:thinking_none',
+      }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole('option', { name: 'assistant-settings:thinking_xhigh' }),
+    );
+    expect(am.setProviderConfig).toHaveBeenCalledWith({
+      provider: 'anthropic',
+      config: { thinkingLevel: 'xhigh' },
+    });
+  });
+
+  it('resets incompatible thinking when switching models', async () => {
+    const user = userEvent.setup();
+    const snap = baseSnapshot();
+    const am = fakeAssistantManager({
+      initialSnapshot: {
+        ...snap,
+        config: {
+          ...snap.config,
+          openai: {
+            ...snap.config.openai,
+            defaultModel: 'gpt-6.2-sol',
+            thinkingLevel: 'max',
+          },
+        },
+      },
+    });
+    renderWithProviders(<AssistantSettings />, {
+      managers: { assistantManager: am as never, mode: 'desktop' },
+    });
+    const region = screen.getByRole('region', {
+      name: 'assistant-settings:provider_openai',
+    });
+    await user.click(
+      within(region).getByLabelText('assistant-settings:default_model_label'),
+    );
+    await user.click(screen.getByRole('option', { name: 'GPT-4.1' }));
+    expect(am.setProviderConfig).toHaveBeenCalledWith({
+      provider: 'openai',
+      config: { defaultModel: 'gpt-4.1', thinkingLevel: 'auto' },
     });
   });
 });
 
 describe('<AssistantSettings> — Test connection toasts', () => {
+  it('discards a late connection result when the tested model has changed', async () => {
+    const snap = baseSnapshot();
+    snap.config.anthropic.hasKey = true;
+    const am = fakeAssistantManager({ initialSnapshot: snap });
+    let finish!: (result: { ok: boolean }) => void;
+    am.testConnection.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderWithProviders(<AssistantSettings />, {
+      managers: { assistantManager: am as never, mode: 'desktop' },
+    });
+    const region = screen.getByRole('region', {
+      name: 'assistant-settings:provider_anthropic',
+    });
+    fireEvent.click(
+      within(region).getByRole('button', {
+        name: 'assistant-settings:test_connection',
+      }),
+    );
+    expect(within(region).getByRole('status')).toHaveTextContent(
+      'assistant-settings:status_testing',
+    );
+    act(() =>
+      am._setSnapshot({
+        ...snap,
+        config: {
+          ...snap.config,
+          anthropic: {
+            ...snap.config.anthropic,
+            defaultModel: 'claude-sonnet-5-5',
+          },
+        },
+      }),
+    );
+    await act(async () => finish({ ok: true }));
+    expect(within(region).getByRole('status')).toHaveTextContent(
+      'assistant-settings:connection_not_tested',
+    );
+    expect(
+      within(region).queryByText('assistant-settings:last_tested'),
+    ).not.toBeInTheDocument();
+    expect(toastSpy).not.toHaveBeenCalled();
+  });
+
   it('fires a success toast when testConnection resolves with ok:true', async () => {
     const snap = baseSnapshot();
     snap.config.anthropic.hasKey = true;
@@ -296,6 +492,44 @@ describe('<AssistantSettings> — Test connection toasts', () => {
 });
 
 describe('<AssistantSettings> — Ollama row', () => {
+  it('saves the requested context window and allows returning to the daemon default', async () => {
+    const user = userEvent.setup();
+    const snap = baseSnapshot();
+    const am = fakeAssistantManager({ initialSnapshot: snap });
+    renderWithProviders(<AssistantSettings />, {
+      managers: { assistantManager: am as never, mode: 'desktop' },
+    });
+    await user.click(
+      screen.getByLabelText('assistant-settings:ollama_context_label'),
+    );
+    await user.click(screen.getByRole('option', { name: '32,768' }));
+    expect(am.setProviderConfig).toHaveBeenCalledWith({
+      provider: 'ollama',
+      config: { contextLength: 32768 },
+    });
+    act(() =>
+      am._setSnapshot({
+        ...snap,
+        config: {
+          ...snap.config,
+          ollama: { ...snap.config.ollama, contextLength: 32768 },
+        },
+      }),
+    );
+    await user.click(
+      screen.getByLabelText('assistant-settings:ollama_context_label'),
+    );
+    await user.click(
+      screen.getByRole('option', {
+        name: 'assistant-settings:ollama_context_default',
+      }),
+    );
+    expect(am.setProviderConfig).toHaveBeenLastCalledWith({
+      provider: 'ollama',
+      config: { contextLength: 0 },
+    });
+  });
+
   it('Refresh button calls refreshOllamaModels and surfaces a success toast', async () => {
     const am = fakeAssistantManager({ initialSnapshot: baseSnapshot() });
     am.refreshOllamaModels.mockResolvedValueOnce(['llama3.2', 'qwen2.5']);

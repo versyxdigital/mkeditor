@@ -81,6 +81,7 @@ function makeModel(value: string): editor.ITextModel {
   // `getValue()` and computes offsets via `getPositionAt`.
   return {
     getValue: () => value,
+
     getPositionAt: (offset: number) => {
       // Walk newlines to derive 1-based line/column from the offset.
       let line = 1;
@@ -108,6 +109,30 @@ async function loadProvider() {
 // --- Tests -------------------------------------------------------
 
 describe('MkedLinkProvider', () => {
+  it('highlights the destination when its text also appears in the label', async () => {
+    const MkedLinkProvider = await loadProvider();
+    new MkedLinkProvider({} as never, () => '/notes/index.md');
+    const result = await registeredProviders[0].provideLinks(
+      makeModel('[a.md](a.md)'),
+    );
+    expect(result.links[0].range).toEqual({
+      startLineNumber: 1,
+      startColumn: 8,
+      endLineNumber: 1,
+      endColumn: 12,
+    });
+  });
+
+  it('does not interpret protocol-relative web links as local document paths', async () => {
+    const MkedLinkProvider = await loadProvider();
+    new MkedLinkProvider({} as never, () => '/notes/index.md');
+    const result = await registeredProviders[0].provideLinks(
+      makeModel('[web](//example.com/a.md)'),
+    );
+    expect(result.links).toEqual([]);
+    expect(resolvePath).not.toHaveBeenCalled();
+  });
+
   it('emits a link for every relative .md mention, ignoring tree state', async () => {
     const MkedLinkProvider = await loadProvider();
     new MkedLinkProvider({} as never, () => '/notes/index.md');

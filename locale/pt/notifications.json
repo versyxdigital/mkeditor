@@ -1,4 +1,5 @@
 {
+  "move_cross_device_conflict": "Não foi possível concluir a movimentação entre unidades com segurança. Ambas as cópias foram mantidas.",
   "unable_export_preview": "Não foi possível exportar a prévia",
   "unable_save_markdown": "Não foi possível salvar o markdown",
   "exported_html_success": "Prévia exportada para HTML",
@@ -25,5 +26,13 @@
   "update_available": "A atualização {{version}} está disponível, baixando em segundo plano...",
   "update_downloaded": "A atualização {{version}} foi baixada, reinicie para atualizar.",
   "session_file_missing": "Alguns arquivos anteriormente abertos não foram encontrados e foram ignorados: {{files}}",
-  "session_cleared": "Sessão salva limpa."
+  "session_cleared": "Sessão salva limpa.",
+  "pasted_image_saved": "Imagem colada salva",
+  "pasted_image_failed": "Não foi possível salvar a imagem colada",
+  "pasted_image_no_workspace": "Salve o documento antes de colar imagens",
+  "move_failed": "Falha ao mover",
+  "move_into_self_refused": "Não é possível mover uma pasta para dentro de si mesma",
+  "move_same_source": "Já está nesse local",
+  "move_collision": "Já existe um arquivo ou pasta com esse nome",
+  "move_parent_missing": "A pasta de destino não existe"
 }

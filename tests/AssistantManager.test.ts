@@ -48,6 +48,27 @@ const SAMPLE_PUSH = {
   encryptionAvailable: true,
 };
 
+test('browser sign-in receives translated presentation copy through the manager', () => {
+  const { bridge, sent } = makeBridge();
+  const manager = new AssistantManager(bridge as never);
+  manager.chatGptCommand({ action: 'sign-in', accountId: 'saved-account' });
+  expect(sent).toEqual([
+    {
+      channel: 'to:ai:chatgpt',
+      data: expect.objectContaining({
+        action: 'sign-in',
+        accountId: 'saved-account',
+        callback: expect.objectContaining({
+          language: 'en',
+          successTitle: expect.any(String),
+          errorTitle: expect.any(String),
+          returnToApp: expect.any(String),
+        }),
+      }),
+    },
+  ]);
+});
+
 describe('AssistantManager.subscribeConfig + getConfigSnapshot', () => {
   it('starts with a null-config snapshot', () => {
     const { bridge } = makeBridge();
@@ -86,6 +107,79 @@ describe('AssistantManager.subscribeConfig + getConfigSnapshot', () => {
 });
 
 describe('AssistantManager outbound channels', () => {
+  it('isolates conversation thinking overrides and clears incompatible levels when the model changes', () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge, { disablePacedReveal: true });
+    mgr.setConfigFromServer({
+      ...SAMPLE_PUSH,
+      config: {
+        ...SAMPLE_PUSH.config,
+        anthropic: {
+          ...SAMPLE_PUSH.config.anthropic,
+          defaultModel: 'claude-sonnet-5-5',
+          thinkingLevel: 'low',
+        },
+      },
+    });
+    const first = mgr.createConversation('anthropic');
+    const second = mgr.createConversation('anthropic');
+    mgr.setConversationThinkingLevel('anthropic', first, 'max');
+    const one = mgr.startCall('anthropic', first, 'first');
+    const two = mgr.startCall('anthropic', second, 'second');
+    const requests = sent
+      .filter((message) => message.channel === 'to:ai:chat')
+      .map((message) => message.data);
+    expect(requests).toEqual([
+      expect.objectContaining({ thinkingLevel: 'max' }),
+      expect.objectContaining({ thinkingLevel: 'low' }),
+    ]);
+    mgr.setConversationModel('anthropic', first, 'claude-haiku-4-5');
+    mgr.setConversationThinkingLevel('anthropic', first, 'high');
+    expect(
+      mgr
+        .getChatSnapshot()
+        .conversations.anthropic.find((conv) => conv.id === first)
+        ?.thinkingLevel,
+    ).toBe('auto');
+    mgr.onChatDone(one!);
+    mgr.onChatDone(two!);
+    mgr.flushPersist();
+  });
+  it('captures the provider thinking preference for chat calls while keeping connection probes independent', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    mgr.setConfigFromServer({
+      ...SAMPLE_PUSH,
+      config: {
+        ...SAMPLE_PUSH.config,
+        anthropic: {
+          ...SAMPLE_PUSH.config.anthropic,
+          defaultModel: 'claude-sonnet-5-5',
+          thinkingLevel: 'high',
+        },
+      },
+    });
+    const conversation = mgr.createConversation('anthropic');
+    const chatId = mgr.startCall('anthropic', conversation, 'hello');
+    expect(
+      sent.find((message) => message.channel === 'to:ai:chat')?.data,
+    ).toEqual(
+      expect.objectContaining({
+        model: 'claude-sonnet-5-5',
+        thinkingLevel: 'high',
+      }),
+    );
+    const probe = mgr.testConnection('anthropic', 'claude-sonnet-5-5');
+    const requests = sent.filter((message) => message.channel === 'to:ai:chat');
+    expect(requests[1].data).not.toHaveProperty('thinkingLevel');
+    mgr.onChatDone((requests[1].data as { callId: string }).callId);
+    await probe;
+    mgr.onChatDone(chatId!);
+    mgr.flushPersist();
+  });
+
   it('requestConfigRefresh fires to:ai:config:get', () => {
     const { bridge, sent } = makeBridge();
     const mgr = new AssistantManager(bridge as never, {
@@ -711,14 +805,17 @@ describe('AssistantManager — paced streaming reveal (P8)', () => {
         pending.push(cb);
         return pending.length;
       },
+
       cancelFrame: () => {
         pending = [];
       },
+
       tick: () => {
         const due = pending;
         pending = [];
         for (const cb of due) cb(performance.now());
       },
+
       pendingCount: () => pending.length,
     };
   }
@@ -798,9 +895,13 @@ describe('AssistantManager — paced streaming reveal (P8)', () => {
     });
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'read' as const,
+
       buildPreview: () => null,
+
       execute: async () => ({ ok: true }),
     });
     const conv = mgr.createConversation('anthropic');
@@ -1010,6 +1111,90 @@ describe('AssistantManager.onToolCall — read-class auto-execute', () => {
 });
 
 describe('AssistantManager.onToolCall — write-class confirmation', () => {
+  it('always confirms destructive tools even with auto-accept, including async previews', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge, { disablePacedReveal: true });
+    const conversation = mgr.createConversation('anthropic');
+    mgr.setAutoAcceptWrites('anthropic', conversation, true);
+    const callId = mgr.startCall('anthropic', conversation, 'delete')!;
+    let finish!: (
+      preview: import('../src/app/interfaces/Assistant').ToolConfirmPreview,
+    ) => void;
+    const execute = jest.fn(async () => ({ ok: true }));
+    mgr.setToolExecutor({
+      hasTool: () => true,
+
+      describe: () => [],
+
+      classify: () => 'write',
+
+      requiresConfirmation: () => true,
+
+      buildPreview: () => null,
+
+      preparePreview: () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+      execute,
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'trash',
+      toolName: 'delete_path',
+      arguments: { path: 'folder', recursive: true },
+    });
+    expect(execute).not.toHaveBeenCalled();
+    finish({ kind: 'operation', summary: 'Trash folder; 4 files.', after: '' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(
+      mgr.getChatSnapshot().pendingConfirms.trash.preview?.summary,
+    ).toContain('4 files');
+    expect(execute).not.toHaveBeenCalled();
+    mgr.respondToConfirm('trash', true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(sent.some((item) => item.channel === 'to:ai:tool-result')).toBe(
+      true,
+    );
+  });
+  it('does not register a confirmation after cancellation during async preparation', async () => {
+    const { bridge } = makeBridge();
+    const mgr = new AssistantManager(bridge, { disablePacedReveal: true });
+    const conversation = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conversation, 'move')!;
+    let finish!: (preview: null) => void;
+    const execute = jest.fn();
+    mgr.setToolExecutor({
+      hasTool: () => true,
+
+      describe: () => [],
+
+      classify: () => 'write',
+
+      buildPreview: () => null,
+
+      preparePreview: () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+      execute,
+    });
+    mgr.onToolCall({
+      callId,
+      toolCallId: 'move',
+      toolName: 'move_path',
+      arguments: {},
+    });
+    mgr.cancelCall(callId);
+    finish(null);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mgr.getChatSnapshot().pendingConfirms.move).toBeUndefined();
+    expect(execute).not.toHaveBeenCalled();
+  });
   // The confirmation surface is the inline `<ToolCallCard>` Accept /
   // Reject row, which calls `mgr.respondToConfirm(toolCallId, ok)`.
   // The legacy `<ConfirmToolCall>` modal is no longer fired — its
@@ -1164,8 +1349,11 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     };
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write' as const,
+
       buildPreview: () => preview,
       execute: jest.fn(),
     });
@@ -1195,8 +1383,11 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     const executor = {
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write' as const,
+
       buildPreview: () => ({
         kind: 'write' as const,
         path: '/x.md',
@@ -1234,8 +1425,11 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     const executor = {
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write' as const,
+
       buildPreview: () => null,
       execute: jest.fn(),
     };
@@ -1278,8 +1472,11 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write' as const,
+
       buildPreview: () => null,
       execute: jest.fn(),
     });
@@ -1319,8 +1516,11 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     );
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write' as const,
+
       buildPreview: () => ({
         kind: 'write' as const,
         path: '/x.md',
@@ -1364,8 +1564,11 @@ describe('AssistantManager — inline confirmation (pendingConfirms + respondToC
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'write' as const,
+
       buildPreview: () => null,
       getFullPreviewContent: jest.fn(async () => 'should-not-be-returned'),
       execute: jest.fn(async () => ({ ok: true })),
@@ -1404,6 +1607,7 @@ describe('AssistantManager — startCall ships tools when an executor is set', (
     const conv = mgr.createConversation('anthropic');
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [
         {
           name: 'read_file',
@@ -1411,8 +1615,11 @@ describe('AssistantManager — startCall ships tools when an executor is set', (
           parameters: { type: 'object' },
         },
       ],
+
       classify: () => 'read',
+
       buildPreview: () => null,
+
       execute: async () => ({}),
     });
     mgr.startCall('anthropic', conv, 'hi');
@@ -1464,9 +1671,13 @@ describe('AssistantManager — interleaved segments (P6 polish)', () => {
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'read' as const,
+
       buildPreview: () => null,
+
       execute: async () => ({ ok: true }),
     });
     mgr.appendChunk(callId, "I'll create one. ");
@@ -1503,9 +1714,13 @@ describe('AssistantManager — interleaved segments (P6 polish)', () => {
     const callId = mgr.startCall('anthropic', conv, 'hi')!;
     mgr.setToolExecutor({
       hasTool: () => true,
+
       describe: () => [],
+
       classify: () => 'read' as const,
+
       buildPreview: () => null,
+
       execute: async () => ({ ok: true }),
     });
     mgr.onToolCall({
@@ -1542,5 +1757,89 @@ describe('AssistantManager — done/error routing (test path still works after P
     await expect(promise).resolves.toEqual({ ok: true });
     // No chat inflight entries should exist.
     expect(Object.keys(mgr.getChatSnapshot().inflight)).toHaveLength(0);
+  });
+});
+
+describe('AssistantManager async tool lifecycle regressions', () => {
+  it.each([false, true])(
+    'does not publish late tool success/failure after cancellation (reject=%s)',
+    async (reject) => {
+      const { bridge, sent } = makeBridge();
+      const mgr = new AssistantManager(bridge as never, {
+        disablePacedReveal: true,
+      });
+      const conversation = mgr.createConversation('anthropic');
+      const callId = mgr.startCall('anthropic', conversation, 'hi')!;
+      let finish!: (value: unknown) => void;
+      let fail!: (reason: Error) => void;
+      const work = new Promise((resolve, reject) => {
+        finish = resolve;
+        fail = reject;
+      });
+      mgr.setToolExecutor({
+        hasTool: () => true,
+
+        describe: () => [],
+
+        classify: () => 'read',
+
+        buildPreview: () => null,
+
+        getFullPreviewContent: async () => undefined,
+
+        execute: () => work,
+      });
+      mgr.onToolCall({
+        callId,
+        toolCallId: 'late',
+        toolName: 'read_file',
+        arguments: {},
+      });
+      mgr.cancelCall(callId);
+      if (reject) fail(new Error('late failure'));
+      else finish({ ok: true });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(sent.filter((s) => s.channel === 'to:ai:tool-result')).toEqual([]);
+      expect(
+        mgr.getChatSnapshot().conversations.anthropic[0].messages[1].status,
+      ).toBe('cancelled');
+    },
+  );
+
+  it('executes a replayed tool call at most once', async () => {
+    const { bridge, sent } = makeBridge();
+    const mgr = new AssistantManager(bridge as never, {
+      disablePacedReveal: true,
+    });
+    const conversation = mgr.createConversation('anthropic');
+    const callId = mgr.startCall('anthropic', conversation, 'hi')!;
+    const execute = jest.fn(async () => ({ ok: true }));
+    mgr.setToolExecutor({
+      hasTool: () => true,
+
+      describe: () => [],
+
+      classify: () => 'read',
+
+      buildPreview: () => null,
+
+      getFullPreviewContent: async () => undefined,
+      execute,
+    });
+    const event = {
+      callId,
+      toolCallId: 'once',
+      toolName: 'read_file',
+      arguments: {},
+    };
+    mgr.onToolCall(event);
+    mgr.onToolCall(event);
+    await Promise.resolve();
+    mgr.onToolCall(event);
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(sent.filter((s) => s.channel === 'to:ai:tool-result')).toHaveLength(
+      1,
+    );
   });
 });

@@ -9,15 +9,19 @@ const SelectValue = SelectPrimitive.Value;
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & {
+    compact?: boolean;
+  }
+>(({ className, children, compact = false, ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'flex h-8 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm',
+      'flex h-[34px] w-full cursor-pointer items-center justify-between rounded-md border border-border bg-editor px-3 py-1 text-sm',
       '[&>span]:line-clamp-1',
-      'focus:outline-none focus:ring-1 focus:ring-ring',
+      'focus:outline-none focus:ring-2 focus:ring-ring',
       'disabled:cursor-not-allowed disabled:opacity-50',
+      compact &&
+        'h-6 w-auto max-w-full gap-1 rounded-sm border-0 bg-transparent px-1 py-0 text-xs text-muted-foreground hover:bg-hover hover:text-foreground [&_svg]:ml-1 [&_svg]:h-2.5 [&_svg]:w-2.5',
       className,
     )}
     {...props}
@@ -49,7 +53,7 @@ const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        'relative z-[1070] max-h-96 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md',
+        'relative z-[1070] max-h-[min(24rem,var(--radix-select-content-available-height))] min-w-[8rem] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-[var(--shadow-floating)]',
         position === 'popper' &&
           'data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1',
         className,
@@ -77,7 +81,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex w-full cursor-pointer select-none items-center rounded-sm py-1 pl-7 pr-2 text-sm outline-none',
+      'relative flex w-full cursor-pointer select-none items-center min-h-8 rounded-sm py-1 pl-7 pr-3 text-sm outline-none',
       'focus:bg-accent focus:text-accent-foreground',
       'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className,

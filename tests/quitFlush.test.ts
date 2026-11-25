@@ -13,8 +13,7 @@ import { runQuitFlush } from '../src/app/lib/quitFlush';
 
 type AckChannel = 'to:session:save' | 'to:ai:conversations:flush';
 type SendChannel =
-  | 'from:session:flush-request'
-  | 'from:ai:conversations:flush-request';
+  'from:session:flush-request' | 'from:ai:conversations:flush-request';
 
 interface Harness {
   emit: (channel: AckChannel) => void;
@@ -43,6 +42,7 @@ function makeHarness(): {
       for (const set of listeners.values()) n += set.size;
       return n;
     },
+
     fireTimeout: () => {
       timerFn?.();
     },
@@ -54,9 +54,11 @@ function makeHarness(): {
       set.add(listener);
       listeners.set(channel, set);
     },
+
     off: (channel, listener) => {
       listeners.get(channel)?.delete(listener);
     },
+
     send: (channel, payload) => {
       sent.push({ channel, payload });
     },
@@ -65,6 +67,7 @@ function makeHarness(): {
       timerFn = fn;
       return 1;
     },
+
     clearTimer: () => {
       timerFn = null;
     },
@@ -151,5 +154,39 @@ describe('runQuitFlush', () => {
       clearTimer: jest.fn(),
     });
     expect(customSetTimer).toHaveBeenCalledWith(expect.any(Function), 1000);
+  });
+
+  it('clears the timeout when both acknowledgements arrive during send', () => {
+    const { deps, onDone, harness } = makeHarness();
+    const clearTimer = jest.fn(deps.clearTimer);
+    runQuitFlush({
+      ...deps,
+      clearTimer,
+      send: (channel) => {
+        harness.emit(
+          channel === 'from:session:flush-request'
+            ? 'to:session:save'
+            : 'to:ai:conversations:flush',
+        );
+      },
+    });
+    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(clearTimer).toHaveBeenCalledWith(1);
+    expect(harness.listenerCount()).toBe(0);
+  });
+
+  it('still finishes and removes listeners when a disappearing renderer makes send throw', () => {
+    const { deps, onDone, harness } = makeHarness();
+    expect(() =>
+      runQuitFlush({
+        ...deps,
+        send: () => {
+          throw new Error('window destroyed');
+        },
+      }),
+    ).not.toThrow();
+    harness.fireTimeout();
+    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(harness.listenerCount()).toBe(0);
   });
 });

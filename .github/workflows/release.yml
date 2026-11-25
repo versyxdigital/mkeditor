@@ -24,6 +24,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # need full history for the tag check
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
       - name: Read version + check tag
         id: read
         run: |
@@ -62,11 +65,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: 'npm'
       - run: npm ci
       - name: Build installer
         run: npm run make-installer
+        env:
+          MKEDITOR_GOOGLE_CLIENT_ID: ${{ secrets.MKEDITOR_GOOGLE_CLIENT_ID }}
+          MKEDITOR_GOOGLE_CLIENT_SECRET: ${{ secrets.MKEDITOR_GOOGLE_CLIENT_SECRET }}
+          MKEDITOR_REQUIRE_GOOGLE_DRIVE: 'true'
+          MKEDITOR_DROPBOX_APP_KEY: ${{ secrets.MKEDITOR_DROPBOX_APP_KEY }}
+          MKEDITOR_REQUIRE_DROPBOX: 'true'
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

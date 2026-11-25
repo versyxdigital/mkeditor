@@ -1,10 +1,19 @@
-import type MarkdownIt from 'markdown-it';
+import type { MarkdownIt } from 'markdown-it';
 import { selfRender } from '../../util';
 
 const LinkTarget = (md: MarkdownIt) => {
   const render = md.renderer.rules.link_open || selfRender;
 
   md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+    const href = tokens[idx].attrGet('href');
+    if (
+      env?.assistantChat === true &&
+      typeof href === 'string' &&
+      href.startsWith('#')
+    ) {
+      tokens[idx].attrSet('target', '_self');
+      return render(tokens, idx, options, env, self);
+    }
     const index = tokens[idx].attrIndex('target');
 
     if (index < 0) {

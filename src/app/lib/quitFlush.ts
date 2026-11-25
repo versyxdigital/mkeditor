@@ -7,10 +7,9 @@
  * `to:ai:conversations:flush`) to land. Resolve when both arrive OR
  * after `timeoutMs` (default 250 ms) — whichever comes first.
  *
- * The renderer's debounced saves cover everything except the very
- * last keystroke / message, so a missed ack just costs a few hundred
- * ms of unpersisted activity, not data loss. Worst-case timeout still
- * fires `onDone` so `app.quit()` isn't blocked.
+ * Main maps the logical session signal to its completed disk checkpoint
+ * and supplies its own timeout. `onDone` must check that result before
+ * deciding whether quitting is safe.
  */
 
 export interface QuitFlushDeps {
@@ -27,8 +26,7 @@ export interface QuitFlushDeps {
   /** Send a notification channel to the renderer. */
   send: (
     channel:
-      | 'from:session:flush-request'
-      | 'from:ai:conversations:flush-request',
+      'from:session:flush-request' | 'from:ai:conversations:flush-request',
     payload?: unknown,
   ) => void;
   /** Fires once when both acks have landed OR the timeout has elapsed. Idempotent. */
@@ -68,13 +66,16 @@ export function runQuitFlush(deps: QuitFlushDeps): void {
     if (timer !== null) clearTimer(timer);
     onDone();
   };
+
   const tryFinish = () => {
     if (sessionAcked && assistantAcked) finish();
   };
+
   const onSessionAck = () => {
     sessionAcked = true;
     tryFinish();
   };
+
   const onAssistantAck = () => {
     assistantAcked = true;
     tryFinish();
@@ -82,7 +83,12 @@ export function runQuitFlush(deps: QuitFlushDeps): void {
 
   on('to:session:save', onSessionAck);
   on('to:ai:conversations:flush', onAssistantAck);
-  send('from:session:flush-request');
-  send('from:ai:conversations:flush-request', null);
   timer = setTimer(finish, timeoutMs);
+  try {
+    send('from:session:flush-request');
+    send('from:ai:conversations:flush-request', null);
+  } catch {
+    // A renderer may disappear between the window check and send. The
+    // timeout still permits quit and removes the listeners in that case.
+  }
 }

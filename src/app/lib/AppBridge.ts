@@ -3,6 +3,7 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
+  shell,
   type IpcMainEvent,
   type IpcMainInvokeEvent,
 } from 'electron';
@@ -10,7 +11,10 @@ import { promises as fsPromises } from 'fs';
 import { basename, dirname, join, resolve } from 'path';
 import type { SettingsProviders } from '../interfaces/Providers';
 import type { Logger, LogMessage } from '../interfaces/Logging';
-import type { SessionPayload } from '../interfaces/Session';
+import type {
+  SessionPayload,
+  SessionRestoreEnvelope,
+} from '../interfaces/Session';
 import type {
   CancelRequest,
   ChatRequest,
@@ -23,6 +27,9 @@ import type {
 } from '../interfaces/Assistant';
 import { AppSession } from './AppSession';
 import { AppStorage } from './AppStorage';
+import { WorkspaceFiles } from './WorkspaceFiles';
+import type { WorkspaceRequest } from '../interfaces/WorkspaceTools';
+import { toolFailure } from '../shared/workspacePaths';
 import { AssistantConfig } from './AssistantConfig';
 import { AssistantKeyStore } from './AssistantKeyStore';
 import { SecureChannel } from './SecureChannel';
@@ -31,6 +38,9 @@ import {
   writePersistedConversations,
 } from './assistantStoreFile';
 import { normalizeLanguage } from '../util';
+import { CloudService } from './cloud/CloudService';
+import { CloudStore } from './cloud/CloudStore';
+import { CloudSessionRecovery } from './cloud/CloudSessionRecovery';
 /**
  * AppBridge
  */
@@ -70,6 +80,67 @@ export class AppBridge {
   }> = [];
   private invokeChannels: string[] = [];
   private disposed = false;
+  private assistantConfigPush = 0;
+  private registered = false;
+  private cloud: CloudService | null = null;
+  private readonly recovery = new CloudSessionRecovery();
+  private flushSequence = 0;
+  private sessionFlushes = new Map<string, (ok: boolean) => void>();
+  private recoveryFailureCopy?: import('../interfaces/Session').SessionRecoveryCopy;
+  confirmFailedSession(): boolean {
+    const copy = this.recoveryFailureCopy ?? {
+      title: 'MKEditor',
+      message:
+        'Your latest changes could not be saved locally. Quit anyway, or cancel to keep the app open?',
+      quit: 'Quit anyway',
+      cancel: 'Cancel',
+    };
+    return (
+      dialog.showMessageBoxSync(this.context, {
+        type: 'warning',
+        title: copy.title,
+        message: copy.message,
+        buttons: [copy.cancel, copy.quit],
+        defaultId: 0,
+        cancelId: 0,
+      }) === 1
+    );
+  }
+
+  async restoreSession(enabled: boolean): Promise<SessionRestoreEnvelope> {
+    const envelope = enabled
+      ? await this.recovery.restore(AppSession.load())
+      : { session: null, missing: [], contents: {} };
+    for (const path of Object.keys(envelope.contents)) {
+      try {
+        AppStorage.authorizeFile(this.context, path);
+      } catch {
+        // A file can disappear after its contents were read. Restore the draft;
+        // saving it will require a native destination selection.
+      }
+    }
+    return envelope;
+  }
+
+  flushSession(): Promise<boolean> {
+    const id = `session-flush-${++this.flushSequence}`;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this.sessionFlushes.delete(id);
+        resolve(false);
+      }, 1800);
+      this.sessionFlushes.set(id, (ok) => {
+        clearTimeout(timer);
+        resolve(ok);
+      });
+      if (this.disposed || this.context.isDestroyed()) {
+        this.sessionFlushes.get(id)?.(false);
+        this.sessionFlushes.delete(id);
+        return;
+      }
+      this.context.webContents.send('from:session:flush-request', { id });
+    });
+  }
 
   /**
    * Create a new AppBridge instance to manage IPC traffic.
@@ -102,6 +173,26 @@ export class AppBridge {
    * @returns
    */
   register() {
+    if (this.registered || this.disposed) return;
+    this.registered = true;
+
+    this.cloud = new CloudService(
+      new CloudStore(),
+      (url) => shell.openExternal(url),
+      (state) => {
+        if (!this.disposed && !this.context.isDestroyed())
+          this.context.webContents.send('from:cloud:state', state);
+      },
+      undefined,
+      undefined,
+      this.recovery.store,
+    );
+    this.on('to:cloud:request', async (_event, input: unknown) => {
+      const result = await this.cloud!.handle(input);
+      if (!this.disposed && !this.context.isDestroyed())
+        this.context.webContents.send('from:cloud:result', result);
+    });
+
     // Enable logging from the renderer context
     this.on('log', (_e, { level, msg, meta }: LogMessage) => {
       const logger = this.providers.logger?.log;
@@ -139,14 +230,65 @@ export class AppBridge {
     // Persist the renderer's open-tab / cursor / scroll session. Fired
     // by the renderer's debounced session save trigger and by the
     // renderer's flush-request handler during quit.
-    this.on('to:session:save', (_event, payload: SessionPayload) => {
-      AppSession.save(payload);
+    this.on('to:session:save', async (_event, payload: SessionPayload) => {
+      if (!payload || typeof payload !== 'object') return;
+      let ok = false;
+      if (
+        payload.failureCopy &&
+        ['title', 'message', 'quit', 'cancel'].every(
+          (key) =>
+            typeof (payload.failureCopy as unknown as Record<string, unknown>)[
+              key
+            ] === 'string' &&
+            (payload.failureCopy as unknown as Record<string, string>)[key]
+              .length < 2000,
+        )
+      )
+        this.recoveryFailureCopy = payload.failureCopy;
+      try {
+        await this.recovery.save({
+          ...payload,
+          workspaceRoot: AppStorage.getSessionWorkspaceRoot(
+            payload.workspaceRoot,
+          ),
+        });
+        ok = true;
+      } catch {
+        /* Keep the previous checkpoint and report failure without document text. */
+      }
+      if (
+        ok &&
+        (payload.tabs?.some((tab) => tab.remote) ||
+          payload.cloudAcknowledgements?.length) &&
+        !this.disposed &&
+        !this.context.isDestroyed()
+      )
+        this.context.webContents.send(
+          'from:cloud:state',
+          await this.cloud!.state(),
+        );
+      if (!this.disposed && !this.context.isDestroyed())
+        this.context.webContents.send('from:session:saved', { ok });
+      if (payload.flushId) {
+        this.sessionFlushes.get(payload.flushId)?.(ok);
+        this.sessionFlushes.delete(payload.flushId);
+      }
     });
 
     // Wipe the persisted session file. Fired by the renderer's
     // "Clear saved session" action in the Settings modal.
-    this.on('to:session:clear', () => {
-      AppSession.clear();
+    this.on('to:session:clear', async () => {
+      let token: string;
+      try {
+        token = await this.recovery.clear();
+      } catch {
+        this.context.webContents.send('from:notification:display', {
+          status: 'error',
+          key: 'cloud:recovery_storage_error',
+        });
+        return;
+      }
+      this.context.webContents.send('from:session:cleared', { token });
       this.context.webContents.send('from:notification:display', {
         status: 'success',
         key: 'notifications:session_cleared',
@@ -197,6 +339,28 @@ export class AppBridge {
       AppStorage.openPath(this.context, path);
     });
 
+    // Open a workspace-resident file in the OS default application
+    // (Windows Photos for images, Acrobat for PDFs, …).
+    this.on('to:shell:openpath', async (_e, { path }: { path: string }) => {
+      try {
+        const safePath = await AppStorage.assertInWorkspace(path);
+        const errorMsg = await shell.openPath(safePath);
+        // `shell.openPath` resolves with an empty string on success
+        // and an error description otherwise (no association, etc.).
+        if (errorMsg) {
+          this.context.webContents.send('from:notification:display', {
+            status: 'error',
+            key: 'notifications:unable_open_path',
+          });
+        }
+      } catch {
+        this.context.webContents.send('from:notification:display', {
+          status: 'error',
+          key: 'notifications:unable_open_path',
+        });
+      }
+    });
+
     // Save an existing file, this is also used by the renderer bridge "from:file:open" listener, if
     // editor content changes are detected by logic in the renderer process, the renderer bridge will
     // submit a save event to this channel with prompt and fromOpen both defined, otherwise it'll just
@@ -212,46 +376,66 @@ export class AppBridge {
           fromOpen = false,
           openPath = null,
           openFile = true,
+          requestId,
         },
       ) => {
         if (await this.promptUserConfirmSave(this.context, prompt)) {
-          AppStorage.saveFile(this.context, {
+          const result = await AppStorage.saveFile(this.context, {
             id: event.sender.id,
             data: content,
             filePath: file,
             encoding: 'utf-8',
-            openFile,
-          }).then(() => {
-            if (openPath) {
-              AppStorage.openPath(this.context, openPath);
-            } else if (fromOpen) {
-              AppStorage.showOpenDialog(this.context);
-            }
-
-            this.setWindowTitle();
+            openFile: requestId ? false : openFile,
           });
-        } else {
+          if (requestId && !this.context.isDestroyed()) {
+            this.context.webContents.send('from:file:save-result', {
+              requestId,
+              ...result,
+            });
+          }
+          if (!result.ok) return;
           if (openPath) {
-            AppStorage.openPath(this.context, openPath);
+            await AppStorage.openPath(this.context, openPath);
           } else if (fromOpen) {
-            AppStorage.showOpenDialog(this.context);
+            await AppStorage.showOpenDialog(this.context);
+          }
+          this.setWindowTitle();
+        } else {
+          if (requestId && !this.context.isDestroyed()) {
+            this.context.webContents.send('from:file:save-result', {
+              requestId,
+              ok: false,
+              cancelled: true,
+            });
+          }
+          if (openPath) {
+            await AppStorage.openPath(this.context, openPath);
+          } else if (fromOpen) {
+            await AppStorage.showOpenDialog(this.context);
           }
         }
       },
     );
 
-    // Save as event, doesn't require checks on "activeFile",
-    // this will simply just call AppStorage save and triger
-    // the dialog for the user to save the file to the location
-    // of their choice.
-    this.on('to:file:saveas', (event, data) => {
-      AppStorage.saveFile(this.context, {
+    // Legacy callers pass a string. Correlated saves await the result
+    // without reopening whichever tab happens to be active after the picker.
+    this.on('to:file:saveas', async (event, data) => {
+      const correlated = typeof data === 'object' && data !== null;
+      const requestId = correlated ? data.requestId : undefined;
+      const result = await AppStorage.saveFile(this.context, {
         id: event.sender.id,
-        data,
+        data: correlated ? data.content : data,
+        excludedPaths: correlated ? data.excludedPaths : undefined,
         encoding: 'utf-8',
-      }).then(() => {
-        this.setWindowTitle();
+        openFile: requestId ? false : undefined,
       });
+      if (requestId && !this.context.isDestroyed()) {
+        this.context.webContents.send('from:file:save-result', {
+          requestId,
+          ...result,
+        });
+      }
+      this.setWindowTitle();
     });
 
     this.on(
@@ -374,6 +558,22 @@ export class AppBridge {
       },
     );
 
+    this.handle('mked:fs:listworkspacefiles', (_e, root: string) =>
+      AppStorage.listWorkspaceFiles(root),
+    );
+
+    const workspaceFiles = new WorkspaceFiles(this.context);
+    this.handle(
+      'mked:fs:workspace-operation',
+      async (_e, request: WorkspaceRequest) => {
+        try {
+          return { ok: true, value: await workspaceFiles.request(request) };
+        } catch (error) {
+          return toolFailure(error);
+        }
+      },
+    );
+
     // Write a file with awaited success/failure — used by the AI
     // assistant's write-class tools (`write_file`, `edit_file`,
     // `replace_selection`, `insert_at_cursor`) so the agent gets
@@ -396,7 +596,7 @@ export class AppBridge {
             mustExist: false,
           });
           await fsPromises.mkdir(dirname(safePath), { recursive: true });
-          await fsPromises.writeFile(safePath, content, 'utf-8');
+          await AppStorage.writeTextFile(safePath, content);
           return { ok: true, path: safePath };
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
@@ -458,6 +658,57 @@ export class AppBridge {
       },
     );
 
+    // Write a pasted-image's bytes into the workspace. Renderer
+    // gathers the bytes from `event.clipboardData`, the settings
+    // directory and the active editable file path, hands them over,
+    // and inserts a `![](relative-path)` markdown link once the path
+    // returned here is in hand. `AppStorage.writePastedImage` runs
+    // the same workspace-containment check as the other write tools
+    // (`assertInWorkspace`) — paste targets outside the workspace
+    // are rejected with a structured error.
+    this.handle(
+      'mked:fs:pasteimage',
+      async (
+        _e,
+        opts: {
+          sourceFile: string;
+          directory: string;
+          bytes: Uint8Array;
+          extension: string;
+        },
+      ) => {
+        try {
+          return await AppStorage.writePastedImage(
+            this.context,
+            opts.sourceFile,
+            opts.directory,
+            opts.bytes,
+            opts.extension,
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { ok: false as const, error: message };
+        }
+      },
+    );
+
+    // Move a file or folder inside the workspace.
+    this.handle(
+      'mked:fs:moveitem',
+      async (_e, opts: { srcPath: string; dstPath: string }) => {
+        try {
+          return await AppStorage.moveItem(
+            this.context,
+            opts.srcPath,
+            opts.dstPath,
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return { ok: false as const, error: message };
+        }
+      },
+    );
+
     this.on('mked:open-url', (_e, url: string) => {
       try {
         this.handleMkedUrl(url);
@@ -475,12 +726,10 @@ export class AppBridge {
       }
     });
 
-    // Renderer publishes the current workspace root whenever it
-    // adopts a new one (BridgeListeners.from:folder:opened detects
-    // the change). Main stores it as the trust boundary for all
-    // `mked:fs:*` invokes — see `AppStorage.assertInWorkspace`.
+    // Acknowledge adoption only for roots offered by a native picker or
+    // main's restore envelope. The renderer cannot choose the boundary.
     this.on('to:workspace:set', (_e, payload: { root: string | null }) => {
-      AppStorage.setWorkspaceRoot(payload?.root ?? null);
+      AppStorage.adoptWorkspaceRoot(payload?.root);
     });
 
     // ---- AI Assistant ----------------------------------------------
@@ -506,12 +755,31 @@ export class AppBridge {
       this.pushAssistantConfig();
     });
 
+    this.on('to:ai:chatgpt', (_e, payload) => {
+      void this.providers.assistant?.chatGptCommand(payload);
+    });
+
     this.on('to:ai:config:set', (_e, payload: ConfigSetRequest) => {
       AssistantConfig.update(payload);
       this.pushAssistantConfig();
     });
 
-    this.on('to:ai:key:set', (_e, payload: KeySetRequest) => {
+    this.on('to:ai:key:set', async (_e, payload: KeySetRequest) => {
+      if (!payload || !['openai', 'anthropic'].includes(payload.provider))
+        return;
+      const acknowledge = (ok: boolean) => {
+        if (
+          typeof payload.requestId === 'string' &&
+          !this.disposed &&
+          !this.context.isDestroyed()
+        ) {
+          this.context.webContents.send('from:ai:key:result', {
+            requestId: payload.requestId,
+            provider: payload.provider,
+            ok,
+          });
+        }
+      };
       // Payload carries RSA-OAEP ciphertext (base64) — never the
       // raw API key. We decrypt with the per-session private key
       // held inside `SecureChannel`, hand the plaintext directly to
@@ -528,15 +796,22 @@ export class AppBridge {
         // leave the stored key untouched. Push the current config so
         // the renderer sees the unchanged state.
         this.providers.logger?.log.error('[to:ai:key:set] decrypt failed', err);
+        acknowledge(false);
         this.pushAssistantConfig();
         return;
       }
-      AssistantKeyStore.setKey(payload.provider, plaintext);
+      let ok = false;
+      try {
+        ok = await AssistantKeyStore.setKey(payload.provider, plaintext);
+      } catch {
+        /* Report a failed OS keychain/write operation without echoing secrets. */
+      }
+      acknowledge(ok);
       this.pushAssistantConfig();
     });
 
-    this.on('to:ai:key:clear', (_e, payload: KeyClearRequest) => {
-      AssistantKeyStore.clearKey(payload.provider);
+    this.on('to:ai:key:clear', async (_e, payload: KeyClearRequest) => {
+      await AssistantKeyStore.clearKey(payload.provider);
       this.pushAssistantConfig();
     });
 
@@ -590,7 +865,13 @@ export class AppBridge {
   ): void {
     const handler = (event: IpcMainEvent, ...args: unknown[]) => {
       if (event.sender.id !== this.context.webContents.id) return;
-      void fn(event, ...args);
+      try {
+        Promise.resolve(fn(event, ...args)).catch((err) => {
+          this.providers.logger?.log.error(`IPC ${channel} failed`, err);
+        });
+      } catch (err) {
+        this.providers.logger?.log.error(`IPC ${channel} failed`, err);
+      }
     };
     ipcMain.on(channel, handler);
     this.listeners.push({
@@ -643,8 +924,11 @@ export class AppBridge {
    * Remove every IPC listener and invoke handler this bridge registered.
    */
   private dispose(): void {
+    this.sessionFlushes.forEach((resolve) => resolve(false));
+    this.sessionFlushes.clear();
     if (this.disposed) return;
     this.disposed = true;
+    this.cloud?.dispose();
     for (const { channel, handler } of this.listeners) {
       ipcMain.removeListener(channel, handler);
     }
@@ -661,14 +945,19 @@ export class AppBridge {
    * every config/key mutation, and by main.ts on `did-finish-load` so
    * the renderer hydrates on first paint.
    */
-  pushAssistantConfig(): void {
+  async pushAssistantConfig(): Promise<void> {
     if (!this.providers.assistant) return;
+    const generation = ++this.assistantConfigPush;
     try {
-      if (this.context.isDestroyed()) return;
-      this.context.webContents.send(
-        'from:ai:config',
-        this.providers.assistant.buildSanitizedConfig(),
-      );
+      if (this.disposed || this.context.isDestroyed()) return;
+      const config = await this.providers.assistant.buildSanitizedConfig();
+      if (
+        this.disposed ||
+        this.context.isDestroyed() ||
+        generation !== this.assistantConfigPush
+      )
+        return;
+      this.context.webContents.send('from:ai:config', config);
     } catch (e) {
       this.providers.logger?.log.error('[from:ai:config]', e);
     }
@@ -724,7 +1013,7 @@ export class AppBridge {
       const parsed = new URL(url);
       if (parsed.hostname === 'open') {
         const path = parsed.searchParams.get('path');
-        AppStorage.openActiveFile(this.context, path);
+        if (path) void AppStorage.openPath(this.context, path);
       }
     } catch {
       this.providers.logger?.log.error(

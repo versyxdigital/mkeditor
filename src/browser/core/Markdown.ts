@@ -3,6 +3,8 @@ import hljs from 'highlight.js/lib/core';
 // Supported languages for markdown codeblocks
 import c from 'highlight.js/lib/languages/c';
 import cpp from 'highlight.js/lib/languages/cpp';
+import css from 'highlight.js/lib/languages/css';
+import diff from 'highlight.js/lib/languages/diff';
 import csharp from 'highlight.js/lib/languages/csharp';
 import javascript from 'highlight.js/lib/languages/javascript';
 import json from 'highlight.js/lib/languages/json';
@@ -22,8 +24,14 @@ import LineNumber from '../extensions/renderer/LineNumber';
 import LinkTarget from '../extensions/renderer/LinkTarget';
 import ImageStyle from '../extensions/renderer/ImageStyle';
 import TableStyle from '../extensions/renderer/TableStyle';
+import AssistantFormatting, {
+  assistantFeatureRules,
+} from '../extensions/renderer/AssistantFormatting';
 
 import { logger } from '../util';
+
+hljs.registerLanguage('css', css);
+hljs.registerLanguage('diff', diff);
 
 hljs.registerLanguage('javascript', javascript);
 hljs.registerAliases('js', { languageName: 'javascript' });
@@ -74,6 +82,9 @@ const languageDisplayNames: Record<string, string> = {
   csharp: 'C#',
   rust: 'Rust',
   cpp: 'C++',
+  css: 'CSS',
+  diff: 'Diff',
+  mermaid: 'Mermaid',
   c: 'C',
 };
 
@@ -97,7 +108,9 @@ function renderCodeblock(
   lang: string,
 ) {
   const isTerminal = terminalLanguages.has(lang);
-  const label = languageDisplayNames[lang] ?? (lang || '');
+  const label = Object.prototype.hasOwnProperty.call(languageDisplayNames, lang)
+    ? languageDisplayNames[lang]
+    : lang;
   const wrapperClasses = isTerminal
     ? 'md-codeblock md-codeblock--terminal'
     : 'md-codeblock';
@@ -109,7 +122,9 @@ function renderCodeblock(
   if (typeof btoa === 'function') {
     const bytes = new TextEncoder().encode(rawSource);
     let binary = '';
-    for (const byte of bytes) binary += String.fromCharCode(byte);
+    for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+    }
     sourceBase64 = btoa(binary);
   } else {
     sourceBase64 = Buffer.from(rawSource, 'utf-8').toString('base64');
@@ -120,7 +135,7 @@ function renderCodeblock(
       '<i></i><i></i><i></i></span>'
     : '';
   const langLabel = label
-    ? `<span class="md-codeblock-lang">${label}</span>`
+    ? `<span class="md-codeblock-lang">${Markdown.utils.escapeHtml(label)}</span>`
     : '';
 
   return (
@@ -155,7 +170,7 @@ const Markdown = new MarkdownIt({
         return renderCodeblock(
           str,
           '<pre class="hljs"><code class="hljs language-' +
-            lang +
+            escapeHtml(lang) +
             '">' +
             code +
             '</code></pre>',
@@ -179,14 +194,33 @@ const Markdown = new MarkdownIt({
 // `<pre><code>` wrap when the returned string starts with `<pre`,
 // and our `renderCodeblock` wrapper starts with `<div>` so the body
 // would otherwise end up inside an extra outer <pre>.
-Markdown.renderer.rules.fence = (tokens, idx, options) => {
+Markdown.renderer.rules.fence = (tokens, idx, options, env, self) => {
   const token = tokens[idx];
   const info = token.info ? Markdown.utils.unescapeAll(token.info).trim() : '';
   const langName = info ? info.split(/\s+/g)[0] : '';
 
   if (options.highlight) {
-    const out = options.highlight(token.content, langName, '');
-    if (out) return out + '\n';
+    let out = options.highlight(token.content, langName, '');
+    if (out) {
+      if (langName.toLowerCase() === 'mermaid')
+        token.attrSet('data-diagram', 'mermaid');
+      if (env?.assistantChat === true) {
+        if (typeof env.copyLabel === 'string') {
+          out = out.replace(
+            'aria-label="Copy code"',
+            `aria-label="${Markdown.utils.escapeHtml(env.copyLabel)}"`,
+          );
+        }
+      }
+      // The custom codeblock wrapper replaces markdown-it's fence output,
+      // so carry the token's scroll-sync attributes onto that wrapper.
+      return (
+        out.replace(/^<div class="([^"]*)"/, (_match, classes: string) => {
+          token.attrJoin('class', classes);
+          return `<div${self.renderAttrs(token)}`;
+        }) + '\n'
+      );
+    }
   }
 
   return (
@@ -205,6 +239,7 @@ Markdown.use(LinkTarget);
 Markdown.use(ImageStyle);
 Markdown.use(TableStyle);
 Markdown.use(MarkdownItKatex);
+Markdown.use(AssistantFormatting);
 
 /**
  * Render untrusted markdown content (currently: AI Assistant
@@ -223,12 +258,28 @@ Markdown.use(MarkdownItKatex);
  * (linkify, breaks, the highlight callback, the loaded plugins) are
  * preserved.
  */
-export function renderAssistantMarkdown(content: string): string {
+export function renderAssistantMarkdown(
+  content: string,
+  {
+    scrollableTables = false,
+    chat,
+  }: {
+    scrollableTables?: boolean;
+    chat?: { documentId: string; copyLabel?: string };
+  } = {},
+): string {
   const previous = Markdown.options.html;
   Markdown.set({ html: false });
   try {
-    return Markdown.render(content);
+    if (chat) Markdown.enable(assistantFeatureRules);
+    return Markdown.render(content, {
+      scrollableTables,
+      assistantChat: Boolean(chat),
+      docId: chat?.documentId.replace(/[^a-zA-Z0-9_-]/g, ''),
+      copyLabel: chat?.copyLabel,
+    });
   } finally {
+    if (chat) Markdown.disable(assistantFeatureRules);
     Markdown.set({ html: previous });
   }
 }

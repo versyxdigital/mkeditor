@@ -1,281 +1,356 @@
-/**
- * MentionPicker (AI Assistant P6) unit tests.
- *
- * Stateless React component driven by a query + a stubbed
- * FileTreeManager surface. Asserts: filtering behaviour, ranking
- * (basename > substring), arrow + enter navigation, and the lazy-
- * load handoff for directories that aren't populated yet.
- */
-
 import * as React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react';
 import { MentionPicker } from '../../src/browser/react/components/assistant/MentionPicker';
-import type {
-  FileTreeManager,
-  TreeNode,
-} from '../../src/browser/core/FileTreeManager';
+import { FileTreeManager } from '../../src/browser/core/FileTreeManager';
 
-jest.mock('../../src/browser/i18n', () => ({
-  t: (key: string) => key,
-}));
+jest.mock('../../src/browser/i18n', () => ({ t: (key: string) => key }));
 
-function makeFileTree(opts: {
-  treeRoot?: string | null;
-  nodes?: TreeNode[];
-  lazy?: (path: string) => TreeNode[] | undefined;
-}): FileTreeManager & {
-  _emit: () => void;
-  _replace: (nodes: TreeNode[]) => void;
-} {
-  let nodes = opts.nodes ?? [];
-  const listeners = new Set<() => void>();
-  const stub = {
-    getSnapshot: jest.fn(() => ({
-      treeRoot: opts.treeRoot ?? null,
-      nodes,
-    })),
-    on: jest.fn((event: string, listener: () => void) => {
-      if (event !== 'change') throw new Error(`unsupported event ${event}`);
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    }),
-    requestDirectoryContents: jest.fn((path: string) => {
-      const newChildren = opts.lazy?.(path);
-      if (!newChildren) return;
-      const walk = (nodeList: TreeNode[]): boolean => {
-        for (const n of nodeList) {
-          if (n.path === path && n.type === 'directory') {
-            n.children = newChildren;
-            n.loaded = true;
-            return true;
-          }
-          if (n.type === 'directory' && n.children && walk(n.children))
-            return true;
-        }
-        return false;
-      };
-      walk(nodes);
-      listeners.forEach((l) => l());
-    }),
-    treeRoot: opts.treeRoot ?? null,
-    _emit: () => listeners.forEach((l) => l()),
-    _replace: (n: TreeNode[]) => {
-      nodes = n;
-      listeners.forEach((l) => l());
+function workspace(paths: string[]) {
+  let files = paths;
+  const loader = jest.fn(async () => ({ paths: [...files], truncated: false }));
+  const bridge = { send: jest.fn(), receive: jest.fn() };
+  const manager = new FileTreeManager(bridge, jest.fn(), loader);
+  manager.buildFileTree(
+    [
+      {
+        type: 'directory',
+        name: 'poems',
+        path: '/w/poems',
+        hasChildren: true,
+        loaded: false,
+      },
+    ],
+    '/w',
+  );
+  return {
+    manager,
+    bridge,
+    loader,
+    setFiles: (next: string[]) => {
+      files = next;
     },
-  } as unknown as FileTreeManager & {
-    _emit: () => void;
-    _replace: (nodes: TreeNode[]) => void;
   };
-  return stub;
 }
+const props = { onPick: jest.fn(), onClose: jest.fn() };
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
-describe('<MentionPicker>', () => {
-  it('renders nothing when closed', () => {
-    const ftm = makeFileTree({
-      treeRoot: '/w',
-      nodes: [{ type: 'file', name: 'a.md', path: '/w/a.md' }],
-    });
-    render(
-      <MentionPicker
-        query=""
-        open={false}
-        onPick={jest.fn()}
-        onClose={jest.fn()}
-        fileTreeManager={ftm}
-      />,
-    );
-    expect(screen.queryByTestId('mention-picker')).toBeNull();
+it('lists unopened files below collapsed folders without opening or expanding anything', async () => {
+  const { manager, bridge, loader } = workspace([
+    '/w/poems/deep/sonnet.md',
+    '/w/poems/second.md',
+    '/w/config.json',
+  ]);
+  const snapshot = manager.getSnapshot();
+  const { rerender } = render(
+    <MentionPicker {...props} query="poem" open fileTreeManager={manager} />,
+  );
+  expect(
+    await screen.findByTestId('mention-option-/w/poems/deep/sonnet.md'),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByTestId('mention-option-/w/poems/second.md'),
+  ).toBeInTheDocument();
+  expect(manager.getSnapshot()).toBe(snapshot);
+  expect(snapshot.nodes[0].loaded).toBe(false);
+  expect(bridge.send).not.toHaveBeenCalled();
+  rerender(
+    <MentionPicker {...props} query="config" open fileTreeManager={manager} />,
+  );
+  expect(
+    screen.getByTestId('mention-option-/w/config.json'),
+  ).toBeInTheDocument();
+  expect(loader).toHaveBeenCalledTimes(1);
+});
+
+it('does not subscribe or list files while hidden', () => {
+  const { manager, loader } = workspace(['/w/a.md']);
+  const subscribe = jest.spyOn(manager, 'on');
+  const read = jest.spyOn(manager, 'getSnapshot');
+  render(
+    <MentionPicker
+      {...props}
+      query=""
+      open={false}
+      fileTreeManager={manager}
+    />,
+  );
+  expect(subscribe).not.toHaveBeenCalled();
+  expect(read).not.toHaveBeenCalled();
+  expect(loader).not.toHaveBeenCalled();
+  expect(screen.queryByTestId('mention-picker')).not.toBeInTheDocument();
+});
+
+it('uses the cached inventory on unrelated tree notifications and refreshes on reopening', async () => {
+  const { manager, loader, setFiles } = workspace(['/w/a.md']);
+  let notify!: () => void;
+  const subscribe = manager.on.bind(manager);
+  jest.spyOn(manager, 'on').mockImplementation((event, listener) => {
+    notify = listener;
+    return subscribe(event, listener);
   });
+  const listing = jest.spyOn(manager, 'listWorkspaceFiles');
+  const { rerender } = render(
+    <MentionPicker {...props} query="" open fileTreeManager={manager} />,
+  );
+  await screen.findByTestId('mention-option-/w/a.md');
+  act(() => notify());
+  expect(loader).toHaveBeenCalledTimes(1);
+  expect(listing).toHaveBeenCalledTimes(1);
+  rerender(
+    <MentionPicker
+      {...props}
+      query=""
+      open={false}
+      fileTreeManager={manager}
+    />,
+  );
+  setFiles(['/w/b.md']);
+  fireEvent.focus(window);
+  expect(loader).toHaveBeenCalledTimes(1);
+  rerender(
+    <MentionPicker {...props} query="" open fileTreeManager={manager} />,
+  );
+  await screen.findByTestId('mention-option-/w/b.md');
+  expect(loader).toHaveBeenCalledTimes(2);
+  expect(listing).toHaveBeenLastCalledWith(true);
+  act(() => manager.workspaceFilesChanged('/w/new.md'));
+  await waitFor(() => expect(loader).toHaveBeenCalledTimes(3));
+  expect(listing).toHaveBeenLastCalledWith(false);
+});
 
-  it('shows all loaded files when the query is empty', () => {
-    const ftm = makeFileTree({
-      treeRoot: '/w',
-      nodes: [
-        { type: 'file', name: 'a.md', path: '/w/a.md' },
-        { type: 'file', name: 'b.md', path: '/w/b.md' },
-      ],
-    });
-    render(
-      <MentionPicker
-        query=""
-        open={true}
-        onPick={jest.fn()}
-        onClose={jest.fn()}
-        fileTreeManager={ftm}
-      />,
-    );
-    expect(screen.getByTestId('mention-option-/w/a.md')).toBeInTheDocument();
-    expect(screen.getByTestId('mention-option-/w/b.md')).toBeInTheDocument();
-  });
+it('ranks basename matches before directory matches and normalizes separators', async () => {
+  const { manager } = workspace(['/w/notes/notes.md', '/w/no-dir/other.md']);
+  const { rerender } = render(
+    <MentionPicker {...props} query="no" open fileTreeManager={manager} />,
+  );
+  await screen.findByTestId('mention-option-/w/notes/notes.md');
+  expect(screen.getAllByRole('option')[0]).toHaveAttribute(
+    'title',
+    '/w/notes/notes.md',
+  );
+  rerender(
+    <MentionPicker
+      {...props}
+      query={'notes\\notes'}
+      open
+      fileTreeManager={manager}
+    />,
+  );
+  expect(screen.getAllByRole('option')).toHaveLength(1);
+});
 
-  it('ranks basename matches above path-substring matches', () => {
-    const ftm = makeFileTree({
-      treeRoot: '/w',
-      nodes: [
-        { type: 'file', name: 'notes.md', path: '/w/notes/notes.md' },
-        // Path-only match for "no": parent dir contains "no".
-        { type: 'file', name: 'other.md', path: '/w/no-dir/other.md' },
-      ],
-    });
-    render(
-      <MentionPicker
-        query="no"
-        open={true}
-        onPick={jest.fn()}
-        onClose={jest.fn()}
-        fileTreeManager={ftm}
-      />,
-    );
-    const picker = screen.getByTestId('mention-picker');
-    const options = Array.from(
-      picker.querySelectorAll('[data-testid^="mention-option-"]'),
-    );
-    // notes.md (basename "no" prefix) should appear before other.md (path-only).
-    expect(options[0].getAttribute('data-testid')).toBe(
-      'mention-option-/w/notes/notes.md',
-    );
-  });
+it('picks a current path by click or keyboard and closes on Escape', async () => {
+  const { manager } = workspace(['/w/a.md', '/w/b.md']);
+  render(<MentionPicker {...props} query="" open fileTreeManager={manager} />);
+  await screen.findByTestId('mention-option-/w/a.md');
+  fireEvent.keyDown(window, { key: 'ArrowDown' });
+  fireEvent.keyDown(window, { key: 'Enter' });
+  expect(props.onPick).toHaveBeenCalledWith('/w/b.md');
+  fireEvent.click(screen.getByTestId('mention-option-/w/a.md'));
+  expect(props.onPick).toHaveBeenCalledWith('/w/a.md');
+  fireEvent.keyDown(window, { key: 'Escape' });
+  expect(props.onClose).toHaveBeenCalled();
+});
 
-  it('fires onPick(path) when an option is clicked', () => {
-    const onPick = jest.fn();
-    const ftm = makeFileTree({
-      treeRoot: '/w',
-      nodes: [{ type: 'file', name: 'a.md', path: '/w/a.md' }],
-    });
-    render(
-      <MentionPicker
-        query=""
-        open={true}
-        onPick={onPick}
-        onClose={jest.fn()}
-        fileTreeManager={ftm}
-      />,
-    );
-    fireEvent.click(screen.getByTestId('mention-option-/w/a.md'));
-    expect(onPick).toHaveBeenCalledWith('/w/a.md');
-  });
+it('can find files beyond the first page and leaves IME confirmation alone', async () => {
+  const { manager } = workspace([
+    ...Array.from({ length: 40 }, (_, i) => `/w/poems/${i}.md`),
+    '/w/poems/zz-last.md',
+  ]);
+  const { rerender } = render(
+    <MentionPicker {...props} query="" open fileTreeManager={manager} />,
+  );
+  await screen.findAllByRole('option');
+  expect(screen.getAllByRole('option')).toHaveLength(20);
+  rerender(
+    <MentionPicker {...props} query="zz-last" open fileTreeManager={manager} />,
+  );
+  expect(
+    screen.getByTestId('mention-option-/w/poems/zz-last.md'),
+  ).toBeInTheDocument();
+  fireEvent.keyDown(window, { key: 'Enter', isComposing: true });
+  expect(props.onPick).not.toHaveBeenCalled();
+});
 
-  it('Enter on the highlighted option fires onPick; Escape fires onClose', () => {
-    const onPick = jest.fn();
-    const onClose = jest.fn();
-    const ftm = makeFileTree({
-      treeRoot: '/w',
-      nodes: [
-        { type: 'file', name: 'first.md', path: '/w/first.md' },
-        { type: 'file', name: 'second.md', path: '/w/second.md' },
-      ],
-    });
-    render(
-      <MentionPicker
-        query=""
-        open={true}
-        onPick={onPick}
-        onClose={onClose}
-        fileTreeManager={ftm}
-      />,
-    );
-    // Default highlight is index 0 → first.md.
-    fireEvent.keyDown(window, { key: 'Enter' });
-    expect(onPick).toHaveBeenCalledWith('/w/first.md');
-    onPick.mockClear();
-    // ArrowDown bumps to second.md.
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
-    fireEvent.keyDown(window, { key: 'Enter' });
-    expect(onPick).toHaveBeenCalledWith('/w/second.md');
-    fireEvent.keyDown(window, { key: 'Escape' });
-    expect(onClose).toHaveBeenCalled();
-  });
+it('refreshes created, renamed, moved and deleted entries while the picker stays open', async () => {
+  const { manager, setFiles } = workspace(['/w/poems/old.md']);
+  render(
+    <MentionPicker {...props} query="poems" open fileTreeManager={manager} />,
+  );
+  await screen.findByTestId('mention-option-/w/poems/old.md');
+  setFiles(['/w/poems/renamed.md', '/w/poems/nested/created.md']);
+  act(() => manager.buildFileTree([], '/w'));
+  await screen.findByTestId('mention-option-/w/poems/renamed.md');
+  expect(
+    screen.queryByTestId('mention-option-/w/poems/old.md'),
+  ).not.toBeInTheDocument();
+  setFiles(['/w/poems/nested/moved.md']);
+  act(() => manager.buildFileTree([], '/w'));
+  await screen.findByTestId('mention-option-/w/poems/nested/moved.md');
+  expect(
+    screen.queryByTestId('mention-option-/w/poems/renamed.md'),
+  ).not.toBeInTheDocument();
+  setFiles([]);
+  act(() => manager.buildFileTree([], '/w'));
+  await screen.findByText('assistant-chat:mention_picker_empty');
+  expect(screen.queryByRole('option')).not.toBeInTheDocument();
+});
 
-  it('lazy-loads ONLY the directory hinted by the query (path/filename) — never bulk-loads on open', async () => {
-    // Behaviour change: previously the picker eagerly requested EVERY
-    // unloaded directory under the workspace root the moment it
-    // opened. That fired many `to:file:openpath` round-trips at once
-    // and visibly disrupted the file explorer (each response is a
-    // `from:folder:opened` that the tree manager treats as a lazy-
-    // load — but the user perceived the cascade as "the workspace
-    // changed"). Now lazy-load fires only when the query contains a
-    // `dir/file` prefix that names an unloaded directory.
-    const lazyChildren: Record<string, TreeNode[]> = {
-      '/w/native': [
-        {
-          type: 'file',
-          name: 'quickstart.md',
-          path: '/w/native/quickstart.md',
-        },
-      ],
-    };
-    const ftm = makeFileTree({
-      treeRoot: '/w',
-      nodes: [
-        {
-          type: 'directory',
-          name: 'native',
-          path: '/w/native',
-          hasChildren: true,
-          loaded: false,
-        },
-        {
-          type: 'directory',
-          name: 'other',
-          path: '/w/other',
-          hasChildren: true,
-          loaded: false,
-        },
-      ],
-      lazy: (path) => lazyChildren[path],
+it('does not poll and refreshes external changes on focus only while open', async () => {
+  jest.useFakeTimers();
+  const { manager, loader, setFiles } = workspace(['/w/old.md']);
+  const { unmount } = render(
+    <MentionPicker {...props} query="" open fileTreeManager={manager} />,
+  );
+  try {
+    await act(async () => {
+      await Promise.resolve();
     });
-    // Step 1: open with an empty query — picker should NOT request
-    // either subdirectory. Top-level (already loaded) wins.
-    const { rerender } = render(
-      <MentionPicker
-        query=""
-        open={true}
-        onPick={jest.fn()}
-        onClose={jest.fn()}
-        fileTreeManager={ftm}
-      />,
-    );
-    expect(ftm.requestDirectoryContents).not.toHaveBeenCalled();
-    // Step 2: user types `native/qu` — picker requests `/w/native`
-    // (and only that), and the picked deep file appears once it lands.
+    expect(screen.getByTestId('mention-option-/w/old.md')).toBeInTheDocument();
+    setFiles(['/w/new.md']);
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mention-option-/w/old.md')).toBeInTheDocument();
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('mention-option-/w/new.md')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('mention-option-/w/old.md'),
+    ).not.toBeInTheDocument();
+    unmount();
+    const calls = loader.mock.calls.length;
+    await act(async () => {
+      jest.advanceTimersByTime(6000);
+    });
+    expect(loader).toHaveBeenCalledTimes(calls);
+  } finally {
+    unmount();
+    jest.useRealTimers();
+  }
+});
+
+it('ignores tree notifications with the same inventory revision and refreshes on reopen', async () => {
+  const { manager, loader, setFiles } = workspace(['/w/old.md']);
+  const subscribe = manager.on.bind(manager);
+  let notify!: () => void;
+  const subscription = jest
+    .spyOn(manager, 'on')
+    .mockImplementation((event, listener) => {
+      notify = listener;
+      return subscribe(event, listener);
+    });
+  const { rerender, unmount } = render(
+    <MentionPicker {...props} query="" open fileTreeManager={manager} />,
+  );
+  try {
+    await screen.findByTestId('mention-option-/w/old.md');
+    const snapshot = manager.getSnapshot();
+    const read = jest.spyOn(manager, 'getSnapshot').mockReturnValue({
+      ...snapshot,
+      nodes: [...snapshot.nodes],
+    });
+    await act(async () => notify());
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mention-option-/w/old.md')).toBeInTheDocument();
+    read.mockRestore();
     rerender(
       <MentionPicker
-        query="native/qu"
-        open={true}
-        onPick={jest.fn()}
-        onClose={jest.fn()}
-        fileTreeManager={ftm}
+        {...props}
+        query=""
+        open={false}
+        fileTreeManager={manager}
       />,
     );
-    await waitFor(() =>
-      expect(ftm.requestDirectoryContents).toHaveBeenCalledWith('/w/native'),
+    fireEvent.focus(window);
+    expect(loader).toHaveBeenCalledTimes(1);
+    setFiles(['/w/new.md']);
+    rerender(
+      <MentionPicker {...props} query="" open fileTreeManager={manager} />,
     );
-    expect(ftm.requestDirectoryContents).not.toHaveBeenCalledWith('/w/other');
-    await waitFor(() =>
-      expect(
-        screen.getByTestId('mention-option-/w/native/quickstart.md'),
-      ).toBeInTheDocument(),
-    );
-  });
+    await screen.findByTestId('mention-option-/w/new.md');
+    expect(loader).toHaveBeenCalledTimes(2);
+  } finally {
+    unmount();
+    subscription.mockRestore();
+    jest.restoreAllMocks();
+  }
+});
 
-  it('renders the empty-state copy when no files match the query', () => {
-    const ftm = makeFileTree({
-      treeRoot: '/w',
-      nodes: [{ type: 'file', name: 'a.md', path: '/w/a.md' }],
-    });
-    render(
-      <MentionPicker
-        query="nope"
-        open={true}
-        onPick={jest.fn()}
-        onClose={jest.fn()}
-        fileTreeManager={ftm}
-      />,
-    );
-    expect(
-      screen.getByText('assistant-chat:mention_picker_empty'),
-    ).toBeInTheDocument();
+it('discards late results from the previous workspace', async () => {
+  let finish!: (listing: { paths: string[]; truncated: boolean }) => void;
+  const { manager, loader } = workspace([]);
+  loader.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  render(<MentionPicker {...props} query="" open fileTreeManager={manager} />);
+  await waitFor(() => expect(loader).toHaveBeenCalled());
+  act(() => {
+    manager.treeRoot = '/other';
+    manager.buildFileTree([], '/other');
   });
+  await screen.findByText('assistant-chat:mention_picker_empty');
+  await act(async () => finish({ paths: ['/w/stale.md'], truncated: false }));
+  expect(
+    screen.queryByTestId('mention-option-/w/stale.md'),
+  ).not.toBeInTheDocument();
+});
+
+it('does not scan a hidden window and refreshes when it regains focus', async () => {
+  const visibility = jest
+    .spyOn(document, 'visibilityState', 'get')
+    .mockReturnValue('hidden');
+  const { manager, loader } = workspace(['/w/a.md']);
+  const { unmount } = render(
+    <MentionPicker {...props} query="" open fileTreeManager={manager} />,
+  );
+  try {
+    expect(loader).not.toHaveBeenCalled();
+    visibility.mockReturnValue('visible');
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    expect(screen.getByTestId('mention-option-/w/a.md')).toBeInTheDocument();
+  } finally {
+    unmount();
+    visibility.mockRestore();
+  }
+});
+
+it('shows loading and recoverable errors without picking a stale file', async () => {
+  const { manager, loader } = workspace([]);
+  loader.mockRejectedValueOnce(new Error('Read failed'));
+  render(<MentionPicker {...props} query="" open fileTreeManager={manager} />);
+  expect(
+    screen.getByText('assistant-chat:mention_picker_loading'),
+  ).toBeInTheDocument();
+  fireEvent.keyDown(window, { key: 'Enter' });
+  expect(props.onPick).not.toHaveBeenCalled();
+  await screen.findByText('assistant-chat:mention_picker_error');
+});
+
+it('keeps keyboard selection valid when results arrive after an empty list', async () => {
+  const { manager, setFiles } = workspace([]);
+  render(<MentionPicker {...props} query="" open fileTreeManager={manager} />);
+  await screen.findByText('assistant-chat:mention_picker_empty');
+  fireEvent.keyDown(window, { key: 'ArrowDown' });
+  setFiles(['/w/a.md']);
+  act(() => manager.buildFileTree([], '/w'));
+  await screen.findByTestId('mention-option-/w/a.md');
+  fireEvent.keyDown(window, { key: 'Enter' });
+  expect(props.onPick).toHaveBeenCalledWith('/w/a.md');
 });

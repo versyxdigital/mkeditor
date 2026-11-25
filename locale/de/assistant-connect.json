@@ -1,0 +1,14 @@
+{
+  "title": "{{provider}} verbinden",
+  "openai_description": "Verwenden Sie Ihren ChatGPT-Tarif oder einen API-Schlüssel, um zu chatten.",
+  "api_description": "Fügen Sie einen API-Schlüssel hinzu, um mit {{provider}} zu chatten.",
+  "api_option": "API-Schlüssel verwenden",
+  "api_help": "Die API-Nutzung wird von {{provider}} separat abgerechnet.",
+  "use_saved_key": "Gespeicherten API-Schlüssel verwenden",
+  "use_plan": "Verbundenes ChatGPT-Konto verwenden",
+  "save": "Speichern und verbinden",
+  "saving": "Verbindung wird gespeichert…",
+  "save_failed": "Der API-Schlüssel konnte nicht sicher gespeichert werden. Versuchen Sie es erneut.",
+  "updating": "Verbindung wird aktualisiert…",
+  "anthropic_subscription_note": "Claude-Abonnements decken die Nutzung in MKEditor nicht ab. Verbinden Sie sich mit einem Anthropic-API-Schlüssel; die API-Nutzung wird separat abgerechnet."
+}

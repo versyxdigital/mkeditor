@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath, pathToFileURL } from 'url';
+import registration from './google-drive-registration.cjs';
+import dropbox from './dropbox-registration.cjs';
 
 export const __filename = fileURLToPath(import.meta.url);
 export const __dirname = path.resolve(path.dirname(__filename), '..');
@@ -23,6 +25,18 @@ export function execTask(command) {
 
 export function compileApp() {
   execTask('npx tsc -p src/app/tsconfig.json');
+  const configured = registration.writeGoogleDriveRegistration();
+  const dropboxConfigured = dropbox.writeDropboxRegistration();
+  console.log(
+    dropboxConfigured
+      ? 'Dropbox public app key included.'
+      : 'Dropbox registration not configured; default sign-in disabled.',
+  );
+  console.log(
+    configured
+      ? 'Google Drive Desktop registration included.'
+      : 'Google Drive registration not configured; default sign-in disabled.',
+  );
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -6,15 +6,14 @@ Markdown with _style_.
 
 | Platform    | Stable  | Download  |
 | --------    | ------- | -------   |
-| Windows     | v4.1.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v4.0.0/mkeditor-setup-4.1.0.exe) |
-| MacOS       | v3.6.0  | [pkg](https://github.com/versyxdigital/mkeditor/releases/download/v3.6.0/mkeditor-setup-3.6.0.pkg) |
-| Linux       | v4.1.0  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v4.0.0/mkeditor-setup-4.1.0.deb)  |
+| Windows     | v5.0.0  | [exe](https://github.com/versyxdigital/mkeditor/releases/download/v5.0.0/mkeditor-setup-5.0.0.exe) |
+| Linux       | v5.0.0  | [deb](https://github.com/versyxdigital/mkeditor/releases/download/v5.0.0/mkeditor-setup-5.0.0.deb) |
 
 Download for desktop or use it directly through your [browser](https://versyxdigital.github.io/mkeditor/web/). More documentation is available at the [website](https://versyxdigital.github.io/mkeditor).
 
 <p>
-    <img src="https://versyxdigital.github.io/mkeditor/assets/img/demo-dark.webp" alt="MKEditor dark mode" width="45%" style="display:inline-block; margin-right:10px;" />
-    <img src="https://versyxdigital.github.io/mkeditor/assets/img/demo-light.webp" alt="MKEditor light mode" width="45%" style="display:inline-block;" />
+    <img src="https://versyxdigital.github.io/mkeditor/assets/screenshots/editor-dark.webp" alt="MKEditor dark mode" width="45%" style="display:inline-block; margin-right:10px;" />
+    <img src="https://versyxdigital.github.io/mkeditor/assets/img/editor-light.webp" alt="MKEditor light mode" width="45%" style="display:inline-block;" />
 </p>
 
 ## Contents
@@ -22,11 +21,14 @@ Download for desktop or use it directly through your [browser](https://versyxdig
 - [Welcome](#welcome)
   - [Create alerts](#create-alerts)
   - [Format code](#format-code)
+  - [Draw diagrams](#draw-diagrams)
   - [Write math](#write-math)
   - [Preview documents as you type](#preview-documents-as-you-type)
   - [Customize to your preference](#customize-to-your-preference)
   - [Export to HTML & PDF](#export-to-html--pdf)
   - [Enable AI assistance](#enable-ai-assistance)
+  - [Connect Google Drive](#connect-google-drive)
+  - [Connect Dropbox](#connect-dropbox)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -57,6 +59,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 Syntax highlighting is supported for lots of languages!
 
+## Draw diagrams
+
+Write a fenced `mermaid` block, or choose Mermaid from the code-block menu. Diagrams render in the document preview on desktop and web, and are included in HTML and PDF exports. HTML exports embed the diagrams as SVG.
+
+````markdown
+```mermaid
+flowchart LR
+  Draft --> Review --> Publish
+```
+````
+
+Flowcharts, sequence diagrams and Mermaid's other diagram types use the same renderer as AI responses. Invalid or unfinished diagrams stay visible as code while you edit.
+
 ## Write math
 
 ```sh
@@ -80,10 +95,20 @@ MKEditor comes with full support for exporting your markdown to HTML and PDF �
 
 ## Enable AI assistance
 
-MKEditor v4.0.0 comes with the ability to connect to your AI provider of choice 🤖 Choose between Anthropic, OpenAI, or a local Ollama install. Each provider gets its own chat tab with persisted conversation history and a workspace-aware tool catalog: the assistant can read, edit, and create files in your open folder (write actions ask you to confirm first).
+MKEditor comes with the ability to connect to your AI provider of choice 🤖
+
+Choose between Anthropic, OpenAI, or a local Ollama install.
 
 > [!IMPORTANT]
 > API keys are encrypted with Electron's `safeStorage` and are never transmitted through the app in plaintext.
+
+## Connect Google Drive
+
+Desktop builds can connect through **Settings → Connections → Connect with Google**, browse My Drive/shared drives and open Markdown files.
+
+## Connect Dropbox
+
+Connect Dropbox in **Settings → Connections**, browse existing folders, edit Markdown, create files and folders, and save copies.
 
 # Contributing
 

@@ -153,3 +153,146 @@ describe('FileTreeManager.addFileToTree — missing-ancestor recovery', () => {
     expect(sent).toEqual([]);
   });
 });
+
+describe('FileTreeManager refresh and containment integrity', () => {
+  it('ignores sibling paths that merely share the workspace string prefix', () => {
+    const { bridge, sent } = makeBridge();
+    const tree = new FileTreeManager(bridge, () => {});
+    tree.buildFileTree([], '/workspace');
+    const before = tree.getSnapshot();
+    tree.addFileToTree('/workspace-other/file.md');
+    tree.buildFileTree([], '/workspace-other/folder');
+    expect(tree.getSnapshot()).toBe(before);
+    expect(sent).toEqual([]);
+  });
+
+  it('invalidates the nodes array when a child load completes so memoized filtering updates', () => {
+    const { bridge } = makeBridge();
+    const tree = new FileTreeManager(bridge, () => {});
+    tree.buildFileTree(
+      [
+        {
+          type: 'directory',
+          name: 'a',
+          path: '/workspace/a',
+          hasChildren: true,
+        },
+      ],
+      '/workspace',
+    );
+    const before = tree.getSnapshot().nodes;
+    tree.buildFileTree(
+      [{ type: 'file', name: 'note.md', path: '/workspace/a/note.md' }],
+      '/workspace/a',
+    );
+    expect(tree.getSnapshot().nodes).not.toBe(before);
+    expect(tree.getSnapshot().nodes[0].children?.[0].name).toBe('note.md');
+  });
+
+  it('re-enables an empty directory chevron when its refreshed children appear', () => {
+    const { bridge } = makeBridge();
+    const tree = new FileTreeManager(bridge, () => {});
+    tree.buildFileTree(
+      [
+        {
+          type: 'directory',
+          name: 'a',
+          path: '/workspace/a',
+          hasChildren: false,
+        },
+      ],
+      '/workspace',
+    );
+    tree.buildFileTree(
+      [{ type: 'file', name: 'note.md', path: '/workspace/a/note.md' }],
+      '/workspace/a',
+    );
+    expect(tree.getSnapshot().nodes[0].hasChildren).toBe(true);
+  });
+
+  it('marks an empty directory as containing children after inserting a file', () => {
+    const { bridge } = makeBridge();
+    const tree = new FileTreeManager(bridge, () => {});
+    tree.buildFileTree(
+      [
+        {
+          type: 'directory',
+          name: 'a',
+          path: '/workspace/a',
+          hasChildren: false,
+        },
+      ],
+      '/workspace',
+    );
+    tree.buildFileTree([], '/workspace/a');
+    const before = tree.getSnapshot().nodes;
+    tree.addFileToTree('/workspace/a/note.md');
+    expect(tree.getSnapshot().nodes).not.toBe(before);
+    expect(tree.getSnapshot().nodes[0].hasChildren).toBe(true);
+  });
+
+  it('forgets removed descendant indexes instead of updating detached stale nodes', () => {
+    const { bridge, sent } = makeBridge();
+    const tree = new FileTreeManager(bridge, () => {});
+    tree.buildFileTree(
+      [
+        {
+          type: 'directory',
+          name: 'a',
+          path: '/workspace/a',
+          hasChildren: true,
+        },
+      ],
+      '/workspace',
+    );
+    tree.buildFileTree(
+      [
+        {
+          type: 'directory',
+          name: 'b',
+          path: '/workspace/a/b',
+          hasChildren: true,
+        },
+      ],
+      '/workspace/a',
+    );
+    tree.buildFileTree([], '/workspace/a');
+    sent.length = 0;
+    tree.buildFileTree([], '/workspace/a/b');
+    expect(sent).toContainEqual({
+      channel: 'to:file:openpath',
+      data: { path: '/workspace/a' },
+    });
+  });
+
+  it('indexes nested preloaded directories and accepts their subsequent refreshes', () => {
+    const { bridge, sent } = makeBridge();
+    const tree = new FileTreeManager(bridge, () => {});
+    tree.buildFileTree(
+      [
+        {
+          type: 'directory',
+          name: 'a',
+          path: '/workspace/a',
+          children: [
+            {
+              type: 'directory',
+              name: 'b',
+              path: '/workspace/a/b',
+              hasChildren: true,
+            },
+          ],
+        },
+      ],
+      '/workspace',
+    );
+    tree.buildFileTree(
+      [{ type: 'file', name: 'note.md', path: '/workspace/a/b/note.md' }],
+      '/workspace/a/b',
+    );
+    expect(sent).toEqual([]);
+    expect(tree.getSnapshot().nodes[0].children?.[0].children?.[0].name).toBe(
+      'note.md',
+    );
+  });
+});

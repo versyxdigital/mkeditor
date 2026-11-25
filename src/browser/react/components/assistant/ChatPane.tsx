@@ -4,18 +4,21 @@ import type {
   ChatConversation,
   InflightChatCall,
   ProviderId,
+  ThinkingLevel,
 } from '../../../../app/interfaces/Assistant';
 import type {
   AssistantContextChip,
   AssistantManager,
 } from '../../../core/AssistantManager';
-import { useAssistantChat } from '../../contexts/AssistantContext';
+import {
+  useAssistantChat,
+  useAssistantConfig,
+} from '../../contexts/AssistantContext';
 import { useFiles } from '../../contexts/FilesContext';
 import { useManagers } from '../../contexts/ManagersContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Switch } from '../ui/switch';
@@ -23,6 +26,11 @@ import { Icon } from '../Icon';
 import { ChatMessage } from './ChatMessage';
 import { ContextChipsRow } from './ContextChip';
 import { MentionPicker } from './MentionPicker';
+import { ProviderModelSettings } from './ProviderModelSettings';
+import { OllamaChatModelSelect } from './OllamaChatModelSelect';
+import { ChatGptUsage } from './ChatGptSettings';
+import { getAssistantConnection } from '../../../core/assistantConnection';
+import { ProviderConnection } from './ProviderConnection';
 
 interface ChatPaneProps {
   provider: ProviderId;
@@ -31,16 +39,17 @@ interface ChatPaneProps {
   convListCollapsed?: boolean;
   /** Toggle the parent provider tab's conversation rail open/closed. */
   onToggleConvList?: () => void;
+  /** ProviderTab can place reconnect controls across the full sidebar width. */
+  connectionInParent?: boolean;
 }
 
 /**
  * The main chat surface for a single conversation.
  *
- * Composition: a small header (editable model id) + scrollable
+ * Composition: a conversation header + scrollable
  * message list with auto-scroll-to-bottom (suspended while the user
  * scrolls up) + textarea input with Enter-sends / Shift+Enter-newline
- * and a Send/Stop toggle keyed off whether this conversation has an
- * in-flight call.
+ * and a Send/Stop toggle. Model/thinking controls sit below the input.
  *
  * Draft preservation: the input is local React state for snappiness,
  * but is synced through `manager.setDraft` on tab/conversation switch
@@ -54,14 +63,17 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   conversation,
   convListCollapsed,
   onToggleConvList,
+  connectionInParent = false,
 }) => {
   const { chat, manager } = useAssistantChat();
-  const { t } = useTranslation();
+  const { snapshot: configSnapshot } = useAssistantConfig();
+  const connected =
+    getAssistantConnection(provider, configSnapshot) === 'ready';
+  const { t, language } = useTranslation();
 
   const [draft, setDraft] = React.useState(
     () => manager?.getDraft(provider, conversation.id) ?? '',
   );
-  const [modelEditor, setModelEditor] = React.useState(conversation.model);
 
   // Latest-value ref so the unmount cleanup below can read the
   // current input without re-running on every keystroke (which would
@@ -71,24 +83,32 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     draftRef.current = draft;
   }, [draft]);
 
-  // Re-seed local input + model state when the user switches to a
+  // Re-seed the local input when the user switches to a
   // different conversation (the same component instance is reused
   // by ProviderTab; React doesn't unmount it on prop change).
-  const prevConvId = React.useRef(conversation.id);
+  const draftOwner = React.useRef({ provider, id: conversation.id, manager });
   React.useEffect(() => {
-    if (prevConvId.current !== conversation.id) {
+    const previous = draftOwner.current;
+    if (
+      previous.id !== conversation.id ||
+      previous.provider !== provider ||
+      previous.manager !== manager
+    ) {
       // Persist the outgoing conversation's draft before swapping.
-      if (manager) {
-        manager.setDraft(provider, prevConvId.current, draft);
-      }
-      setDraft(manager?.getDraft(provider, conversation.id) ?? '');
-      setModelEditor(conversation.model);
-      prevConvId.current = conversation.id;
+      previous.manager?.setDraft(
+        previous.provider,
+        previous.id,
+        draftRef.current,
+      );
+      const nextDraft = manager?.getDraft(provider, conversation.id) ?? '';
+      draftRef.current = nextDraft;
+      setDraft(nextDraft);
+      draftOwner.current = { provider, id: conversation.id, manager };
     }
     // Intentionally tracks `conversation.id` only (and the surrounding
     // identity deps); we do NOT include `draft` because a refresh on
     // every keystroke would create a feedback loop with `setDraft`.
-  }, [conversation.id, conversation.model, manager, provider]);
+  }, [conversation.id, manager, provider]);
 
   // Push the draft back into the manager when the component unmounts
   // (e.g. provider tab change). Reads via `draftRef.current` so the
@@ -99,9 +119,8 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   // effect above.
   React.useEffect(() => {
     return () => {
-      if (manager) {
-        manager.setDraft(provider, conversation.id, draftRef.current);
-      }
+      const owner = draftOwner.current;
+      owner.manager?.setDraft(owner.provider, owner.id, draftRef.current);
     };
   }, []);
 
@@ -144,13 +163,12 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     () => (manager ? manager.contextChips(provider, conversation.id) : []),
     [manager, provider, conversation, chat, files, editorTick],
   );
-  const tokenEstimate = React.useMemo(
+  const baseTokenEstimate = React.useMemo(
     () =>
-      manager
-        ? manager.contextTokenEstimate(provider, conversation.id, draft)
-        : 0,
-    [manager, provider, conversation, chat, draft, files, editorTick],
+      manager ? manager.contextTokenEstimate(provider, conversation.id, '') : 0,
+    [manager, provider, conversation, chat, files, editorTick],
   );
+  const tokenEstimate = baseTokenEstimate + Math.ceil(draft.length / 4);
 
   // ---- @-mention picker state ---------------------------------------
   // We only open the picker when the user is actively typing a mention
@@ -158,6 +176,60 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   // no whitespace. That's a much friendlier UX than "open on any `@`"
   // — e.g. it doesn't pop up when the user types an email address.
   const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const paneRef = React.useRef<HTMLDivElement | null>(null);
+  const inputId = React.useId();
+  const [composerExpanded, setComposerExpanded] = React.useState(false);
+  const measuredDraft = React.useRef(draft);
+
+  // Grow with typed/restored drafts and remeasure wrapped lines when the
+  // sidebar changes width. Keep room for the conversation on short windows.
+  const resizeInput = React.useCallback(() => {
+    const input = inputRef.current;
+    const pane = paneRef.current;
+    if (!input || !pane) return;
+    const scrollTop = input.scrollTop;
+    const paneHeight = pane.clientHeight || 480;
+    const cap = Math.max(
+      50,
+      Math.min(
+        composerExpanded ? 480 : 160,
+        paneHeight * (composerExpanded ? 0.6 : 0.3),
+      ),
+    );
+    input.style.height = 'auto';
+    const border = input.offsetHeight - input.clientHeight;
+    const contentHeight = input.scrollHeight + border;
+    const height = composerExpanded
+      ? cap
+      : Math.min(cap, Math.max(50, contentHeight));
+    input.style.height = `${Math.floor(height)}px`;
+    input.style.overflowY = contentHeight > height ? 'auto' : 'hidden';
+    input.scrollTop = scrollTop;
+  }, [composerExpanded]);
+  React.useLayoutEffect(() => {
+    const edited = measuredDraft.current !== draft;
+    measuredDraft.current = draft;
+    resizeInput();
+    const input = inputRef.current;
+    // Line-break insertion can report the old scroll position. Reveal the
+    // new end after sizing, but leave reading/resize scroll positions alone.
+    if (
+      edited &&
+      input &&
+      document.activeElement === input &&
+      input.selectionStart === input.value.length &&
+      input.selectionEnd === input.value.length
+    ) {
+      input.scrollTop = input.scrollHeight;
+    }
+  }, [resizeInput, draft, inflight, language]);
+  React.useEffect(() => {
+    const pane = paneRef.current;
+    if (!pane || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(resizeInput);
+    observer.observe(pane);
+    return () => observer.disconnect();
+  }, [resizeInput]);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [pickerQuery, setPickerQuery] = React.useState('');
   const [pickerAnchor, setPickerAnchor] = React.useState(-1); // index of `@` in draft
@@ -193,6 +265,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   const handleInputChange = React.useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const text = e.target.value;
+      draftRef.current = text;
       setDraft(text);
       updatePickerFromInput(text, e.target.selectionStart ?? text.length);
     },
@@ -212,6 +285,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       const at = pickerAnchor;
       const cursor = inputRef.current?.selectionStart ?? draft.length;
       const next = at >= 0 ? draft.slice(0, at) + draft.slice(cursor) : draft;
+      draftRef.current = next;
       setDraft(next);
       setPickerOpen(false);
       // Restore focus + cursor position to where the `@` used to be.
@@ -225,14 +299,18 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     [manager, provider, conversation.id, draft, pickerAnchor],
   );
 
+  const preparingSend = React.useRef(false);
+  const [isPreparingSend, setIsPreparingSend] = React.useState(false);
   const handleSend = React.useCallback(async () => {
-    if (!manager) return;
-    if (inflight) return; // belt-and-braces; the button is disabled too
+    if (!manager || !connected) return;
+    if (inflight || preparingSend.current) return;
     const text = draft.trim();
     if (!text) return;
     // Capture the draft up front so a slow contextFor() can't lose a
     // race with another keystroke.
-    setDraft('');
+    preparingSend.current = true;
+    setIsPreparingSend(true);
+    setComposerExpanded(false);
     setPickerOpen(false);
     let systemContext = null;
     try {
@@ -241,8 +319,29 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       // Best-effort context — never block the send on a broken
       // mention or transient read failure.
     }
-    manager.startCall(provider, conversation.id, text, systemContext);
-  }, [manager, inflight, draft, provider, conversation.id]);
+    try {
+      if (
+        getAssistantConnection(provider, manager.getConfigSnapshot()) !==
+        'ready'
+      )
+        return;
+      const callId = manager.startCall(
+        provider,
+        conversation.id,
+        text,
+        systemContext,
+      );
+      if (callId) {
+        if (draftRef.current === text || draftRef.current.trim() === text) {
+          draftRef.current = '';
+          setDraft('');
+        }
+      }
+    } finally {
+      preparingSend.current = false;
+      setIsPreparingSend(false);
+    }
+  }, [manager, inflight, draft, provider, conversation.id, connected]);
 
   const handleStop = React.useCallback(() => {
     if (!manager || !inflight) return;
@@ -251,6 +350,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.nativeEvent.isComposing) return;
       // While the mention picker owns Enter / Arrow keys, don't send.
       if (pickerOpen && (e.key === 'Enter' || e.key.startsWith('Arrow'))) {
         return;
@@ -272,7 +372,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   //                Radix popovers / dialogs keep their dismiss key).
   //   Cmd/Ctrl+K — open a new conversation on this provider tab.
   //   Cmd/Ctrl+/ — focus the input from anywhere in the pane.
-  const paneRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     const el = paneRef.current;
     if (!el) return;
@@ -298,10 +397,18 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     return () => el.removeEventListener('keydown', handler);
   }, [manager, inflight, pickerOpen, provider]);
 
-  const handleModelBlur = React.useCallback(() => {
-    if (!manager) return;
-    manager.setConversationModel(provider, conversation.id, modelEditor);
-  }, [manager, provider, conversation.id, modelEditor]);
+  const handleModelChange = React.useCallback(
+    (model: string) => {
+      manager?.setConversationModel(provider, conversation.id, model);
+    },
+    [manager, provider, conversation.id],
+  );
+  const handleThinkingChange = React.useCallback(
+    (level: ThinkingLevel) => {
+      manager?.setConversationThinkingLevel(provider, conversation.id, level);
+    },
+    [manager, provider, conversation.id],
+  );
 
   const handleAutoAcceptChange = React.useCallback(
     (value: boolean) => {
@@ -341,110 +448,165 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
   const tokenIndicatorClass = cn(
     'text-xs text-muted-foreground',
-    // Amber-warn over a rough "small-ish window" threshold. Doc
-    // mentions the provider's published context window; we don't
-    // ship per-provider limits in v1 — 32k is a safe shared floor
-    // that flags clearly-large prompts without spamming for normal use.
-    tokenEstimate > 32000 && 'text-amber-600 dark:text-amber-400 font-medium',
+    // Use the explicitly requested Ollama window when available. Other
+    // limits remain heuristic; the daemon default is not a model maximum.
+    tokenEstimate >
+      (provider === 'ollama'
+        ? configSnapshot.config?.ollama.contextLength || 32000
+        : 32000) && 'text-warning font-medium',
   );
 
   return (
     <div
       ref={paneRef}
-      className="flex h-full min-w-0 flex-col"
+      className="flex h-full min-h-0 min-w-0 flex-col"
       data-testid="chat-pane"
       tabIndex={-1}
     >
       <ChatHeader
         conversation={conversation}
-        modelEditor={modelEditor}
-        onModelChange={setModelEditor}
-        onModelBlur={handleModelBlur}
         onAutoAcceptChange={handleAutoAcceptChange}
         onShareActiveFileChange={handleShareActiveFileChange}
         onShareSelectionChange={handleShareSelectionChange}
         convListCollapsed={convListCollapsed}
         onToggleConvList={onToggleConvList}
       />
-      <MessageList messages={conversation.messages} />
-      <ContextChipsRow
-        chips={chips}
-        onRemoveActive={handleRemoveActive}
-        onRemoveSelection={handleRemoveSelection}
-        onRemoveMention={handleRemoveMention}
+      <MessageList
+        key={`${provider}:${conversation.id}`}
+        messages={conversation.messages}
       />
-      <div className="relative border-t border-border p-2">
-        <MentionPicker
-          query={pickerQuery}
-          open={pickerOpen}
-          onPick={handlePick}
-          onClose={handlePickerClose}
-          fileTreeManager={fileTreeManager}
+      {connected && (
+        <ContextChipsRow
+          chips={chips}
+          onRemoveActive={handleRemoveActive}
+          onRemoveSelection={handleRemoveSelection}
+          onRemoveMention={handleRemoveMention}
         />
-        <div className="flex items-end gap-2">
-          <textarea
-            ref={inputRef}
-            value={draft}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder={t('assistant-chat:input_placeholder')}
-            rows={2}
-            className="flex-1 resize-none rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            data-testid="chat-input"
-            aria-label={t('assistant-chat:input_aria')}
-          />
-          {inflight ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="destructive"
-              onClick={handleStop}
-              data-testid="chat-stop"
-            >
-              <Icon name="exclamation-circle" />
-              <span>{t('assistant-chat:stop')}</span>
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => void handleSend()}
-              disabled={!draft.trim() || !manager}
-              data-testid="chat-send"
-            >
-              <span>{t('assistant-chat:send')}</span>
-            </Button>
-          )}
-        </div>
+      )}
+      {!connected && provider !== 'ollama' ? (
+        connectionInParent ? null : (
+          <ProviderConnection key={provider} provider={provider} compact />
+        )
+      ) : (
         <div
-          className={cn('mt-1 flex justify-end', tokenIndicatorClass)}
-          data-testid="context-token-estimate"
-          aria-live="polite"
+          className="relative shrink-0 border-t border-border p-2"
+          data-testid="chat-composer"
         >
-          {t('assistant-chat:token_estimate', {
-            // Use a non-`count` key so i18next's plural magic doesn't
-            // mangle the value (the previous `count` route was
-            // rendering as a literal minus sign in some locales /
-            // browsers — likely an unintended interaction between
-            // i18next's count handling and the locale's
-            // number-formatting rules).
-            tokens: tokenEstimate.toLocaleString(),
-          })}
+          <MentionPicker
+            query={pickerQuery}
+            open={pickerOpen}
+            onPick={handlePick}
+            onClose={handlePickerClose}
+            fileTreeManager={fileTreeManager}
+          />
+          <div className="flex items-end gap-2">
+            <textarea
+              id={inputId}
+              ref={inputRef}
+              value={draft}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder={t('assistant-chat:input_placeholder')}
+              rows={2}
+              className="min-h-[50px] min-w-0 flex-1 resize-none rounded-md border border-border bg-editor px-2 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              data-testid="chat-input"
+              aria-label={t('assistant-chat:input_aria')}
+            />
+            {inflight ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="shrink-0 border border-border bg-editor text-foreground hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive/50 focus-visible:bg-destructive/10 focus-visible:text-destructive active:bg-destructive/20"
+                onClick={handleStop}
+                data-testid="chat-stop"
+                aria-label={t('assistant-chat:stop')}
+                title={t('assistant-chat:stop')}
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-3 w-3 rounded-[1px] bg-current"
+                />
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void handleSend()}
+                disabled={!draft.trim() || !manager || isPreparingSend}
+                data-testid="chat-send"
+              >
+                <span>{t('assistant-chat:send')}</span>
+              </Button>
+            )}
+          </div>
+          {provider === 'openai' && <ChatGptUsage />}
+          <div
+            className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1"
+            data-testid="chat-composer-controls"
+          >
+            <ConversationModelControls
+              provider={provider}
+              conversation={conversation}
+              onModelChange={handleModelChange}
+              onThinkingChange={handleThinkingChange}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0 text-muted-foreground"
+              onClick={() => {
+                setComposerExpanded((value) => !value);
+                inputRef.current?.focus();
+              }}
+              aria-label={t(
+                composerExpanded
+                  ? 'assistant-chat:collapse_input'
+                  : 'assistant-chat:expand_input',
+              )}
+              title={t(
+                composerExpanded
+                  ? 'assistant-chat:collapse_input'
+                  : 'assistant-chat:expand_input',
+              )}
+              aria-expanded={composerExpanded}
+              aria-controls={inputId}
+              data-testid="chat-expand-input"
+            >
+              <Icon
+                name={composerExpanded ? 'compress' : 'expand'}
+                className="size-3"
+              />
+            </Button>
+            <div
+              className={cn('ml-auto shrink-0', tokenIndicatorClass)}
+              data-testid="context-token-estimate"
+              aria-live="polite"
+            >
+              {t('assistant-chat:token_estimate', {
+                // Use a non-`count` key so i18next's plural magic doesn't
+                // mangle the value (the previous `count` route was
+                // rendering as a literal minus sign in some locales /
+                // browsers — likely an unintended interaction between
+                // i18next's count handling and the locale's
+                // number-formatting rules).
+                tokens: tokenEstimate.toLocaleString(),
+              })}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
 /* -------------------------------------------------------------------- */
-/*  Header — editable model id                                            */
+/*  Header — conversation title and options                                */
 /* -------------------------------------------------------------------- */
 
 const ChatHeader: React.FC<{
   conversation: ChatConversation;
-  modelEditor: string;
-  onModelChange: (next: string) => void;
-  onModelBlur: () => void;
   onAutoAcceptChange: (value: boolean) => void;
   onShareActiveFileChange: (value: boolean) => void;
   onShareSelectionChange: (value: boolean) => void;
@@ -454,9 +616,6 @@ const ChatHeader: React.FC<{
   onToggleConvList?: () => void;
 }> = ({
   conversation,
-  modelEditor,
-  onModelChange,
-  onModelBlur,
   onAutoAcceptChange,
   onShareActiveFileChange,
   onShareSelectionChange,
@@ -465,120 +624,155 @@ const ChatHeader: React.FC<{
 }) => {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-2 border-b border-border px-2 py-1.5">
-      {onToggleConvList && (
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          onClick={onToggleConvList}
-          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-          aria-label={t(
-            convListCollapsed
-              ? 'assistant-chat:show_conversations_aria'
-              : 'assistant-chat:hide_conversations_aria',
-          )}
-          aria-expanded={!convListCollapsed}
-          data-testid="chat-toggle-conv-list"
-        >
-          <Icon name={convListCollapsed ? 'chevron-right' : 'chevron-left'} />
-        </Button>
-      )}
-      <span
-        className="flex-1 truncate text-xs font-medium"
-        title={conversation.title}
-      >
-        {conversation.title}
-      </span>
-      <label className="text-xs text-muted-foreground" htmlFor="chat-model">
-        {t('assistant-chat:model_label')}
-      </label>
-      <Input
-        id="chat-model"
-        type="text"
-        value={modelEditor}
-        onChange={(e) => onModelChange(e.target.value)}
-        onBlur={onModelBlur}
-        className="h-6 w-40 text-xs"
-        spellCheck={false}
-        aria-label={t('assistant-chat:model_aria')}
-      />
-      <Popover>
-        <PopoverTrigger asChild>
+    <div className="flex flex-col gap-2 border-b border-border px-2 py-1.5">
+      <div className="flex min-w-0 items-center gap-2">
+        {onToggleConvList && (
           <Button
             type="button"
             size="icon"
             variant="ghost"
-            aria-label={t('assistant-chat:options_aria')}
+            onClick={onToggleConvList}
             className="h-6 w-6 text-muted-foreground hover:text-foreground"
-            data-testid="chat-options"
+            aria-label={t(
+              convListCollapsed
+                ? 'assistant-chat:show_conversations_aria'
+                : 'assistant-chat:hide_conversations_aria',
+            )}
+            aria-expanded={!convListCollapsed}
+            data-testid="chat-toggle-conv-list"
           >
-            <Icon name="cog" />
+            <Icon name={convListCollapsed ? 'chevron-right' : 'chevron-left'} />
           </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="end"
-          className="w-72 space-y-3 rounded-md border border-border bg-popover p-3 text-sm shadow-md"
+        )}
+        <span
+          className="flex-1 truncate text-xs font-medium"
+          title={conversation.title}
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <Label
-                htmlFor="share-active-file-toggle"
-                className="text-xs font-medium"
-              >
-                {t('assistant-chat:share_active_file_label')}
-              </Label>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('assistant-chat:share_active_file_help')}
-              </p>
+          {conversation.title}
+        </span>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label={t('assistant-chat:options_aria')}
+              title={t('assistant-chat:options_aria')}
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+              data-testid="chat-options"
+            >
+              <Icon name="cog" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            className="w-72 space-y-3 rounded-lg border border-border bg-popover p-3 text-sm"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <Label
+                  htmlFor="share-active-file-toggle"
+                  className="text-xs font-medium"
+                >
+                  {t('assistant-chat:share_active_file_label')}
+                </Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t('assistant-chat:share_active_file_help')}
+                </p>
+              </div>
+              <Switch
+                id="share-active-file-toggle"
+                checked={conversation.shareActiveFile}
+                onCheckedChange={onShareActiveFileChange}
+                data-testid="chat-share-active-file"
+              />
             </div>
-            <Switch
-              id="share-active-file-toggle"
-              checked={conversation.shareActiveFile}
-              onCheckedChange={onShareActiveFileChange}
-              data-testid="chat-share-active-file"
-            />
-          </div>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
-              <Label
-                htmlFor="share-selection-toggle"
-                className="text-xs font-medium"
-              >
-                {t('assistant-chat:share_selection_label')}
-              </Label>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('assistant-chat:share_selection_help')}
-              </p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <Label
+                  htmlFor="share-selection-toggle"
+                  className="text-xs font-medium"
+                >
+                  {t('assistant-chat:share_selection_label')}
+                </Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t('assistant-chat:share_selection_help')}
+                </p>
+              </div>
+              <Switch
+                id="share-selection-toggle"
+                checked={conversation.shareSelection}
+                onCheckedChange={onShareSelectionChange}
+                data-testid="chat-share-selection"
+              />
             </div>
-            <Switch
-              id="share-selection-toggle"
-              checked={conversation.shareSelection}
-              onCheckedChange={onShareSelectionChange}
-              data-testid="chat-share-selection"
-            />
-          </div>
-          <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
-            <div className="flex-1">
-              <Label
-                htmlFor="auto-accept-toggle"
-                className="text-xs font-medium"
-              >
-                {t('assistant-chat:auto_accept_label')}
-              </Label>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('assistant-chat:auto_accept_help')}
-              </p>
+            <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
+              <div className="flex-1">
+                <Label
+                  htmlFor="auto-accept-toggle"
+                  className="text-xs font-medium"
+                >
+                  {t('assistant-chat:auto_accept_label')}
+                </Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t('assistant-chat:auto_accept_help')}
+                </p>
+              </div>
+              <Switch
+                id="auto-accept-toggle"
+                checked={conversation.autoAcceptWrites}
+                onCheckedChange={onAutoAcceptChange}
+                data-testid="chat-auto-accept"
+              />
             </div>
-            <Switch
-              id="auto-accept-toggle"
-              checked={conversation.autoAcceptWrites}
-              onCheckedChange={onAutoAcceptChange}
-              data-testid="chat-auto-accept"
-            />
-          </div>
-        </PopoverContent>
-      </Popover>
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
+  );
+};
+
+/** Per-conversation controls sit quietly beneath the message input. */
+const ConversationModelControls: React.FC<{
+  provider: ProviderId;
+  conversation: ChatConversation;
+  onModelChange: (model: string) => void;
+  onThinkingChange: (level: ThinkingLevel) => void;
+}> = ({ provider, conversation, onModelChange, onThinkingChange }) => {
+  const { t } = useTranslation();
+  const { snapshot, manager } = useAssistantConfig();
+  const preference =
+    provider !== 'ollama'
+      ? snapshot.config?.[provider].thinkingLevel
+      : undefined;
+  return (
+    <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1">
+      {provider !== 'ollama' ? (
+        <ProviderModelSettings
+          key={`${provider}:${conversation.id}`}
+          idPrefix="chat"
+          provider={provider}
+          model={conversation.model}
+          modelLabel={t('assistant-chat:model_label')}
+          modelAriaLabel={t('assistant-chat:model_aria')}
+          thinkingLevel={conversation.thinkingLevel ?? preference}
+          onModelChange={onModelChange}
+          onThinkingChange={onThinkingChange}
+          compact
+        />
+      ) : (
+        <OllamaChatModelSelect
+          compact
+          key={conversation.id}
+          model={conversation.model}
+          onChange={onModelChange}
+          loadModels={() =>
+            manager?.refreshOllamaModels(
+              snapshot.config?.ollama.baseUrl ?? 'http://localhost:11434',
+            ) ?? Promise.resolve([])
+          }
+        />
+      )}
     </div>
   );
 };

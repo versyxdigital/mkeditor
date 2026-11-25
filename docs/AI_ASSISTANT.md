@@ -1,10 +1,29 @@
 # AI Assistant Plan
 
+For the current expanded tool catalog, confirmation policy, completed tiers and implementation limits, see [Workspace agent tools](WORKSPACE_TOOLS.md). The phases below retain the original delivery history.
+
 Phased plan for adding an in-editor AI Assistant to MKEditor — a right-hand sidebar (mirroring the file tree) that hosts per-provider chat surfaces, connects to OpenAI / Anthropic / Ollama, and gives an agent first-class read/write access to the workspace and the active editor. The high-level entry in [ROADMAP.md](ROADMAP.md) links here.
 
-Read first: [../CLAUDE.md](../CLAUDE.md), [ARCHITECTURE.md](ARCHITECTURE.md).
+Read first: [../AGENTS.md](../AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Decisions
+
+### ChatGPT subscription access (desktop)
+
+OpenAI offers two explicit connection methods: the existing API key and **ChatGPT plan**. The subscription connection uses OpenAI's [Sign in with ChatGPT flow for local open-source apps](https://developers.openai.com/siwc/token-sharing-open-source/sign-in). It does not require a partner client ID or access an existing ChatGPT conversation. Anthropic remains API-key-only; its [authentication rules](https://code.claude.com/docs/en/legal-and-compliance#authentication-and-credential-use) do not permit MKEditor to handle Claude subscription tokens.
+
+- `ChatGptOAuth` owns the system-browser flow, IPv4 loopback callback, random state/nonce, PKCE, issued client ID exchange, and JOSE signature/issuer/audience/expiry/nonce validation. The listener closes on success, error, cancellation, timeout, and disposal. Its self-contained browser result page uses translated copy supplied by `AssistantManager` and the shared light/dark palette. Browser success waits for encrypted credential persistence; denied permission and failures get distinct guidance. A nonce-protected script removes the authorization query from browser history; the page loads no external assets.
+- `ChatGptStore` validates an optional `chatgpt` section of `assistant.json`. It retains a stable host UUID and separate account/client registrations. Access, refresh and ID tokens are encrypted together with Electron `safeStorage`; writes use the existing atomic store helper and preserve keys, configuration and conversations.
+- `ChatGptAuth` manages accounts, permission checks, serialized rotating refresh tokens, model discovery and sign-out/revocation. A failed sign-in leaves the previous connection intact. Sign-out preserves the registration for reuse and reports when remote revocation could not be confirmed.
+- `to:ai:chatgpt` carries narrow account commands through `AssistantManager` and the sender-scoped `AppBridge`. The existing `from:ai:config` payload adds optional sanitized account/model state. Credentials and authorization URLs never enter the renderer.
+- `AppAssistant` keeps using the Vercel SDK, shared conversation history and renderer tool confirmations. Subscription requests use the public Responses endpoint with `store: false`, streaming, developer context and namespaced document tools. They omit the unsupported output-token cap. Account/billing changes cancel OpenAI calls; no request silently falls back to an API key.
+- Settings and the composer identify ChatGPT plan usage and link to its usage settings. Account-specific model choices refresh on sign-in, account selection and relaunch. The first successful plan sign-in shows a padded confirmation dialog with the connected account, a usage-settings action and a focused acknowledgement button.
+- Disconnected provider panes offer credential setup before creating a conversation: OpenAI supports ChatGPT sign-in and inline API-key entry; Anthropic supports inline API-key entry. Existing history remains readable while connection controls replace the composer. Drafts survive disconnect/reconnect and credentials disappearing during context gathering. A shared readiness rule prevents sends and cancels in-flight calls when the selected connection becomes unavailable; it never changes billing automatically.
+- Inline key saves carry a request ID and await `from:ai:key:result`, which reports the acknowledged encrypted storage result. Only a successful, explicitly selected OpenAI API-key connection changes its billing mode. Signed-out account registrations remain private for reauthorization: the sanitized account picker lists only live sessions. Signing out immediately hides the selected account, usage badge, usage link and plan-model controls while revocation completes.
+
+Automated coverage lives in `ChatGptOAuth.test.ts`, `ChatGptAuth.test.ts`, `ChatGptAssistant.test.ts`, and `react/ChatGptSettings.test.tsx`. Before release, manually verify a real eligible account's browser sign-in/decline/cancel flow, OS keychain interaction, relaunch/refresh, chat and confirmed edits, account switching, plan limits and sign-out in desktop builds. Check keyboard navigation and both themes. Automated mocks do not establish live account eligibility or provider availability.
+
+### Original delivery decisions
 
 | Area                      | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -333,6 +352,8 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
 - ✅ Typing a question, hitting Enter, watching the response stream in. Visible token-by-token output.
 - ✅ Stop button halts the upstream call within ~50 ms.
 - ✅ Markdown (lists, code blocks, headings, links) renders cleanly in assistant bubbles, with the same highlight.js + KaTeX support the preview pane has.
+- Tables use padded cells, grid borders and theme-aware headers. Wide tables scroll within a keyboard-focusable container in the message; column alignment from Markdown is preserved. Chat opts into these containers through `renderAssistantMarkdown`, so document preview and export keep their own table layout.
+- Chat typography lives in `react/styles/assistant-markdown.css`: heading sizes, paragraph spacing, nested list markers, quotes, links, inline code and fenced-code headers are explicit rather than relying on unconfigured `prose` classes. Code-copy actions preserve the original UTF-8 source. Chat-only extensions add disabled task checkboxes, scoped heading/footnote links, emoji shortcodes and GitHub-style alerts. The HTML option remains disabled; a small tag allowlist supports basic inline formatting, details/summary and plain panels without accepting source attributes or styles. Completed Mermaid fences load the diagram engine on demand with strict security and sanitized SVG; invalid diagrams retain their source. Cancelled or stale diagram renders cannot update another message. These extensions do not change document preview or export rendering.
 - ✅ Multiple provider tabs can hold parallel in-flight calls (start one in Anthropic, switch to OpenAI, start another, both stream independently).
 - ✅ Switching tabs or conversations preserves the input draft.
 - ✅ `npm test` green, `npm run lint` green, build green.
@@ -395,8 +416,8 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
    - Current selection (if "share selection" toggle on and a selection exists) — included with line range.
    - Explicit `@`-mentioned files — each as its own tagged block.
 2. **`<ContextChip>`** — row above the input listing currently included context: `[× X.md (active)] [× workspace/notes.md] [× selection L42-L67]`. Active-file / selection chips re-attach per send based on their toggles; explicit `@`-mention chips **stick until the user × removes them** (Cursor/Continue convention — a transient @ would defeat the point of explicitly picking files).
-3. **`<MentionPicker>`** — opens on `@` keystroke. Built from `FileTreeManager.snapshot()` flattened + fuzzy-filtered, with the same lazy-load-on-demand walk `list_files` uses (P5) so the picker sees the whole workspace from a freshly-restored session, not just top-level files. Arrow keys + Enter to select; the chosen path becomes a chip in `<ContextChip>` and the `@` token is removed from the input.
-4. **Context size indicator** — small text below the input: `~1,200 tokens` (estimated via `text.length / 4` — good enough; no tiktoken dependency in v1). Turns amber above the provider's published context window.
+3. **`<MentionPicker>`** — opens on `@` keystroke and filters a cached native workspace inventory, independently of explorer expansion and filters. Refreshes on open, window focus and changes to `fileListingRevision`; query edits and unrelated tree notifications do not rescan. The native walk skips dependency/build directories (`node_modules`, `dist`, `out`, `build`, `coverage`) and all dot-directories. It streams directory entries and stops at 5,000 files, 1,000 directories or 20,000 entries, returning `{ paths, truncated }` through IPC and the manager cache. Arrow keys + Enter select a file; the chosen path becomes a chip in `<ContextChip>` and the `@` token is removed from the input.
+4. **Context size indicator** — small text below the input: `~1,200 tokens`, estimated from history, tool definitions, draft and shared files using characters divided by four. Turns amber above an explicitly configured Ollama context window, or a rough 32,000-token threshold otherwise; it does not infer the daemon's allocation or a model's supported maximum.
 5. **Default toggles** — share-active-file: on; share-selection: off (selection sharing is fiddly and easy to over-share). Both are per-conversation and persist. UI surface: the existing P5 gear popover in `<ChatPane>`'s header — `<Switch>` rows alongside the `autoAcceptWrites` toggle. No new visual real estate.
 6. **`tests/AssistantManager.context.test.ts`** — context assembly with various toggle combinations; @-mention dedupes against the active file; size indicator updates as input grows.
 7. **Reviewers + commit approval.**
@@ -468,7 +489,7 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
 9. **Smoke checklist** — manual checklist in the doc covering: enable + connect each provider; chat with each; cancel mid-stream; ask the agent to edit the active file; confirm + apply; reject; ask the agent to create a new file; relaunch and verify history. (Web smoke dropped — web AI is gone per P7 Decisions.)
 10. **Documentation** —
     - **[ARCHITECTURE.md](ARCHITECTURE.md)** — new §4.14 "AI Assistant" covering IPC channels, key storage, conversation persistence, tool dispatch, the desktop-only constraint.
-    - **[CLAUDE.md](../CLAUDE.md)** — add the AI Assistant managers + IPC channels to the relevant sections (Core Subsystems renderer, IPC Bridge Model).
+    - **[AGENTS.md](../AGENTS.md)** — add the AI Assistant managers + IPC channels to the relevant sections (Core Subsystems renderer, IPC Bridge Model).
     - **[ROADMAP.md](ROADMAP.md)** — move the milestone row into **Recently Landed** with the date.
 11. **Reviewers + commit approval.**
 
@@ -478,7 +499,7 @@ A phase is **complete** only when its exit criteria are met _and_ `npm test`, `n
 - ✅ Menu items appear under View and Help and behave correctly.
 - ✅ The Cmd/Ctrl+Shift+A toggle opens/closes the sidebar from anywhere.
 - ✅ All error states render a translated, actionable message.
-- ✅ `ARCHITECTURE.md`, `CLAUDE.md`, and `ROADMAP.md` reflect the shipped surface.
+- ✅ `ARCHITECTURE.md`, `AGENTS.md`, and `ROADMAP.md` reflect the shipped surface.
 - ✅ `npm test`, `npm run lint`, `npm run build-editor`, `npm run build-app` all green.
 - ✅ Smoke checklist passes on Windows desktop (web smoke dropped — web AI is gone per P7).
 
@@ -559,6 +580,14 @@ Run through this list on Windows after every P8-touching change. Each step is sm
 - [ ] Switch locale (e.g. `de`, `ja`, `fr`) → relaunch → assistant title, tab labels, empty-state copy, tool-card labels, confirm dialog text all render in the chosen locale.
 
 ---
+
+## Ollama context allocation
+
+The model's supported context window and Ollama's allocated window can differ. A model that supports 256K tokens can still run with a 4,096-token allocation. Inspect the running allocation with `ollama ps` (or `GET /api/ps`); a model's own answer about its context size is not runtime metadata.
+
+AI Providers → Ollama → **Context window (tokens)** controls the per-request `options.num_ctx` value. **Ollama default** preserves the daemon's settings, including for existing installations. Try 32,768 for document work if the model and available memory support it. Larger windows require more memory. Changes apply to the next message; tool continuations retain the allocation selected when their call started. MKEditor never increases it automatically or silently drops history to fit.
+
+The composer estimates the next request from conversation history (including tool results), tool definitions, draft text and shared files. It remains an approximation based on characters, not the model's tokenizer, and excludes future generated output. Tool definitions and prior results count even with an empty composer; a short file can therefore overflow a small allocation. Ollama context-overflow responses map to the translated context-window error.
 
 ## Future Considerations
 
