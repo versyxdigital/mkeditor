@@ -111,7 +111,8 @@ import { AppBridge } from '../src/app/lib/AppBridge';
 import { AppSession } from '../src/app/lib/AppSession';
 import { promises as fs } from 'fs';
 import { pathToFileURL } from 'url';
-import { join } from 'path';
+import { join, resolve } from 'path';
+import { tmpdir } from 'os';
 
 async function drainLinkOperations() {
   for (let i = 0; i < 8; i++) await Promise.resolve();
@@ -207,6 +208,37 @@ describe('Electron main app', () => {
       winInstance,
       '/notes/queued.md',
     );
+  });
+
+  it.each(['nested/notes.MD', '../other.md'])(
+    'resolves second-instance argument %s against that instance working directory',
+    (argument) => {
+      const handler = app.on.mock.calls.find(
+        ([event]: [string]) => event === 'second-instance',
+      )[1];
+      const directory = join(tmpdir(), 'second instance workspace');
+      handler({}, ['mkeditor.exe', '--ignore.md', argument], directory);
+      expect(AppStorage.openActiveFile).toHaveBeenLastCalledWith(
+        expect.anything(),
+        resolve(directory, argument),
+      );
+      expect(app.focus).toHaveBeenCalled();
+    },
+  );
+
+  it('preserves absolute second-instance paths and ignores flags and non-Markdown arguments', () => {
+    const handler = app.on.mock.calls.find(
+      ([event]: [string]) => event === 'second-instance',
+    )[1];
+    const file = join(tmpdir(), 'native docs', 'notes.md');
+    handler({}, ['mkeditor.exe', file], join(tmpdir(), 'another cwd'));
+    expect(AppStorage.openActiveFile).toHaveBeenLastCalledWith(
+      expect.anything(),
+      file,
+    );
+    (AppStorage.openActiveFile as jest.Mock).mockClear();
+    handler({}, ['mkeditor.exe', '--ignore.md', 'notes.txt'], tmpdir());
+    expect(AppStorage.openActiveFile).not.toHaveBeenCalled();
   });
 
   it('opens the filename passed by a native open-file event in the existing window', () => {

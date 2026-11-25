@@ -511,7 +511,16 @@ export class AppStorage {
       !file.startsWith('-') &&
       file.indexOf('MKEditor.lnk') === -1
     ) {
-      AppStorage.setActiveFile(context, file);
+      try {
+        if (!statSync(file).isFile()) throw new Error('Not a regular file');
+        AppStorage.setActiveFile(context, file);
+      } catch {
+        // Native launch/open events have no awaiting caller to report failures.
+        context.webContents.send('from:notification:display', {
+          status: 'error',
+          key: 'notifications:unable_open_file',
+        });
+      }
     }
   }
 

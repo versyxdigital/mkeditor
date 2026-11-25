@@ -65,6 +65,7 @@ This document describes how MKEditor is put together internally: how the two exe
 Runs Node. Owns:
 
 - `BrowserWindow` lifecycle, single-instance lock, OS file associations (`.md`), tray, app menu.
+- Native file-open requests resolve second-instance relative arguments against the originating instance's working directory. Missing, unreadable and non-file targets produce a localized error notification without changing the active document or authorizing a save destination.
 - Three sibling JSON files under `~/.mkeditor/`:
   - `settings.json` — editor + export preferences (read / validate / merge-defaults / save via [AppSettings](../src/app/lib/AppSettings.ts)).
   - `session.json` — tabs, active tab, workspace folder, per-tab cursor / scroll / folding (atomic tmp + rename writes via [AppSession](../src/app/lib/AppSession.ts)).

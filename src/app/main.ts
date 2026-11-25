@@ -12,7 +12,7 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log/main';
 import { existsSync, writeFileSync, promises as fs } from 'fs';
 import { homedir } from 'os';
-import { extname, join, normalize } from 'path';
+import { extname, join, normalize, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { AppAssistant } from './lib/AppAssistant';
 import { AppBridge } from './lib/AppBridge';
@@ -324,13 +324,15 @@ function main(file: string | null = null) {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', (event, args) => {
-    console.log({ event, args });
+  app.on('second-instance', (_event, args, workingDirectory) => {
     app.focus();
     // If user has opened the app via a file, then set active file.
     if (args.length >= 2) {
-      const filepath = args.find((arg) => arg.toLowerCase().endsWith('.md'));
-      if (context && filepath) AppStorage.openActiveFile(context, filepath);
+      const filepath = args.find(
+        (arg) => !arg.startsWith('-') && arg.toLowerCase().endsWith('.md'),
+      );
+      if (context && filepath)
+        AppStorage.openActiveFile(context, resolve(workingDirectory, filepath));
     }
   });
 }

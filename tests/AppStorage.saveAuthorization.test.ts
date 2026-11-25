@@ -1,6 +1,7 @@
 import {
   existsSync,
   mkdtempSync,
+  mkdirSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -8,7 +9,7 @@ import {
 } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { dialog, ipcMain, type BrowserWindow } from 'electron';
+import { app, dialog, ipcMain, type BrowserWindow } from 'electron';
 import { AppStorage } from '../src/app/lib/AppStorage';
 import { AppBridge } from '../src/app/lib/AppBridge';
 import { AppSession } from '../src/app/lib/AppSession';
@@ -87,6 +88,42 @@ test('an existing unapproved file is not overwritten', async () => {
   expect(await save(file)).toEqual({ ok: false, cancelled: true });
   expect(readFileSync(file, 'utf8')).toBe('private');
 });
+
+test.each(['missing', 'unreadable', 'directory'] as const)(
+  'a %s native-open target reports failure without changing the active file or granting save access',
+  async (kind) => {
+    const active = join(root, 'active.md');
+    const target = join(root, 'unavailable.md');
+    writeFileSync(active, 'current document');
+    AppStorage.openActiveFile(context, active);
+    if (kind === 'directory') mkdirSync(target);
+    if (kind === 'unreadable') {
+      writeFileSync(target, 'unreadable document');
+      const nativeFs = jest.requireActual('fs') as typeof import('fs');
+      const read = nativeFs.readFileSync;
+      jest.spyOn(nativeFs, 'readFileSync').mockImplementation((...args) => {
+        if (args[0] === target)
+          throw Object.assign(new Error('read denied'), { code: 'EACCES' });
+        return Reflect.apply(read, undefined, args);
+      });
+    }
+    jest.mocked(context.webContents.send).mockClear();
+    jest.mocked(app.addRecentDocument).mockClear();
+    expect(() => AppStorage.openActiveFile(context, target)).not.toThrow();
+    expect(AppStorage.getActiveFilePath()).toBe(active);
+    expect(context.webContents.send).toHaveBeenCalledTimes(1);
+    expect(context.webContents.send).toHaveBeenCalledWith(
+      'from:notification:display',
+      {
+        status: 'error',
+        key: 'notifications:unable_open_file',
+      },
+    );
+    expect(app.addRecentDocument).not.toHaveBeenCalled();
+    expect(await save(target)).toEqual({ ok: false, cancelled: true });
+    expect(dialog.showSaveDialog).toHaveBeenCalledTimes(1);
+  },
+);
 
 test('a native-opened file outside the workspace remains saveable in its window', async () => {
   const file = join(root, 'selected.md');
