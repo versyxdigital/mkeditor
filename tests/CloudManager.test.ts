@@ -91,6 +91,39 @@ beforeEach(() => {
     .mockResolvedValue({ button: null });
 });
 
+test('remote discard waits for its correlated durable response and surfaces persistence failure', async () => {
+  const { manager, files, requests, state, respond, fail } = setup();
+  const operations = files.setRemoteOperations.mock.calls[0][0];
+  const document = {
+    connectionId: 'drive',
+    accountId: 'account',
+    item: { id: 'item' },
+  };
+  let finished = false;
+  const pending = operations.discard(document, ['pending-save']).then(() => {
+    finished = true;
+  });
+  expect(requests.at(-1)?.command).toEqual({
+    action: 'discardDocument',
+    document: {
+      provider: undefined,
+      connectionId: 'drive',
+      accountId: 'account',
+      itemId: 'item',
+      operationIds: ['pending-save'],
+    },
+  });
+  await Promise.resolve();
+  expect(finished).toBe(false);
+  respond(requests.at(-1)!, { ok: true, state });
+  await pending;
+  expect(finished).toBe(true);
+  const denied = operations.discard(document, ['another-save']);
+  fail(requests.at(-1)!, 'storage');
+  await expect(denied).rejects.toBe('storage');
+  manager.dispose();
+});
+
 afterEach(() => {
   jest.useRealTimers();
 });

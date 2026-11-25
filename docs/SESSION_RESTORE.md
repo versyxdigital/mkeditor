@@ -14,6 +14,8 @@ Restoration starts with cached text after decryption, then `CloudManager` perfor
 
 Close and quit flushes carry a correlation ID and complete only after the main process commits the checkpoint. Failure offers Cancel or Quit anyway. Clear saved session uses a clear token so stale queued/final checkpoints cannot undo the clear; new activity can resume checkpointing. Unresolved write intentions are retained separately from cleared session drafts.
 
+Closing a remote tab first awaits an explicit recovery discard. Main atomically suppresses its outstanding operation IDs and removes its cached tab, including when no session checkpoint has recorded the tab yet. Suppression also covers late journal writes and older checkpoints carrying those operation IDs. The operation journal remains available for reconciliation; discard does not replay or cancel a provider write. If persistence fails, the tab stays open.
+
 Run `npm run test:drive-recovery` after building for isolated Playwright normal-restart, forced-crash, offline, conflict and interrupted-save checks. See [the test guide](cloud/drive-smoke-tests.md). The sections below describe the original local-session implementation and its development history.
 
 ## Decisions

@@ -104,6 +104,18 @@ export class CloudManager {
     private readonly files: FileManager,
   ) {
     files.setRemoteOperations?.({
+      discard: async (document, operationIds) => {
+        await this.request({
+          action: 'discardDocument',
+          document: {
+            provider: document.provider,
+            connectionId: document.connectionId,
+            accountId: document.accountId,
+            itemId: document.item.id,
+            operationIds,
+          },
+        });
+      },
       acknowledge: (operationId) => {
         void this.request({ action: 'acknowledge', operationId }).catch(
           () => {},

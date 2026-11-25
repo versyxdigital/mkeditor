@@ -43,6 +43,16 @@ const copySchema = z.object({
 });
 const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('state') }),
+  z.object({
+    action: z.literal('discardDocument'),
+    document: z.object({
+      provider: z.enum(['google-drive', 'dropbox']).optional(),
+      connectionId: id,
+      accountId: id,
+      itemId: id,
+      operationIds: z.array(id).max(200),
+    }),
+  }),
   z.object({ action: z.literal('acknowledge'), operationId: id }),
   z.object({
     action: z.literal('add'),
@@ -391,6 +401,11 @@ export class CloudService {
     connectionId?: string;
   }> {
     if (command.action === 'state') return {};
+    if (command.action === 'discardDocument') {
+      if (!this.recovery) throw new CloudError('storage');
+      await this.recovery.discardDocument(command.document);
+      return {};
+    }
     if (command.action === 'acknowledge') {
       await this.recovery?.acknowledge(command.operationId);
       this.restoredOperations.delete(command.operationId);

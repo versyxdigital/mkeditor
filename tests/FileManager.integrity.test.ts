@@ -103,11 +103,17 @@ function remoteEditing(provider?: 'google-drive' | 'dropbox') {
   };
   const save = jest.fn<Promise<typeof document>, [unknown]>();
   const reconcile = jest.fn<Promise<typeof document>, [unknown]>();
-  setupResult.fm.setRemoteOperations({ canEdit: () => true, save, reconcile });
+  const discard = jest.fn().mockResolvedValue(undefined);
+  setupResult.fm.setRemoteOperations({
+    canEdit: () => true,
+    save,
+    reconcile,
+    discard,
+  });
   setupResult.fm.openRemoteDocument(document);
   const path = setupResult.fm.activeFile!;
   const model = setupResult.fm.models.get(path)!;
-  return { ...setupResult, document, path, model, save, reconcile };
+  return { ...setupResult, document, path, model, save, reconcile, discard };
 }
 
 test('remote save acknowledges its captured version and leaves edits made in flight dirty', async () => {
@@ -137,6 +143,52 @@ test('remote save acknowledges its captured version and leaves edits made in fli
   expect(fm.tabs.get(path)?.remote?.item.validator).toBe('"second"');
   expect(sonnerToast).toHaveBeenCalledTimes(1);
   expect(sonnerToast).toHaveBeenCalledWith('success', 'cloud:save_saved');
+});
+
+test('discard waits for persistent suppression before disposing a newly opened remote tab', async () => {
+  const { fm, model, path, save, discard, document } = remoteEditing();
+  let finishSave!: (value: typeof document) => void;
+  save.mockReturnValue(
+    new Promise((resolve) => {
+      finishSave = resolve;
+    }),
+  );
+  model.setValue('discarded draft');
+  const saving = fm.saveTab(path);
+  let persisted!: () => void;
+  discard.mockReturnValue(
+    new Promise<void>((resolve) => {
+      persisted = resolve;
+    }),
+  );
+  const closing = fm.closeTab(path, true);
+  expect(discard).toHaveBeenCalledWith(
+    expect.objectContaining({
+      connectionId: document.connectionId,
+      accountId: document.accountId,
+    }),
+    [save.mock.calls[0][0].operationId],
+  );
+  expect(fm.models.get(path)).toBe(model);
+  expect(await fm.saveTab(path)).toBe(false);
+  expect(save).toHaveBeenCalledTimes(1);
+  persisted();
+  expect(await closing).toBe('closed');
+  expect(fm.models.has(path)).toBe(false);
+  finishSave({ ...document, content: 'discarded draft' });
+  expect(await saving).toBe(false);
+  expect(fm.models.has(path)).toBe(false);
+});
+
+test('failed discard persistence keeps the remote draft open', async () => {
+  const { fm, model, path, save, discard } = remoteEditing();
+  save.mockRejectedValue('unconfirmed');
+  model.setValue('keep this draft');
+  await fm.saveTab(path);
+  discard.mockRejectedValue('storage');
+  expect(await fm.closeTab(path, true)).toBe('aborted');
+  expect(fm.models.get(path)).toBe(model);
+  expect(model.getValue()).toBe('keep this draft');
 });
 
 test('repeated save requests share one Drive write and one success toast', async () => {

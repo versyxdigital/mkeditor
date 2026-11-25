@@ -186,6 +186,97 @@ test('a create interrupted before its first tab checkpoint restores a recoverabl
   });
 });
 
+test.each(['google-drive', 'dropbox'] as const)(
+  '%s discard before the first checkpoint prevents operation recovery after restart',
+  async (provider) => {
+    const file = join(root, 'recovery.bin');
+    const store = new Store(file);
+    await store.saveOperations([{ ...operation, provider }]);
+    expect((await store.load()).session).toBeUndefined();
+    await store.discardDocument({
+      provider,
+      connectionId: operation.connectionId,
+      accountId: operation.accountId,
+      itemId: operation.itemId,
+      operationIds: [operation.operationId],
+    });
+    const restarted = new Store(file);
+    const restored = await new Coordinator(restarted).restore(null);
+    expect(restored.session?.tabs ?? []).toEqual([]);
+    expect((await restarted.load()).suppressedOperations).toContain(
+      operation.operationId,
+    );
+    expect((await restarted.load()).operations).toHaveLength(1);
+  },
+);
+
+test('discard persists before a late journal write and stale checkpoint without suppressing a different account', async () => {
+  const file = join(root, 'recovery.bin');
+  const store = new Store(file);
+  await store.discardDocument({
+    connectionId: operation.connectionId,
+    accountId: operation.accountId,
+    itemId: operation.itemId,
+    operationIds: [operation.operationId],
+  });
+  await store.saveOperations([
+    operation,
+    { ...operation, operationId: 'different-account', accountId: 'other' },
+  ]);
+  const stale = session();
+  stale.tabs[0].remote!.pendingSave = {
+    operationId: operation.operationId,
+    content: operation.content!,
+    validator: operation.validator!,
+  };
+  await store.saveSession(stale);
+  const restored = await new Coordinator(new Store(file)).restore(null);
+  expect(restored.session?.tabs).toHaveLength(1);
+  expect(restored.session?.tabs[0].remote?.document.accountId).toBe('other');
+});
+
+test('discard removes an already checkpointed tab atomically and preserves a later reopen', async () => {
+  const file = join(root, 'recovery.bin');
+  const store = new Store(file);
+  await store.saveSession(session());
+  await store.saveOperations([operation]);
+  await store.discardDocument({
+    connectionId: operation.connectionId,
+    accountId: operation.accountId,
+    itemId: operation.itemId,
+    operationIds: [operation.operationId],
+  });
+  expect(
+    (await new Coordinator(new Store(file)).restore(null)).session?.tabs ?? [],
+  ).toEqual([]);
+  await store.saveSession(session('reopened document'));
+  expect(
+    (await new Coordinator(new Store(file)).restore(null)).session?.tabs[0]
+      .remote?.document.content,
+  ).toBe('reopened document');
+});
+
+test('failed discard leaves the journal recoverable', async () => {
+  const file = join(root, 'recovery.bin');
+  const store = new Store(file);
+  await store.saveOperations([operation]);
+  jest
+    .mocked(storage.encryptStringAsync)
+    .mockRejectedValueOnce(new Error('locked'));
+  await expect(
+    store.discardDocument({
+      connectionId: operation.connectionId,
+      accountId: operation.accountId,
+      itemId: operation.itemId,
+      operationIds: [operation.operationId],
+    }),
+  ).rejects.toMatchObject({ code: 'storage' });
+  const restored = await new Coordinator(new Store(file)).restore(null);
+  expect(restored.session?.tabs[0].remote?.pendingSave?.operationId).toBe(
+    operation.operationId,
+  );
+});
+
 test('clearing a saved session removes drafts but keeps the write journal without resurrecting tabs', async () => {
   const file = join(root, 'recovery.bin'),
     store = new Store(file);

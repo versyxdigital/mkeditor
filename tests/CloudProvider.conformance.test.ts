@@ -260,6 +260,32 @@ describe.each(['google-drive', 'dropbox'] as const)(
       expect(await save(doc)).toMatchObject({ ok: false, error: 'conflict' });
       expect(fixture.contents()).toBe('external writing');
     });
+    test('discard before the first checkpoint suppresses an unresolved save across restart', async () => {
+      const doc = await open();
+      fixture.loseResponse();
+      expect(await save(doc)).toMatchObject({
+        ok: false,
+        error: 'unconfirmed',
+      });
+      expect((await recovery.load()).session).toBeUndefined();
+      success(
+        await request({
+          action: 'discardDocument',
+          document: {
+            provider: providerId,
+            connectionId: doc.connectionId,
+            accountId: doc.accountId,
+            itemId: doc.item.id,
+            operationIds: ['save'],
+          },
+        }),
+      );
+      const restarted = new CloudRecoveryStore(join(directory, 'recovery.bin'));
+      const restored = await new CloudSessionRecovery(restarted).restore(null);
+      expect(restored.session?.tabs ?? []).toEqual([]);
+      expect((await restarted.load()).operations).toHaveLength(1);
+      expect(fixture.writes()).toBe(1);
+    });
     test('a lost acknowledgement survives service restart and reconciles without another write', async () => {
       const doc = await open();
       fixture.loseResponse();

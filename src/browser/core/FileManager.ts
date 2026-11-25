@@ -62,6 +62,10 @@ interface RemoteSaveSnapshot {
   model: editor.ITextModel;
 }
 interface RemoteFileOperations {
+  discard?(
+    document: Omit<RemoteDocument, 'content'>,
+    operationIds: string[],
+  ): Promise<void>;
   acknowledge?(operationId: string): void;
   canCheck?(document: Omit<RemoteDocument, 'content'>): boolean;
   check?(document: Omit<RemoteDocument, 'content'>): Promise<RemoteDocument>;
@@ -149,6 +153,7 @@ export class FileManager {
   private pendingSaves = new Map<string, PendingSave>();
   private modelSaves = new Map<editor.ITextModel, PendingSave>();
   private remoteOperations: RemoteFileOperations | null = null;
+  private remoteDiscards = new Set<string>();
   private remoteWrites = new Map<string, Promise<boolean>>();
   private remoteUnconfirmed = new Map<string, RemoteSaveSnapshot>();
   private remoteSaveSnapshots = new Map<string, RemoteSaveSnapshot>();
@@ -646,6 +651,7 @@ export class FileManager {
     path: string,
     discard = false,
   ): Promise<'closed' | 'aborted' | 'not_found'> {
+    if (this.remoteDiscards.has(path)) return 'aborted';
     const tabInfo = this.tabs.get(path);
     if (tabInfo && (tabInfo.kind ?? 'file') === 'diff') {
       this.closeDiffTab(path);
@@ -700,6 +706,31 @@ export class FileManager {
         // null (Esc/overlay) or 'cancel' — abort the close.
         return 'aborted';
       }
+    }
+
+    const remote = this.tabs.get(path)?.remote;
+    if (remote) {
+      const operationIds = [
+        ...new Set(
+          [
+            this.remoteSaveSnapshots.get(path)?.operationId,
+            this.remoteUnconfirmed.get(path)?.operationId,
+            remote.operationId,
+          ].filter((id): id is string => Boolean(id)),
+        ),
+      ];
+      try {
+        this.remoteDiscards.add(path);
+        if (operationIds.length && !this.remoteOperations?.discard)
+          throw new Error('Remote discard persistence is unavailable');
+        await this.remoteOperations?.discard?.(remote, operationIds);
+      } catch {
+        sonnerToast('error', t('cloud:recovery_storage_error'));
+        return 'aborted';
+      } finally {
+        this.remoteDiscards.delete(path);
+      }
+      if (this.models.get(path) !== mdl) return 'not_found';
     }
 
     // Remove the closing tab from the bookkeeping first so the
@@ -1655,6 +1686,7 @@ export class FileManager {
     path: string,
     checkingRecovery = false,
   ): Promise<boolean> {
+    if (this.remoteDiscards.has(path)) return Promise.resolve(false);
     if (!checkingRecovery && this.tabs.get(path)?.remoteRecovery)
       return this.checkRemoteRecovery(path).then((ok) =>
         ok ? this.saveRemoteTab(path) : false,

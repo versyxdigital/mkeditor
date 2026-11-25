@@ -103,8 +103,17 @@ export interface CloudCallbackCopy {
   close: string;
   invalid: string;
 }
+/** Discard local recovery content without cancelling or replaying provider writes. */
+export interface RemoteDocumentDiscard {
+  provider?: CloudProviderId;
+  connectionId: string;
+  accountId: string;
+  itemId: string;
+  operationIds: string[];
+}
 export type CloudCommand =
   | { action: 'state' }
+  | { action: 'discardDocument'; document: RemoteDocumentDiscard }
   | { action: 'acknowledge'; operationId: string }
   | {
       action: 'add';

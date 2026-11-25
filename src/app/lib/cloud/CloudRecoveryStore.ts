@@ -4,7 +4,11 @@ import { dirname, join } from 'path';
 import { homedir } from 'os';
 import { z } from 'zod';
 import type { SessionPayload } from '../../interfaces/Session';
-import type { DriveItem, RemoteDocument } from '../../interfaces/Cloud';
+import type {
+  DriveItem,
+  RemoteDocument,
+  RemoteDocumentDiscard,
+} from '../../interfaces/Cloud';
 import { remoteDocumentPath } from '../../interfaces/Cloud';
 import { CloudError } from './CloudError';
 import { CloudStore } from './CloudStore';
@@ -189,6 +193,7 @@ export class CloudRecoveryStore {
         });
         if (
           next.operations.length > 200 ||
+          next.suppressedOperations.length > 200 ||
           Buffer.byteLength(serialized) > MAX_BYTES ||
           !(await new CloudStore().available())
         )
@@ -269,9 +274,29 @@ export class CloudRecoveryStore {
       const suppressedOperations = [...suppressed].filter(
         (id) => !acknowledged.includes(id),
       );
+      // An older in-flight checkpoint must not reintroduce an explicitly
+      // discarded write snapshot after discardDocument has committed.
+      const tabs = session?.tabs.filter((tab) => {
+        const operationId =
+          tab.remote?.pendingSave?.operationId ??
+          tab.remote?.document.operationId;
+        return !operationId || !suppressed.has(operationId);
+      });
+      const retainedSession =
+        session && tabs
+          ? {
+              ...session,
+              tabs,
+              activeFile: tabs.some((tab) => tab.path === session.activeFile)
+                ? session.activeFile
+                : null,
+            }
+          : undefined;
       return {
         ...data,
-        session: session?.tabs.some((tab) => tab.remote) ? session : undefined,
+        session: retainedSession?.tabs.some((tab) => tab.remote)
+          ? retainedSession
+          : undefined,
         suppressedOperations,
         acknowledged,
         operations: data.operations.filter(
@@ -298,6 +323,51 @@ export class CloudRecoveryStore {
           (op) => !data.acknowledged.includes(op.operationId),
         ),
       };
+    });
+  }
+  async discardDocument(document: RemoteDocumentDiscard): Promise<void> {
+    const path = remoteDocumentPath({
+      ...document,
+      item: { id: document.itemId },
+    });
+    await this.update((data) => {
+      const suppressed = new Set([
+        ...data.suppressedOperations,
+        ...document.operationIds,
+      ]);
+      for (const operation of data.operations) {
+        if (
+          remoteDocumentPath({
+            ...operation,
+            item: { id: operation.itemId },
+          }) === path
+        )
+          suppressed.add(operation.operationId);
+      }
+      const previous = z
+        .object({
+          tabs: z.array(
+            z
+              .object({ path: z.string(), remote: remoteTabSchema.optional() })
+              .passthrough(),
+          ),
+          activeFile: z.string().nullable(),
+        })
+        .passthrough()
+        .safeParse(data.session);
+      let session = data.session;
+      if (previous.success) {
+        session = {
+          ...previous.data,
+          tabs: previous.data.tabs.filter(
+            (tab) =>
+              !tab.remote || remoteDocumentPath(tab.remote.document) !== path,
+          ),
+          activeFile:
+            previous.data.activeFile === path ? null : previous.data.activeFile,
+        };
+      }
+      return { ...data, session, suppressedOperations: [...suppressed] };
     });
   }
   async acknowledge(operationId: string) {
