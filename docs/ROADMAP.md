@@ -69,6 +69,12 @@ Now that the React migration is in.
 
 ---
 
+## 5. Web Cloud Support _(planned)_
+
+Target **v5.1.0 or a later minor release**. Bring Google Drive and Dropbox to the web editor with browser authorization, suitable token/draft storage and verified save safety. Scope and acceptance criteria are in the [cloud provider roadmap](cloud/cloud-provider-roadmap.md).
+
+---
+
 ## How to Update This Doc
 
 - Move items between sections as status changes; add a 🟢 entry with a date under **Recently Landed** when a milestone ships.
