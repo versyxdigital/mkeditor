@@ -18,7 +18,7 @@ let files: WorkspaceFiles;
 let sent: jest.Mock;
 beforeEach(async () => {
   jest.clearAllMocks();
-  root = await fs.mkdtemp(join(tmpdir(), 'mkeditor-tools-'));
+  root = await fs.realpath(await fs.mkdtemp(join(tmpdir(), 'mkeditor-tools-')));
   AppStorage.setWorkspaceRoot(root);
   sent = jest.fn();
   files = new WorkspaceFiles({

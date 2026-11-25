@@ -1,7 +1,14 @@
 /** @jest-environment node */
 
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -84,7 +91,10 @@ describe('test policy', () => {
         file.endsWith('/requireAssertions.cjs'),
       );
       expect(assertionGuard).toBeDefined();
-      const directory = mkdtempSync(join(tmpdir(), 'mkeditor-test-policy-'));
+      // Jest resolves roots to native paths; Windows TEMP may contain an 8.3 alias.
+      const directory = realpathSync.native(
+        mkdtempSync(join(tmpdir(), 'mkeditor-test-policy-')),
+      );
       try {
         writeFileSync(
           join(directory, 'assertions.test.cjs'),
@@ -130,6 +140,11 @@ describe('test policy', () => {
         expect(result.error).toBeUndefined();
         expect(result.signal).toBeNull();
         expect(result.status).toBe(1);
+        if (!existsSync(reportFile)) {
+          throw new Error(
+            `Child Jest did not produce a report:\n${result.stderr}`,
+          );
+        }
         const report = JSON.parse(readFileSync(reportFile, 'utf8'));
         expect(report.numFailedTests).toBe(2);
         expect(report.numPassedTests).toBe(1);

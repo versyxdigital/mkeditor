@@ -99,7 +99,7 @@ describe('AppStorage.assertInWorkspace', () => {
         const directoryLink = join(root, 'linked');
         createDirectoryLink(otherRoot, directoryLink);
         const link = join(directoryLink, 'secret.md');
-        expect(await fs.realpath(link)).toBe(realpathSync(secret));
+        expect(await fs.realpath(link)).toBe(realpathSync.native(secret));
         AppStorage.setWorkspaceRoot(root);
         await expect(AppStorage.assertInWorkspace(link)).rejects.toThrow(
           /outside the workspace/,

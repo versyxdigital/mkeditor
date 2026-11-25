@@ -63,7 +63,7 @@ describe('main-owned workspace authorization', () => {
     expect(AppStorage.adoptWorkspaceRoot(arbitrary)).toBe(false);
     expect(AppStorage.adoptWorkspaceRoot(undefined)).toBe(false);
     expect(AppStorage.adoptWorkspaceRoot({ root: arbitrary })).toBe(false);
-    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync(previous));
+    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync.native(previous));
   });
 
   it('accepts a picker-offered root only after the renderer adopts it', async () => {
@@ -78,9 +78,9 @@ describe('main-owned workspace authorization', () => {
       'from:folder:opened',
       expect.objectContaining({ path: next, workspaceChange: true }),
     );
-    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync(previous));
+    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync.native(previous));
     expect(AppStorage.adoptWorkspaceRoot(next)).toBe(true);
-    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync(next));
+    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync.native(next));
   });
 
   it('keeps the previous authority and persisted root when the workspace-switch confirmation is cancelled', async () => {
@@ -91,16 +91,16 @@ describe('main-owned workspace authorization', () => {
     });
     await AppStorage.openDirectory(fakeWindow());
     // Cancelling the renderer confirmation produces no adoption message.
-    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync(previous));
+    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync.native(previous));
     expect(AppStorage.getSessionWorkspaceRoot(next)).toBe(
-      realpathSync(previous),
+      realpathSync.native(previous),
     );
     await expect(
       AppStorage.assertInWorkspace(join(next, 'note.md')),
     ).rejects.toThrow(/outside the workspace/);
     await expect(
       AppStorage.assertInWorkspace(join(previous, 'note.md')),
-    ).resolves.toBe(realpathSync(join(previous, 'note.md')));
+    ).resolves.toBe(realpathSync.native(join(previous, 'note.md')));
   });
 
   it('keeps the previous workspace when the native picker is cancelled', async () => {
@@ -111,7 +111,7 @@ describe('main-owned workspace authorization', () => {
     });
     const window = fakeWindow();
     await AppStorage.openDirectory(window);
-    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync(previous));
+    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync.native(previous));
     expect(AppStorage.adoptWorkspaceRoot(next)).toBe(false);
     expect(window.webContents.send).not.toHaveBeenCalled();
   });
@@ -120,13 +120,13 @@ describe('main-owned workspace authorization', () => {
     expect(AppStorage.offerWorkspaceRoot(previous, true)).toBe(true);
     expect(AppStorage.getWorkspaceRoot()).toBeNull();
     expect(AppStorage.getSessionWorkspaceRoot(null)).toBe(
-      realpathSync(previous),
+      realpathSync.native(previous),
     );
     expect(AppStorage.getSessionWorkspaceRoot(arbitrary)).toBe(
-      realpathSync(previous),
+      realpathSync.native(previous),
     );
     expect(AppStorage.adoptWorkspaceRoot(previous)).toBe(true);
-    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync(previous));
+    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync.native(previous));
   });
 
   it('does not authorise an arbitrary directory through openPath or its listing', async () => {
@@ -138,7 +138,7 @@ describe('main-owned workspace authorization', () => {
       expect.anything(),
     );
     expect(AppStorage.adoptWorkspaceRoot(arbitrary)).toBe(false);
-    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync(previous));
+    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync.native(previous));
   });
 
   it('still allows current-workspace directory expansion and an offered restore directory', async () => {
@@ -157,7 +157,7 @@ describe('main-owned workspace authorization', () => {
       'from:folder:opened',
       expect.objectContaining({ path: next }),
     );
-    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync(previous));
+    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync.native(previous));
   });
 
   it('clearing the workspace revokes pending offers as well as the adopted root', () => {
@@ -178,7 +178,7 @@ describe('main-owned workspace authorization', () => {
     const event = { sender: { id: 41 } };
     AppStorage.setWorkspaceRoot(previous);
     handler('to:workspace:set')(event, { root: arbitrary });
-    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync(previous));
+    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync.native(previous));
     const payload = {
       version: 2,
       tabs: [],
@@ -191,11 +191,11 @@ describe('main-owned workspace authorization', () => {
     expect(AppSession.save).toHaveBeenLastCalledWith({
       ...payload,
       version: 3,
-      workspaceRoot: realpathSync(previous),
+      workspaceRoot: realpathSync.native(previous),
     });
     AppStorage.offerWorkspaceRoot(next);
     handler('to:workspace:set')(event, { root: next });
-    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync(next));
+    expect(AppStorage.getWorkspaceRoot()).toBe(realpathSync.native(next));
     handler('to:session:save')(event, { ...payload, workspaceRoot: next });
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(AppSession.save).toHaveBeenLastCalledWith({

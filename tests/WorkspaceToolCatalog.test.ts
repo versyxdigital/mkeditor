@@ -54,7 +54,9 @@ function fakeModel(initial: string) {
   };
 }
 beforeEach(async () => {
-  root = await fs.mkdtemp(join(tmpdir(), 'mkeditor-tool-catalog-'));
+  root = await fs.realpath(
+    await fs.mkdtemp(join(tmpdir(), 'mkeditor-tool-catalog-')),
+  );
   AppStorage.setWorkspaceRoot(root);
   models = new Map();
   dirty = new Set();

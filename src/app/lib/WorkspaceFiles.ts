@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs';
-import { basename, dirname, join } from 'path';
+import { basename, dirname, isAbsolute, join } from 'path';
 import { randomUUID } from 'crypto';
 import { shell, type BrowserWindow } from 'electron';
 import { AppStorage } from './AppStorage';
@@ -37,7 +37,28 @@ export class WorkspaceFiles {
 
   async resolve(input: string): Promise<string> {
     const root = AppStorage.getWorkspaceRoot();
-    const path = resolveAgentPath(root, input);
+    let path: string;
+    try {
+      path = resolveAgentPath(root, input);
+    } catch (error) {
+      if (
+        !(error instanceof WorkspaceToolError) ||
+        error.code !== 'outside_workspace' ||
+        !isAbsolute(input)
+      )
+        throw error;
+      // An absolute Windows 8.3 alias may spell the authorised root differently.
+      // Resolve it through the filesystem boundary before the lexical check.
+      let canonical: string;
+      try {
+        canonical = await AppStorage.assertInWorkspace(input, {
+          mustExist: false,
+        });
+      } catch {
+        throw error;
+      }
+      path = resolveAgentPath(root, canonical);
+    }
     const safe = await AppStorage.assertInWorkspace(path, { mustExist: false });
     if (root !== AppStorage.getWorkspaceRoot())
       throw new WorkspaceToolError(

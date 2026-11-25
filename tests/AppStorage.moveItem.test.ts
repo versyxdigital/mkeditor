@@ -7,7 +7,14 @@
  * (`from:folder:opened` for both ends, `from:path:renamed` for tabs).
  */
 
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readdirSync } from 'fs';
+import {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+  mkdirSync,
+  readdirSync,
+  realpathSync,
+} from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import type { BrowserWindow } from 'electron';
@@ -32,7 +39,9 @@ function fakeWindow(): {
 }
 
 function withTempRoot<T>(fn: (root: string) => Promise<T>): Promise<T> {
-  const root = mkdtempSync(join(tmpdir(), 'mkeditor-move-'));
+  const root = realpathSync.native(
+    mkdtempSync(join(tmpdir(), 'mkeditor-move-')),
+  );
   return fn(root).finally(() => rmSync(root, { recursive: true, force: true }));
 }
 

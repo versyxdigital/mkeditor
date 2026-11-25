@@ -35,12 +35,12 @@ export class AppStorage {
   ): Promise<void> {
     let key = resolve(path);
     try {
-      key = realpathSync(key);
+      key = realpathSync.native(key);
     } catch {
       // A new file may still have a symlinked parent. Queue both aliases
       // under that canonical directory before the first write creates it.
       try {
-        key = join(realpathSync(dirname(key)), basename(key));
+        key = join(realpathSync.native(dirname(key)), basename(key));
       } catch {
         /* The eventual write reports a missing/inaccessible parent. */
       }
@@ -144,7 +144,7 @@ export class AppStorage {
   static offerWorkspaceRoot(root: string, restoring = false): boolean {
     if (typeof root !== 'string' || !root) return false;
     try {
-      const canonical = realpathSync(resolve(root));
+      const canonical = realpathSync.native(resolve(root));
       if (!statSync(canonical).isDirectory()) return false;
       if (restoring) AppStorage.restoringWorkspaceRoot = canonical;
       else AppStorage.offeredWorkspaceRoot = canonical;
@@ -162,7 +162,7 @@ export class AppStorage {
     }
     if (typeof root !== 'string' || !root) return false;
     try {
-      const canonical = realpathSync(resolve(root));
+      const canonical = realpathSync.native(resolve(root));
       if (
         canonical !== AppStorage.workspaceRoot &&
         canonical !== AppStorage.offeredWorkspaceRoot &&
@@ -186,7 +186,8 @@ export class AppStorage {
       try {
         // Preserve a selected symlink's display path when it still refers
         // to the same authorised directory.
-        if (realpathSync(resolve(requested)) === selected) return requested;
+        if (realpathSync.native(resolve(requested)) === selected)
+          return requested;
       } catch {
         /* Retain the authorised root when a renderer path is stale. */
       }
@@ -212,10 +213,12 @@ export class AppStorage {
   /**
    * Set (or clear) the current workspace root. Main normalises with
    * `path.resolve` so trailing slashes / mixed separators are equivalent,
-   * then canonicalises via `fs.realpathSync` so an opened symlinked folder
+   * then canonicalises via `fs.realpathSync.native` so an opened symlinked folder
    * matches the canonical paths derived from `fs.realpath(target)`.
    *
-   * `realpathSync` falls back to the lexical `resolve(root)` if the
+   * Native resolution also expands Windows 8.3 aliases consistently with
+   * `fs.promises.realpath`. The legacy sync API can preserve those aliases.
+   * It falls back to the lexical `resolve(root)` if the
    * directory can't be canonicalised (was just deleted, permission
    * denied, etc.), `assertInWorkspace` then surfaces the real error
    * the next time the user fs-ops against the workspace.
@@ -229,7 +232,7 @@ export class AppStorage {
     }
     const absolute = resolve(root);
     try {
-      AppStorage.workspaceRoot = realpathSync(absolute);
+      AppStorage.workspaceRoot = realpathSync.native(absolute);
     } catch {
       AppStorage.workspaceRoot = absolute;
     }
@@ -428,7 +431,7 @@ export class AppStorage {
         const canonical = (path: string) => {
           let absolute = resolve(path);
           try {
-            absolute = realpathSync(absolute);
+            absolute = realpathSync.native(absolute);
           } catch {
             /* New targets need not exist. */
           }
