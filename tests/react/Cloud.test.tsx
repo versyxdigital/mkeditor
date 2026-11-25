@@ -292,6 +292,103 @@ test('Dropbox Explorer uses its own root and offers folder creation', async () =
   manager.dispose();
 });
 
+describe.each<CloudProviderId>(['google-drive', 'dropbox'])(
+  '%s recovery controls',
+  (provider) => {
+    test.each(['create', 'folder'] as const)(
+      'shows a pending %s only for the selected connected account and restores it on return',
+      async (kind) => {
+        const { manager, managers, bridge, listeners, state, push } = setup(
+          true,
+          provider,
+        );
+        state.connections[0].writeAccess = true;
+        state.pendingOperations = [
+          {
+            provider,
+            connectionId: 'drive',
+            accountId: 'account',
+            operationId: 'restored',
+            kind: 'save',
+            itemId: 'item',
+            name: 'Original.md',
+          },
+        ];
+        push(state);
+        manager.selectWorkspace('drive');
+        registerPromptOpener(async () => ({
+          button: 'confirm',
+          value: kind === 'create' ? 'New.md' : 'Folder',
+        }));
+        const creating =
+          kind === 'create' ? manager.create() : manager.createFolder();
+        await Promise.resolve();
+        const request = bridge.send.mock.calls.at(-1)![1];
+        listeners.get('from:cloud:result')!({
+          requestId: request.requestId,
+          ok: false,
+          error: 'unconfirmed',
+        } as never);
+        await creating;
+        registerPromptOpener(async () => ({ button: null }));
+        renderWithProviders(<CloudExplorer />, { managers });
+        const label =
+          kind === 'create' ? 'cloud:check_create' : 'cloud:check_operation';
+        expect(
+          screen.getByRole('button', { name: label, exact: true }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /Original.md/ }),
+        ).toBeInTheDocument();
+        push({
+          ...state,
+          connections: [
+            ...state.connections,
+            {
+              ...state.connections[0],
+              id: 'other',
+              accountId: 'other-account',
+            },
+          ],
+        });
+        act(() => manager.selectWorkspace('other'));
+        expect(
+          screen.queryByRole('button', { name: label, exact: true }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('button', { name: /Original.md/ }),
+        ).not.toBeInTheDocument();
+        act(() => manager.selectWorkspace('drive'));
+        push({
+          ...state,
+          connections: [{ ...state.connections[0], accountId: 'replacement' }],
+        });
+        expect(
+          screen.queryByRole('button', { name: label, exact: true }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('button', { name: /Original.md/ }),
+        ).not.toBeInTheDocument();
+        push({
+          ...state,
+          connections: [{ ...state.connections[0], status: 'disconnected' }],
+        });
+        expect(
+          screen.queryByRole('button', { name: label, exact: true }),
+        ).not.toBeInTheDocument();
+        push(state);
+        expect(
+          screen.getByRole('button', { name: label, exact: true }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /Original.md/ }),
+        ).toBeInTheDocument();
+        act(() => manager.dispose());
+      },
+    );
+  },
+);
+
 test('web toolbar hides the storage selector even with a configured cloud manager', () => {
   const { manager, managers } = setup();
   renderWithProviders(<Navbar />, { managers: { ...managers, mode: 'web' } });

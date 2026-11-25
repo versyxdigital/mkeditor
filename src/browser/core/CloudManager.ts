@@ -348,7 +348,11 @@ export class CloudManager {
   async checkRestoredOperation(
     operation: import('../../app/interfaces/Cloud').CloudPendingOperation,
   ): Promise<void> {
-    if (this.snapshot.busy.includes(operation.operationId)) return;
+    if (
+      !this.canRecoverOperation(operation) ||
+      this.snapshot.busy.includes(operation.operationId)
+    )
+      return;
     this.update({
       busy: [...this.snapshot.busy, operation.operationId],
       error: undefined,
@@ -513,6 +517,23 @@ export class CloudManager {
       loading: false,
     });
     if (workspace !== 'local') void this.browse([this.rootFolder()]);
+  }
+
+  /** Recovery controls belong to the connected account currently being browsed. */
+  canRecoverOperation(
+    operation: { connectionId: string; accountId: string } | undefined,
+  ): boolean {
+    const connection = this.snapshot.connections.find(
+      (entry) => entry.id === this.snapshot.workspace,
+    );
+    return Boolean(
+      !this.disposed &&
+      operation &&
+      connection?.status === 'connected' &&
+      connection.accountId &&
+      operation.connectionId === connection.id &&
+      operation.accountId === connection.accountId,
+    );
   }
   async browse(folders = this.snapshot.folders, append = false) {
     if (this.snapshot.workspace === 'local') return;
@@ -786,7 +807,12 @@ export class CloudManager {
   }
   async reconcileCreate(): Promise<void> {
     const pending = this.snapshot.pendingCreate;
-    if (!pending || this.snapshot.busy.includes('create')) return;
+    if (
+      !pending ||
+      !this.canRecoverOperation(pending) ||
+      this.snapshot.busy.includes('create')
+    )
+      return;
     const provider = this.snapshot.connections.find(
       (entry) => entry.id === pending.connectionId,
     )?.provider;
@@ -1048,7 +1074,12 @@ export class CloudManager {
 
   async reconcileItem(): Promise<void> {
     const pending = this.snapshot.pendingItem;
-    if (!pending || this.snapshot.busy.includes('organize')) return;
+    if (
+      !pending ||
+      !this.canRecoverOperation(pending) ||
+      this.snapshot.busy.includes('organize')
+    )
+      return;
     const provider = this.snapshot.connections.find(
       (entry) => entry.id === pending.connectionId,
     )?.provider;

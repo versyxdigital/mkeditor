@@ -794,6 +794,106 @@ const destination = {
   parents: ['root'],
 };
 
+describe.each<CloudProviderId>(['google-drive', 'dropbox'])(
+  '%s recovery account boundaries',
+  (provider) => {
+    test.each(['create', 'folder'] as const)(
+      'retains a pending %s across switches but sends recovery only from its connected account',
+      async (kind) => {
+        const { manager, requests, state, push, fail } = organizing(provider);
+        jest.mocked(openPromptExternal).mockResolvedValueOnce({
+          button: 'confirm',
+          value: kind === 'create' ? 'New.md' : 'Folder',
+        });
+        const creating =
+          kind === 'create' ? manager.create() : manager.createFolder();
+        await Promise.resolve();
+        fail(requests.at(-1)!, 'unconfirmed');
+        await creating;
+        const pending =
+          kind === 'create'
+            ? manager.getSnapshot().pendingCreate
+            : manager.getSnapshot().pendingItem;
+        expect(pending).toBeDefined();
+        const restored = {
+          provider,
+          connectionId: 'drive',
+          accountId: 'account',
+          operationId: 'restored',
+          itemId: 'item',
+          kind: 'save' as const,
+        };
+        const original = { ...state, pendingOperations: [restored] };
+        const check = async () => {
+          await manager.reconcileCreate();
+          await manager.reconcileItem();
+          await manager.checkRestoredOperation(restored);
+        };
+        const recoveryCount = () =>
+          requests.filter((request) =>
+            ['reconcile', 'reconcileItem'].includes(request.command.action),
+          ).length;
+        push({
+          ...original,
+          connections: [
+            ...state.connections,
+            {
+              ...state.connections[0],
+              id: 'other',
+              accountId: 'other-account',
+            },
+          ],
+        });
+        manager.selectWorkspace('other');
+        await check();
+        expect(recoveryCount()).toBe(0);
+        manager.selectWorkspace('drive');
+        push({
+          ...original,
+          connections: [{ ...state.connections[0], accountId: 'replacement' }],
+        });
+        await check();
+        expect(recoveryCount()).toBe(0);
+        push({
+          ...original,
+          connections: [{ ...state.connections[0], status: 'disconnected' }],
+        });
+        await check();
+        expect(recoveryCount()).toBe(0);
+        expect(
+          kind === 'create'
+            ? manager.getSnapshot().pendingCreate
+            : manager.getSnapshot().pendingItem,
+        ).toEqual(pending);
+        expect(manager.getSnapshot().pendingOperations).toEqual([restored]);
+        push(original);
+        const checking =
+          kind === 'create'
+            ? manager.reconcileCreate()
+            : manager.reconcileItem();
+        expect(requests.at(-1)?.command).toMatchObject({
+          action: kind === 'create' ? 'reconcile' : 'reconcileItem',
+          connectionId: 'drive',
+          accountId: 'account',
+          operationId: pending!.operationId,
+        });
+        fail(requests.at(-1)!, 'unconfirmed');
+        await checking;
+        const restoredCheck = manager.checkRestoredOperation(restored);
+        expect(requests.at(-1)?.command).toMatchObject({
+          action: 'reconcile',
+          connectionId: 'drive',
+          accountId: 'account',
+          operationId: 'restored',
+        });
+        fail(requests.at(-1)!, 'unconfirmed');
+        await restoredCheck;
+        manager.dispose();
+      },
+    );
+  },
+);
+
 test.each<CloudProviderId>(['google-drive', 'dropbox'])(
   '%s folder creation shows progress after confirmation and cancellation performs no write',
   async (provider) => {

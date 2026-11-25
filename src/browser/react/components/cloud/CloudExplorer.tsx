@@ -388,7 +388,7 @@ export const CloudExplorer: React.FC = () => {
                     </span>
                   </div>
                 )}
-                {state.pendingCreate && (
+                {manager?.canRecoverOperation(state.pendingCreate) && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -399,7 +399,7 @@ export const CloudExplorer: React.FC = () => {
                     <span className="truncate">{t('cloud:check_create')}</span>
                   </Button>
                 )}
-                {state.pendingItem && (
+                {manager?.canRecoverOperation(state.pendingItem) && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -411,10 +411,8 @@ export const CloudExplorer: React.FC = () => {
                   </Button>
                 )}
                 {state.pendingOperations
-                  ?.filter(
-                    (operation) =>
-                      operation.connectionId === connection.id &&
-                      operation.accountId === connection.accountId,
+                  ?.filter((operation) =>
+                    manager?.canRecoverOperation(operation),
                   )
                   .map((operation) => (
                     <Button
